@@ -238,6 +238,59 @@ export interface AuthMembershipsView {
   status: MembershipStatus;
 }
 
+// ---------------------------------------------------------------------------
+// P04 — API infrastructure
+// ---------------------------------------------------------------------------
+
+export const IDEMPOTENCY_STATUSES = ['in_progress', 'completed'] as const;
+export const idempotencyStatusSchema = z.enum(IDEMPOTENCY_STATUSES);
+export type IdempotencyStatus = z.infer<typeof idempotencyStatusSchema>;
+
+export const JOB_STATUSES = ['pending', 'running', 'succeeded', 'failed', 'dead'] as const;
+export const jobStatusSchema = z.enum(JOB_STATUSES);
+export type JobStatus = z.infer<typeof jobStatusSchema>;
+
+export interface IdempotencyKeysTable {
+  id: Generated<string>;
+  tenant_id: string;
+  idempotency_key: string;
+  user_id: string;
+  method: string;
+  path: string;
+  request_fingerprint: string;
+  status: Generated<IdempotencyStatus>;
+  response_status: number | null;
+  response_body: Jsonb<unknown> | null;
+  created_at: CreatedAt;
+  completed_at: Date | null;
+  expires_at: Date;
+}
+
+export interface JobsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  queue: string;
+  payload: Jsonb<Record<string, unknown>>;
+  status: Generated<JobStatus>;
+  attempts: Generated<number>;
+  max_attempts: Generated<number>;
+  available_at: Generated<Date>;
+  locked_by: string | null;
+  locked_until: Date | null;
+  last_error: string | null;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  completed_at: Date | null;
+  dead_lettered_at: Date | null;
+}
+
+export interface RateLimitBucketsTable {
+  bucket_key: string;
+  window_started_at: Date;
+  request_count: Generated<number>;
+  updated_at: Generated<Date>;
+}
+
 export interface SchemaMigrationsTable {
   version: string;
   name: string;
@@ -259,6 +312,9 @@ export interface Database {
   impersonation_grants: ImpersonationGrantsTable;
   login_attempts: LoginAttemptsTable;
   account_locks: AccountLocksTable;
+  idempotency_keys: IdempotencyKeysTable;
+  jobs: JobsTable;
+  rate_limit_buckets: RateLimitBucketsTable;
   schema_migrations: SchemaMigrationsTable;
   auth_memberships: AuthMembershipsView;
 }
@@ -286,6 +342,10 @@ export const PLATFORM_TABLES = [
   // the pre-authentication role that does holds nothing else; see 0003.
   'login_attempts',
   'account_locks',
+  // Rate limiting runs before the handler and, for an unauthenticated request,
+  // before there is any tenant to scope by. Keyed on an opaque bucket string
+  // and reached only by the pre-authentication role; see 0004.
+  'rate_limit_buckets',
 ] as const;
 
 /**

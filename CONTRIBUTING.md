@@ -12,6 +12,7 @@ packages/
   core                Domain types and zod schemas
   db                  Schema, migrations, repositories, tenant isolation
   auth                Sessions, tokens, invitations, impersonation
+  api-client          Typed client generated from apps/api/openapi.json
   typescript-config   Shared tsconfig presets
   eslint-config       Shared flat ESLint config
 plan/                 The build plan — phases, status, exit criteria
@@ -31,6 +32,10 @@ Rules that hold across the workspace:
 - **Never store a token in `localStorage`.** Any script on the page can read it.
   Clients use the OS keychain, SecureStore, or an httpOnly cookie; the contract
   is `TokenStore` in `@integr8/core`. See [`docs/auth/`](./docs/auth/README.md).
+- **Nothing breaking ships inside an API version.** A signed desktop binary and an
+  App Store build cannot be force-updated. Read
+  [`docs/api/versioning.md`](./docs/api/versioning.md) before changing any endpoint's
+  shape; CI fails if `openapi.json` drifts from the code.
 
 ## Branches
 
@@ -52,7 +57,7 @@ commit time and again in CI.
 
 Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`, `revert`.
 
-Scopes: `api`, `web`, `desktop`, `mobile`, `core`, `db`, `auth`, `config`, `ci`, `deps`, `plan`, `repo`.
+Scopes: `api`, `web`, `desktop`, `mobile`, `core`, `db`, `auth`, `client`, `config`, `ci`, `deps`, `plan`, `repo`.
 
 ```
 feat(core): add branded tenant and user identifiers
@@ -140,6 +145,22 @@ value fails loudly at startup instead of surfacing as `undefined` inside a reque
 roles: `DATABASE_URL` is the runtime role that RLS applies to, and `DATABASE_URL_ADMIN` is
 the schema owner, which bypasses it. An API container should not have the second one set
 at all.
+
+## Changing the API
+
+Routes are declared one value at a time in `apps/api/src/routes/`, and the same
+declaration drives Fastify, validation, authorisation, rate limiting and the OpenAPI
+document. Adding a route to `routes/index.ts` is all the registration there is.
+
+After changing any schema:
+
+```bash
+pnpm --filter @integr8/api openapi
+pnpm --filter @integr8/api-client generate
+```
+
+Both outputs are committed, so a contract change is a diff in review. CI regenerates
+them and fails if they differ.
 
 ## Changing the database
 

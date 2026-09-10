@@ -9,10 +9,20 @@ import {
 } from './config.js';
 import { AuditLogRepository } from './repositories/audit-log.js';
 import { AuthMembershipsRepository } from './repositories/auth-memberships.js';
+import { IdempotencyRepository } from './repositories/idempotency.js';
 import { ImpersonationRepository } from './repositories/impersonation.js';
+import {
+  type ClaimedJob,
+  claimJobs,
+  completeJob,
+  type FailJobOptions,
+  failJob,
+  JobsRepository,
+} from './repositories/jobs.js';
 import { InvitationsRepository } from './repositories/invitations.js';
 import { LoginSecurityRepository } from './repositories/login-security.js';
 import { OfflineGrantsRepository } from './repositories/offline-grants.js';
+import { RateLimitRepository } from './repositories/rate-limits.js';
 import { SessionsRepository } from './repositories/sessions.js';
 import { PlatformUsersRepository } from './repositories/platform-users.js';
 import { TenantsRepository } from './repositories/tenants.js';
@@ -53,6 +63,8 @@ export interface TenantTransaction {
   readonly invitations: InvitationsRepository;
   readonly impersonation: ImpersonationRepository;
   readonly offlineGrants: OfflineGrantsRepository;
+  readonly idempotency: IdempotencyRepository;
+  readonly jobs: JobsRepository;
 }
 
 /**
@@ -80,10 +92,30 @@ export interface TenantDataSource {
   transaction: <T>(fn: (tx: TenantTransaction) => Promise<T>) => Promise<T>;
 }
 
+/**
+ * Claiming and finishing background jobs, across every company.
+ *
+ * The one queue operation that cannot be tenant-scoped: a worker polls for
+ * whatever work exists, and "whatever exists" spans companies. Each job it
+ * claims is then executed inside a tenant transaction for that job's own
+ * `tenant_id`, so the privilege stops at the claim.
+ */
+export interface PlatformJobQueue {
+  claim: (options: {
+    workerId: string;
+    limit?: number;
+    leaseMs?: number;
+    now?: Date;
+  }) => Promise<ClaimedJob[]>;
+  complete: (jobId: string, at?: Date) => Promise<void>;
+  fail: (jobId: string, options: FailJobOptions) => Promise<'retrying' | 'dead'>;
+}
+
 /** A connection as the schema owner. RLS does not apply — see {@link getPlatformDataSource}. */
 export interface PlatformDataSource {
   readonly tenants: TenantsRepository;
   readonly platformUsers: PlatformUsersRepository;
+  readonly jobs: PlatformJobQueue;
 }
 
 /**
@@ -102,6 +134,7 @@ export interface PlatformDataSource {
 export interface AuthDataSource {
   readonly loginSecurity: LoginSecurityRepository;
   readonly memberships: AuthMembershipsRepository;
+  readonly rateLimits: RateLimitRepository;
 }
 
 // ---------------------------------------------------------------------------
@@ -219,6 +252,8 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     invitations: new InvitationsRepository(scope),
     impersonation: new ImpersonationRepository(scope),
     offlineGrants: new OfflineGrantsRepository(scope),
+    idempotency: new IdempotencyRepository(scope),
+    jobs: new JobsRepository(scope),
   };
 }
 
@@ -277,6 +312,11 @@ export function getPlatformDataSource(): PlatformDataSource {
   return {
     tenants: new TenantsRepository(db),
     platformUsers: new PlatformUsersRepository(db),
+    jobs: {
+      claim: (options) => claimJobs(db, options),
+      complete: (jobId, at) => completeJob(db, jobId, at),
+      fail: (jobId, options) => failJob(db, jobId, options),
+    },
   };
 }
 
@@ -311,6 +351,7 @@ export async function getAuthDataSource(): Promise<AuthDataSource> {
   return {
     loginSecurity: new LoginSecurityRepository(db),
     memberships: new AuthMembershipsRepository(db),
+    rateLimits: new RateLimitRepository(db),
   };
 }
 

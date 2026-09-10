@@ -61,7 +61,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 - [x] **P01** — Monorepo and tooling
 - [~] **P02** — Database and multi-tenancy
 - [~] **P03** — Authentication and roles
-- [ ] **P04** — API skeleton and contract
+- [~] **P04** — API skeleton and contract
 - [ ] **P05** — Application shells
 
 ### v0.2 — Form Engine

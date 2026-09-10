@@ -1,0 +1,39 @@
+{
+  "name": "@integr8/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "generate": "openapi-typescript ../../apps/api/openapi.json --output src/generated/schema.d.ts"
+  },
+  "dependencies": {
+    "@integr8/core": "workspace:*",
+    "openapi-fetch": "0.17.0"
+  },
+  "devDependencies": {
+    "@integr8/eslint-config": "workspace:*",
+    "@integr8/typescript-config": "workspace:*",
+    "@types/node": "22.20.2",
+    "eslint": "10.10.0",
+    "openapi-typescript": "7.13.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.0"
+  }
+}

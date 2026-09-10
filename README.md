@@ -44,12 +44,12 @@ pnpm dev                            # every app, in parallel
 pnpm --filter @integr8/api dev      # just one
 ```
 
-| App            | Package            | What it is today                                                                                         |
-| -------------- | ------------------ | -------------------------------------------------------------------------------------------------------- |
-| `apps/api`     | `@integr8/api`     | Node HTTP process serving `/health`. Framework, OpenAPI contract and tenant middleware arrive in **P04** |
-| `apps/web`     | `@integr8/web`     | Placeholder. Next.js shell arrives in **P05**                                                            |
-| `apps/desktop` | `@integr8/desktop` | Placeholder. React SPA + Tauri v2 shell arrive in **P05**                                                |
-| `apps/mobile`  | `@integr8/mobile`  | Placeholder. Expo shell arrives in **P05**                                                               |
+| App            | Package            | What it is today                                                                             |
+| -------------- | ------------------ | -------------------------------------------------------------------------------------------- |
+| `apps/api`     | `@integr8/api`     | Fastify service: versioned `/v1` routes, generated OpenAPI, idempotency, jobs, rate limiting |
+| `apps/web`     | `@integr8/web`     | Placeholder. Next.js shell arrives in **P05**                                                |
+| `apps/desktop` | `@integr8/desktop` | Placeholder. React SPA + Tauri v2 shell arrive in **P05**                                    |
+| `apps/mobile`  | `@integr8/mobile`  | Placeholder. Expo shell arrives in **P05**                                                   |
 
 Check the API is up:
 
@@ -74,16 +74,16 @@ See [`docs/database/`](./docs/database/README.md).
 
 ## Everyday commands
 
-| Command                 | Does                                                    |
-| ----------------------- | ------------------------------------------------------- |
-| `pnpm build`            | Builds every package in dependency order                |
-| `pnpm lint`             | ESLint across the workspace                             |
-| `pnpm typecheck`        | `tsc --noEmit` per package                              |
-| `pnpm test`             | Vitest per package; needs no database                   |
-| `pnpm test:integration` | Migrations and tenant isolation against a real Postgres |
-| `pnpm format`           | Prettier, writing changes                               |
-| `pnpm format:check`     | Prettier, failing on drift (what CI runs)               |
-| `pnpm clean`            | Removes build output and caches                         |
+| Command                 | Does                                                  |
+| ----------------------- | ----------------------------------------------------- |
+| `pnpm build`            | Builds every package in dependency order              |
+| `pnpm lint`             | ESLint across the workspace                           |
+| `pnpm typecheck`        | `tsc --noEmit` per package                            |
+| `pnpm test`             | Vitest per package; needs no database                 |
+| `pnpm test:integration` | Database, auth and API suites against a real Postgres |
+| `pnpm format`           | Prettier, writing changes                             |
+| `pnpm format:check`     | Prettier, failing on drift (what CI runs)             |
+| `pnpm clean`            | Removes build output and caches                       |
 
 Add `--filter @integr8/<name>` to scope any of them to one package.
 

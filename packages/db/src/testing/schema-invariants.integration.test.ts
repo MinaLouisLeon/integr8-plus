@@ -169,12 +169,20 @@ describe('the pre-authentication role', () => {
     return result.rows.map((row) => ({ table: row.table_name, privilege: row.privilege_type }));
   }
 
-  it('reaches exactly three objects and no more', async () => {
+  it('reaches exactly four objects and no more', async () => {
     const reachable = [...new Set((await authPrivileges()).map((entry) => entry.table))].sort(
       (a, b) => a.localeCompare(b),
     );
 
-    expect(reachable).toEqual(['account_locks', 'auth_memberships', 'login_attempts']);
+    // Every name here is a deliberate exception to tenant scoping, so the list
+    // is asserted exactly rather than loosely. Adding one is a line a reviewer
+    // sees, in a test about the thing being widened.
+    expect(reachable).toEqual([
+      'account_locks',
+      'auth_memberships',
+      'login_attempts',
+      'rate_limit_buckets',
+    ]);
   });
 
   it('holds no privilege on any tenant-scoped table', async () => {
@@ -284,6 +292,7 @@ describe('what the runtime role may do', () => {
     expect(await privileges('login_attempts')).toEqual([]);
     expect(await privileges('account_locks')).toEqual([]);
     expect(await privileges('auth_memberships')).toEqual([]);
+    expect(await privileges('rate_limit_buckets')).toEqual([]);
   });
 
   it('cannot delete a session, an invitation or an impersonation grant', async () => {
@@ -296,9 +305,27 @@ describe('what the runtime role may do', () => {
       'offline_grants',
       'invitations',
       'impersonation_grants',
+      'idempotency_keys',
+      'jobs',
     ]) {
       expect(await privileges(table), table).toEqual(['INSERT', 'SELECT', 'UPDATE']);
     }
+  });
+
+  it('may delete only rate-limit counters, and only through the gateway role', async () => {
+    // The single exception to append-or-revoke in this schema. A spent counter
+    // has no evidentiary value; a login attempt does, which is why that one is
+    // insert-only.
+    const onBuckets = (
+      await owner.query<{ privilege_type: string }>(
+        `select privilege_type::text as privilege_type
+       from information_schema.role_table_grants
+       where grantee = 'integr8_auth' and table_name = 'rate_limit_buckets'
+       order by privilege_type`,
+      )
+    ).rows.map((row) => row.privilege_type);
+
+    expect(onBuckets).toEqual(['DELETE', 'INSERT', 'SELECT', 'UPDATE']);
   });
 
   it('may only read tenants', async () => {

@@ -29,6 +29,7 @@ export {
   withTenant,
   type AuthDataSource,
   type PlatformDataSource,
+  type PlatformJobQueue,
   type TenantDataSource,
   type TenantTransaction,
 } from './connection.js';
@@ -144,3 +145,34 @@ export {
   type AuthMembership,
   type AuthMembershipsRepository,
 } from './repositories/auth-memberships.js';
+
+export {
+  type ClaimIdempotencyKeyInput,
+  type IdempotencyClaim,
+  type IdempotencyRecord,
+  type IdempotencyRepository,
+} from './repositories/idempotency.js';
+
+export {
+  type ClaimedJob,
+  type EnqueueJobInput,
+  type FailJobOptions,
+  type Job,
+  type JobsRepository,
+} from './repositories/jobs.js';
+
+export {
+  floorToWindow,
+  type RateLimitDecision,
+  type RateLimitOptions,
+  type RateLimitRepository,
+} from './repositories/rate-limits.js';
+
+export {
+  IDEMPOTENCY_STATUSES,
+  idempotencyStatusSchema,
+  JOB_STATUSES,
+  jobStatusSchema,
+  type IdempotencyStatus,
+  type JobStatus,
+} from './schema.js';

@@ -14,6 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@integr8/api-client": "workspace:*",
     "@integr8/core": "workspace:*"
   },
   "devDependencies": {
