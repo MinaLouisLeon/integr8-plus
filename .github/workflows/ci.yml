@@ -1,9 +1,12 @@
 name: CI
 
+# Pull requests only. The push side of main, staging and dev belongs to the
+# three branch workflows, which run the same verification through verify.yml
+# before deciding whether to release. Leaving the push trigger here as well
+# would run the whole suite twice on every merge and say nothing new the second
+# time.
 on:
   pull_request:
-  push:
-    branches: [main]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}

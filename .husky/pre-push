@@ -1,3 +1,14 @@
+# The branch guard runs first, for two reasons. It reads the refs git passes on
+# stdin, and nothing after it touches stdin, so it is free to consume all of it.
+# And it is the cheap check: refusing a push to main before spending two minutes
+# typechecking is the difference between a hook people keep and a hook people
+# start passing --no-verify to.
+#
+# `|| exit 1` is load-bearing. Husky sources this file, so a subprocess exiting
+# non-zero does not stop what follows and the hook's exit code would end up
+# being pnpm's.
+sh scripts/git-hooks/pre-push-branch-guard.sh || exit 1
+
 # TypeScript analyses whole projects, so a staged-file-only typecheck is not
 # possible. Type and test checks therefore run here rather than at commit time.
 pnpm typecheck
