@@ -15,7 +15,7 @@ on:
         description: The commit to verify. Defaults to the caller's commit.
         type: string
         required: false
-        default: ""
+        default: ''
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
