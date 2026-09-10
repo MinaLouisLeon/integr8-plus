@@ -13,6 +13,41 @@ export {
 export { ROLES, roleSchema, roleRank, hasAtLeastRole, type Role } from './roles.js';
 
 export {
+  PERMISSIONS,
+  permissionSchema,
+  can,
+  assertCan,
+  permissionsFor,
+  PermissionDeniedError,
+  type Permission,
+} from './permissions.js';
+
+export {
+  TOKEN_TYPES,
+  tokenTypeSchema,
+  impersonationClaimSchema,
+  accessTokenClaimsSchema,
+  offlineGrantClaimsSchema,
+  toPrincipal,
+  isImpersonating,
+  type TokenType,
+  type ImpersonationClaim,
+  type AccessTokenClaims,
+  type OfflineGrantClaims,
+  type Principal,
+} from './claims.js';
+
+export {
+  InMemoryTokenStore,
+  ACCESS_TOKEN_REFRESH_MARGIN_MS,
+  shouldRefresh,
+  requiresSignIn,
+  canOpenOffline,
+  type StoredTokens,
+  type TokenStore,
+} from './token-store.js';
+
+export {
   APP_ENVIRONMENTS,
   appEnvironmentSchema,
   isProductionLike,

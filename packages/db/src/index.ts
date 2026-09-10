@@ -19,12 +19,15 @@
  */
 
 export {
+  AuthRoleTooBroadError,
   closeDatabase,
   configureDatabase,
+  getAuthDataSource,
   getPlatformDataSource,
   getTenantDataSource,
   RlsNotEnforcedError,
   withTenant,
+  type AuthDataSource,
   type PlatformDataSource,
   type TenantDataSource,
   type TenantTransaction,
@@ -34,10 +37,33 @@ export {
   databaseConfigSchema,
   loadDatabaseConfig,
   requireAdminConnectionString,
+  requireAuthConnectionString,
   type DatabaseConfig,
 } from './config.js';
 
 export { MissingTenantScopeError } from './tenant-guard.js';
+
+export { assertSchemaUpToDate, SchemaOutOfDateError } from './migrator/status.js';
+
+export {
+  CLIENT_APPS,
+  clientAppSchema,
+  IMPERSONATION_END_REASONS,
+  impersonationEndReasonSchema,
+  LOGIN_OUTCOMES,
+  loginOutcomeSchema,
+  OFFLINE_GRANT_REVOCATION_REASONS,
+  offlineGrantRevocationReasonSchema,
+  SECURITY_DEFINER_VIEWS,
+  SESSION_REVOCATION_REASONS,
+  sessionRevocationReasonSchema,
+  type ClientApp,
+  type ImpersonationEndReason,
+  type LoginOutcome,
+  type OfflineGrantRevocationReason,
+  type SecurityDefinerView,
+  type SessionRevocationReason,
+} from './schema.js';
 
 export {
   AUDIT_ACTOR_KINDS,
@@ -78,3 +104,43 @@ export type { CreatePlatformUserInput, PlatformUser } from './repositories/platf
 export type { PlatformUsersRepository } from './repositories/platform-users.js';
 
 export { WarmLruCache, type EvictionReason, type WarmLruOptions } from './warm-lru.js';
+
+export type {
+  CreateSessionInput,
+  ListSessionsOptions,
+  RefreshTokenRecord,
+  Session,
+  SessionsRepository,
+} from './repositories/sessions.js';
+
+export type {
+  CreateInvitationInput,
+  Invitation,
+  InvitationsRepository,
+} from './repositories/invitations.js';
+
+export type {
+  CreateImpersonationGrantInput,
+  ImpersonationGrant,
+  ImpersonationRepository,
+} from './repositories/impersonation.js';
+
+export type {
+  CreateOfflineGrantInput,
+  OfflineGrant,
+  OfflineGrantsRepository,
+} from './repositories/offline-grants.js';
+
+export {
+  isLocked,
+  type AccountLock,
+  type LockPolicy,
+  type LoginAttemptInput,
+  type LoginSecurityRepository,
+} from './repositories/login-security.js';
+
+export {
+  isUsableMembership,
+  type AuthMembership,
+  type AuthMembershipsRepository,
+} from './repositories/auth-memberships.js';

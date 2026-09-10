@@ -28,6 +28,8 @@ Copy the environment template for each app you intend to run:
 ```bash
 for app in api web desktop mobile; do cp "apps/$app/.env.example" "apps/$app/.env"; done
 cp packages/db/.env.example packages/db/.env
+cp packages/auth/.env.example packages/auth/.env
+pnpm --filter @integr8/auth keygen   # prints the three signing-key variables
 ```
 
 Anything touching the database needs a Postgres to point at.

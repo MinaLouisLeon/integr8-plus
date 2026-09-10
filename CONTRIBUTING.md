@@ -11,6 +11,7 @@ apps/
 packages/
   core                Domain types and zod schemas
   db                  Schema, migrations, repositories, tenant isolation
+  auth                Sessions, tokens, invitations, impersonation
   typescript-config   Shared tsconfig presets
   eslint-config       Shared flat ESLint config
 plan/                 The build plan — phases, status, exit criteria
@@ -27,6 +28,9 @@ Rules that hold across the workspace:
   lint error. A query written outside the repository layer is a query with no `tenant_id`
   filter, which is how one company reads another's data. See
   [`docs/database/`](./docs/database/README.md).
+- **Never store a token in `localStorage`.** Any script on the page can read it.
+  Clients use the OS keychain, SecureStore, or an httpOnly cookie; the contract
+  is `TokenStore` in `@integr8/core`. See [`docs/auth/`](./docs/auth/README.md).
 
 ## Branches
 
@@ -48,7 +52,7 @@ commit time and again in CI.
 
 Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`, `revert`.
 
-Scopes: `api`, `web`, `desktop`, `mobile`, `core`, `db`, `config`, `ci`, `deps`, `plan`, `repo`.
+Scopes: `api`, `web`, `desktop`, `mobile`, `core`, `db`, `auth`, `config`, `ci`, `deps`, `plan`, `repo`.
 
 ```
 feat(core): add branded tenant and user identifiers
@@ -81,8 +85,8 @@ everything regardless.
 1. **verify** — install, `format:check`, `lint`, `typecheck`, `test`, `build`
 2. **commit-messages** — commitlint over the PR's commit range
 3. **database** — rolls the schema down and back up, then runs the tenant-isolation
-   suite against a disposable Postgres. Skipped until the repository variable
-   `DATABASE_TESTS` is set to `enabled`; step 8 of
+   and authentication suites against a disposable Postgres. Skipped until the
+   repository variable `DATABASE_TESTS` is set to `enabled`; step 8 of
    [the setup runbook](./docs/database/runbook-supabase-setup.md) turns it on
 4. **secret-scan** — gitleaks over full history
 

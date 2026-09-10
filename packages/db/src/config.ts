@@ -11,6 +11,10 @@ import { z } from 'zod';
  * - `DATABASE_URL_ADMIN` connects as the schema owner. Migrations, seeds,
  *   company provisioning and super-admin reads use it. RLS does *not* apply, so
  *   nothing that handles a tenant request may touch it.
+ * - `DATABASE_URL_AUTH` connects as `integr8_auth`, which exists only for the
+ *   part of sign-in that happens before a company is known. It reaches two
+ *   tables and one view and nothing else, so the tenant runtime role never
+ *   needs a privilege on a cross-tenant object. See migration 0003.
  */
 
 const connectionString = z
@@ -34,6 +38,14 @@ export const databaseConfigSchema = z.object({
   DATABASE_URL_ADMIN: connectionString.optional(),
 
   /**
+   * Pre-authentication connection, role `integr8_auth`.
+   *
+   * Optional: a container that never handles sign-in — a worker, say — has no
+   * use for it, and not having it is one fewer credential to leak.
+   */
+  DATABASE_URL_AUTH: connectionString.optional(),
+
+  /**
    * Physical connections in the shared app pool.
    *
    * Sized against Supavisor's transaction-mode pool, not against Postgres's
@@ -41,6 +53,14 @@ export const databaseConfigSchema = z.object({
    * for this container, and every container in the fleet adds to the total.
    */
   DB_POOL_MAX: positiveInt(10),
+
+  /**
+   * Physical connections in the pre-authentication pool.
+   *
+   * Small on purpose. Sign-in is a small fraction of traffic, and every
+   * connection in this pool can read across companies.
+   */
+  DB_AUTH_POOL_MAX: positiveInt(4),
 
   /** How long an idle physical connection is kept before the pool closes it. */
   DB_POOL_IDLE_MS: positiveInt(30_000),
@@ -85,6 +105,18 @@ export function loadDatabaseConfig(env: NodeJS.ProcessEnv = process.env): Databa
     );
   }
   return result.data;
+}
+
+/**
+ * The pre-authentication connection string, or a thrown error naming what to set.
+ */
+export function requireAuthConnectionString(config: DatabaseConfig): string {
+  if (config.DATABASE_URL_AUTH === undefined) {
+    throw new Error(
+      'DATABASE_URL_AUTH is not set. Sign-in, lockout and membership lookup need the integr8_auth role.',
+    );
+  }
+  return config.DATABASE_URL_AUTH;
 }
 
 /**

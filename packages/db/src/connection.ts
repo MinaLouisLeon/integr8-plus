@@ -1,10 +1,22 @@
 import { type TenantId, toTenantId } from '@integr8/core';
 import { Kysely, PostgresDialect, sql, type Transaction } from 'kysely';
 import pg from 'pg';
-import { type DatabaseConfig, loadDatabaseConfig, requireAdminConnectionString } from './config.js';
+import {
+  type DatabaseConfig,
+  loadDatabaseConfig,
+  requireAdminConnectionString,
+  requireAuthConnectionString,
+} from './config.js';
 import { AuditLogRepository } from './repositories/audit-log.js';
+import { AuthMembershipsRepository } from './repositories/auth-memberships.js';
+import { ImpersonationRepository } from './repositories/impersonation.js';
+import { InvitationsRepository } from './repositories/invitations.js';
+import { LoginSecurityRepository } from './repositories/login-security.js';
+import { OfflineGrantsRepository } from './repositories/offline-grants.js';
+import { SessionsRepository } from './repositories/sessions.js';
 import { PlatformUsersRepository } from './repositories/platform-users.js';
 import { TenantsRepository } from './repositories/tenants.js';
+import type { TenantScope } from './repositories/tenant-scope.js';
 import { TenantUsersRepository } from './repositories/tenant-users.js';
 import { TENANT_SCOPED_TABLES, type Database } from './schema.js';
 import { TenantGuardPlugin } from './tenant-guard.js';
@@ -37,6 +49,10 @@ export interface TenantTransaction {
   readonly tenantId: TenantId;
   readonly tenantUsers: TenantUsersRepository;
   readonly auditLog: AuditLogRepository;
+  readonly sessions: SessionsRepository;
+  readonly invitations: InvitationsRepository;
+  readonly impersonation: ImpersonationRepository;
+  readonly offlineGrants: OfflineGrantsRepository;
 }
 
 /**
@@ -70,6 +86,24 @@ export interface PlatformDataSource {
   readonly platformUsers: PlatformUsersRepository;
 }
 
+/**
+ * The pre-authentication connection.
+ *
+ * Sign-in has to do two things before any company is known: decide whether this
+ * address is locked out, and find which companies the identity belongs to.
+ * Neither question has a tenant to scope by, so neither can be asked over the
+ * tenant connection — and giving the tenant runtime role a cross-tenant read
+ * would undo the thing P02 spent its whole phase establishing.
+ *
+ * `integr8_auth` reaches `login_attempts`, `account_locks` and the
+ * `auth_memberships` view. Nothing else, checked at startup by
+ * {@link assertAuthRoleIsNarrow} and again in the schema-invariant suite.
+ */
+export interface AuthDataSource {
+  readonly loginSecurity: LoginSecurityRepository;
+  readonly memberships: AuthMembershipsRepository;
+}
+
 // ---------------------------------------------------------------------------
 // Module state
 // ---------------------------------------------------------------------------
@@ -80,6 +114,8 @@ interface DatabaseState {
   appDb?: Promise<Kysely<Database>> | undefined;
   adminPool?: pg.Pool | undefined;
   adminDb?: Kysely<Database> | undefined;
+  authPool?: pg.Pool | undefined;
+  authDb?: Promise<Kysely<Database>> | undefined;
   tenants: WarmLruCache<TenantId, TenantDataSource>;
 }
 
@@ -160,13 +196,29 @@ async function createSharedTenantDataSource(tenantId: TenantId): Promise<TenantD
             set_config('app.tenant_id', ${tenantId}, true),
             set_config('statement_timeout', ${statementTimeoutMs}, true)`.execute(trx);
 
-        const scope = { tenantId, trx };
-        return fn({
-          ...scope,
-          tenantUsers: new TenantUsersRepository(scope),
-          auditLog: new AuditLogRepository(scope),
-        });
+        return fn(buildTenantTransaction({ tenantId, trx }));
       }),
+  };
+}
+
+/**
+ * Assembles the repositories for one tenant transaction.
+ *
+ * Exported inside the package because the isolation harness builds a
+ * transaction over the owner connection, where RLS does not apply, to prove the
+ * repository layer stands up on its own. Both paths going through one factory
+ * means a repository added here cannot be left out of the suite that tests it.
+ */
+export function buildTenantTransaction(scope: TenantScope): InternalTenantTransaction {
+  return {
+    tenantId: scope.tenantId,
+    trx: scope.trx,
+    tenantUsers: new TenantUsersRepository(scope),
+    auditLog: new AuditLogRepository(scope),
+    sessions: new SessionsRepository(scope),
+    invitations: new InvitationsRepository(scope),
+    impersonation: new ImpersonationRepository(scope),
+    offlineGrants: new OfflineGrantsRepository(scope),
   };
 }
 
@@ -251,6 +303,50 @@ export function getPlatformDb(): Kysely<Database> {
   return current.adminDb;
 }
 
+/**
+ * The connection sign-in uses before it knows which company it is dealing with.
+ */
+export async function getAuthDataSource(): Promise<AuthDataSource> {
+  const db = await getAuthDb();
+  return {
+    loginSecurity: new LoginSecurityRepository(db),
+    memberships: new AuthMembershipsRepository(db),
+  };
+}
+
+async function getAuthDb(): Promise<Kysely<Database>> {
+  const current = getState();
+  current.authDb ??= (async () => {
+    const pool = new Pool({
+      connectionString: requireAuthConnectionString(current.config),
+      // Sign-in is a small fraction of traffic and every connection here can
+      // read across companies, so the pool is deliberately tight.
+      max: current.config.DB_AUTH_POOL_MAX,
+      idleTimeoutMillis: current.config.DB_POOL_IDLE_MS,
+      connectionTimeoutMillis: current.config.DB_POOL_ACQUIRE_TIMEOUT_MS,
+      keepAlive: true,
+      application_name: 'integr8-auth',
+    });
+    current.authPool = pool;
+
+    const db = new Kysely<Database>({
+      dialect: new PostgresDialect({ pool }),
+      plugins: [new TenantGuardPlugin()],
+    });
+    await assertAuthRoleIsNarrow(db);
+    return db;
+  })();
+
+  try {
+    return await current.authDb;
+  } catch (error) {
+    current.authDb = undefined;
+    await current.authPool?.end().catch(() => undefined);
+    current.authPool = undefined;
+    throw error;
+  }
+}
+
 /** Closes every pool and clears module state. Call on shutdown and between test files. */
 export async function closeDatabase(): Promise<void> {
   const current = state;
@@ -260,6 +356,7 @@ export async function closeDatabase(): Promise<void> {
   }
   await current.tenants.drain();
   await current.appDb?.then((db) => db.destroy()).catch(() => undefined);
+  await current.authDb?.then((db) => db.destroy()).catch(() => undefined);
   await current.adminDb?.destroy().catch(() => undefined);
 }
 
@@ -371,5 +468,81 @@ export async function assertRlsEnforced(db: Kysely<Database>): Promise<void> {
 
   if (reasons.length > 0) {
     throw new RlsNotEnforcedError(reasons);
+  }
+}
+
+export class AuthRoleTooBroadError extends Error {
+  constructor(reasons: string[]) {
+    super(
+      [
+        'Refusing to open the pre-authentication pool: this role can reach more than sign-in needs.',
+        ...reasons.map((reason) => `  - ${reason}`),
+        '',
+        'DATABASE_URL_AUTH must connect as integr8_auth, which holds privileges on',
+        'login_attempts, account_locks and the auth_memberships view and nothing else.',
+        'See docs/database/runbook-supabase-setup.md.',
+      ].join('\n'),
+    );
+    this.name = 'AuthRoleTooBroadError';
+  }
+}
+
+/**
+ * Proves the pre-authentication connection is as narrow as it is supposed to be.
+ *
+ * This role exists to read across companies — that is its whole purpose, and it
+ * is the one role in the system RLS cannot constrain. What keeps that safe is
+ * that it can reach three objects. A connection string pointed at the wrong
+ * role would turn the narrowest thing in the schema into the widest, silently,
+ * so it is checked once at startup rather than assumed.
+ */
+export async function assertAuthRoleIsNarrow(db: Kysely<Database>): Promise<void> {
+  const reasons: string[] = [];
+
+  const identity = await sql<{
+    current_user: string;
+    is_superuser: boolean;
+    bypasses_rls: boolean;
+  }>`
+    select
+      current_user::text as current_user,
+      coalesce(r.rolsuper, false) as is_superuser,
+      coalesce(r.rolbypassrls, false) as bypasses_rls
+    from pg_roles r
+    where r.rolname = current_user
+  `.execute(db);
+
+  const role = identity.rows[0];
+  if (role === undefined) {
+    throw new AuthRoleTooBroadError(['could not read the current role from pg_roles']);
+  }
+  if (role.is_superuser) {
+    reasons.push(`role ${role.current_user} is a superuser`);
+  }
+  if (role.bypasses_rls) {
+    reasons.push(`role ${role.current_user} has BYPASSRLS`);
+  }
+
+  // The decisive check: every tenant-scoped table must be out of reach. If this
+  // role could read one, it would read it across every company at once.
+  const reachable = await sql<{ table_name: string }>`
+    select distinct g.table_name::text as table_name
+    from information_schema.role_table_grants g
+    where g.grantee = current_user
+      and g.table_schema = 'public'
+      and g.table_name = any(${sql.val(TENANT_SCOPED_TABLES)}::text[])
+    order by 1
+  `.execute(db);
+
+  if (reachable.rows.length > 0) {
+    reasons.push(
+      `role ${role.current_user} holds privileges on tenant-scoped table(s): ${reachable.rows
+        .map((row) => row.table_name)
+        .join(', ')}`,
+    );
+  }
+
+  if (reasons.length > 0) {
+    throw new AuthRoleTooBroadError(reasons);
   }
 }

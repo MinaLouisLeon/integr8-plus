@@ -18,7 +18,8 @@ Commands
   down [--steps N]       Roll back the most recent N migrations (default 1)
   down --to NNNN         Roll back everything above NNNN
   new <slug>             Scaffold the next up/down pair
-  bootstrap              Create the integr8_app runtime role (needs INTEGR8_APP_PASSWORD)
+  bootstrap              Create the integr8_app and integr8_auth roles
+                         (needs INTEGR8_APP_PASSWORD and INTEGR8_AUTH_PASSWORD)
 
 All commands except "new" connect as DATABASE_URL_ADMIN, the schema owner.
 `.trim();
@@ -124,49 +125,82 @@ function report(
 }
 
 /**
- * Creates the runtime role.
+ * Creates the two login roles.
  *
  * Roles are cluster-level, not schema-level, so they cannot live in a migration
  * — a migration is per-database and a password has no business in git. This
  * command is idempotent and is step 3 of
  * docs/database/runbook-supabase-setup.md.
  *
- * The password reaches Postgres through a GUC rather than string interpolation,
- * so a password containing a quote cannot become SQL.
+ * Passwords reach Postgres through a GUC rather than string interpolation, so a
+ * password containing a quote cannot become SQL.
+ *
+ * Neither role is granted anything here. Table privileges come from the
+ * migrations, so a table added later is invisible to both until somebody writes
+ * its grant.
  */
 async function bootstrap(client: pg.Client): Promise<number> {
-  const password = process.env.INTEGR8_APP_PASSWORD;
-  if (password === undefined || password.trim() === '') {
+  const roles = [
+    {
+      name: 'integr8_app',
+      variable: 'INTEGR8_APP_PASSWORD',
+      purpose: 'the tenant runtime role, subject to RLS',
+    },
+    {
+      name: 'integr8_auth',
+      variable: 'INTEGR8_AUTH_PASSWORD',
+      purpose: 'the pre-authentication role: lockout and membership lookup only',
+    },
+  ] as const;
+
+  const missing = roles.filter((role) => (process.env[role.variable] ?? '').trim() === '');
+  if (missing.length > 0) {
     console.error(
-      'INTEGR8_APP_PASSWORD is not set. Generate one (openssl rand -base64 32) and export it.',
+      [
+        'Missing role password(s):',
+        ...missing.map((role) => `  ${role.variable}  — ${role.purpose}`),
+        '',
+        'Generate each with: openssl rand -base64 32',
+      ].join('\n'),
     );
     return 1;
   }
 
-  await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_password', password]);
-  await client.query(`
-    do $$
-    declare
-      secret text := current_setting('integr8.bootstrap_password');
-    begin
-      if exists (select 1 from pg_roles where rolname = 'integr8_app') then
-        execute format('alter role integr8_app login password %L', secret);
-        raise notice 'integr8_app already existed; password reset';
-      else
-        execute format('create role integr8_app login password %L', secret);
-        raise notice 'integr8_app created';
-      end if;
+  for (const role of roles) {
+    await client.query('select set_config($1, $2, false)', [
+      'integr8.bootstrap_password',
+      process.env[role.variable],
+    ]);
+    await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_role', role.name]);
+    await client.query(`
+      do $$
+      declare
+        secret    text := current_setting('integr8.bootstrap_password');
+        role_name text := current_setting('integr8.bootstrap_role');
+      begin
+        if exists (select 1 from pg_roles where rolname = role_name) then
+          execute format('alter role %I login password %L', role_name, secret);
+          raise notice '% already existed; password reset', role_name;
+        else
+          execute format('create role %I login password %L', role_name, secret);
+          raise notice '% created', role_name;
+        end if;
 
-      -- Role-level defaults survive Supavisor's transaction pooling, where a
-      -- session-level SET would not.
-      execute format('alter role integr8_app set search_path = %L', 'public');
-      execute 'grant connect on database ' || quote_ident(current_database()) || ' to integr8_app';
-    end;
-    $$;
-  `);
+        -- Role-level defaults survive Supavisor's transaction pooling, where a
+        -- session-level SET would not.
+        execute format('alter role %I set search_path = %L', role_name, 'public');
+        execute format(
+          'grant connect on database %I to %I', current_database(), role_name);
+      end;
+      $$;
+    `);
+    console.log(`Role ${role.name} is ready.`);
+  }
+
   await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_password', '']);
+  await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_role', '']);
 
-  console.log('Role integr8_app is ready. Run "up" next to apply migrations and grants.');
+  console.log('Run "up" next to apply migrations and grants.');
   return 0;
 }
 

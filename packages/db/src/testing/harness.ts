@@ -1,14 +1,13 @@
 import { type TenantId, toTenantId } from '@integr8/core';
 import pg from 'pg';
 import {
+  buildTenantTransaction,
   closeDatabase,
   configureDatabase,
   getPlatformDb,
   type TenantTransaction,
 } from '../connection.js';
 import { loadDatabaseConfig, requireAdminConnectionString } from '../config.js';
-import { AuditLogRepository } from '../repositories/audit-log.js';
-import { TenantUsersRepository } from '../repositories/tenant-users.js';
 
 const { Client } = pg;
 
@@ -162,14 +161,7 @@ export async function withUnprotectedRepositories<T>(
 ): Promise<T> {
   return getPlatformDb()
     .transaction()
-    .execute(async (trx) => {
-      const scope = { tenantId, trx };
-      return fn({
-        tenantId,
-        tenantUsers: new TenantUsersRepository(scope),
-        auditLog: new AuditLogRepository(scope),
-      });
-    });
+    .execute(async (trx) => fn(buildTenantTransaction({ tenantId, trx })));
 }
 
 /** Sets the tenant GUC on a raw client the way the runtime does, then runs `body`. */
