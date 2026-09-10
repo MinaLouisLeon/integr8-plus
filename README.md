@@ -26,7 +26,8 @@ pnpm build
 Copy the environment template for each app you intend to run:
 
 ```bash
-for app in api web desktop mobile; do cp "apps/$app/.env.example" "apps/$app/.env"; done
+for app in api desktop mobile; do cp "apps/$app/.env.example" "apps/$app/.env"; done
+cp apps/web/.env.example apps/web/.env.local   # Next reads .env.local
 cp packages/db/.env.example packages/db/.env
 cp packages/auth/.env.example packages/auth/.env
 pnpm --filter @integr8/auth keygen   # prints the three signing-key variables
@@ -40,9 +41,16 @@ creates one from nothing in about fifteen minutes. Until then, `pnpm build`,
 ## Running the apps
 
 ```bash
-pnpm dev                            # every app, in parallel
-pnpm --filter @integr8/api dev      # just one
+pnpm dev                                   # every app, in parallel
+pnpm --filter @integr8/api dev             # the API — everything else calls it
+pnpm --filter @integr8/web dev             # http://localhost:3001
+pnpm --filter @integr8/desktop dev         # http://localhost:3002, as a browser page
+pnpm --filter @integr8/desktop tauri:dev   # the same bundle, as a window
+pnpm --filter @integr8/mobile dev          # Metro; press i or a
 ```
+
+Interface conventions — tokens, translation and right-to-left layout — are in
+[`docs/ui/`](./docs/ui/README.md).
 
 | App            | Package            | What it is today                                                                             |
 | -------------- | ------------------ | -------------------------------------------------------------------------------------------- |

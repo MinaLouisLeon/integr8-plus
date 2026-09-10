@@ -20,9 +20,15 @@ coverage/
 .env.*
 !.env.example
 
-# native build artefacts (Tauri / Expo, from P05 onward)
+# native build artefacts (Tauri / Expo)
 src-tauri/target/
 .expo/
+
+# The Tauri updater's private signing key. Whoever holds it can sign an update
+# that every installed copy will accept and run. It belongs in a secret manager,
+# and CI reads it from TAURI_SIGNING_PRIVATE_KEY.
+**/src-tauri/updater.key
+**/src-tauri/*.key
 
 # editors and OS
 .DS_Store

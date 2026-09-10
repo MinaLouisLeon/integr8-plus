@@ -2,5 +2,10 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
+# Postinstall scripts are blocked by default; each of these is allowed
+# deliberately, because it downloads or compiles a binary the toolchain needs.
 onlyBuiltDependencies:
   - esbuild
+  # Fetches the sentry-cli binary, which uploads source maps at build time. A
+  # release without them reports minified stack traces, which is barely a report.
+  - '@sentry/cli'

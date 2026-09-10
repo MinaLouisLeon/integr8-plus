@@ -1,0 +1,89 @@
+'use client';
+
+import { ApiRequestError } from '@integr8/api-client';
+import { useTranslation } from '@integr8/i18n';
+import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { Button, ErrorState, LoadingState } from '~/components/ui';
+import { apiClient, signOut } from '~/lib/session';
+
+/**
+ * The dashboard.
+ *
+ * It shows who is signed in and which company they are in, which is P05's first
+ * exit criterion. Everything else is P06 onward; what this proves is that the
+ * whole chain works — cookie, refresh, generated client, tenant-scoped API,
+ * translated copy, mirrored layout.
+ */
+export default function DashboardPage() {
+  const { t } = useTranslation();
+  const router = useRouter();
+
+  const me = useQuery({
+    queryKey: ['me'],
+    queryFn: async () => {
+      const { data } = await apiClient().GET('/v1/me');
+      return data;
+    },
+  });
+
+  if (me.isPending) {
+    return <LoadingState />;
+  }
+
+  if (me.isError) {
+    const failure = me.error;
+    return (
+      <ErrorState
+        requestId={failure instanceof ApiRequestError ? failure.requestId : undefined}
+        onRetry={() => void me.refetch()}
+      />
+    );
+  }
+
+  const person = me.data;
+
+  return (
+    <main className="flex flex-col gap-6">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col gap-1 text-start">
+          <h1 className="text-2xl font-semibold text-content">
+            {t('workspace.signedInAs', { name: person?.displayName ?? '' })}
+          </h1>
+          <p className="text-sm text-content-muted">
+            {t('workspace.company')}: <code className="font-mono">{person?.tenantId}</code>
+          </p>
+        </div>
+
+        <Button
+          variant="secondary"
+          onClick={() => {
+            void (async () => {
+              await signOut();
+              router.replace('/sign-in');
+            })();
+          }}
+        >
+          {t('common.signOut')}
+        </Button>
+      </header>
+
+      <section className="rounded-lg border border-border-subtle bg-surface p-6">
+        <dl className="grid gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1 text-start">
+            <dt className="text-xs uppercase tracking-wide text-content-muted">
+              {t('auth.email')}
+            </dt>
+            <dd className="text-sm text-content">{person?.email}</dd>
+          </div>
+          <div className="flex flex-col gap-1 text-start">
+            <dt className="text-xs uppercase tracking-wide text-content-muted">
+              {t('workspace.role.owner')}
+            </dt>
+            <dd className="text-sm text-content">{person?.role}</dd>
+          </div>
+        </dl>
+      </section>
+    </main>
+  );
+}

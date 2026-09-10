@@ -1,10 +1,9 @@
 {
-  "extends": "@integr8/typescript-config/node.json",
+  "extends": "@integr8/typescript-config/react.json",
   "compilerOptions": {
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "types": ["node", "vite/client"],
+    "paths": { "~/*": ["./src/*"] }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", "src-tauri"]
 }

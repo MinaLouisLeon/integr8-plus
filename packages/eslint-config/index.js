@@ -1,5 +1,7 @@
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 /**
@@ -32,6 +34,32 @@ const RAW_DATABASE_MODULES = [
 ];
 
 /**
+ * Physical direction utilities and properties.
+ *
+ * Every one of these produces a layout that is wrong in Arabic, and each is
+ * invisible until somebody switches the language — by which time there are
+ * hundreds of screens. P05 puts the RTL work here rather than in P32 precisely
+ * so that this rule exists before the first screen does.
+ *
+ * The logical equivalent is in the message, because "don't use ml-4" is only
+ * half an instruction.
+ */
+const RTL_UNSAFE_CLASSES = [
+  ['ml', 'ms'],
+  ['mr', 'me'],
+  ['pl', 'ps'],
+  ['pr', 'pe'],
+  ['left', 'start'],
+  ['right', 'end'],
+  ['border-l', 'border-s'],
+  ['border-r', 'border-e'],
+  ['rounded-l', 'rounded-s'],
+  ['rounded-r', 'rounded-e'],
+  ['text-left', 'text-start'],
+  ['text-right', 'text-end'],
+];
+
+/**
  * Shared flat ESLint config for every package in the workspace.
  *
  * Consumers create an `eslint.config.js` containing:
@@ -43,13 +71,14 @@ const RAW_DATABASE_MODULES = [
  * type-aware rules resolve against that package's tsconfig.
  *
  * @param {string} tsconfigRootDir Absolute path to the consuming package root.
- * @param {{ allowRawDatabaseAccess?: boolean }} [options]
+ * @param {{ allowRawDatabaseAccess?: boolean, react?: boolean }} [options]
  *   `allowRawDatabaseAccess` lifts the ban on importing `kysely`/`pg`. Only
- *   `packages/db` sets it.
+ *   `packages/db` sets it. `react` adds the hooks, accessibility and
+ *   right-to-left rules; every package rendering an interface sets it.
  * @returns {import('typescript-eslint').ConfigArray}
  */
 export function integr8Config(tsconfigRootDir, options = {}) {
-  const { allowRawDatabaseAccess = false } = options;
+  const { allowRawDatabaseAccess = false, react = false } = options;
 
   return tseslint.config(
     {
@@ -93,6 +122,7 @@ export function integr8Config(tsconfigRootDir, options = {}) {
           : ['error', { paths: RAW_DATABASE_MODULES }],
       },
     },
+    ...(react ? reactConfig() : []),
     {
       // Plain JavaScript in this workspace is tooling configuration, and config
       // files sit outside every tsconfig `include`. Neither can be type-checked,
@@ -101,6 +131,68 @@ export function integr8Config(tsconfigRootDir, options = {}) {
       ...tseslint.configs.disableTypeChecked,
     },
     prettier,
+  );
+}
+
+/**
+ * Rules for the packages that render an interface.
+ *
+ * Three concerns, all of which are cheap now and expensive later: hook
+ * correctness, accessibility, and right-to-left safety.
+ *
+ * @returns {import('typescript-eslint').ConfigArray}
+ */
+function reactConfig() {
+  return tseslint.config(
+    {
+      files: ['**/*.{ts,tsx}'],
+      plugins: { 'react-hooks': reactHooks, 'jsx-a11y': jsxA11y },
+      rules: {
+        ...reactHooks.configs.recommended.rules,
+        ...jsxA11y.flatConfigs.recommended.rules,
+
+        // A missing dependency is a stale closure, which shows up as a screen
+        // that quietly stops updating rather than as an error.
+        'react-hooks/exhaustive-deps': 'error',
+
+        // The rule that makes P05's RTL criterion enforceable rather than
+        // aspirational.
+        'no-restricted-syntax': [
+          'error',
+          // The class may be bare (`border-l`, `text-left`) or suffixed
+          // (`ml-4`, `rounded-l-md`), and may sit anywhere in a space-separated
+          // list. An earlier version of this pattern required a trailing
+          // hyphen, which silently let `text-left` and `border-l` through — the
+          // exact classes it existed to catch.
+          //
+          // `String.raw`, not an ordinary template literal: `\s` inside one is
+          // just `s`, which silently turns the word-boundary guards into a
+          // literal letter. That version matched a class at the start of a
+          // string and nothing after it, so `className="flex ml-4"` passed.
+          ...RTL_UNSAFE_CLASSES.map(([physical, logical]) => ({
+            selector: String.raw`Literal[value=/(^|\s)-?${physical}(-[^\s]*)?(\s|$)/]`,
+            message: `"${physical}" is a physical direction and mirrors wrongly in Arabic. Use "${logical}" instead.`,
+          })),
+          // React Native's equivalent. It does not accept `start` for text;
+          // the direction-following value is `auto`, and `left`/`right` stay
+          // put in a mirrored layout exactly as they do in CSS.
+          {
+            selector: "Property[key.name='textAlign'] > Literal[value='left']",
+            message: "textAlign: 'left' does not mirror in Arabic. Use 'auto'.",
+          },
+          {
+            selector: "Property[key.name='textAlign'] > Literal[value='right']",
+            message: "textAlign: 'right' does not mirror in Arabic. Use 'auto'.",
+          },
+        ],
+      },
+    },
+    {
+      // Test files describe what a component does, and a test name may
+      // legitimately contain "left" or "right".
+      files: ['**/*.test.{ts,tsx}'],
+      rules: { 'no-restricted-syntax': 'off' },
+    },
   );
 }
 

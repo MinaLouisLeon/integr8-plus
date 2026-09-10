@@ -62,7 +62,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 - [~] **P02** — Database and multi-tenancy
 - [~] **P03** — Authentication and roles
 - [~] **P04** — API skeleton and contract
-- [ ] **P05** — Application shells
+- [~] **P05** — Application shells
 
 ### v0.2 — Form Engine
 

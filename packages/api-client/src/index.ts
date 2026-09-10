@@ -231,3 +231,12 @@ function isApiErrorBody(value: unknown): value is ApiErrorBody {
     typeof (error as { message?: unknown }).message === 'string'
   );
 }
+
+export {
+  SessionManager,
+  type Membership,
+  type SessionManagerOptions,
+  type SignInInput,
+  type SignInResult,
+  type SignOutReason,
+} from './session.js';

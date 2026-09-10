@@ -13,6 +13,8 @@ packages/
   db                  Schema, migrations, repositories, tenant isolation
   auth                Sessions, tokens, invitations, impersonation
   api-client          Typed client generated from apps/api/openapi.json
+  tokens              Design tokens as data, consumed by all three UIs
+  i18n                Translations, locales and locale-aware formatting
   typescript-config   Shared tsconfig presets
   eslint-config       Shared flat ESLint config
 plan/                 The build plan — phases, status, exit criteria
@@ -23,7 +25,13 @@ Rules that hold across the workspace:
 - **A shared type lives in `@integr8/core` and nowhere else.** Duplicating a domain type
   into an app is how the four clients drift apart.
 - **No shared UI component package.** React DOM and React Native do not share components
-  usefully. Share tokens, types and clients; write the widgets twice.
+  usefully. Share tokens, types and clients; write the widgets twice. Each app owns its
+  own `components/ui`.
+- **Every user-facing string goes through `@integr8/i18n`.** A literal in a component is
+  a string no translator will ever see.
+- **Never a physical direction.** `ms-4` not `ml-4`, `text-start` not `text-left`,
+  `textAlign: 'auto'` not `'left'`. Lint rejects the physical forms; see
+  [`docs/ui/`](./docs/ui/README.md).
 - **Apps never import from each other.** They share only through `packages/`.
 - **Only `@integr8/db` talks to Postgres.** Importing `kysely` or `pg` anywhere else is a
   lint error. A query written outside the repository layer is a query with no `tenant_id`
@@ -57,7 +65,7 @@ commit time and again in CI.
 
 Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`, `revert`.
 
-Scopes: `api`, `web`, `desktop`, `mobile`, `core`, `db`, `auth`, `client`, `config`, `ci`, `deps`, `plan`, `repo`.
+Scopes: `api`, `web`, `desktop`, `mobile`, `core`, `db`, `auth`, `client`, `tokens`, `i18n`, `config`, `ci`, `deps`, `plan`, `repo`.
 
 ```
 feat(core): add branded tenant and user identifiers
@@ -145,6 +153,15 @@ value fails loudly at startup instead of surfacing as `undefined` inside a reque
 roles: `DATABASE_URL` is the runtime role that RLS applies to, and `DATABASE_URL_ADMIN` is
 the schema owner, which bypasses it. An API container should not have the second one set
 at all.
+
+## Changing the interface
+
+Read [`docs/ui/`](./docs/ui/README.md) before adding a screen. The short version:
+
+- Colours and spacing come from `@integr8/tokens`, never a literal.
+- Every string comes from `@integr8/i18n`, keyed by meaning rather than by words.
+- Layout uses logical properties, so Arabic mirrors for free. Tick "Preview
+  right-to-left" in the app to check.
 
 ## Changing the API
 

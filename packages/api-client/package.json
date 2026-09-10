@@ -21,7 +21,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "generate": "openapi-typescript ../../apps/api/openapi.json --output src/generated/schema.d.ts"
+    "generate": "openapi-typescript ../../apps/api/openapi.json --output src/generated/schema.ts"
   },
   "dependencies": {
     "@integr8/core": "workspace:*",

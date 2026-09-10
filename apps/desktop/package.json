@@ -5,25 +5,43 @@
   "type": "module",
   "license": "UNLICENSED",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js",
-    "build": "tsc --build",
-    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "clean": "rm -rf dist .turbo src-tauri/target *.tsbuildinfo",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@integr8/api-client": "workspace:*",
-    "@integr8/core": "workspace:*"
+    "@integr8/core": "workspace:*",
+    "@integr8/i18n": "workspace:*",
+    "@integr8/tokens": "workspace:*",
+    "@sentry/react": "10.74.0",
+    "@tanstack/react-query": "5.102.8",
+    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-updater": "2.11.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router": "8.3.1"
   },
   "devDependencies": {
     "@integr8/eslint-config": "workspace:*",
     "@integr8/typescript-config": "workspace:*",
+    "@tailwindcss/vite": "4.3.3",
+    "@tauri-apps/cli": "2.11.4",
     "@types/node": "22.20.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
     "eslint": "10.10.0",
-    "tsx": "4.23.13",
+    "tailwindcss": "4.3.3",
     "typescript": "6.0.3",
+    "vite": "8.2.2",
     "vitest": "5.0.0"
   }
 }
