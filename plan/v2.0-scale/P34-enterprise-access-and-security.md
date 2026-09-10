@@ -5,12 +5,15 @@
 **Depends on:** P19
 
 ## Goal
+
 The product survives a corporate security questionnaire and a procurement process.
 
 ## Scope
+
 What enterprise buyers require before they will sign.
 
 ## Tasks
+
 - [ ] SSO and SAML, with SCIM user provisioning
 - [ ] Granular permissions beyond the five base roles, configurable per company
 - [ ] Field-level redaction — role-based hiding of sensitive values inside a submission
@@ -24,10 +27,12 @@ What enterprise buyers require before they will sign.
 - [ ] SOC 2 readiness assessment
 
 ## Exit criteria
+
 - [ ] A customer's IT department completes their security review without a blocking finding
 - [ ] Penetration test findings are remediated and retested
 - [ ] An individual's data can be exported and erased on request, verifiably
 
 ## Notes
+
 - SOC 2 is a programme, not a task. Start it only when a specific deal depends on it, and
   budget months rather than weeks.

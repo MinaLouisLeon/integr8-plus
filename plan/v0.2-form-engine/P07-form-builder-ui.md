@@ -5,13 +5,16 @@
 **Depends on:** P06
 
 ## Goal
+
 A company admin builds a working form on the desktop app, with conditional logic, without
 a developer and without reading documentation.
 
 ## Scope
+
 Desktop and browser only. This is the reason the desktop app exists.
 
 ## Tasks
+
 - [ ] Drag-and-drop canvas: add, reorder, duplicate and delete fields, sections and pages
 - [ ] Field palette grouped by purpose, not by data type
 - [ ] Field configuration panel driven by the type registry from P06
@@ -27,12 +30,14 @@ Desktop and browser only. This is the reason the desktop app exists.
 - [ ] Autosave of the draft, with recovery after a crash
 
 ## Exit criteria
+
 - [ ] A non-developer builds a ten-field form with two conditional rules in under fifteen minutes, unaided, observed
 - [ ] Editing and republishing a form leaves every existing submission byte-identical
 - [ ] The phone preview matches what the mobile app actually renders in P13
 - [ ] Publishing an invalid definition is impossible; the errors name the offending fields
 
 ## Notes
+
 - The plain-language rule builder matters more than it looks. An expression box turns the
   builder back into a developer tool and destroys the product's premise.
 - Watch the breaking-change warning carefully: removing a field that existing submissions

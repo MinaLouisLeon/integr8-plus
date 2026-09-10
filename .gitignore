@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# tooling caches
+.turbo/
+coverage/
+.eslintcache
+.vitest/
+
+# environment — never commit real values
+.env
+.env.*
+!.env.example
+
+# native build artefacts (Tauri / Expo, from P05 onward)
+src-tauri/target/
+.expo/
+
+# editors and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

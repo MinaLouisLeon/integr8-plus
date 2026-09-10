@@ -5,14 +5,17 @@
 **Depends on:** P01
 
 ## Goal
+
 A Postgres schema where it is structurally difficult to leak one company's data to
 another, and a migration process that is safe to run against production.
 
 ## Scope
+
 The tenancy model, the migration toolchain, and the isolation test harness. This is the
 most consequential phase in the entire plan.
 
 ## Tasks
+
 - [ ] Supabase project created; connection through Supavisor in transaction mode
 - [ ] Migration tooling with ordered files and a version table — never ad-hoc schema pushes
 - [ ] Core tables: `tenants`, `tenant_users`, `platform_users`, `audit_log`
@@ -27,12 +30,14 @@ most consequential phase in the entire plan.
 - [ ] Expand/contract migration convention documented with a worked example
 
 ## Exit criteria
+
 - [ ] The isolation suite runs in CI and fails the build if any cross-tenant access succeeds
 - [ ] Deliberately removing a `tenant_id` filter from one repository method makes the isolation suite fail
 - [ ] A migration can be applied and rolled back against a copy of production data
 - [ ] A restore from backup has been performed end to end and timed
 
 ## Notes
+
 - RLS is the backstop, not the primary control. The repository layer is the primary
   control. Relying on RLS alone makes every future query a security review.
 - Run the API on long-lived containers, not serverless functions. Per-tenant connection

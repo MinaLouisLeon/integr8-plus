@@ -5,13 +5,16 @@
 **Depends on:** P28
 
 ## Goal
+
 The customer of your customer receives a professional document, automatically, and knows
 when the engineer is coming.
 
 ## Scope
+
 The output that companies actually charge their own clients for.
 
 ## Tasks
+
 - [ ] PDF report designer mapping form answers onto a layout
 - [ ] Company branding: logo, colours, header and footer, certificate numbering
 - [ ] Photos, signatures and GPS rendered into the document
@@ -25,10 +28,12 @@ The output that companies actually charge their own clients for.
 - [ ] Digest emails for owners who never open the app
 
 ## Exit criteria
+
 - [ ] A completed job produces a branded PDF and emails it without any manual step
 - [ ] The PDF renders correctly with twenty photos and two signatures
 - [ ] A customer receiving notifications can stop them, and that choice is respected everywhere
 
 ## Notes
+
 - Certificate numbering is often a legal requirement for regulated trades. Ask your first
   customers before designing the numbering scheme.

@@ -5,13 +5,16 @@
 **Depends on:** P17
 
 ## Goal
+
 A stranger finds the product, understands it, pays, and is working inside it — with no
 involvement from you.
 
 ## Scope
+
 The Next.js public surface and the signup-to-productive path.
 
 ## Tasks
+
 - [ ] Landing page stating what the product does for whom, in their words
 - [ ] Features and pricing pages, with the plan limits stated honestly
 - [ ] Signup flow: account → company → Stripe Checkout → provisioned tenant → owner invited
@@ -25,12 +28,14 @@ The Next.js public surface and the signup-to-productive path.
 - [ ] Analytics on the signup funnel, so you can see where people drop out
 
 ## Exit criteria
+
 - [ ] A test user signs up, pays and completes a job in the mobile app, with no manual step from you
 - [ ] Time from landing page to first submitted form is under thirty minutes, measured
 - [ ] Every plan limit shown on the pricing page matches what the entitlement service enforces
 - [ ] The funnel is instrumented and drop-off is visible per step
 
 ## Notes
+
 - The guided first run matters more than the landing page. Companies churn in week one
   because nothing happened, not because the marketing was weak.
 - Starter templates are your fastest onboarding lever. Ship at least six real ones for

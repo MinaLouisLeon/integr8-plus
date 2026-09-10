@@ -5,13 +5,16 @@
 **Depends on:** P08
 
 ## Goal
+
 Photos, videos and PDFs upload reliably to a per-company R2 bucket, and every byte is
 accounted for in a ledger you can bill from.
 
 ## Scope
+
 The storage layer and its accounting. The super admin views over this data are P16.
 
 ## Tasks
+
 - [ ] R2 bucket created per company as part of tenant provisioning, named from the tenant id
 - [ ] Single account-level R2 token held by the API; clients never receive R2 credentials
 - [ ] Upload flow: client requests a short-lived presigned URL → uploads directly to R2 → calls back to confirm
@@ -26,12 +29,14 @@ The storage layer and its accounting. The super admin views over this data are P
 - [ ] `getStorage(tenantId)` abstraction, so the provider can change without touching feature code
 
 ## Exit criteria
+
 - [ ] Uploading a file and querying `tenant_storage_usage` returns the exact byte count Cloudflare reports for that bucket
 - [ ] A client that lies about file size in the presign request cannot corrupt the ledger
 - [ ] An upload abandoned halfway leaves no ledger row and no permanent object after the sweeper runs
 - [ ] Deleting a company's data removes both the ledger rows and the bucket contents
 
 ## Notes
+
 - Cloudflare's GraphQL Analytics API reports storage **per bucket** and cannot break a
   bucket down by key prefix. That is the entire reason each company gets its own bucket.
 - Client-side compression is the single decision that most controls your storage bill.

@@ -1,0 +1,4 @@
+# TypeScript analyses whole projects, so a staged-file-only typecheck is not
+# possible. Type and test checks therefore run here rather than at commit time.
+pnpm typecheck
+pnpm test
