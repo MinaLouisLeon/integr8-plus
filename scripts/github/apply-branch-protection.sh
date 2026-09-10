@@ -14,7 +14,8 @@
 # deliberate, logged edit to the ruleset first, rather than one confident
 # afternoon and a `git push --delete`.
 #
-# Requires: gh, authenticated, with admin on the repository.
+# Requires: gh, authenticated, with admin on the repository. And node, which
+# this repository requires anyway.
 
 set -euo pipefail
 
@@ -80,8 +81,19 @@ fi
 # ---------------------------------------------------------------------------
 
 for file in "${rulesets_dir}"/*.json; do
-  name=$(jq -r .name "$file")
-  id=$(printf '%s' "$existing" | jq -r --arg name "$name" '.[] | select(.name == $name) | .id' | head -1)
+  # node rather than jq. `gh --jq` above is gh's own copy and is always there;
+  # jq itself is not installed by default on Windows or macOS, and this script
+  # is worth nothing if it fails on the machine that needs to run it. node is
+  # already a hard requirement of this repository.
+  name=$(node -e 'const fs=require("node:fs");process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1],"utf8")).name)' "$file")
+  id=$(printf '%s' "$existing" | node -e '
+    let raw = "";
+    process.stdin.on("data", (chunk) => { raw += chunk; });
+    process.stdin.on("end", () => {
+      const match = JSON.parse(raw).find((ruleset) => ruleset.name === process.argv[1]);
+      process.stdout.write(match ? String(match.id) : "");
+    });
+  ' "$name")
 
   if [ -n "$id" ] && [ "$id" != 'null' ]; then
     action='update'
