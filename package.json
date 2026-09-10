@@ -16,6 +16,7 @@
     "lint:fix": "turbo run lint -- --fix",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:integration": "turbo run test:integration",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "turbo run clean",

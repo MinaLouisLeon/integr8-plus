@@ -59,7 +59,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 > The rails. Nothing user-visible ships here, and skipping it means rewriting everything later.
 
 - [x] **P01** — Monorepo and tooling
-- [ ] **P02** — Database and multi-tenancy
+- [~] **P02** — Database and multi-tenancy
 - [ ] **P03** — Authentication and roles
 - [ ] **P04** — API skeleton and contract
 - [ ] **P05** — Application shells

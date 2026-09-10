@@ -5,7 +5,7 @@ export default {
     'scope-enum': [
       2,
       'always',
-      ['api', 'web', 'desktop', 'mobile', 'core', 'config', 'ci', 'deps', 'plan', 'repo'],
+      ['api', 'web', 'desktop', 'mobile', 'core', 'db', 'config', 'ci', 'deps', 'plan', 'repo'],
     ],
     'header-max-length': [2, 'always', 100],
   },

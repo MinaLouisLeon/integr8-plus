@@ -76,6 +76,44 @@ jobs:
           --to ${{ github.event.pull_request.head.sha }}
           --verbose
 
+  database:
+    name: Migrations and tenant isolation
+    # Gated on a repository variable rather than on the secret, because a job
+    # cannot branch on a secret's presence. Setting DATABASE_TESTS=enabled is
+    # step 8 of docs/database/runbook-supabase-setup.md, and until it is set the
+    # P02 exit criterion "the isolation suite runs in CI" is not met.
+    if: vars.DATABASE_TESTS == 'enabled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm build
+
+      # Rolls the schema all the way down and back up before the suites run, so
+      # every `down` file is exercised on every pull request rather than being
+      # written once and never executed.
+      - name: Migrate, isolate, verify
+        run: pnpm --filter @integr8/db test:integration
+        env:
+          APP_ENV: test
+          INTEGR8_TEST_DATABASE: i-know-this-database-is-disposable
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          DATABASE_URL_ADMIN: ${{ secrets.TEST_DATABASE_URL_ADMIN }}
+
   secret-scan:
     name: Secret scan
     runs-on: ubuntu-latest

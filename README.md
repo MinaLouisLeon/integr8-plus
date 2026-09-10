@@ -27,7 +27,13 @@ Copy the environment template for each app you intend to run:
 
 ```bash
 for app in api web desktop mobile; do cp "apps/$app/.env.example" "apps/$app/.env"; done
+cp packages/db/.env.example packages/db/.env
 ```
+
+Anything touching the database needs a Postgres to point at.
+[`docs/database/runbook-supabase-setup.md`](./docs/database/runbook-supabase-setup.md)
+creates one from nothing in about fifteen minutes. Until then, `pnpm build`,
+`pnpm lint`, `pnpm typecheck` and `pnpm test` all work without one.
 
 ## Running the apps
 
@@ -52,23 +58,30 @@ curl http://localhost:3000/health
 
 ## Shared packages
 
-| Package                      | Purpose                                                          |
-| ---------------------------- | ---------------------------------------------------------------- |
-| `@integr8/core`              | Domain types and zod schemas. The only place a shared type lives |
-| `@integr8/typescript-config` | `base` / `node` / `react` tsconfig presets                       |
-| `@integr8/eslint-config`     | Flat ESLint config with type-aware rules                         |
+| Package                      | Purpose                                                                       |
+| ---------------------------- | ----------------------------------------------------------------------------- |
+| `@integr8/core`              | Domain types and zod schemas. The only place a shared type lives              |
+| `@integr8/db`                | Schema, migrations, repositories, tenant isolation. The only place SQL is run |
+| `@integr8/typescript-config` | `base` / `node` / `react` tsconfig presets                                    |
+| `@integr8/eslint-config`     | Flat ESLint config with type-aware rules                                      |
+
+Nothing outside `@integr8/db` may import `kysely` or `pg` — ESLint rejects it.
+Application code reaches the database through `getTenantDataSource(tenantId)` and
+the repositories, which is what keeps one company's data away from another's.
+See [`docs/database/`](./docs/database/README.md).
 
 ## Everyday commands
 
-| Command             | Does                                      |
-| ------------------- | ----------------------------------------- |
-| `pnpm build`        | Builds every package in dependency order  |
-| `pnpm lint`         | ESLint across the workspace               |
-| `pnpm typecheck`    | `tsc --noEmit` per package                |
-| `pnpm test`         | Vitest per package                        |
-| `pnpm format`       | Prettier, writing changes                 |
-| `pnpm format:check` | Prettier, failing on drift (what CI runs) |
-| `pnpm clean`        | Removes build output and caches           |
+| Command                 | Does                                                    |
+| ----------------------- | ------------------------------------------------------- |
+| `pnpm build`            | Builds every package in dependency order                |
+| `pnpm lint`             | ESLint across the workspace                             |
+| `pnpm typecheck`        | `tsc --noEmit` per package                              |
+| `pnpm test`             | Vitest per package; needs no database                   |
+| `pnpm test:integration` | Migrations and tenant isolation against a real Postgres |
+| `pnpm format`           | Prettier, writing changes                               |
+| `pnpm format:check`     | Prettier, failing on drift (what CI runs)               |
+| `pnpm clean`            | Removes build output and caches                         |
 
 Add `--filter @integr8/<name>` to scope any of them to one package.
 

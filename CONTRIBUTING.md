@@ -10,6 +10,7 @@ apps/
   mobile     Expo, offline-first
 packages/
   core                Domain types and zod schemas
+  db                  Schema, migrations, repositories, tenant isolation
   typescript-config   Shared tsconfig presets
   eslint-config       Shared flat ESLint config
 plan/                 The build plan — phases, status, exit criteria
@@ -22,6 +23,10 @@ Rules that hold across the workspace:
 - **No shared UI component package.** React DOM and React Native do not share components
   usefully. Share tokens, types and clients; write the widgets twice.
 - **Apps never import from each other.** They share only through `packages/`.
+- **Only `@integr8/db` talks to Postgres.** Importing `kysely` or `pg` anywhere else is a
+  lint error. A query written outside the repository layer is a query with no `tenant_id`
+  filter, which is how one company reads another's data. See
+  [`docs/database/`](./docs/database/README.md).
 
 ## Branches
 
@@ -43,7 +48,7 @@ commit time and again in CI.
 
 Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`, `revert`.
 
-Scopes: `api`, `web`, `desktop`, `mobile`, `core`, `config`, `ci`, `deps`, `plan`, `repo`.
+Scopes: `api`, `web`, `desktop`, `mobile`, `core`, `db`, `config`, `ci`, `deps`, `plan`, `repo`.
 
 ```
 feat(core): add branded tenant and user identifiers
@@ -75,9 +80,13 @@ everything regardless.
 
 1. **verify** — install, `format:check`, `lint`, `typecheck`, `test`, `build`
 2. **commit-messages** — commitlint over the PR's commit range
-3. **secret-scan** — gitleaks over full history
+3. **database** — rolls the schema down and back up, then runs the tenant-isolation
+   suite against a disposable Postgres. Skipped until the repository variable
+   `DATABASE_TESTS` is set to `enabled`; step 8 of
+   [the setup runbook](./docs/database/runbook-supabase-setup.md) turns it on
+4. **secret-scan** — gitleaks over full history
 
-All three must pass before merge.
+All must pass before merge.
 
 ## Toolchain versions and why they are pinned
 
@@ -104,6 +113,7 @@ support, and verify by confirming a `no-floating-promises` violation is still re
 
 5. `vitest.config.ts` including `src/**/*.test.ts`.
 6. `pnpm install` to link it into the workspace.
+7. Add the package's scope to `scope-enum` in `commitlint.config.js`.
 
 Turborepo picks it up automatically — there is no pipeline to edit.
 
@@ -121,6 +131,26 @@ in history.
 
 Read variables through `requireEnv` / `optionalEnv` from `@integr8/core` so a missing
 value fails loudly at startup instead of surfacing as `undefined` inside a request handler.
+
+`packages/db/.env.example` documents the database variables. Two connection strings, two
+roles: `DATABASE_URL` is the runtime role that RLS applies to, and `DATABASE_URL_ADMIN` is
+the schema owner, which bypasses it. An API container should not have the second one set
+at all.
+
+## Changing the database
+
+Read [`docs/database/migrations.md`](./docs/database/migrations.md) before changing an
+existing column or table — destructive changes are split expand/contract across two
+releases, and the reason is written up there with a worked example.
+
+Short version: `pnpm --filter @integr8/db db new <slug>` scaffolds the migration pair,
+every `up` needs a `down`, and an applied migration is immutable — its checksum is
+recorded, and editing it makes the next deploy refuse to run.
+
+A new tenant-scoped table needs a non-null `tenant_id` with a foreign key, an explicit
+grant, RLS enabled, and a policy keyed on `app_current_tenant_id()`. The schema-invariant
+suite fails the build if any of the four is missing, so it is a checklist rather than a
+convention.
 
 ## Working through the plan
 
