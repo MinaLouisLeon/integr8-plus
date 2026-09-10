@@ -1,0 +1,251 @@
+# Everything a release is made of, built once and the same way for both
+# channels.
+#
+# Nightly (staging) and versioned (main) call this with different inputs and
+# nothing else. That is the point of a staging channel: if the nightly and the
+# release were built by two different workflows, a green nightly would say
+# nothing useful about the release.
+#
+# What this does not do is deploy. The API and the web app are built here and
+# attached as build output; turning that into something a server runs is P19
+# and P20, and calling a tarball a deployment before then would be a promise
+# this repository cannot keep.
+name: Build release artifacts
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Full version, e.g. 0.1.0 or 0.1.0-nightly.20260910.gabc1234
+        type: string
+        required: true
+      base-version:
+        description: The plain X.Y.Z part. Installers use this; MSI rejects prerelease suffixes.
+        type: string
+        required: true
+      channel:
+        description: nightly | release
+        type: string
+        required: true
+      desktop-platforms:
+        description: JSON array of runner labels for the Tauri matrix.
+        type: string
+        required: true
+      eas-profile:
+        description: The eas.json build profile to use, when EAS builds are enabled.
+        type: string
+        required: true
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # The two things that deploy rather than install
+  # ---------------------------------------------------------------------------
+  server:
+    name: API and web build output
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Generate the OpenAPI spec
+        run: pnpm --filter @integr8/api openapi
+
+      - name: Package
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+
+          # The build output, not a deployment. Anything that runs this needs
+          # production dependencies installed alongside it.
+          tar -czf "artifacts/integr8-api-${VERSION}.tar.gz" \
+            -C apps/api dist package.json openapi.json
+
+          tar -czf "artifacts/integr8-web-${VERSION}.tar.gz" \
+            -C apps/web .next public package.json next.config.ts
+
+          cp apps/api/openapi.json "artifacts/openapi-${VERSION}.json"
+          ls -la artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-${{ inputs.version }}
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # The one people actually install
+  # ---------------------------------------------------------------------------
+  desktop:
+    name: Desktop installer (${{ matrix.platform }})
+    if: vars.DESKTOP_BUILDS != 'disabled'
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJSON(inputs.desktop-platforms) }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache the Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+          key: ${{ matrix.platform }}
+
+      # Tauri links against the system webview. Everywhere but Linux that ships
+      # with the operating system.
+      - name: Install Linux webview dependencies
+        if: startsWith(matrix.platform, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            libssl-dev \
+            patchelf \
+            file
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The root package.json version is the product version. Writing it into
+      # tauri.conf.json here rather than keeping two numbers in step by hand is
+      # the difference between a release and a release that claims to be an
+      # older one.
+      #
+      # The plain X.Y.Z, not the full version: Windows MSI product versions are
+      # three numbers and reject a prerelease suffix outright. Which nightly an
+      # installer came from is recorded by the release it is attached to. Giving
+      # the updater a way to tell nightlies apart is P20.
+      - name: Stamp the version into the bundle
+        shell: bash
+        env:
+          BASE_VERSION: ${{ inputs.base-version }}
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("node:fs");
+            const path = "apps/desktop/src-tauri/tauri.conf.json";
+            const config = JSON.parse(fs.readFileSync(path, "utf8"));
+            config.version = process.env.BASE_VERSION;
+            fs.writeFileSync(path, JSON.stringify(config, null, 2) + "\n");
+          '
+          node -e 'console.log("tauri version:", require("./apps/desktop/src-tauri/tauri.conf.json").version)'
+
+      - name: Build the workspace packages the app imports
+        run: pnpm build
+
+      - name: Build the installer
+        id: tauri
+        uses: tauri-apps/tauri-action@v0
+        env:
+          # Absent on a fork or before the key is stored: the build still runs
+          # and produces an installer, it just carries no update signature.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+
+      - name: Collect the installers
+        shell: bash
+        env:
+          PATHS: ${{ steps.tauri.outputs.artifactPaths }}
+        run: |
+          set -euo pipefail
+          mkdir -p collected
+          node -e '
+            const fs = require("node:fs");
+            const path = require("node:path");
+            for (const from of JSON.parse(process.env.PATHS)) {
+              fs.copyFileSync(from, path.join("collected", path.basename(from)));
+              console.log("collected", path.basename(from));
+            }
+          '
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}-${{ inputs.version }}
+          path: collected/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Mobile, when there is an Expo account behind it
+  # ---------------------------------------------------------------------------
+  mobile:
+    name: Mobile build (EAS)
+    # Gated on a repository variable rather than on the secret, because a job
+    # cannot branch on whether a secret exists. Until `eas init` replaces the
+    # placeholder projectId in apps/mobile/app.json there is no project for a
+    # build to belong to, so this stays off. Local development needs none of it.
+    if: vars.EAS_BUILDS == 'enabled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      # --no-wait: the binaries are built and kept by EAS, not by this run. The
+      # release notes link to them rather than attaching them.
+      - name: Queue the build
+        working-directory: apps/mobile
+        run: eas build --platform all --profile ${{ inputs.eas-profile }} --non-interactive --no-wait

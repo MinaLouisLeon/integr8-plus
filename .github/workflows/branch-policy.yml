@@ -1,0 +1,186 @@
+# The promotion path, enforced.
+#
+#   any branch  ->  dev  ->  staging  ->  main
+#
+# Two halves, because GitHub enforces one of them and cannot express the other:
+#
+#   * "no direct pushes" and "no deletion" are branch protection settings. They
+#     live in .github/rulesets/ and are applied by
+#     scripts/github/apply-branch-protection.sh.
+#   * "only dev may merge into staging" is *not* something GitHub can say.
+#     Branch protection restricts who may push and which checks must pass; it
+#     has no notion of which branch a pull request came from. So that rule is a
+#     check that fails, which the rulesets then mark as required.
+#
+# The push job is the backstop for the half that needs a paid plan: if a commit
+# lands on a governed branch with no pull request behind it, the run goes red
+# and says so. Detection is not prevention, but a silent direct push to main is
+# strictly worse than a loud one.
+name: Branch policy
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+    branches: [main, staging, dev]
+  push:
+    branches: [main, staging, dev]
+
+# Deliberately not cancel-in-progress. This is a gate, and a cancelled gate
+# reports as neither pass nor fail.
+concurrency:
+  group: branch-policy-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  # The name below is the status check context named in every file under
+  # .github/rulesets/. Renaming this job silently un-enforces rules 4 and 5,
+  # because a required check that never reports is simply an absent one.
+  pr-source:
+    name: PR source is allowed
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check the source branch against the promotion path
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          case "$BASE" in
+            dev)
+              # Rule 3: any branch may be merged into dev. This is where work
+              # arrives, so the gate here is the test build, not the source.
+              allowed='any branch'
+              ok=true
+              ;;
+            staging)
+              # Rule 4.
+              allowed='dev'
+              if [ "$HEAD" = 'dev' ]; then ok=true; else ok=false; fi
+              ;;
+            main)
+              # Rule 5.
+              allowed='staging'
+              if [ "$HEAD" = 'staging' ]; then ok=true; else ok=false; fi
+              ;;
+            *)
+              echo "::notice::$BASE is not a governed branch."
+              exit 0
+              ;;
+          esac
+
+          # A fork may name its branch anything, so on the two release branches
+          # the branch name alone is not evidence of where the code came from.
+          if [ "$BASE" != 'dev' ] && [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            ok=false
+            allowed="$allowed in $BASE_REPO, not a fork"
+          fi
+
+          {
+            echo "### Branch policy"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Into | \`$BASE\` |"
+            echo "| From | \`$HEAD\` (\`$HEAD_REPO\`) |"
+            echo "| Allowed | $allowed |"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$ok" = true ]; then
+            echo "Allowed: $HEAD into $BASE."
+            echo "Allowed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          {
+            echo "**Blocked.** \`$BASE\` accepts pull requests from $allowed only."
+            echo
+            echo "Everything reaches \`main\` the same way: \`dev\` then \`staging\` then \`main\`."
+            echo "Retarget this pull request at \`dev\`, and promote it from there."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "::error title=Branch policy::$BASE accepts pull requests from $allowed only, and this one is from $HEAD. Retarget it at dev and promote through staging."
+          exit 1
+
+  direct-push:
+    name: Push arrived through a pull request
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Look for a merged pull request behind this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
+          CREATED: ${{ github.event.created }}
+          FORCED: ${{ github.event.forced }}
+          MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+
+          # Creating a branch is not pushing work to it. dev and staging are
+          # branched from main exactly once, and that once is this.
+          if [ "$CREATED" = 'true' ]; then
+            echo "::notice::$BRANCH was just created; there is no push to audit."
+            exit 0
+          fi
+
+          # The commit that installs this policy cannot have been gated by it.
+          # True once per branch, and only for the commit that adds this file.
+          if [ -n "$(git log -1 --format= --name-only --diff-filter=A "$GITHUB_SHA" -- .github/workflows/branch-policy.yml)" ]; then
+            echo "::notice::This commit introduced the branch policy; there is nothing to enforce yet."
+            exit 0
+          fi
+
+          if [ "$FORCED" = 'true' ]; then
+            echo "::error title=Force push to $BRANCH::History on a governed branch was rewritten. Anyone who had already pulled it now holds a diverged copy."
+            exit 1
+          fi
+
+          merged=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+            --jq "[.[] | select(.merged_at != null and .base.ref == \"${BRANCH}\")] | length")
+
+          if [ "$merged" -gt 0 ]; then
+            echo "Reached $BRANCH through a merged pull request."
+            echo "Reached \`$BRANCH\` through a merged pull request." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # A rebase merge produces commits GitHub does not associate with the
+          # pull request, so the subject line is a fallback rather than the
+          # primary signal.
+          case "$MESSAGE" in
+            'Merge pull request #'* | *'(#'[0-9]*')'*)
+              echo "::notice::No pull request is associated with this commit, but its subject says it came from one. Treating it as a merge."
+              exit 0
+              ;;
+          esac
+
+          {
+            echo "### Direct push to \`$BRANCH\`"
+            echo
+            echo "Commit \`${GITHUB_SHA:0:7}\` has no merged pull request behind it."
+            echo
+            echo "\`main\`, \`staging\` and \`dev\` take changes through pull requests only."
+            echo
+            echo "> This run is a **detector**, not a gate. Refusing the push server-side needs the"
+            echo "> rulesets in \`.github/rulesets/\`, which need a plan that allows branch protection"
+            echo "> on a private repository. See \`docs/contributing/branching.md\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "::error title=Direct push to $BRANCH::This commit did not arrive through a pull request."
+          exit 1

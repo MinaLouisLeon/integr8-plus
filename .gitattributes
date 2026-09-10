@@ -1,0 +1,11 @@
+# Shell scripts are executed by `sh`, both as git hooks on a developer's
+# machine and on Linux runners in CI. A carriage return in one of those is a
+# `$'\r': command not found` that appears on somebody else's machine and not on
+# the one it was written on, so these files are checked out with LF regardless
+# of the platform.
+#
+# Deliberately narrow. `* text=auto eol=lf` would rewrite every file in the
+# working tree on Windows, which is a much larger change than this problem
+# needs.
+*.sh text eol=lf
+.husky/* text eol=lf

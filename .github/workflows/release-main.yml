@@ -1,0 +1,142 @@
+# Rule 8 — a merge into main publishes a versioned release.
+#
+# main only ever takes staging, so everything released here has already been
+# built and published as a nightly from the same commit history and the same
+# workflow. The release build is not the first time the release is built.
+#
+# The version comes from the root package.json and nowhere else. If a release
+# already exists for it, this fails and says to bump it: releasing twice from
+# one version number is how two different binaries end up claiming to be the
+# same thing.
+name: Version release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: version-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Work out which version this is
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      buildable: ${{ steps.check.outputs.buildable }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: check
+        run: |
+          set -euo pipefail
+          if [ -f package.json ]; then
+            echo 'buildable=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'buildable=false' >> "$GITHUB_OUTPUT"
+            echo "::notice::No package.json on this branch yet, so there is nothing to release."
+            echo 'No workspace on this branch yet. Nothing to release.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - id: version
+        if: steps.check.outputs.buildable == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          version=$(node -p 'require("./package.json").version')
+          tag="v${version}"
+
+          if [ "$version" = '0.0.0' ]; then
+            echo "::error title=No version set::The root package.json is still at 0.0.0. Set a real version before releasing."
+            exit 1
+          fi
+
+          # Releasing the same number twice is how two different binaries end up
+          # both calling themselves 0.4.1, and only one of them is the one a
+          # customer is running.
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error title=$tag is already released::Bump the version in package.json before merging into main. Nothing was published."
+            exit 1
+          fi
+
+          {
+            echo "version=${version}"
+            echo "tag=${tag}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Release ${tag}" >> "$GITHUB_STEP_SUMMARY"
+
+  verify:
+    name: Verify
+    needs: preflight
+    if: needs.preflight.outputs.buildable == 'true'
+    uses: ./.github/workflows/verify.yml
+
+  artifacts:
+    name: Build
+    needs: [preflight, verify]
+    uses: ./.github/workflows/build-release-artifacts.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.preflight.outputs.version }}
+      base-version: ${{ needs.preflight.outputs.version }}
+      channel: release
+      # The full matrix here, unlike the nightly. A versioned release happens
+      # rarely enough that a macOS runner's ten-times billing is affordable, and
+      # a release with no macOS installer is not a release.
+      desktop-platforms: ${{ vars.RELEASE_DESKTOP_PLATFORMS || '["ubuntu-latest","windows-latest","macos-latest"]' }}
+      eas-profile: ${{ vars.RELEASE_EAS_PROFILE || 'production' }}
+
+  publish:
+    name: Publish the release
+    needs: [preflight, artifacts]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.preflight.outputs.tag }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          set -euo pipefail
+          ls -la dist
+
+          cat > notes.md <<'PREAMBLE'
+          Built from `main`, which takes `staging` and nothing else. Every commit
+          in this release has already shipped as a nightly.
+
+          The API and web archives are build output, not a deployment package.
+
+          PREAMBLE
+
+          gh release create "$TAG" dist/* \
+            --title "$VERSION" \
+            --notes-file notes.md \
+            --generate-notes \
+            --latest \
+            --target "$GITHUB_SHA"
+
+          {
+            echo "### Released"
+            echo
+            echo "[\`$TAG\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG})"
+          } >> "$GITHUB_STEP_SUMMARY"

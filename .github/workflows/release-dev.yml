@@ -1,0 +1,77 @@
+# Rule 6 — a merge into dev builds the app for test, and ships nothing.
+#
+# dev is where work from any branch arrives, so the question this answers is
+# only "does the integrated result still build and pass?". No tag, no release,
+# no artifact anybody could mistake for one.
+#
+# A pull request into dev has already been verified by ci.yml. This runs again
+# on the merge result, which is not the same commit and is the one that other
+# people will branch from.
+name: Dev build
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: dev-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # dev is branched from main, and main carries the plan before it carries the
+  # product. Until the workspace lands there is nothing to build, and a red run
+  # saying "no package.json" every time would train everyone to ignore red runs.
+  preflight:
+    name: Is there an application to build?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      buildable: ${{ steps.check.outputs.buildable }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: check
+        run: |
+          set -euo pipefail
+          if [ -f package.json ]; then
+            echo 'buildable=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'buildable=false' >> "$GITHUB_OUTPUT"
+            echo "::notice::No package.json on this branch yet, so there is nothing to build."
+            echo 'No workspace on this branch yet. Nothing to build.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  verify:
+    name: Test build
+    needs: preflight
+    if: needs.preflight.outputs.buildable == 'true'
+    uses: ./.github/workflows/verify.yml
+
+  summary:
+    name: Result
+    needs: [preflight, verify]
+    if: always() && needs.preflight.outputs.buildable == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Say plainly that nothing was released
+        run: |
+          set -euo pipefail
+          {
+            echo "### dev build"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Commit | \`${GITHUB_SHA:0:7}\` |"
+            echo "| Verification | ${{ needs.verify.result }} |"
+            echo "| Released | nothing, by design |"
+            echo
+            echo "dev builds to prove the merge is sound. A release comes from promoting this"
+            echo "to \`staging\` (nightly) and then to \`main\` (versioned)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          [ '${{ needs.verify.result }}' = 'success' ]

@@ -1,0 +1,141 @@
+# Rule 7 — a merge into staging publishes a nightly release.
+#
+# staging only ever takes dev, so every nightly is "everything that has passed
+# through dev up to now", built exactly the way a versioned release is built.
+# That is what makes a nightly worth testing: if it were built differently, a
+# green nightly would say nothing about the release that follows it.
+#
+# Nightlies are pre-releases. They never become the "latest" release, and
+# nothing that reads the latest release will pick one up by accident.
+name: Nightly release
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+# Not cancel-in-progress: a run cancelled between building and publishing
+# leaves a tag with no assets behind it.
+concurrency:
+  group: nightly-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Work out what this nightly is called
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      buildable: ${{ steps.check.outputs.buildable }}
+      version: ${{ steps.version.outputs.version }}
+      base_version: ${{ steps.version.outputs.base_version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: check
+        run: |
+          set -euo pipefail
+          if [ -f package.json ]; then
+            echo 'buildable=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'buildable=false' >> "$GITHUB_OUTPUT"
+            echo "::notice::No package.json on this branch yet, so there is nothing to release."
+            echo 'No workspace on this branch yet. Nothing to release.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - id: version
+        if: steps.check.outputs.buildable == 'true'
+        run: |
+          set -euo pipefail
+
+          base=$(node -p 'require("./package.json").version')
+          date=$(date -u +%Y%m%d)
+          short=${GITHUB_SHA:0:7}
+
+          # `g` before the hash, the way `git describe` does it. Without it a
+          # hash of digits only would be read as a numeric semver identifier,
+          # and one with a leading zero would not be valid semver at all.
+          version="${base}-nightly.${date}.g${short}"
+
+          {
+            echo "base_version=${base}"
+            echo "version=${version}"
+            echo "tag=v${version}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Nightly ${version}" >> "$GITHUB_STEP_SUMMARY"
+
+  verify:
+    name: Verify
+    needs: preflight
+    if: needs.preflight.outputs.buildable == 'true'
+    uses: ./.github/workflows/verify.yml
+
+  artifacts:
+    name: Build
+    needs: [preflight, verify]
+    uses: ./.github/workflows/build-release-artifacts.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.preflight.outputs.version }}
+      base-version: ${{ needs.preflight.outputs.base_version }}
+      channel: nightly
+      # Two platforms rather than three by default. A macOS runner is billed at
+      # ten times a Linux one, and a nightly runs on every promotion from dev,
+      # so the full matrix would spend a month of included minutes in a fortnight.
+      # Set the NIGHTLY_DESKTOP_PLATFORMS repository variable to widen it.
+      desktop-platforms: ${{ vars.NIGHTLY_DESKTOP_PLATFORMS || '["ubuntu-latest","windows-latest"]' }}
+      eas-profile: ${{ vars.NIGHTLY_EAS_PROFILE || 'preview' }}
+
+  publish:
+    name: Publish the nightly
+    needs: [preflight, artifacts]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create the pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.preflight.outputs.tag }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          set -euo pipefail
+          ls -la dist
+
+          cat > notes.md <<'PREAMBLE'
+          Built from `staging`, which takes `dev` and nothing else.
+
+          This is a **nightly**. It is here to be tested, not shipped to anyone.
+          Installers carry the plain `X.Y.Z` version because Windows installer
+          metadata will not accept a prerelease suffix; which nightly one came
+          from is this release.
+
+          The API and web archives are build output, not a deployment package.
+
+          PREAMBLE
+
+          gh release create "$TAG" dist/* \
+            --title "Nightly $VERSION" \
+            --notes-file notes.md \
+            --generate-notes \
+            --prerelease \
+            --target "$GITHUB_SHA"
+
+          {
+            echo "### Nightly published"
+            echo
+            echo "[\`$TAG\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG})"
+          } >> "$GITHUB_STEP_SUMMARY"
