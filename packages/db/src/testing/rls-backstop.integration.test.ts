@@ -195,11 +195,19 @@ describe('writes across the boundary', () => {
   });
 
   it('deletes nothing in another company from an unfiltered delete', async () => {
-    const deleted = await asTenant(
-      app,
-      northwind.id,
-      async () => (await app.query('delete from tenant_users')).rowCount,
-    );
+    // Rolled back rather than committed. Committing removed Northwind's only
+    // member, and the tenant-context suite below — which needs a row to be
+    // visible inside the context before it can prove the row is invisible
+    // outside it — then compared nothing with nothing and failed for a reason
+    // that had nothing to do with isolation.
+    await app.query('begin');
+    let deleted: number | null;
+    try {
+      await app.query('select set_config($1, $2, true)', ['app.tenant_id', northwind.id]);
+      deleted = (await app.query('delete from tenant_users')).rowCount;
+    } finally {
+      await app.query('rollback');
+    }
 
     expect(deleted).toBe(1);
 

@@ -1,8 +1,13 @@
 import { ROLES } from '@integr8/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PLATFORM_TABLES, SECURITY_DEFINER_VIEWS, TENANT_SCOPED_TABLES } from '../schema.js';
-import { connectAsOwner } from './harness.js';
+import {
+  PLATFORM_TABLES,
+  SECURITY_DEFINER_FUNCTIONS,
+  SECURITY_DEFINER_VIEWS,
+  TENANT_SCOPED_TABLES,
+} from '../schema.js';
+import { connectAsOwner, createTenant } from './harness.js';
 
 /**
  * Rules about the schema as a whole, checked against the live catalogue.
@@ -155,6 +160,45 @@ describe('views, the easiest way to lose isolation', () => {
       'tenant_id',
       'user_id',
     ]);
+  });
+});
+
+describe('functions that run as their owner', () => {
+  /**
+   * The same hazard as a security-definer view, in a different shape: the
+   * function reads with the owner's privileges whatever role called it. They
+   * are allow-listed for the same reason.
+   */
+  it('has no security-definer function in public that is not declared', async () => {
+    const result = await owner.query<{ name: string }>(`
+      select p.proname::text as name
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.prosecdef
+      order by p.proname
+    `);
+
+    expect(result.rows.map((row) => row.name)).toEqual(
+      [...SECURITY_DEFINER_FUNCTIONS].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+    );
+  });
+
+  it('pins search_path on every one of them', async () => {
+    // A security-definer function resolving names through the caller's path
+    // can be handed a lookalike table in a schema the caller controls.
+    const result = await owner.query<{ name: string; config: string[] | null }>(`
+      select p.proname::text as name, p.proconfig as config
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.prosecdef
+    `);
+
+    for (const row of result.rows) {
+      expect(
+        (row.config ?? []).some((setting) => setting.startsWith('search_path=')),
+        `${row.name} has no pinned search_path`,
+      ).toBe(true);
+    }
   });
 });
 
@@ -372,10 +416,17 @@ describe('vocabularies shared with the application', () => {
   });
 
   it('refuses a role the application does not define', async () => {
+    // The company is created here rather than borrowed with `from tenants
+    // limit 1`. When the table happened to be empty that insert wrote zero
+    // rows, succeeded, and failed the test for a reason unrelated to roles —
+    // and had it been written as `.resolves`, it would have passed forever.
+    const tenant = await createTenant('role-vocabulary');
+
     await expect(
       owner.query(
         `insert into tenant_users (tenant_id, user_id, email, display_name, role)
-         select id, gen_random_uuid(), 'x@y.example', 'X', 'superadmin' from tenants limit 1`,
+         values ($1, gen_random_uuid(), 'x@y.example', 'X', 'superadmin')`,
+        [tenant.id],
       ),
     ).rejects.toThrow(/tenant_users_role_known/u);
   });

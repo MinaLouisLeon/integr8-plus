@@ -55,6 +55,7 @@ export {
   loginOutcomeSchema,
   OFFLINE_GRANT_REVOCATION_REASONS,
   offlineGrantRevocationReasonSchema,
+  SECURITY_DEFINER_FUNCTIONS,
   SECURITY_DEFINER_VIEWS,
   SESSION_REVOCATION_REASONS,
   sessionRevocationReasonSchema,
@@ -62,6 +63,7 @@ export {
   type ImpersonationEndReason,
   type LoginOutcome,
   type OfflineGrantRevocationReason,
+  type SecurityDefinerFunction,
   type SecurityDefinerView,
   type SessionRevocationReason,
 } from './schema.js';
