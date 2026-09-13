@@ -5,13 +5,16 @@
 **Depends on:** P03, P10
 
 ## Goal
+
 You can run the business: see every company, onboard one, support one, and suspend one,
 without opening a terminal.
 
 ## Scope
+
 Your dashboard, inside the Next.js app on a separately authorised route.
 
 ## Tasks
+
 - [ ] Company directory: status, plan, seats, storage used, created date, last activity
 - [ ] Onboard a company in one action — create tenant, seed roles and job types, create the R2 bucket, send the owner invite
 - [ ] Suspend, reactivate and delete, with deletion forcing an export first
@@ -26,12 +29,14 @@ Your dashboard, inside the Next.js app on a separately authorised route.
 - [ ] Company data export and hard delete
 
 ## Exit criteria
+
 - [ ] A new company is onboarded end to end through the UI, with no manual database or Cloudflare step
 - [ ] Every impersonation session appears in the audit log with its reason and duration
 - [ ] Suspending a company puts all three of their apps into read-only within one minute
 - [ ] Deleting a company removes their database rows and their bucket, verified in Cloudflare
 
 ## Notes
+
 - The impersonation banner must be impossible to miss. Support engineers who forget they
   are impersonating cause the worst incidents.
 - Onboarding automation is not a convenience. Any manual step becomes the bottleneck the

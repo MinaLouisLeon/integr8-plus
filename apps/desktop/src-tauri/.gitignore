@@ -1,0 +1,8 @@
+# Rust build output, and the generated schemas Tauri writes beside it.
+target/
+gen/schemas/
+
+# The updater's private signing key. Also matched by the workspace .gitignore;
+# repeated here because this is the directory somebody will be looking at.
+updater.key
+*.key

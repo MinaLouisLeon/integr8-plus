@@ -5,13 +5,16 @@
 **Depends on:** P07
 
 ## Goal
+
 A published form can be filled and submitted on desktop and web, stored correctly, and
 found again.
 
 ## Scope
+
 The React DOM renderer and the submission lifecycle. The React Native renderer is P13.
 
 ## Tasks
+
 - [ ] React DOM renderer driven entirely by the P06 logic core — no form-specific code
 - [ ] Widget for every field type in the registry, with keyboard and screen-reader support
 - [ ] Signature capture on desktop (mouse, trackpad and touch)
@@ -26,12 +29,14 @@ The React DOM renderer and the submission lifecycle. The React Native renderer i
 - [ ] Reopen and amend, with a full change history and no silent edits
 
 ## Exit criteria
+
 - [ ] A submission crafted by hand that violates the form's rules is rejected by the API
 - [ ] A submission made against version 1 still renders correctly after version 4 is published
 - [ ] Filtering ten thousand seeded submissions by a reportable field returns in under 300ms
 - [ ] Every field type in the registry has a working, accessible widget
 
 ## Notes
+
 - Generated columns are how you get reporting performance without giving up the
   flexibility of JSONB. Decide which fields are "reportable" at publish time.
 - Never trust a client-side validation pass. The renderer runs on machines you do not control.

@@ -5,13 +5,16 @@
 **Depends on:** P12
 
 ## Goal
+
 Any form built on the desktop renders and fills correctly on a phone, offline, with the
 device capabilities the field actually needs.
 
 ## Scope
+
 The React Native renderer over the P06 logic core. The builder is never ported to mobile.
 
 ## Tasks
+
 - [ ] React Native renderer driven entirely by the shared logic core — no form-specific code
 - [ ] Native widget for every field type in the registry, sized for gloved hands
 - [ ] Camera capture with compression and thumbnail generation before the file leaves the device
@@ -27,12 +30,14 @@ The React Native renderer over the P06 logic core. The builder is never ported t
 - [ ] Submission queued through the P12 outbox, never sent directly
 
 ## Exit criteria
+
 - [ ] A form built in P07 renders on a phone matching the builder's phone preview
 - [ ] A twenty-field form with photos is completed end to end in aeroplane mode and survives an app kill mid-way
 - [ ] Every field type in the registry has a working native widget
 - [ ] A form filled on the phone and the same form filled on the desktop produce identical stored answers
 
 ## Notes
+
 - This is where the "share logic, not components" decision from P01 pays for itself. If
   you find yourself needing form-specific code here, the logic core is leaking UI concerns.
 - Compress before queueing, not before uploading. A 12MP photo sitting in the queue is

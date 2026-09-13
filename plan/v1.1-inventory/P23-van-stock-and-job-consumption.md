@@ -5,12 +5,15 @@
 **Depends on:** P22
 
 ## Goal
+
 An engineer's van is a stock location that empties as they work and refills when they ask.
 
 ## Scope
+
 The mobile side of inventory, and the link between parts and jobs.
 
 ## Tasks
+
 - [ ] Van stock visible on the mobile app, offline
 - [ ] Parts consumed on a job, deducted from that engineer's van
 - [ ] Barcode scanning for every stock movement on mobile
@@ -21,10 +24,12 @@ The mobile side of inventory, and the link between parts and jobs.
 - [ ] Returns from van to warehouse
 
 ## Exit criteria
+
 - [ ] Parts consumed offline reconcile correctly when two engineers sync in a different order than they worked
 - [ ] Scanning a barcode on the phone records the movement without typing
 - [ ] Van stock in the app matches a physical count of the van, verified once in the field
 
 ## Notes
+
 - Offline stock movements are the one place where the append-only ledger genuinely saves you.
   Two engineers consuming the same part offline is not a conflict; it is two ledger entries.

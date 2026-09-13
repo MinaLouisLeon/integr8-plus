@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Integr8 Plus",
+    "slug": "integr8-plus",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "integr8",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.integr8.plus"
+    },
+    "android": {
+      "package": "com.integr8.plus",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": ["expo-router", "expo-secure-store", "expo-localization"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000000"
+      }
+    }
+  }
+}

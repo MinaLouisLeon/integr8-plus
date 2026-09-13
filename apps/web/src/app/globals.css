@@ -1,0 +1,55 @@
+@import 'tailwindcss';
+@import '@integr8/tokens/theme.css';
+
+/*
+ * Two imports and almost nothing else.
+ *
+ * The palette, spacing and type scale come from `@integr8/tokens`, which is
+ * plain TypeScript so that React Native can read the same values. This file
+ * exists for the handful of rules that have to be global.
+ */
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    /*
+     * `dir` is set on <html> by the layout from the resolved locale. Everything
+     * downstream uses logical properties, so this one attribute mirrors the
+     * whole interface — which is the point of doing the RTL work in P05 rather
+     * than retrofitting it in P32.
+     */
+    color-scheme: light dark;
+  }
+
+  body {
+    background-color: var(--colour-background);
+    color: var(--colour-text);
+  }
+
+  /*
+   * A visible focus ring, always.
+   *
+   * Removing it is the single most common accessibility regression, and it is
+   * usually done to hide the mouse-click ring — which `:focus-visible` already
+   * handles.
+   */
+  :focus-visible {
+    outline: 2px solid var(--colour-focus);
+    outline-offset: 2px;
+  }
+
+  /*
+   * Somebody who has asked their operating system for less motion has usually
+   * asked for a reason. Honouring it is one rule.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

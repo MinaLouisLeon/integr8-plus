@@ -1,0 +1,44 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# tooling caches
+.turbo/
+coverage/
+.eslintcache
+.vitest/
+
+# environment — never commit real values
+.env
+.env.*
+!.env.example
+
+# native build artefacts (Tauri / Expo)
+src-tauri/target/
+.expo/
+
+# The Tauri updater's private signing key. Whoever holds it can sign an update
+# that every installed copy will accept and run. It belongs in a secret manager,
+# and CI reads it from TAURI_SIGNING_PRIVATE_KEY.
+**/src-tauri/updater.key
+**/src-tauri/*.key
+
+# editors and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
