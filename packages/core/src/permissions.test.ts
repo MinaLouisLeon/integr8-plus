@@ -83,6 +83,16 @@ describe('who can do what', () => {
     }
   });
 
+  it('lets everyone read forms, and only owners and admins build or publish them', () => {
+    // Filling a form needs the form. Building one is the company admin's job,
+    // which is the premise of P07 — and a dispatcher who could publish would be
+    // changing what every engineer is asked, from the day's schedule screen.
+    for (const role of ROLES) {
+      expect(can(role, 'form.read'), role).toBe(true);
+    }
+    expect(ROLES.filter((role) => can(role, 'form.manage'))).toEqual(['owner', 'admin']);
+  });
+
   it('lets every role read the company it belongs to', () => {
     for (const role of ROLES) {
       expect(can(role, 'tenant.read')).toBe(true);

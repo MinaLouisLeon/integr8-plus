@@ -37,6 +37,15 @@ export const PERMISSIONS = [
   'session.revoke',
 
   'audit.read',
+
+  /** See forms and their published versions — everyone who fills one needs this. */
+  'form.read',
+  /**
+   * Build, edit, clone and publish forms, and change who may fill them. A
+   * published version can never be changed by anyone (migration 0006); this is
+   * the permission to create the next one.
+   */
+  'form.manage',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -64,6 +73,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'session.read',
     'session.revoke',
     'audit.read',
+    'form.read',
+    'form.manage',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -81,15 +92,17 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'session.read',
     'session.revoke',
     'audit.read',
+    'form.read',
+    'form.manage',
   ],
 
   // Runs the day: needs to see who is available, not to change who they are.
-  dispatcher: ['tenant.read', 'member.read'],
+  dispatcher: ['tenant.read', 'member.read', 'form.read'],
 
   // Does the work. Sees colleagues so a job can be handed over.
-  engineer: ['tenant.read', 'member.read'],
+  engineer: ['tenant.read', 'member.read', 'form.read'],
 
-  viewer: ['tenant.read', 'member.read'],
+  viewer: ['tenant.read', 'member.read', 'form.read'],
 });
 
 /** Lookup form of {@link MATRIX}, written out so no cast is needed to build it. */
