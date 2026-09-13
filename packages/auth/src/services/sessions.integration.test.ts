@@ -284,6 +284,39 @@ describe('refresh rotation', () => {
       SessionRevokedError,
     );
   });
+
+  it('ends the session and the offline grant of somebody who left, not only the refresh', async () => {
+    // Refusing the refresh is the easy half. The session and the offline grant
+    // have to actually be revoked, or the phone keeps opening offline for the
+    // rest of the grant's seven days. Both used to be written and then rolled
+    // back by the same exception that refused the request, and the test above
+    // could not tell.
+    const leaver = await createMember(services.identity, northwind.id, 'engineer', 'departed');
+    const signedIn = await services.signIn.signInWithPassword({
+      email: leaver.email,
+      password: leaver.password,
+      clientApp: 'mobile',
+    });
+    await services.sessions.issueOfflineGrant({
+      tenantId: northwind.id,
+      sessionId: signedIn.tokens.session.id,
+      userId: leaver.userId,
+      role: 'engineer',
+    });
+
+    await withTenant(northwind.id, (tx) => tx.tenantUsers.softDelete(leaver.userId));
+    await expect(services.sessions.refresh(signedIn.tokens.refreshToken)).rejects.toThrow(
+      SessionRevokedError,
+    );
+
+    const { session, liveGrants } = await withTenant(northwind.id, async (tx) => ({
+      session: await tx.sessions.findById(signedIn.tokens.session.id),
+      liveGrants: await tx.offlineGrants.listLiveForUser(leaver.userId),
+    }));
+
+    expect(session?.revokedReason).toBe('membership_ended');
+    expect(liveGrants).toEqual([]);
+  });
 });
 
 describe('revocation', () => {

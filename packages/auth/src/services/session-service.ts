@@ -19,6 +19,12 @@ import type { TokenService } from '../tokens.js';
  * place that decides how long anything lasts.
  */
 
+/** What the refresh transaction decided, acted on only once it has committed. */
+type RefreshOutcome =
+  | { kind: 'issued'; session: IssuedSession }
+  | { kind: 'reused'; sessionId: string }
+  | { kind: 'membership_ended' };
+
 export interface IssuedSession {
   session: Session;
   accessToken: string;
@@ -103,7 +109,19 @@ export class SessionService {
 
     const now = this.#clock();
 
-    return withTenant(parsed.tenantId, async (tx) => {
+    // The transaction decides and records; the caller is refused only after it
+    // has committed.
+    //
+    // Two outcomes here write something *and* refuse the request: a spent token
+    // coming back, and a membership that has ended. Throwing from inside the
+    // transaction rolled those writes back along with everything else — so a
+    // replayed refresh token was refused while the session it belonged to stayed
+    // alive and nothing reached the audit log, and a removed member's offline
+    // grant survived for its full seven days. The refusal was right and its
+    // consequences never happened. The integration suite found it the first time
+    // it ran against a real database; the unit tests use a store with no
+    // transactions, where a throw rolls nothing back.
+    const outcome = await withTenant(parsed.tenantId, async (tx): Promise<RefreshOutcome> => {
       const record = await tx.sessions.findRefreshTokenByHash(parsed.hash);
       if (record === undefined) {
         throw new InvalidTokenError('Refresh token is not recognised');
@@ -115,7 +133,8 @@ export class SessionService {
       }
 
       if (record.usedAt !== null) {
-        await this.#handleReuse(tx, session, now);
+        await this.#recordReuse(tx, session, now);
+        return { kind: 'reused', sessionId: session.id };
       }
 
       if (record.expiresAt <= now) {
@@ -134,7 +153,7 @@ export class SessionService {
       if (membership?.status !== 'active') {
         await tx.sessions.revoke(session.id, 'membership_ended', now);
         await tx.offlineGrants.revokeForSession(session.id, 'membership_ended', now);
-        throw new SessionRevokedError('Membership is no longer active');
+        return { kind: 'membership_ended' };
       }
 
       const issued = await this.#issuePair(
@@ -151,13 +170,25 @@ export class SessionService {
       // at once looks identical to a thief racing the real client.
       const claimed = await tx.sessions.markRefreshTokenUsed(record.id, issued.refreshTokenId, now);
       if (!claimed) {
-        await this.#handleReuse(tx, session, now);
+        // The pair just issued is committed with the rest, and is worthless:
+        // it belongs to the session being revoked on the next line.
+        await this.#recordReuse(tx, session, now);
+        return { kind: 'reused', sessionId: session.id };
       }
 
       await tx.sessions.touch(session.id, now);
 
-      return issued.session;
+      return { kind: 'issued', session: issued.session };
     });
+
+    switch (outcome.kind) {
+      case 'reused':
+        throw new RefreshTokenReuseError(outcome.sessionId);
+      case 'membership_ended':
+        throw new SessionRevokedError('Membership is no longer active');
+      case 'issued':
+        return outcome.session;
+    }
   }
 
   /** Ends one session, and any offline grant that would have outlived it. */
@@ -340,7 +371,13 @@ export class SessionService {
    * token really was stolen, the person needs to notice, and a silent recovery
    * would hide the only evidence there is.
    */
-  async #handleReuse(tx: TenantTransaction, session: Session, now: Date): Promise<never> {
+  /**
+   * Kills the session a spent token belongs to, and says so in the audit log.
+   *
+   * Returns rather than throws: the caller has to let the transaction commit
+   * before refusing the request, or none of this survives. See `refresh`.
+   */
+  async #recordReuse(tx: TenantTransaction, session: Session, now: Date): Promise<void> {
     await tx.sessions.revoke(session.id, 'refresh_token_reuse', now);
     await tx.offlineGrants.revokeForSession(session.id, 'session_revoked', now);
     await tx.auditLog.append({
@@ -355,8 +392,6 @@ export class SessionService {
         detail: 'A refresh token was presented after it had already been spent.',
       },
     });
-
-    throw new RefreshTokenReuseError(session.id);
   }
 }
 
