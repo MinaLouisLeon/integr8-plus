@@ -47,6 +47,9 @@ importers:
       '@integr8/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@integr8/form-engine':
+        specifier: workspace:*
+        version: link:../../packages/form-engine
       '@sentry/node':
         specifier: 10.74.0
         version: 10.74.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))

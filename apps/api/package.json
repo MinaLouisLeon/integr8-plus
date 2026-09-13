@@ -20,6 +20,7 @@
     "@integr8/auth": "workspace:*",
     "@integr8/core": "workspace:*",
     "@integr8/db": "workspace:*",
+    "@integr8/form-engine": "workspace:*",
     "@sentry/node": "10.74.0",
     "fastify": "5.12.3",
     "zod": "4.6.1"
