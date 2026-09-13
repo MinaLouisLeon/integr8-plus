@@ -300,6 +300,46 @@ export interface SchemaMigrationsTable {
   execution_ms: number;
 }
 
+export const FORM_VERSION_STATUSES = ['draft', 'published'] as const;
+export const formVersionStatusSchema = z.enum(FORM_VERSION_STATUSES);
+export type FormVersionStatus = z.infer<typeof formVersionStatusSchema>;
+
+export interface FormsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  title: string;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  archived_at: Date | null;
+}
+
+export interface FormVersionsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  form_id: string;
+  status: Generated<FormVersionStatus>;
+  version_number: number | null;
+  definition: Jsonb<Record<string, unknown>>;
+  definition_schema_version: number;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  published_at: Date | null;
+  published_by: string | null;
+}
+
+export interface SubmissionsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  form_version_id: string;
+  answers: Jsonb<Record<string, unknown>>;
+  submitted_by: string;
+  submitted_at: Generated<Date>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
 export interface Database {
   tenants: TenantsTable;
   platform_users: PlatformUsersTable;
@@ -314,6 +354,9 @@ export interface Database {
   account_locks: AccountLocksTable;
   idempotency_keys: IdempotencyKeysTable;
   jobs: JobsTable;
+  forms: FormsTable;
+  form_versions: FormVersionsTable;
+  submissions: SubmissionsTable;
   rate_limit_buckets: RateLimitBucketsTable;
   schema_migrations: SchemaMigrationsTable;
   auth_memberships: AuthMembershipsView;
@@ -398,6 +441,9 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   impersonation_grants: true,
   idempotency_keys: true,
   jobs: true,
+  forms: true,
+  form_versions: true,
+  submissions: true,
 };
 
 export const TENANT_SCOPED_TABLES: readonly TenantScopedTable[] = Object.freeze(

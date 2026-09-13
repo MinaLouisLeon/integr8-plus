@@ -19,6 +19,8 @@ import {
   failJob,
   JobsRepository,
 } from './repositories/jobs.js';
+import { FormsRepository } from './repositories/forms.js';
+import { SubmissionsRepository } from './repositories/submissions.js';
 import { InvitationsRepository } from './repositories/invitations.js';
 import { LoginSecurityRepository } from './repositories/login-security.js';
 import { OfflineGrantsRepository } from './repositories/offline-grants.js';
@@ -65,6 +67,8 @@ export interface TenantTransaction {
   readonly offlineGrants: OfflineGrantsRepository;
   readonly idempotency: IdempotencyRepository;
   readonly jobs: JobsRepository;
+  readonly forms: FormsRepository;
+  readonly submissions: SubmissionsRepository;
 }
 
 /**
@@ -254,6 +258,8 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     offlineGrants: new OfflineGrantsRepository(scope),
     idempotency: new IdempotencyRepository(scope),
     jobs: new JobsRepository(scope),
+    forms: new FormsRepository(scope),
+    submissions: new SubmissionsRepository(scope),
   };
 }
 

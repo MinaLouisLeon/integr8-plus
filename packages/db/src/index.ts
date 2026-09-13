@@ -170,6 +170,26 @@ export {
   type RateLimitRepository,
 } from './repositories/rate-limits.js';
 
+export type {
+  CreateDraftInput,
+  CreateFormInput,
+  Form,
+  FormsRepository,
+  FormVersion,
+} from './repositories/forms.js';
+
+export type {
+  CreateSubmissionInput,
+  Submission,
+  SubmissionsRepository,
+} from './repositories/submissions.js';
+
+export {
+  FORM_VERSION_STATUSES,
+  formVersionStatusSchema,
+  type FormVersionStatus,
+} from './schema.js';
+
 export {
   IDEMPOTENCY_STATUSES,
   idempotencyStatusSchema,

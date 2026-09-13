@@ -11,6 +11,7 @@ export default {
         'desktop',
         'mobile',
         'core',
+        'form-engine',
         'db',
         'auth',
         'config',
