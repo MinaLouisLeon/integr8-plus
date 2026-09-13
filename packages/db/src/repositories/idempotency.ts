@@ -1,5 +1,5 @@
 import { type TenantId, type UserId, toTenantId, toUserId } from '@integr8/core';
-import type { Selectable } from 'kysely';
+import { type Selectable, sql } from 'kysely';
 import {
   type IdempotencyKeysTable,
   type IdempotencyStatus,
@@ -65,10 +65,26 @@ export class IdempotencyRepository extends TenantScopedRepository {
   /**
    * Takes ownership of a key, or reports who already has it.
    *
-   * The insert is the lock. `on conflict do nothing` means exactly one of any
-   * number of simultaneous callers inserts a row, and everybody else reads what
-   * that one wrote — there is no window between checking and claiming for a
-   * second request to slip through.
+   * The insert is the lock. Exactly one of any number of simultaneous callers
+   * inserts a row, and everybody else reads what that one wrote — there is no
+   * window between checking and claiming for a second request to slip through.
+   *
+   * An *expired* row is taken over in the same statement, which is what makes
+   * both a released claim and a lapsed replay window mean something. The
+   * conflict update only fires `where expires_at <= now()`; two callers racing
+   * for the same expired row serialise on its row lock, the second re-reads it
+   * after the first has pushed `expires_at` into the future, and so updates
+   * nothing and falls through to `in_progress`.
+   *
+   * This used to be `do nothing`, and nothing anywhere read `expires_at`. So a
+   * released claim stayed `in_progress` in every way that mattered: a request
+   * that failed once answered 409 to every retry until the sweeper deleted the
+   * row, and a completed response kept replaying after its window had closed.
+   * The API integration suite found it the first time it ran against a real
+   * database.
+   *
+   * `now()` is the database's clock throughout, so the application's clock
+   * never has to agree with it.
    */
   async claim(input: ClaimIdempotencyKeyInput): Promise<IdempotencyClaim> {
     // Bounded, because the one path that loops is a row disappearing between
@@ -87,7 +103,22 @@ export class IdempotencyRepository extends TenantScopedRepository {
           request_fingerprint: input.requestFingerprint,
           expires_at: input.expiresAt,
         })
-        .onConflict((oc) => oc.columns(['tenant_id', 'idempotency_key']).doNothing())
+        .onConflict((oc) =>
+          oc
+            .columns(['tenant_id', 'idempotency_key'])
+            .doUpdateSet((eb) => ({
+              user_id: eb.ref('excluded.user_id'),
+              method: eb.ref('excluded.method'),
+              path: eb.ref('excluded.path'),
+              request_fingerprint: eb.ref('excluded.request_fingerprint'),
+              status: 'in_progress',
+              response_status: null,
+              response_body: null,
+              completed_at: null,
+              expires_at: eb.ref('excluded.expires_at'),
+            }))
+            .where('idempotency_keys.expires_at', '<=', sql<Date>`now()`),
+        )
         .returningAll()
         .executeTakeFirst();
 
@@ -157,11 +188,19 @@ export class IdempotencyRepository extends TenantScopedRepository {
    *
    * Expiring rather than deleting: the row stays visible to anybody debugging
    * why a key behaved oddly, and the sweeper removes it on the usual schedule.
+   * `claim` takes over an expired row, which is what actually frees the key.
+   *
+   * On the database clock, and never earlier than a microsecond after the row
+   * was created. It used to take the application's `new Date()`, which a
+   * server whose clock runs behind the database's — or simply one truncated to
+   * milliseconds — could place at or before `created_at`. That violates
+   * `idempotency_keys_expires_after_creation`, the update throws, the caller
+   * logs a warning because releasing is best-effort, and the key stays locked.
    */
-  async release(idempotencyKey: string, at: Date = new Date()): Promise<boolean> {
+  async release(idempotencyKey: string): Promise<boolean> {
     const result = await this.db
       .updateTable('idempotency_keys')
-      .set({ expires_at: at })
+      .set({ expires_at: sql<Date>`greatest(now(), created_at + interval '1 microsecond')` })
       .where('tenant_id', '=', this.tenantId)
       .where('idempotency_key', '=', idempotencyKey)
       .where('status', '=', 'in_progress')
