@@ -23,6 +23,7 @@ Records and lifecycle on desktop and web. Mobile consumption is P14.
 - [ ] Explicit state machine — scheduled, dispatched, travelling, on site, in progress, awaiting parts, complete, reviewed — with allowed transitions enforced server-side
 - [ ] Assignment to one or more engineers, with a lead where a crew attends
 - [ ] Required forms attached to a job type; a job cannot close until they are submitted
+- [ ] Form settings: which job types require each form — moved here from P07, which built the other form settings but had no job types to choose from. The desktop settings screen already shows the option disabled; enable it and store it with the job type
 - [ ] Checklists and instructions on the job
 - [ ] Attachments: site plans, manuals, previous reports
 - [ ] Comments, with internal notes kept separate from customer-visible notes
