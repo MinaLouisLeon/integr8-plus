@@ -28,9 +28,9 @@ Two identity spaces: tenant users and platform (super admin) users. They never m
 
 ## Exit criteria
 
-- [ ] A user's JWT cannot be edited to reach another tenant — verified by a test that tries
-- [ ] Impersonation writes an audit entry that cannot be deleted through the application
-- [ ] A super admin has no membership row inside any tenant, verified by a test
+- [x] A user's JWT cannot be edited to reach another tenant — verified by a test that tries
+- [x] Impersonation writes an audit entry that cannot be deleted through the application
+- [x] A super admin has no membership row inside any tenant, verified by a test
 - [ ] The mobile app opens and shows cached work after seven days with no network
 
 ## Notes
@@ -72,7 +72,7 @@ refresh-timing helpers, all tested — so P05 is wiring rather than designing.
 The fourth exit criterion ("the mobile app opens after seven days with no network")
 depends on the same shells and is ticked in P05.
 
-### 3. Everything else — written, not yet run against Postgres
+### 3. Everything else — written, and since run against Postgres (see the end of this file)
 
 The same position P02 is in. Three integration suites exist, type-check and lint; none
 has executed, because no Supabase project exists.
@@ -187,15 +187,44 @@ Do these in order:
 
 ## Verified so far
 
-| Claim                                           | How it was proven                                                                                                                                        |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace still builds and passes               | `pnpm build`, `lint`, `typecheck`, `test`, `format:check` — all green across 9 packages                                                                  |
-| Tokens cannot be forged                         | 16 unit tests: edited payload, foreign signing key, unknown `kid`, missing `kid`, and an HS256 token forged using the published public key as the secret |
-| A staging token cannot open production          | Issuer and audience are verified even when the signing key is identical                                                                                  |
-| An offline grant is not an access token         | Each is rejected where the other is expected, so the fifteen-minute lifetime is not decorative                                                           |
-| A key rotation keeps working                    | A two-key set verifies tokens signed by either; the pre-rotation deployment refuses the new one                                                          |
-| Verification keys cannot carry private material | Refused at load, because those keys ship inside a mobile binary                                                                                          |
-| The permission matrix is complete               | A test enumerates every role × permission pair and fails if one was never decided                                                                        |
-| The password policy is not theatre              | 20 unit tests: passphrases accepted, `Password1!`-shaped rejected, addresses caught even when punctuation is stripped                                    |
-| Secrets are shaped as claimed                   | 256 bits of entropy, prefix enforced, a token of the wrong kind rejected, hashes matching the database's check constraint                                |
-| Against a live database                         | **Not yet run.** Three integration suites are written and type-checked; see "What remains" above                                                         |
+| Claim                                           | How it was proven                                                                                                                                         |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace still builds and passes               | `pnpm build`, `lint`, `typecheck`, `test`, `format:check` — all green across 9 packages                                                                   |
+| Tokens cannot be forged                         | 16 unit tests: edited payload, foreign signing key, unknown `kid`, missing `kid`, and an HS256 token forged using the published public key as the secret  |
+| A staging token cannot open production          | Issuer and audience are verified even when the signing key is identical                                                                                   |
+| An offline grant is not an access token         | Each is rejected where the other is expected, so the fifteen-minute lifetime is not decorative                                                            |
+| A key rotation keeps working                    | A two-key set verifies tokens signed by either; the pre-rotation deployment refuses the new one                                                           |
+| Verification keys cannot carry private material | Refused at load, because those keys ship inside a mobile binary                                                                                           |
+| The permission matrix is complete               | A test enumerates every role × permission pair and fails if one was never decided                                                                         |
+| The password policy is not theatre              | 20 unit tests: passphrases accepted, `Password1!`-shaped rejected, addresses caught even when punctuation is stripped                                     |
+| Secrets are shaped as claimed                   | 256 bits of entropy, prefix enforced, a token of the wrong kind rejected, hashes matching the database's check constraint                                 |
+| Against a live database                         | **Run on 2026-09-13** against PostgreSQL 17.10, not yet in CI: 55 of 55 after a fix to refresh-token reuse. See "First run against a real database" below |
+
+## First run against a real database — 2026-09-13
+
+Until this date the integration suites had been written and type-checked but never run:
+there was no Supabase project. They were run against **PostgreSQL 17.10** on a developer
+machine (a disposable embedded server, bootstrapped with `db bootstrap` and migrated from
+zero exactly as `global-setup.ts` does). That is a real Postgres with the real roles, grants
+and policies — not CI, and not Supabase — and the criteria ticked above were ticked on that
+evidence and no other.
+
+The first run found a security defect in this phase's code, fixed in `fix/database-suite-first-run`:
+
+- **Refresh-token reuse was detected and then undone.** On a replayed token, `refresh()` revoked
+  the session, revoked its offline grants and wrote the audit entry — then threw, inside the same
+  transaction, which rolled all three back. The replay was refused; the session it belonged to
+  stayed alive and nothing was logged. The same shape affected a member who had left the company:
+  the refresh was refused, but their session and **offline grant** survived, so the phone would
+  have kept opening offline for the rest of the grant's seven days. The transaction now returns
+  what it decided, commits, and only then refuses. The unit tests could not see this: their store
+  has no transactions, so a throw rolled nothing back.
+
+A test was added asserting that the leaver's session and offline grant are actually revoked. It
+fails against the old code (`expected null to be 'membership_ended'`) and passes against the fix.
+
+| Suite                       | Result   |
+| --------------------------- | -------- |
+| `@integr8/auth` integration | 55 of 55 |
+
+Still open: the mobile app opening with cached work after seven days offline, which needs P11–P14.

@@ -174,6 +174,14 @@ jobs:
     name: Secret scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # On a pull request gitleaks-action asks the API for the PR's commits before
+    # it scans anything. Without `pull-requests: read` that call fails with
+    # "Resource not accessible by integration", the action crashes, and the job
+    # goes red having scanned nothing — which it did on every pull request until
+    # this was added. A red secret scan that is always red is not a secret scan.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v5
         with:

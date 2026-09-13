@@ -360,12 +360,46 @@ export const PLATFORM_TABLES = [
 export const SECURITY_DEFINER_VIEWS = ['auth_memberships'] as const;
 export type SecurityDefinerView = (typeof SECURITY_DEFINER_VIEWS)[number];
 
+/**
+ * Functions that run with their owner's privileges, listed for the same reason
+ * as the views above. The schema-invariant suite fails if another one appears,
+ * or if one of these stops pinning its `search_path`.
+ */
+export const SECURITY_DEFINER_FUNCTIONS = ['reject_platform_user_membership'] as const;
+export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
+
 export type PlatformTable = (typeof PLATFORM_TABLES)[number];
 
-/** Tenant-scoped tables: every table in {@link Database} bar {@link PLATFORM_TABLES}. */
-export type TenantScopedTable = Exclude<keyof Database, PlatformTable>;
+/**
+ * Tenant-scoped tables: every relation in {@link Database} that is neither a
+ * platform table nor a view that deliberately reads across companies.
+ */
+export type TenantScopedTable = Exclude<keyof Database, PlatformTable | SecurityDefinerView>;
 
-export const TENANT_SCOPED_TABLES = [
-  'tenant_users',
-  'audit_log',
-] as const satisfies readonly TenantScopedTable[];
+/**
+ * Written as a record rather than a list so that forgetting a table is a
+ * compile error naming it.
+ *
+ * It used to be a list checked with `satisfies`, which proves every entry is a
+ * tenant table and says nothing about whether every tenant table is an entry.
+ * P03 and P04 added seven tables and none of them were added here — so the
+ * query guard, which builds its set from this constant, was checking two of the
+ * nine. Repositories and RLS still covered the other seven, but "three
+ * independent controls" was true for two tables. The integration suite found it
+ * the first time it ran against a real database.
+ */
+const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
+  tenant_users: true,
+  audit_log: true,
+  sessions: true,
+  refresh_tokens: true,
+  offline_grants: true,
+  invitations: true,
+  impersonation_grants: true,
+  idempotency_keys: true,
+  jobs: true,
+};
+
+export const TENANT_SCOPED_TABLES: readonly TenantScopedTable[] = Object.freeze(
+  Object.keys(TENANT_SCOPED) as TenantScopedTable[],
+);

@@ -77,7 +77,13 @@ describe('the schema owner', () => {
   });
 
   it('cannot truncate the table', async () => {
-    await expect(owner.query('truncate table audit_log')).rejects.toThrow(/append-only/u);
+    // `cascade`, because `impersonation_grants.audit_log_id` references this
+    // table. Without it Postgres refuses on the foreign key before the trigger
+    // is ever consulted — the truncate still fails, but for a reason that says
+    // nothing about the append-only guarantee, and the trigger could be dropped
+    // without this test noticing. With it, the trigger is the only thing left
+    // standing in the way.
+    await expect(owner.query('truncate table audit_log cascade')).rejects.toThrow(/append-only/u);
   });
 
   it('still has the entry after all of that', async () => {

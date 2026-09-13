@@ -32,9 +32,9 @@ cannot force-update an app on an engineer's phone.
 ## Exit criteria
 
 - [x] The generated client compiles in all three front-end apps
-- [ ] Replaying a mutating request with the same idempotency key produces one effect, not two
-- [ ] A client sending an outdated version header receives a clear, actionable response
-- [ ] Every log line for a request carries the same request id, and it is returned to the caller
+- [x] Replaying a mutating request with the same idempotency key produces one effect, not two
+- [x] A client sending an outdated version header receives a clear, actionable response
+- [x] Every log line for a request carries the same request id, and it is returned to the caller
 
 ## Notes
 
@@ -182,16 +182,41 @@ recorded in P03's file and in `docs/api/README.md`.
 
 ## Verified so far
 
-| Claim                                     | How it was proven                                                                                                                      |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace builds and passes               | `pnpm build`, `lint`, `typecheck`, `test`, `format:check` — all green across 10 packages; 264 unit tests                               |
-| The generated client compiles everywhere  | `openapi.json` → `openapi-typescript` → imported and constructed in `apps/web`, `apps/desktop` and `apps/mobile`; all three type-check |
-| The spec is generated, not hand-written   | 15 operations across 14 paths, produced from the route registry; CI regenerates and fails on any diff                                  |
-| The contract documents its own rules      | Versioning policy, headers and idempotency semantics are in the `info.description`, asserted by a test                                 |
-| Version negotiation is not decorative     | 14 unit tests: pre-release suffixes tolerated, `1.10.0` correctly newer than `1.9.0`, a malformed minimum fails open                   |
-| The error model is uniform                | 13 unit tests: one shape for every failure, field-level details prefixed by request part, `Retry-After` never zero                     |
-| Request fingerprints are stable           | 11 unit tests: key order ignored at any depth, array order significant, absent distinguished from explicit null                        |
-| Nothing logs a credential                 | 13 unit tests, including redaction at depth and of fields inherited from a parent logger                                               |
-| Retry backoff will not stampede           | 6 unit tests, including that 200 samples of one attempt span the full jitter range                                                     |
-| The client handles a second 401 correctly | 16 unit tests; writing them found a real gap — a retried request that failed again returned a raw result instead of throwing           |
-| Against a live database                   | **Not yet run.** `server.integration.test.ts` covers the three remaining exit criteria; see "What remains"                             |
+| Claim                                     | How it was proven                                                                                                                                 |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace builds and passes               | `pnpm build`, `lint`, `typecheck`, `test`, `format:check` — all green across 10 packages; 264 unit tests                                          |
+| The generated client compiles everywhere  | `openapi.json` → `openapi-typescript` → imported and constructed in `apps/web`, `apps/desktop` and `apps/mobile`; all three type-check            |
+| The spec is generated, not hand-written   | 15 operations across 14 paths, produced from the route registry; CI regenerates and fails on any diff                                             |
+| The contract documents its own rules      | Versioning policy, headers and idempotency semantics are in the `info.description`, asserted by a test                                            |
+| Version negotiation is not decorative     | 14 unit tests: pre-release suffixes tolerated, `1.10.0` correctly newer than `1.9.0`, a malformed minimum fails open                              |
+| The error model is uniform                | 13 unit tests: one shape for every failure, field-level details prefixed by request part, `Retry-After` never zero                                |
+| Request fingerprints are stable           | 11 unit tests: key order ignored at any depth, array order significant, absent distinguished from explicit null                                   |
+| Nothing logs a credential                 | 13 unit tests, including redaction at depth and of fields inherited from a parent logger                                                          |
+| Retry backoff will not stampede           | 6 unit tests, including that 200 samples of one attempt span the full jitter range                                                                |
+| The client handles a second 401 correctly | 16 unit tests; writing them found a real gap — a retried request that failed again returned a raw result instead of throwing                      |
+| Against a live database                   | **Run on 2026-09-13** against PostgreSQL 17.10, not yet in CI: 27 of 27 after a fix to idempotency. See "First run against a real database" below |
+
+## First run against a real database — 2026-09-13
+
+Until this date the integration suites had been written and type-checked but never run:
+there was no Supabase project. They were run against **PostgreSQL 17.10** on a developer
+machine (a disposable embedded server, bootstrapped with `db bootstrap` and migrated from
+zero exactly as `global-setup.ts` does). That is a real Postgres with the real roles, grants
+and policies — not CI, and not Supabase — and the criteria ticked above were ticked on that
+evidence and no other.
+
+The first run found a defect in idempotency, fixed in `fix/database-suite-first-run`:
+
+- **A failed request locked its key until the sweeper ran.** `release()` expired the claim, but
+  `claim()` never read `expires_at`, so an expired `in_progress` row still answered 409 to every
+  retry — exactly the outbox retry P12 depends on. Nothing enforced the 24-hour replay window
+  either. And `release()` took its timestamp from the application's clock, which could land at or
+  before the database's `created_at`, break a check constraint, and be swallowed as best-effort.
+  An expired row is now taken over atomically by the next claim, and release runs on the database
+  clock. A repository-level suite covers release, expiry, takeover with a new request, and six
+  simultaneous claims on one expired key producing exactly one winner; four of its eight tests fail
+  against the old code.
+
+| Suite                      | Result   |
+| -------------------------- | -------- |
+| `@integr8/api` integration | 27 of 27 |
