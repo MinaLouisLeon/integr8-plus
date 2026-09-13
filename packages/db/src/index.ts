@@ -176,7 +176,18 @@ export type {
   Form,
   FormsRepository,
   FormVersion,
+  FormVersionSummary,
+  PublishOptions,
+  SaveDraftResult,
+  UpdateFormInput,
 } from './repositories/forms.js';
+
+export type {
+  FormTemplateInput,
+  FormTemplateRecord,
+  FormTemplatesReader,
+  FormTemplatesWriter,
+} from './repositories/form-templates.js';
 
 export type {
   CreateSubmissionInput,
@@ -185,8 +196,10 @@ export type {
 } from './repositories/submissions.js';
 
 export {
+  FORM_TEMPLATE_CATEGORIES,
   FORM_VERSION_STATUSES,
   formVersionStatusSchema,
+  type FormTemplateCategory,
   type FormVersionStatus,
 } from './schema.js';
 

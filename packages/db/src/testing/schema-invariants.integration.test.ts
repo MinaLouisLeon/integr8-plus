@@ -380,6 +380,10 @@ describe('what the runtime role may do', () => {
     expect(await privileges('audit_log')).toEqual(['INSERT', 'SELECT']);
   });
 
+  it('may only read the global template library, which belongs to no company', async () => {
+    expect(await privileges('form_templates')).toEqual(['SELECT']);
+  });
+
   it('is neither a superuser nor a BYPASSRLS role nor an owner', async () => {
     const role = await owner.query<{ rolsuper: boolean; rolbypassrls: boolean }>(
       `select rolsuper, rolbypassrls from pg_roles where rolname = 'integr8_app'`,
@@ -412,6 +416,19 @@ describe('vocabularies shared with the application', () => {
     }
 
     // And nothing beyond them: one quoted literal per known role.
+    expect((definition.match(/'[a-z_]+'/gu) ?? []).length).toBe(ROLES.length);
+  });
+
+  it('lets a form be filled by exactly the roles @integr8/core defines', async () => {
+    const result = await owner.query<{ definition: string }>(
+      `select pg_get_constraintdef(oid)::text as definition
+       from pg_constraint where conname = 'forms_fill_roles_known'`,
+    );
+
+    const definition = result.rows[0]?.definition ?? '';
+    for (const role of ROLES) {
+      expect(definition, `a form cannot be filled by "${role}"`).toContain(`'${role}'`);
+    }
     expect((definition.match(/'[a-z_]+'/gu) ?? []).length).toBe(ROLES.length);
   });
 

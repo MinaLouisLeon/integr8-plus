@@ -390,6 +390,9 @@ importers:
       '@integr8/core':
         specifier: workspace:*
         version: link:../core
+      '@integr8/form-engine':
+        specifier: workspace:*
+        version: link:../form-engine
       kysely:
         specifier: 0.28.9
         version: 0.28.9
