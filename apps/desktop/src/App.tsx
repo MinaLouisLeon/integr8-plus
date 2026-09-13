@@ -17,6 +17,9 @@ import {
   type ThemePreference,
 } from '~/lib/preferences';
 import { session, whenSignedOut } from '~/lib/session';
+import { FormBuilderRoute } from '~/features/forms/routes/form-builder';
+import { FormVersionRoute } from '~/features/forms/routes/form-version';
+import { FormsListRoute } from '~/features/forms/routes/forms-list';
 import { DashboardRoute } from '~/routes/dashboard';
 import { SignInRoute } from '~/routes/sign-in';
 
@@ -66,19 +69,48 @@ export function App() {
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
         <HashRouter>
-          <PreferenceBar preferences={preferences} onChange={update} />
-          <Routes>
-            <Route path="/sign-in" element={<SignInRoute />} />
-            <Route
-              path="/dashboard"
-              element={
-                <RequireSession>
-                  <DashboardRoute />
-                </RequireSession>
-              }
-            />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+          {/* The builder fills the window, so the page itself never scrolls; each screen scrolls its own content. */}
+          <div className="flex h-dvh flex-col">
+            <PreferenceBar preferences={preferences} onChange={update} />
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <Routes>
+                <Route path="/sign-in" element={<SignInRoute />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <RequireSession>
+                      <DashboardRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/forms"
+                  element={
+                    <RequireSession>
+                      <FormsListRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/forms/:formId"
+                  element={
+                    <RequireSession>
+                      <FormBuilderRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/forms/:formId/versions/:versionId"
+                  element={
+                    <RequireSession>
+                      <FormVersionRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </div>
+          </div>
         </HashRouter>
       </QueryClientProvider>
     </I18nextProvider>

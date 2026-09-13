@@ -1,7 +1,7 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Button, ErrorState, LoadingState, Shell } from '~/components/ui';
 import { isTauri } from '~/lib/platform';
 import { session } from '~/lib/session';
@@ -68,6 +68,14 @@ export function DashboardRoute() {
           {t('common.signOut')}
         </Button>
       </header>
+
+      <Link
+        to="/forms"
+        className="flex flex-col gap-1 rounded-lg border border-border-subtle bg-surface p-6 text-start hover:bg-surface-muted"
+      >
+        <span className="text-lg font-semibold text-content">{t('forms.nav.forms')}</span>
+        <span className="text-sm text-content-muted">{t('forms.list.subtitle')}</span>
+      </Link>
 
       <section className="rounded-lg border border-border-subtle bg-surface p-6 text-start">
         <dl className="grid gap-4 sm:grid-cols-2">
