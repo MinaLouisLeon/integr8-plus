@@ -108,6 +108,41 @@ export const en = {
     emptyBody: 'When there is something to show, it will appear here.',
     loadingLabel: 'Loading',
   },
+
+  form: {
+    // One message per error code the form engine produces, keyed by the code
+    // itself. The engine's `FIELD_ERROR_CODES` is the contract; a test in this
+    // package fails if a code has no message here. Interpolated values arrive
+    // already formatted as text — a minimum of 2.50 is "2.50" — so nothing here
+    // re-formats a number and loses a trailing zero.
+    errors: {
+      required: 'This is required.',
+      invalid: 'This is not a valid answer.',
+      too_short: 'Enter at least {{minimum}} characters.',
+      too_long: 'Enter no more than {{maximum}} characters.',
+      pattern_mismatch: 'This is not in the expected format.',
+      below_minimum: 'Must be at least {{minimum}}.',
+      above_maximum: 'Must be no more than {{maximum}}.',
+      too_many_decimal_places: 'Use no more than {{maximum}} decimal places.',
+      before_earliest: 'Must be {{earliest}} or later.',
+      after_latest: 'Must be {{latest}} or earlier.',
+      unknown_option: 'Choose one of the options given.',
+      duplicate_option: 'Each option can only be chosen once.',
+      too_few_selected: 'Choose at least {{minimum}}.',
+      too_many_selected: 'Choose no more than {{maximum}}.',
+      too_few_files: 'Add at least {{minimum}}.',
+      too_many_files: 'Add no more than {{maximum}}.',
+      file_too_large: 'Each file must be smaller than {{maximum}} bytes.',
+      file_type_not_accepted: 'This type of file is not accepted here.',
+      out_of_range: 'Choose a value from {{minimum}} to {{maximum}}.',
+      accuracy_too_low:
+        'The location is not accurate enough. Wait for a better signal (within {{maximum}} metres).',
+      // Shown only when the rule's author wrote no message of their own, which a
+      // published form always carries. The fallback exists so a screen never
+      // renders a raw key.
+      rule_failed: 'This answer does not meet a rule on this form.',
+    },
+  },
 } as const;
 
 export type Messages = typeof en;

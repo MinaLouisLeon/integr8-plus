@@ -1,0 +1,168 @@
+/**
+ * `@integr8/form-engine` — what a form is, and what it decides.
+ *
+ * Zero UI, zero I/O, zero platform. The same compiled definition and the same
+ * answers produce the same visibility, the same calculated values and the same
+ * errors on a server, in a browser and on a phone; the conformance suite runs
+ * one corpus through Node and through Hermes to prove it.
+ *
+ * The flow, end to end:
+ *
+ *   const result = compileDefinition(json);          // at publish time, and on load
+ *   if (!result.ok) show(result.issues);              // names the fields involved
+ *
+ *   let state = createFormState(result.form);         // defaults applied
+ *   state = transition(result.form, state, { type: 'answer', field: 'result', value: 'fail' }).state;
+ *   const view = viewForm(result.form, state, { today: '2026-09-13' });
+ *
+ *   validateSubmission(result.form, body, context);   // on the server, for truth
+ */
+
+export { canonicalJson, CanonicalJsonError, compareCodeUnits } from './canonical.js';
+
+export {
+  compileDefinition,
+  DEFINITION_ISSUE_CODES,
+  type CompiledForm,
+  type CompileResult,
+  type DefinitionIssue,
+  type DefinitionIssueCode,
+  type ElementInfo,
+  type ElementKind,
+} from './compile.js';
+
+export {
+  add,
+  compareDecimal,
+  divide,
+  formatDecimal,
+  fractionDigits,
+  fromInteger,
+  isInteger,
+  MAX_DIGITS,
+  MAX_SCALE,
+  multiply,
+  parseDecimal,
+  rescale,
+  subtract,
+  type Decimal,
+} from './decimal.js';
+
+export {
+  DEFINITION_SCHEMA_VERSION,
+  formDefinitionSchema,
+  LIMITS,
+  pageSchema,
+  sectionSchema,
+  type FormDefinition,
+  type Page,
+  type Section,
+} from './definition.js';
+
+export {
+  evaluateExpression,
+  evaluateForm,
+  ownAnswer,
+  toRuleValue,
+  truth,
+  type Answers,
+  type EvaluationContext,
+  type FormEvaluation,
+  type RuleValue,
+  type Scope,
+} from './evaluate.js';
+
+export {
+  ARITHMETIC_OPERATORS,
+  COMPARISON_OPERATORS,
+  expressionSchema,
+  measure,
+  referencedFields,
+  visit,
+  type ArithmeticOperator,
+  type ComparisonOperator,
+  type Expression,
+} from './expression.js';
+
+export {
+  answerSchemaFor,
+  choiceValues,
+  describeFieldType,
+  FIELD_ERROR_CODES,
+  FIELD_TYPES,
+  fieldConfigIssues,
+  fieldSchema,
+  geoPointSchema,
+  hasAnswerShape,
+  isAnswered,
+  isCalculated,
+  mediaReferenceSchema,
+  optionSchema,
+  ruleSchema,
+  validateAnswer,
+  type Field,
+  type FieldConfigIssue,
+  type FieldError,
+  type FieldErrorCode,
+  type FieldOf,
+  type FieldPurpose,
+  type FieldType,
+  type FieldTypeDescription,
+  type GeoPoint,
+  type MediaReference,
+  type Option,
+  type Rule,
+  type ValueType,
+} from './field-types.js';
+
+export {
+  ELEMENT_ID,
+  elementIdSchema,
+  localeTagSchema,
+  localizedTextSchema,
+  type ElementId,
+  type LocalizedText,
+} from './ids.js';
+
+export {
+  checkPattern,
+  matchesPattern,
+  PATTERN_MAX_INPUT,
+  PATTERN_MAX_SOURCE,
+  type PatternCheck,
+} from './pattern.js';
+
+export {
+  createFormState,
+  toSubmission,
+  transition,
+  viewForm,
+  type FormEvent,
+  type FormProgress,
+  type FormState,
+  type FormStatus,
+  type FormView,
+  type RejectionReason,
+  type Transition,
+} from './state.js';
+
+export { parseDate, parseDatetime, parseTime } from './temporal.js';
+
+export {
+  SUBMISSION_ISSUE_CODES,
+  validateForm,
+  validateSubmission,
+  type FormValidation,
+  type SubmissionCheck,
+  type SubmissionIssue,
+  type SubmissionIssueCode,
+} from './validation.js';
+
+export {
+  FORM_VERSION_STATUSES,
+  migrateAnswers,
+  prepareForPublish,
+  type AnswerMigration,
+  type DroppedReason,
+  type FormVersionStatus,
+} from './versioning.js';
