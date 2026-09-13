@@ -103,6 +103,54 @@ jobs:
           --to ${{ github.event.pull_request.head.sha }}
           --verbose
 
+  form-engine-hermes:
+    name: Form engine agrees in Hermes
+    # P06's first exit criterion: the same definition and answers produce
+    # byte-identical results in Node and in a React Native runtime. The unit
+    # tests produce the golden file in Node; this runs the same corpus inside a
+    # second JavaScript engine and compares every byte.
+    #
+    # The Hermes command-line runner is pinned by checksum. It is the newest
+    # prebuilt one Facebook publishes (the v0.13.0 release, whose binary reports
+    # itself as 0.12.0); the phone runs Hermes V1 inside React Native 0.86.
+    # docs/form-engine/README.md says exactly what that does and does not prove.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      HERMES_RELEASE: v0.13.0
+      HERMES_SHA256: aead6eb0b8f563bb022354352eae32dad96c933330b6c1941b6db17674ca68ae
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install the Hermes command-line runner
+        run: |
+          set -euo pipefail
+          curl -fsSL -o hermes.tar.gz             "https://github.com/facebook/hermes/releases/download/${HERMES_RELEASE}/hermes-cli-linux.tar.gz"
+          echo "${HERMES_SHA256}  hermes.tar.gz" | sha256sum --check --strict
+          mkdir -p "${RUNNER_TEMP}/hermes"
+          tar -xzf hermes.tar.gz -C "${RUNNER_TEMP}/hermes"
+          echo "HERMES_BIN=${RUNNER_TEMP}/hermes/hermes" >> "${GITHUB_ENV}"
+
+      - name: Build workspace packages
+        run: pnpm build
+
+      - name: Run the conformance corpus in Hermes
+        run: pnpm --filter @integr8/form-engine conformance:hermes
+
   database:
     name: Migrations, isolation, authentication and API
     # Gated on a repository variable rather than on the secret, because a job
