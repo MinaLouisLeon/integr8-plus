@@ -93,25 +93,39 @@ export async function releaseTestDatabase(): Promise<void> {
 }
 
 /**
+ * The truncate guards that stand between a test run and an empty schema.
+ *
+ * Each rejects `truncate` for every role, the owner included, which is the whole
+ * point of the guarantee — so each comes off for the duration of one statement
+ * and goes straight back on, inside `finally`.
+ */
+const TRUNCATE_GUARDS = [
+  { table: 'audit_log', trigger: 'audit_log_no_truncate' },
+  { table: 'form_versions', trigger: 'form_versions_no_truncate' },
+] as const;
+
+/**
  * Empties every tenant table.
  *
- * `audit_log` rejects `truncate` by trigger — for the owner too, which is the
- * whole point of the guarantee — so the trigger comes off for the duration of
- * this statement and goes straight back on. This function and the development
- * seed reset are the only two places in the repository that do that, and both
- * refuse to run outside a database explicitly marked disposable.
+ * This function and the development seed reset are the only places in the
+ * repository that lift an immutability guard, and both refuse to run outside a
+ * database explicitly marked disposable.
  */
 export async function truncateAll(): Promise<void> {
   requireDisposableDatabase();
   const client = await connectAsOwner();
   try {
-    await client.query('alter table audit_log disable trigger audit_log_no_truncate');
+    for (const guard of TRUNCATE_GUARDS) {
+      await client.query(`alter table ${guard.table} disable trigger ${guard.trigger}`);
+    }
     try {
       await client.query(
         'truncate table audit_log, tenant_users, tenants restart identity cascade',
       );
     } finally {
-      await client.query('alter table audit_log enable trigger audit_log_no_truncate');
+      for (const guard of TRUNCATE_GUARDS) {
+        await client.query(`alter table ${guard.table} enable trigger ${guard.trigger}`);
+      }
     }
     await client.query('truncate table platform_users cascade');
   } finally {
