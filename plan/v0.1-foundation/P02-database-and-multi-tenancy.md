@@ -32,7 +32,7 @@ most consequential phase in the entire plan.
 ## Exit criteria
 
 - [ ] The isolation suite runs in CI and fails the build if any cross-tenant access succeeds
-- [ ] Deliberately removing a `tenant_id` filter from one repository method makes the isolation suite fail
+- [x] Deliberately removing a `tenant_id` filter from one repository method makes the isolation suite fail
 - [ ] A migration can be applied and rolled back against a copy of production data
 - [ ] A restore from backup has been performed end to end and timed
 
@@ -172,4 +172,39 @@ Do these in order; they are the whole of the remaining phase.
 | The warm LRU is bounded and disposes       | 11 unit tests covering capacity eviction, idle eviction, single-flight construction, failed-factory recovery, and drain                        |
 | Migration files are well-formed            | An `up` with no `down`, a duplicated version, and a mismatched name each fail to load; checksums ignore CRLF so Windows and CI agree           |
 | Configuration fails loudly                 | Missing and malformed variables are reported together, each named                                                                              |
-| Against a live database                    | **Not yet run.** Six integration suites are written and type-checked; see "What remains" above                                                 |
+| Against a live database                    | **Run on 2026-09-13** against PostgreSQL 17.10, not yet in CI: 111 of 111 after two fixes. See "First run against a real database" below       |
+
+## First run against a real database — 2026-09-13
+
+Until this date the integration suites had been written and type-checked but never run:
+there was no Supabase project. They were run against **PostgreSQL 17.10** on a developer
+machine (a disposable embedded server, bootstrapped with `db bootstrap` and migrated from
+zero exactly as `global-setup.ts` does). That is a real Postgres with the real roles, grants
+and policies — not CI, and not Supabase — and the criteria ticked above were ticked on that
+evidence and no other.
+
+The first run found two defects in this phase's code, both fixed in `fix/database-suite-first-run`:
+
+- **No member could be added through the runtime role.** `reject_platform_user_membership()`
+  reads `platform_users`, ran as the caller, and `integr8_app` deliberately cannot read that
+  table. Every `tenant_users` insert on the tenant path failed with "permission denied".
+  Migration `0005` makes the function `security definer` with a pinned `search_path`, rather
+  than granting the runtime role a read on super-admin identity. Security-definer functions are
+  now allow-listed and checked by the invariant suite, as views already were.
+- **The query guard covered two of nine tenant tables.** `TENANT_SCOPED_TABLES` was never
+  updated when P03 and P04 added seven tables, and `satisfies` could not notice: it proves every
+  entry is a tenant table, not that every tenant table is an entry. It is now a record, so a
+  missing table is a compile error that names it. The invariant checks that iterate that list —
+  non-null `tenant_id`, the foreign key, the policy — had likewise been checking two tables.
+
+It also found three tests that were wrong rather than the code: a truncate test masked by a
+foreign key added in P03, a role-vocabulary test that inserted zero rows when no company existed,
+and an RLS test that committed a delete the next test depended on.
+
+| Suite                                                                                 | Result                                                 |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `@integr8/db` integration, including a full roll-down and re-apply of every migration | 111 of 111                                             |
+| Removing the `tenant_id` predicate from `TenantUsersRepository#scoped()` by hand      | 13 of 21 isolation tests fail; restored, 21 of 21 pass |
+
+Still open: running the suite **in CI** (needs `DATABASE_TESTS` and the test connection strings),
+rehearsing a migration against a copy of production data, and a timed restore.
