@@ -1,4 +1,4 @@
-import { ROLES } from '@integr8/core';
+import { ROLES, WORK_ORDER_PRIORITIES, WORK_ORDER_STATES, findTransition } from '@integr8/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -430,6 +430,46 @@ describe('vocabularies shared with the application', () => {
       expect(definition, `a form cannot be filled by "${role}"`).toContain(`'${role}'`);
     }
     expect((definition.match(/'[a-z_]+'/gu) ?? []).length).toBe(ROLES.length);
+  });
+
+  it('moves a work order along exactly the transitions @integr8/core defines', async () => {
+    // Every ordered pair of states, asked of the database's own table. A
+    // transition the UI offers and the server refuses — or the reverse — fails here.
+    const disagreements: string[] = [];
+    for (const from of WORK_ORDER_STATES) {
+      for (const to of WORK_ORDER_STATES) {
+        const result = await owner.query<{ allowed: boolean }>(
+          'select work_order_transition_allowed($1, $2) as allowed',
+          [from, to],
+        );
+        const inDatabase = result.rows[0]?.allowed === true;
+        const inCore = findTransition(from, to) !== undefined;
+        if (inDatabase !== inCore) {
+          disagreements.push(
+            `${from} → ${to}: database ${String(inDatabase)}, core ${String(inCore)}`,
+          );
+        }
+      }
+    }
+    expect(disagreements).toEqual([]);
+  });
+
+  it('knows exactly the work order states and priorities @integr8/core defines', async () => {
+    for (const [constraint, vocabulary] of [
+      ['work_orders_state_known', WORK_ORDER_STATES],
+      ['work_orders_priority_known', WORK_ORDER_PRIORITIES],
+      ['job_types_priority_known', WORK_ORDER_PRIORITIES],
+    ] as const) {
+      const result = await owner.query<{ definition: string }>(
+        `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,
+        [constraint],
+      );
+      const definition = result.rows[0]?.definition ?? '';
+      for (const value of vocabulary) {
+        expect(definition, `${constraint} rejects "${value}"`).toContain(`'${value}'`);
+      }
+      expect((definition.match(/'[a-z_]+'/gu) ?? []).length, constraint).toBe(vocabulary.length);
+    }
   });
 
   it('refuses a role the application does not define', async () => {

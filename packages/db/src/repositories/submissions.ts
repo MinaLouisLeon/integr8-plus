@@ -23,6 +23,8 @@ export interface Submission {
   submittedAt: Date | null;
   amendedAt: Date | null;
   revision: number;
+  /** The job this form was filled for, if any. */
+  workOrderId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,6 +49,8 @@ export interface StartDraftInput {
   formVersionId: string;
   submittedBy: UserId | string;
   answers?: Record<string, unknown>;
+  /** The job it is filled for. The form must be one of the job's; the database refuses otherwise. */
+  workOrderId?: string;
 }
 
 /** Why a write did not happen, so the API can say the right thing. */
@@ -82,6 +86,12 @@ export interface SubmissionQuery {
   submittedBefore?: Date;
   /** Full-text search over every written answer. */
   text?: string;
+  /** Filled for this job. */
+  workOrderId?: string;
+  /** Filled for a job at this site. */
+  siteId?: string;
+  /** Filled for a job for this customer. */
+  customerId?: string;
   /** All must match. A value filter needs `formId`: field ids mean something only within a form. */
   values?: readonly ValueFilter[];
   /** `submitted` sorts by first submission, `updated` by last change — what a drafts list wants. */
@@ -153,6 +163,7 @@ export class SubmissionsRepository extends TenantScopedRepository {
         answers: input.answers ?? {},
         submitted_by: toUserId(input.submittedBy),
         last_actor: toUserId(input.submittedBy),
+        ...(input.workOrderId === undefined ? {} : { work_order_id: input.workOrderId }),
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -307,6 +318,26 @@ export class SubmissionsRepository extends TenantScopedRepository {
         sql<boolean>`submissions.search @@ websearch_to_tsquery('simple', ${query.text.trim()})`,
       );
     }
+    if (query.workOrderId !== undefined) {
+      select = select.where('submissions.work_order_id', '=', query.workOrderId);
+    }
+    if (query.siteId !== undefined || query.customerId !== undefined) {
+      const { siteId, customerId } = query;
+      select = select.where((eb) => {
+        let jobs = eb
+          .selectFrom('work_orders')
+          .select(sql`1`.as('one'))
+          .where('work_orders.tenant_id', '=', this.tenantId)
+          .whereRef('work_orders.id', '=', 'submissions.work_order_id');
+        if (siteId !== undefined) {
+          jobs = jobs.where('work_orders.site_id', '=', siteId);
+        }
+        if (customerId !== undefined) {
+          jobs = jobs.where('work_orders.customer_id', '=', customerId);
+        }
+        return eb.exists(jobs);
+      });
+    }
     for (const filter of query.values ?? []) {
       if (query.formId === undefined) {
         throw new TypeError(
@@ -411,6 +442,7 @@ function toDomain(row: Selectable<SubmissionsTable>): Submission {
     submittedAt: row.submitted_at,
     amendedAt: row.amended_at,
     revision: row.revision,
+    workOrderId: row.work_order_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

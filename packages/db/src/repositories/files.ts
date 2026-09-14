@@ -228,6 +228,14 @@ export class FilesRepository extends TenantScopedRepository {
             ),
             eb.exists(
               eb
+                .selectFrom('attachments')
+                .select(sql`1`.as('one'))
+                .where('attachments.tenant_id', '=', this.tenantId)
+                .where('attachments.file_id', '=', fileId)
+                .where('attachments.removed_at', 'is', null),
+            ),
+            eb.exists(
+              eb
                 .selectFrom('submission_events')
                 .select(sql`1`.as('one'))
                 .where('submission_events.tenant_id', '=', this.tenantId)

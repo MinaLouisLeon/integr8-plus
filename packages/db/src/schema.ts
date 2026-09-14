@@ -1,4 +1,4 @@
-import { type Role, ROLES } from '@integr8/core';
+import { type Role, ROLES, type WorkOrderPriority, type WorkOrderState } from '@integr8/core';
 import type { ColumnType, Generated } from 'kysely';
 import { z } from 'zod';
 
@@ -389,6 +389,8 @@ export interface SubmissionsTable {
   last_reason: string | null;
   /** Generated full-text vector. Never written. */
   search: ColumnType<string, never, never>;
+  /** The job this form was filled for. Set at insert; the database refuses a change. */
+  work_order_id: ColumnType<string | null, string | null | undefined, never>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
@@ -495,6 +497,291 @@ export interface TenantStorageUsageTable {
   updated_at: ColumnType<Date, never, never>;
 }
 
+// ---------------------------------------------------------------------------
+// Customers, sites and work orders (0010)
+// ---------------------------------------------------------------------------
+
+export const CUSTOMER_STATUSES = ['active', 'on_hold', 'closed'] as const;
+export const customerStatusSchema = z.enum(CUSTOMER_STATUSES);
+export type CustomerStatus = z.infer<typeof customerStatusSchema>;
+
+export const GEOCODE_STATUSES = ['pending', 'found', 'not_found', 'failed', 'manual'] as const;
+export type GeocodeStatus = (typeof GEOCODE_STATUSES)[number];
+
+export const ATTACHMENT_KINDS = ['site_plan', 'manual', 'report', 'photo', 'other'] as const;
+export type AttachmentKind = (typeof ATTACHMENT_KINDS)[number];
+
+export const COMMENT_VISIBILITIES = ['internal', 'customer'] as const;
+export type CommentVisibility = (typeof COMMENT_VISIBILITIES)[number];
+
+export const IMPORT_KINDS = ['customers', 'sites', 'work_orders'] as const;
+export type ImportKind = (typeof IMPORT_KINDS)[number];
+
+export const IMPORT_STATUSES = ['pending', 'running', 'completed', 'failed'] as const;
+export type ImportStatus = (typeof IMPORT_STATUSES)[number];
+
+export const WORK_ORDER_EVENT_KINDS = [
+  'created',
+  'transitioned',
+  'rescheduled',
+  'updated',
+  'assigned',
+  'unassigned',
+  'lead_changed',
+] as const;
+export type WorkOrderEventKind = (typeof WORK_ORDER_EVENT_KINDS)[number];
+
+/** Numeric columns come back from pg as strings, to keep their precision. */
+type Coordinate = ColumnType<
+  string | null,
+  number | string | null | undefined,
+  number | string | null
+>;
+
+interface AddressColumns {
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  region: string | null;
+  postcode: string | null;
+  country_code: string | null;
+}
+
+export interface CustomersTable extends AddressColumns {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  account_number: string | null;
+  status: Generated<CustomerStatus>;
+  email: string | null;
+  phone: string | null;
+  tags: Generated<string[]>;
+  notes: string | null;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  search: ColumnType<string, never, never>;
+}
+
+export interface CustomerContactsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  customer_id: string;
+  name: string;
+  job_title: string | null;
+  email: string | null;
+  phone: string | null;
+  is_primary: Generated<boolean>;
+  notes: string | null;
+  archived_at: Date | null;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface SitesTable extends Omit<AddressColumns, 'address_line1'> {
+  id: Generated<string>;
+  tenant_id: string;
+  customer_id: string;
+  name: string;
+  address_line1: string;
+  latitude: Coordinate;
+  longitude: Coordinate;
+  geocode_status: Generated<GeocodeStatus>;
+  geocode_accuracy: string | null;
+  geocoded_at: Date | null;
+  contact_id: string | null;
+  access_gate_code: string | null;
+  access_parking: string | null;
+  access_ask_for: string | null;
+  access_hazards: string | null;
+  access_notes: string | null;
+  /** Set by trigger whenever an access note changes. */
+  access_updated_at: ColumnType<Date | null, never, never>;
+  access_updated_by: string | null;
+  archived_at: Date | null;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  search: ColumnType<string, never, never>;
+}
+
+export interface ChecklistTemplateItem {
+  id: string;
+  label: string;
+}
+
+export interface JobTypesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  expected_duration_minutes: number | null;
+  default_priority: Generated<WorkOrderPriority>;
+  instructions: string | null;
+  checklist: Jsonb<ChecklistTemplateItem[]>;
+  archived_at: Date | null;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface JobTypeFormsTable {
+  tenant_id: string;
+  job_type_id: string;
+  form_id: string;
+  required: Generated<boolean>;
+  position: Generated<number>;
+  created_at: CreatedAt;
+}
+
+/** Written only by assign_work_order_reference. */
+export interface WorkOrderCountersTable {
+  tenant_id: ColumnType<string, never, never>;
+  last_reference: ColumnType<number, never, never>;
+}
+
+export interface WorkOrdersTable {
+  id: Generated<string>;
+  tenant_id: string;
+  /** Assigned by trigger. */
+  reference: ColumnType<number, never, never>;
+  customer_id: string;
+  site_id: string;
+  job_type_id: string;
+  title: string;
+  description: string | null;
+  instructions: string | null;
+  priority: Generated<WorkOrderPriority>;
+  state: Generated<WorkOrderState>;
+  due_from: Date | null;
+  due_by: Date | null;
+  /** Maintained by trigger. */
+  state_changed_at: ColumnType<Date, never, never>;
+  completed_at: ColumnType<Date | null, never, never>;
+  reviewed_at: ColumnType<Date | null, never, never>;
+  cancelled_at: ColumnType<Date | null, never, never>;
+  last_actor: string;
+  last_reason: string | null;
+  /** Incremented by trigger on every update. */
+  revision: ColumnType<number, never, never>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  search: ColumnType<string, never, never>;
+}
+
+export interface WorkOrderFormsTable {
+  tenant_id: string;
+  work_order_id: string;
+  form_id: string;
+  required: Generated<boolean>;
+  position: Generated<number>;
+  added_by: string;
+  created_at: CreatedAt;
+}
+
+export interface WorkOrderChecklistItemsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  work_order_id: string;
+  position: number;
+  label: string;
+  done: Generated<boolean>;
+  done_by: string | null;
+  done_at: Date | null;
+  created_at: CreatedAt;
+}
+
+export interface WorkOrderAssignmentsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  work_order_id: string;
+  user_id: string;
+  is_lead: Generated<boolean>;
+  assigned_by: string;
+  assigned_at: CreatedAt;
+  unassigned_at: Date | null;
+  unassigned_by: string | null;
+}
+
+export interface WorkOrderCommentsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  work_order_id: string;
+  author_id: string;
+  visibility: CommentVisibility;
+  body: string;
+  created_at: CreatedAt;
+}
+
+/** Written only by trigger; the runtime role may read it. */
+export interface WorkOrderEventsTable {
+  id: ColumnType<string, never, never>;
+  sequence: ColumnType<string, never, never>;
+  tenant_id: ColumnType<string, never, never>;
+  work_order_id: ColumnType<string, never, never>;
+  kind: ColumnType<WorkOrderEventKind, never, never>;
+  from_state: ColumnType<WorkOrderState | null, never, never>;
+  to_state: ColumnType<WorkOrderState | null, never, never>;
+  user_id: ColumnType<string | null, never, never>;
+  actor_id: ColumnType<string, never, never>;
+  reason: ColumnType<string | null, never, never>;
+  details: ColumnType<Record<string, unknown>, never, never>;
+  occurred_at: ColumnType<Date, never, never>;
+}
+
+export interface AttachmentsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  file_id: string;
+  customer_id: string | null;
+  site_id: string | null;
+  work_order_id: string | null;
+  title: string;
+  kind: Generated<AttachmentKind>;
+  added_by: string;
+  created_at: CreatedAt;
+  removed_at: Date | null;
+  removed_by: string | null;
+}
+
+export interface SavedViewsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  owner_id: string;
+  resource: 'work_orders';
+  name: string;
+  filters: Jsonb<Record<string, unknown>>;
+  shared: Generated<boolean>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface ImportRowError {
+  row: number;
+  column: string | null;
+  code: string;
+  message: string;
+}
+
+export interface ImportsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  kind: ImportKind;
+  status: Generated<ImportStatus>;
+  file_name: string;
+  source: string;
+  total_rows: Generated<number>;
+  succeeded_rows: Generated<number>;
+  failed_rows: Generated<number>;
+  errors: Jsonb<ImportRowError[]>;
+  created_by: string;
+  created_at: CreatedAt;
+  started_at: Date | null;
+  completed_at: Date | null;
+}
+
 export interface Database {
   tenants: TenantsTable;
   platform_users: PlatformUsersTable;
@@ -518,6 +805,21 @@ export interface Database {
   upload_intents: UploadIntentsTable;
   files: FilesTable;
   tenant_storage_usage: TenantStorageUsageTable;
+  customers: CustomersTable;
+  customer_contacts: CustomerContactsTable;
+  sites: SitesTable;
+  job_types: JobTypesTable;
+  job_type_forms: JobTypeFormsTable;
+  work_order_counters: WorkOrderCountersTable;
+  work_orders: WorkOrdersTable;
+  work_order_forms: WorkOrderFormsTable;
+  work_order_checklist_items: WorkOrderChecklistItemsTable;
+  work_order_assignments: WorkOrderAssignmentsTable;
+  work_order_comments: WorkOrderCommentsTable;
+  work_order_events: WorkOrderEventsTable;
+  attachments: AttachmentsTable;
+  saved_views: SavedViewsTable;
+  imports: ImportsTable;
   form_templates: FormTemplatesTable;
   rate_limit_buckets: RateLimitBucketsTable;
   schema_migrations: SchemaMigrationsTable;
@@ -580,6 +882,11 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'record_submission_change',
   // Keeps the storage usage rollup, which the runtime role can only read; see 0009.
   'record_file_usage',
+  // Hands out work order references from a counter the runtime role cannot write; see 0010.
+  'assign_work_order_reference',
+  // Write work order history, which the runtime role can only read; see 0010.
+  'record_work_order_change',
+  'record_work_order_assignment',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -622,6 +929,21 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   upload_intents: true,
   files: true,
   tenant_storage_usage: true,
+  customers: true,
+  customer_contacts: true,
+  sites: true,
+  job_types: true,
+  job_type_forms: true,
+  work_order_counters: true,
+  work_orders: true,
+  work_order_forms: true,
+  work_order_checklist_items: true,
+  work_order_assignments: true,
+  work_order_comments: true,
+  work_order_events: true,
+  attachments: true,
+  saved_views: true,
+  imports: true,
 };
 
 export const TENANT_SCOPED_TABLES: readonly TenantScopedTable[] = Object.freeze(
