@@ -21,7 +21,14 @@ import {
 } from './repositories/jobs.js';
 import { FormTemplatesReader, FormTemplatesWriter } from './repositories/form-templates.js';
 import { FormsRepository } from './repositories/forms.js';
+import { AttachmentsRepository } from './repositories/attachments.js';
+import { CustomersRepository } from './repositories/customers.js';
 import { FilesRepository } from './repositories/files.js';
+import { ImportsRepository } from './repositories/imports.js';
+import { JobTypesRepository } from './repositories/job-types.js';
+import { SavedViewsRepository } from './repositories/saved-views.js';
+import { SitesRepository } from './repositories/sites.js';
+import { WorkOrdersRepository } from './repositories/work-orders.js';
 import { StorageRegistry } from './repositories/storage-registry.js';
 import { SubmissionsRepository } from './repositories/submissions.js';
 import { InvitationsRepository } from './repositories/invitations.js';
@@ -73,6 +80,13 @@ export interface TenantTransaction {
   readonly forms: FormsRepository;
   readonly submissions: SubmissionsRepository;
   readonly files: FilesRepository;
+  readonly customers: CustomersRepository;
+  readonly sites: SitesRepository;
+  readonly jobTypes: JobTypesRepository;
+  readonly workOrders: WorkOrdersRepository;
+  readonly attachments: AttachmentsRepository;
+  readonly savedViews: SavedViewsRepository;
+  readonly imports: ImportsRepository;
   /** The global template library. Read-only: the runtime role holds select and nothing else. */
   readonly formTemplates: FormTemplatesReader;
 }
@@ -271,6 +285,13 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     forms: new FormsRepository(scope),
     submissions: new SubmissionsRepository(scope),
     files: new FilesRepository(scope),
+    customers: new CustomersRepository(scope),
+    sites: new SitesRepository(scope),
+    jobTypes: new JobTypesRepository(scope),
+    workOrders: new WorkOrdersRepository(scope),
+    attachments: new AttachmentsRepository(scope),
+    savedViews: new SavedViewsRepository(scope),
+    imports: new ImportsRepository(scope),
     formTemplates: new FormTemplatesReader(scope.trx),
   };
 }

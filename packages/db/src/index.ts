@@ -215,6 +215,95 @@ export type {
 export type { StorageRegistry, TenantBucket } from './repositories/storage-registry.js';
 
 export {
+  normaliseTags,
+  prefixQuery,
+  type Address,
+  type ContactInput,
+  type Customer,
+  type CustomerContact,
+  type CustomerInput,
+  type CustomerPage,
+  type CustomerQuery,
+  type CustomersRepository,
+} from './repositories/customers.js';
+
+export {
+  addressLine,
+  type AccessNotes,
+  type GeocodeResult,
+  type Site,
+  type SiteInput,
+  type SiteLocation,
+  type SiteQuery,
+  type SitesRepository,
+} from './repositories/sites.js';
+
+export {
+  normaliseJobTypeCode,
+  type JobType,
+  type JobTypeForm,
+  type JobTypeInput,
+  type JobTypesRepository,
+} from './repositories/job-types.js';
+
+export {
+  parseWorkOrderReference,
+  type Assignment,
+  type ChecklistItem,
+  type CreateWorkOrderInput,
+  type CrewMember,
+  type TransitionRefusal,
+  type WorkOrder,
+  type WorkOrderChanges,
+  type WorkOrderComment,
+  type WorkOrderEvent,
+  type WorkOrderForm,
+  type WorkOrderOrder,
+  type WorkOrderPage,
+  type WorkOrderQuery,
+  type WorkOrdersRepository,
+  type WorkOrderWrite,
+} from './repositories/work-orders.js';
+
+export type {
+  Attachment,
+  AttachmentOwner,
+  AttachmentsRepository,
+} from './repositories/attachments.js';
+
+export type {
+  SavedView,
+  SavedViewInput,
+  SavedViewsRepository,
+} from './repositories/saved-views.js';
+
+export {
+  MAX_RECORDED_IMPORT_ERRORS,
+  type ImportRecord,
+  type ImportsRepository,
+} from './repositories/imports.js';
+
+export {
+  ATTACHMENT_KINDS,
+  COMMENT_VISIBILITIES,
+  CUSTOMER_STATUSES,
+  customerStatusSchema,
+  GEOCODE_STATUSES,
+  IMPORT_KINDS,
+  IMPORT_STATUSES,
+  WORK_ORDER_EVENT_KINDS,
+  type AttachmentKind,
+  type ChecklistTemplateItem,
+  type CommentVisibility,
+  type CustomerStatus,
+  type GeocodeStatus,
+  type ImportKind,
+  type ImportRowError,
+  type ImportStatus,
+  type WorkOrderEventKind,
+} from './schema.js';
+
+export {
   FORM_TEMPLATE_CATEGORIES,
   FORM_VERSION_STATUSES,
   formVersionStatusSchema,

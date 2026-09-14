@@ -20,6 +20,16 @@ import { session, whenSignedOut } from '~/lib/session';
 import { FormBuilderRoute } from '~/features/forms/routes/form-builder';
 import { FormVersionRoute } from '~/features/forms/routes/form-version';
 import { FormsListRoute } from '~/features/forms/routes/forms-list';
+import {
+  CustomerRoute,
+  CustomersRoute,
+  ImportsRoute,
+  JobTypesRoute,
+  NewWorkOrderRoute,
+  SiteRoute,
+  WorkOrderRoute,
+  WorkOrdersRoute,
+} from '~/features/operations/screens';
 import { FillRoute, SubmissionRoute, SubmissionsRoute } from '~/features/submissions/screens';
 import { DashboardRoute } from '~/routes/dashboard';
 import { SignInRoute } from '~/routes/sign-in';
@@ -129,6 +139,70 @@ export function App() {
                   element={
                     <RequireSession>
                       <SubmissionRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/work-orders"
+                  element={
+                    <RequireSession>
+                      <WorkOrdersRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/work-orders/new"
+                  element={
+                    <RequireSession>
+                      <NewWorkOrderRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/work-orders/:workOrderId"
+                  element={
+                    <RequireSession>
+                      <WorkOrderRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/customers"
+                  element={
+                    <RequireSession>
+                      <CustomersRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/customers/:customerId"
+                  element={
+                    <RequireSession>
+                      <CustomerRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/sites/:siteId"
+                  element={
+                    <RequireSession>
+                      <SiteRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/settings/job-types"
+                  element={
+                    <RequireSession>
+                      <JobTypesRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/imports"
+                  element={
+                    <RequireSession>
+                      <ImportsRoute />
                     </RequireSession>
                   }
                 />

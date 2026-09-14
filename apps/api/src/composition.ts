@@ -13,6 +13,7 @@ import {
 import { configureDatabase, loadDatabaseConfig } from '@integr8/db';
 import { type ApiConfig, corsOrigins, publicUrl, r2Settings } from './config.js';
 import { LocalDiskStorage } from './media/local-disk.js';
+import { FakeGeocoder, type Geocoder, MapboxGeocoder } from './geo/geocoder.js';
 import { R2Storage } from './media/r2.js';
 import type { MediaStorage } from './media/storage.js';
 
@@ -38,6 +39,8 @@ export interface Services {
   identity: IdentityProvider;
   /** Company buckets: R2, or local disk in development. Reach one through `getStorage`. */
   media: MediaStorage;
+  /** Site addresses to coordinates. Used by the worker, never in a request. */
+  geocoder: Geocoder;
 }
 
 export interface BuildServicesOptions {
@@ -76,7 +79,15 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     invitations: new InvitationService({ identity, sessions, config: authConfig }),
     impersonation: new ImpersonationService({ sessions, config: authConfig }),
     media: buildMediaStorage(options.config),
+    geocoder: buildGeocoder(options.config),
   };
+}
+
+export function buildGeocoder(config: ApiConfig): Geocoder {
+  if (config.GEOCODER === 'mapbox') {
+    return new MapboxGeocoder({ accessToken: config.MAPBOX_ACCESS_TOKEN ?? '' });
+  }
+  return new FakeGeocoder();
 }
 
 export function buildMediaStorage(config: ApiConfig): MediaStorage {

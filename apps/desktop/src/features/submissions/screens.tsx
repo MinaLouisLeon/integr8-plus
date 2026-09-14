@@ -7,7 +7,7 @@ import {
   SubmissionScreen,
 } from '@integr8/form-renderer-dom/screens';
 import { useMemo, type ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { session } from '~/lib/session';
 
 /**
@@ -65,9 +65,14 @@ export function FillRoute() {
 }
 
 export function SubmissionsRoute() {
+  const [search] = useSearchParams();
+  const workOrderId = search.get('workOrderId');
   return (
     <FormScreens>
-      <SubmissionListScreen />
+      <SubmissionListScreen
+        key={workOrderId ?? ''}
+        initialFilters={workOrderId === null ? {} : { workOrderId }}
+      />
     </FormScreens>
   );
 }

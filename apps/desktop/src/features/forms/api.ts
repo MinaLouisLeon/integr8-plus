@@ -194,16 +194,36 @@ export async function testSubmission(
   ).data!;
 }
 
+/** The company's job types, for the setting that says which ones require a form. */
+export function useJobTypes() {
+  return useQuery({
+    queryKey: ['job-types', false],
+    queryFn: async () => (await client().GET('/v1/job-types')).data!.items,
+    // Which types require a form is changed from the job types screen too; the
+    // settings panel reads it from here, so it must not show an old answer.
+    refetchOnMount: 'always',
+  });
+}
+
 export function useUpdateSettings(formId: string) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: async (body: { title?: string; fillRoles?: Role[]; signatureRequired?: boolean }) =>
+    mutationFn: async (body: {
+      title?: string;
+      fillRoles?: Role[];
+      signatureRequired?: boolean;
+      requiredByJobTypeIds?: string[];
+    }) =>
       (await client().PATCH('/v1/forms/{formId}', { params: { path: { formId } }, body })).data!,
     onSuccess: (form) => {
       queries.setQueryData<FormDetail>(formKeys.detail(formId), (current) =>
         current === undefined ? current : { ...current, form },
       );
-      return queries.invalidateQueries({ queryKey: formKeys.list, exact: true });
+      return Promise.all([
+        queries.invalidateQueries({ queryKey: formKeys.list, exact: true }),
+        // The requirement is stored with the job types.
+        queries.invalidateQueries({ queryKey: ['job-types'] }),
+      ]);
     },
   });
 }

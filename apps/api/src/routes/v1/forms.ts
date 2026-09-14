@@ -65,6 +65,8 @@ const formSchema = z.object({
   title: z.string(),
   fillRoles: z.array(roleSchema),
   signatureRequired: z.boolean(),
+  /** The job types that require this form to be submitted before a job of theirs can complete. */
+  requiredByJobTypeIds: z.array(z.uuid()),
   clonedFromFormId: z.uuid().nullable(),
   sourceTemplateKey: z.string().nullable(),
   createdAt: z.string(),
@@ -169,12 +171,13 @@ const formParams = z.object({ formId: z.uuid() });
 // Mapping
 // ---------------------------------------------------------------------------
 
-function formBody(form: Form) {
+function formBody(form: Form, requiredByJobTypeIds: readonly string[] = []) {
   return {
     id: form.id,
     title: form.title,
     fillRoles: form.fillRoles,
     signatureRequired: form.signatureRequired,
+    requiredByJobTypeIds: [...requiredByJobTypeIds],
     clonedFromFormId: form.clonedFromFormId,
     sourceTemplateKey: form.sourceTemplateKey,
     createdAt: iso(form.createdAt),
@@ -279,10 +282,18 @@ export const listFormsRoute = defineRoute({
     200: { description: 'Forms, newest first.', schema: listSchema(formListItemSchema) },
   },
   handler: async (_input, context) => {
-    const { forms, versions } = await withTenant(context.principal.tenantId, async (tx) => ({
-      forms: await tx.forms.listForms(),
-      versions: await tx.forms.listVersionSummaries(),
-    }));
+    const { forms, versions, jobTypes } = await withTenant(
+      context.principal.tenantId,
+      async (tx) => ({
+        forms: await tx.forms.listForms(),
+        versions: await tx.forms.listVersionSummaries(),
+        jobTypes: await tx.jobTypes.list({ includeArchived: true }),
+      }),
+    );
+    const requiring = (formId: string) =>
+      jobTypes
+        .filter((type) => type.forms.some((link) => link.formId === formId && link.required))
+        .map((type) => type.id);
 
     const manage = mayManage(context);
     return {
@@ -293,7 +304,7 @@ export const listFormsRoute = defineRoute({
             const own = versions.filter((version) => version.formId === form.id);
             const latest = own.find((version) => version.status === 'published');
             return {
-              ...formBody(form),
+              ...formBody(form, requiring(form.id)),
               latestVersionNumber: latest?.versionNumber ?? null,
               latestPublishedAt: isoOrNull(latest?.publishedAt ?? null),
               hasDraft: manage && own.some((version) => version.status === 'draft'),
@@ -363,7 +374,10 @@ export const getFormRoute = defineRoute({
       const form = await requireForm(tx, params.formId);
       const live = await tx.forms.findLatestPublished(form.id);
       const draft = manage ? await tx.forms.findDraft(form.id) : undefined;
-      return { form, live, draft };
+      const requiring = (await tx.jobTypes.listForForm(form.id))
+        .filter((link) => link.required)
+        .map((link) => link.jobTypeId);
+      return { form, live, draft, requiring };
     });
 
     if (!manage && detail.live === undefined) {
@@ -373,7 +387,7 @@ export const getFormRoute = defineRoute({
     return {
       status: 200,
       body: {
-        form: formBody(detail.form),
+        form: formBody(detail.form, detail.requiring),
         draft: detail.draft === undefined ? null : versionBody(detail.draft),
         live: detail.live === undefined ? null : versionBody(detail.live),
       },
@@ -387,7 +401,7 @@ export const updateFormRoute = defineRoute({
   operationId: 'updateForm',
   summary: 'Rename a form or change its settings',
   description:
-    'Settings take effect immediately and are not versioned: who may fill a form, and whether a signature is mandatory before a job using it can close. The job-type requirement arrives with job types in P10.',
+    'Settings take effect immediately and are not versioned: who may fill a form, whether a signature is mandatory, and which job types require it — a job of a requiring type cannot complete until the form is submitted for it. The requirement applies to jobs created afterwards.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'form.manage',
@@ -398,6 +412,7 @@ export const updateFormRoute = defineRoute({
       title: z.string().trim().min(1).max(200).optional(),
       fillRoles: z.array(roleSchema).min(1).max(5).optional(),
       signatureRequired: z.boolean().optional(),
+      requiredByJobTypeIds: z.array(z.uuid()).max(100).optional(),
     })
     .refine((value) => Object.keys(value).length > 0, 'Change at least one setting'),
   responses: {
@@ -405,19 +420,43 @@ export const updateFormRoute = defineRoute({
     404: { description: 'No such form.' },
   },
   handler: async ({ params, body }, context) => {
-    const form = await withTenant(context.principal.tenantId, (tx) =>
-      tx.forms.updateForm(params.formId, {
-        ...(body.title === undefined ? {} : { title: body.title }),
-        ...(body.fillRoles === undefined ? {} : { fillRoles: body.fillRoles }),
-        ...(body.signatureRequired === undefined
-          ? {}
-          : { signatureRequired: body.signatureRequired }),
-      }),
-    );
-    if (form === undefined) {
-      throw notFound('This form does not exist.');
-    }
-    return { status: 200, body: formBody(form) };
+    const result = await withTenant(context.principal.tenantId, async (tx) => {
+      const { requiredByJobTypeIds, ...settings } = body;
+      const form =
+        Object.keys(settings).length === 0
+          ? await tx.forms.findForm(params.formId)
+          : await tx.forms.updateForm(params.formId, {
+              ...(settings.title === undefined ? {} : { title: settings.title }),
+              ...(settings.fillRoles === undefined ? {} : { fillRoles: settings.fillRoles }),
+              ...(settings.signatureRequired === undefined
+                ? {}
+                : { signatureRequired: settings.signatureRequired }),
+            });
+      if (form === undefined) {
+        throw notFound('This form does not exist.');
+      }
+      if (requiredByJobTypeIds !== undefined) {
+        const known = new Set(
+          (await tx.jobTypes.list({ includeArchived: true })).map((type) => type.id),
+        );
+        const unknown = requiredByJobTypeIds.findIndex((id) => !known.has(id));
+        if (unknown >= 0) {
+          throw unprocessable('unknown_job_type', 'A job type named here does not exist.', [
+            {
+              field: `body.requiredByJobTypeIds.${String(unknown)}`,
+              code: 'unknown_job_type',
+              message: 'Choose one of the company’s job types.',
+            },
+          ]);
+        }
+        await tx.jobTypes.setRequiringTypes(form.id, requiredByJobTypeIds);
+      }
+      const requiring = (await tx.jobTypes.listForForm(form.id))
+        .filter((link) => link.required)
+        .map((link) => link.jobTypeId);
+      return { form, requiring };
+    });
+    return { status: 200, body: formBody(result.form, result.requiring) };
   },
 });
 

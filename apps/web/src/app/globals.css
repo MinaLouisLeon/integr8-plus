@@ -3,6 +3,7 @@
 
 /* The shared form renderer writes Tailwind classes; scan them too. */
 @source '../../node_modules/@integr8/form-renderer-dom/dist';
+@source '../../node_modules/@integr8/operations-dom/dist';
 
 /*
  * Two imports and almost nothing else.

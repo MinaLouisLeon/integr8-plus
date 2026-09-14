@@ -228,6 +228,15 @@ function propertySchema(schema: z.ZodType, name: string): unknown {
   return properties(toJsonSchema(schema, 'input'))[name];
 }
 
+/**
+ * Whether a body schema accepts nothing. A union has no top-level properties of
+ * its own and is not empty: it was once treated as empty, and the bulk work
+ * order endpoint's body vanished from the contract.
+ */
 function isEmpty(schema: z.ZodType): boolean {
-  return Object.keys(properties(toJsonSchema(schema, 'input'))).length === 0;
+  const json = toJsonSchema(schema, 'input');
+  if ('oneOf' in json || 'anyOf' in json || 'allOf' in json) {
+    return false;
+  }
+  return Object.keys(properties(json)).length === 0;
 }

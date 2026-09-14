@@ -103,6 +103,7 @@ const TRUNCATE_GUARDS = [
   { table: 'audit_log', trigger: 'audit_log_no_truncate' },
   { table: 'form_versions', trigger: 'form_versions_no_truncate' },
   { table: 'submission_events', trigger: 'submission_events_no_truncate' },
+  { table: 'work_order_events', trigger: 'work_order_events_no_truncate' },
 ] as const;
 
 /**

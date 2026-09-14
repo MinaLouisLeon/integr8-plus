@@ -86,6 +86,28 @@ export default function DashboardPage() {
         </Link>
       </nav>
 
+      <nav aria-label={t('operations.nav.label')} className="grid gap-4 sm:grid-cols-2">
+        {(
+          [
+            ['/work-orders', 'workOrders', 'workOrdersHint'],
+            ['/customers', 'customers', 'customersHint'],
+            ['/settings/job-types', 'jobTypes', 'jobTypesHint'],
+            ['/imports', 'imports', 'importsHint'],
+          ] as const
+        ).map(([href, label, hint]) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex flex-col gap-1 rounded-lg border border-border-subtle bg-surface p-6 text-start hover:bg-surface-muted"
+          >
+            <span className="text-lg font-semibold text-content">
+              {t(`operations.nav.${label}`)}
+            </span>
+            <span className="text-sm text-content-muted">{t(`operations.nav.${hint}`)}</span>
+          </Link>
+        ))}
+      </nav>
+
       <section className="rounded-lg border border-border-subtle bg-surface p-6">
         <dl className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1 text-start">

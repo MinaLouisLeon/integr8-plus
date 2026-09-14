@@ -64,6 +64,26 @@ export const PERMISSIONS = [
 
   /** See how much storage the company's files use, by kind. What the company is billed for. */
   'storage.read',
+
+  /** Read customers, their contacts and sites — access notes included, since the job needs them. */
+  'customer.read',
+  /** Create and change customers, contacts and sites, and attach files to them. */
+  'customer.manage',
+  /** Configure job types: their forms, checklist, instructions and expected duration. */
+  'job_type.manage',
+  /** Read every work order, not only those one is assigned to. */
+  'work_order.read_all',
+  /** Create, edit, assign, dispatch, reschedule and cancel work orders, one at a time or in bulk. */
+  'work_order.manage',
+  /**
+   * Work a job: travel, arrive, start, wait for parts, complete, tick its
+   * checklist, comment and attach. Held by engineers for jobs they are assigned to.
+   */
+  'work_order.progress',
+  /** Sign a completed job off, or send it back with a reason. */
+  'work_order.review',
+  /** Import customers, sites and work orders from CSV. */
+  'import.run',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -97,6 +117,14 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'submission.read_all',
     'submission.amend',
     'storage.read',
+    'customer.read',
+    'customer.manage',
+    'job_type.manage',
+    'work_order.read_all',
+    'work_order.manage',
+    'work_order.progress',
+    'work_order.review',
+    'import.run',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -120,19 +148,55 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'submission.read_all',
     'submission.amend',
     'storage.read',
+    'customer.read',
+    'customer.manage',
+    'job_type.manage',
+    'work_order.read_all',
+    'work_order.manage',
+    'work_order.progress',
+    'work_order.review',
+    'import.run',
   ],
 
   // Runs the day: needs to see who is available, not to change who they are.
   // Reads every submission to follow the day's work, and can fill a form on an
   // engineer's behalf; correcting a submitted one is left to owners and admins.
-  dispatcher: ['tenant.read', 'member.read', 'form.read', 'submission.fill', 'submission.read_all'],
+  // Owns work orders and customer records; signing a job off and configuring
+  // job types are left to owners and admins too.
+  dispatcher: [
+    'tenant.read',
+    'member.read',
+    'form.read',
+    'submission.fill',
+    'submission.read_all',
+    'customer.read',
+    'customer.manage',
+    'work_order.read_all',
+    'work_order.manage',
+    'work_order.progress',
+  ],
 
-  // Does the work. Sees colleagues so a job can be handed over, and their own
-  // submissions — not everyone else's.
-  engineer: ['tenant.read', 'member.read', 'form.read', 'submission.fill'],
+  // Does the work. Sees colleagues so a job can be handed over, their own
+  // submissions, and the jobs they are assigned to — with the customer and site
+  // details those jobs need.
+  engineer: [
+    'tenant.read',
+    'member.read',
+    'form.read',
+    'submission.fill',
+    'customer.read',
+    'work_order.progress',
+  ],
 
-  // Reads, and only reads: every submission, and nothing to fill.
-  viewer: ['tenant.read', 'member.read', 'form.read', 'submission.read_all'],
+  // Reads, and only reads: every submission and every job, and nothing to fill.
+  viewer: [
+    'tenant.read',
+    'member.read',
+    'form.read',
+    'submission.read_all',
+    'customer.read',
+    'work_order.read_all',
+  ],
 });
 
 /** Lookup form of {@link MATRIX}, written out so no cast is needed to build it. */

@@ -4,7 +4,7 @@ import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { Button, EmptyState, ErrorState, Field, LoadingState } from '~/components/ui';
-import { type FormDetail, type Role, useUpdateSettings, useVersions } from '../api';
+import { type FormDetail, type Role, useJobTypes, useUpdateSettings, useVersions } from '../api';
 
 /** Every published version, newest first, with what changed in each. */
 export function HistoryPanel({ formId, locale }: { formId: string; locale: string }) {
@@ -94,9 +94,9 @@ function summarise(changes: Record<string, unknown> | null) {
  * Who fills the form in and what closing a job needs.
  *
  * Not versioned: these describe how the company uses the form, not what the
- * form asks, so changing them does not need a publish. Job types arrive later,
- * and the setting is shown — disabled, with a reason — so nobody wonders where
- * it went.
+ * form asks, so changing them does not need a publish. Which job types require
+ * the form is stored with the job types (P10): a job of one of them cannot be
+ * completed until the form is submitted for it.
  */
 export function SettingsPanel({ detail }: { detail: FormDetail }) {
   const { t } = useTranslation();
@@ -104,13 +104,40 @@ export function SettingsPanel({ detail }: { detail: FormDetail }) {
   const [title, setTitle] = useState(detail.form.title);
   const [roles, setRoles] = useState<Role[]>(detail.form.fillRoles);
   const [signature, setSignature] = useState(detail.form.signatureRequired);
+  // Only the boxes somebody ticked or cleared here. What the rest show comes from
+  // the job types themselves, which the job types screen also changes: seeding
+  // them from the form (cached for as long as the builder is open) would send an
+  // old answer back and undo that change.
+  const [jobTypeChoices, setJobTypeChoices] = useState<ReadonlyMap<string, boolean>>(new Map());
   const [saved, setSaved] = useState(false);
+  const jobTypes = useJobTypes();
+
+  const requires = (type: { id: string; forms: { formId: string; required: boolean }[] }) =>
+    jobTypeChoices.get(type.id) ??
+    type.forms.some((link) => link.formId === detail.form.id && link.required);
 
   const submit = () => {
     setSaved(false);
+    const listed = jobTypes.data ?? [];
+    const listedIds = new Set(listed.map((type) => type.id));
+    const requiredByJobTypeIds = [
+      // Archived types are not listed and cannot be chosen here; keep them as they are.
+      ...detail.form.requiredByJobTypeIds.filter((id) => !listedIds.has(id)),
+      ...listed.filter(requires).map((type) => type.id),
+    ];
     update.mutate(
-      { title: title.trim(), fillRoles: roles, signatureRequired: signature },
-      { onSuccess: () => setSaved(true) },
+      {
+        title: title.trim(),
+        fillRoles: roles,
+        signatureRequired: signature,
+        ...(jobTypeChoices.size === 0 ? {} : { requiredByJobTypeIds }),
+      },
+      {
+        onSuccess: () => {
+          setJobTypeChoices(new Map());
+          setSaved(true);
+        },
+      },
     );
   };
 
@@ -163,9 +190,30 @@ export function SettingsPanel({ detail }: { detail: FormDetail }) {
         {t('forms.settings.signature')}
       </label>
 
-      <fieldset disabled className="flex flex-col gap-1 opacity-70">
+      <fieldset className="flex flex-col gap-2" aria-describedby="job-types-hint">
         <legend className="text-sm font-medium text-content">{t('forms.settings.jobTypes')}</legend>
-        <p className="text-sm text-content-muted">{t('forms.settings.jobTypesPending')}</p>
+        <p id="job-types-hint" className="text-sm text-content-muted">
+          {t('forms.settings.jobTypesHint')}
+        </p>
+        {jobTypes.isPending ? (
+          <LoadingState />
+        ) : (jobTypes.data ?? []).length === 0 ? (
+          <p className="text-sm text-content-muted">{t('forms.settings.jobTypesNone')}</p>
+        ) : (
+          (jobTypes.data ?? []).map((type) => (
+            <label key={type.id} className="flex items-center gap-2 text-sm text-content">
+              <input
+                type="checkbox"
+                checked={requires(type)}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  setJobTypeChoices((current) => new Map(current).set(type.id, checked));
+                }}
+              />
+              {type.name}
+            </label>
+          ))
+        )}
       </fieldset>
 
       {update.isError ? (

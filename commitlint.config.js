@@ -13,6 +13,7 @@ export default {
         'core',
         'form-engine',
         'form-renderer',
+        'operations',
         'db',
         'auth',
         'config',

@@ -131,6 +131,14 @@ describe('the generated document', () => {
     expect(operation('/v1/me', 'get').requestBody).toBeUndefined();
   });
 
+  it('documents a body that is a union of shapes, rather than dropping it', () => {
+    const body = operation('/v1/work-orders/bulk', 'post').requestBody as
+      { content: { 'application/json': { schema: Record<string, unknown> } } } | undefined;
+    expect(body).toBeDefined();
+    const schema = body!.content['application/json'].schema;
+    expect('oneOf' in schema || 'anyOf' in schema).toBe(true);
+  });
+
   it('states the versioning policy where a client author will read it', () => {
     const info = document.info as { description: string };
 

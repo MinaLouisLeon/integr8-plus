@@ -87,6 +87,10 @@ at publish, so reportable answers go into a typed side table instead:
 Ten thousand submissions per company in two companies filter in 5–45 ms locally
 (`submission-reporting.integration.test.ts`, budget 300 ms).
 
+A submission filled for a job (P10) carries the job, and `workOrderId`, `siteId` and
+`customerId` filter by it — the list screen offers customer and site, and a job's "all
+submissions" link opens it at that job. See [customers, sites and work orders](../operations/README.md).
+
 `GET /v1/submissions/export?formId=…` streams CSV with the same filters: one column per
 question any published version asked, headed by its answer key; a byte-order mark so a
 spreadsheet opens Arabic as UTF-8; and text that a spreadsheet would run as a formula
