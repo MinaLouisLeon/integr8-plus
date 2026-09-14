@@ -64,3 +64,19 @@ export {
   type AppId,
   type AppInfo,
 } from './app-info.js';
+
+export {
+  WORK_ORDER_STATES,
+  workOrderStateSchema,
+  WORK_ORDER_PRIORITIES,
+  workOrderPrioritySchema,
+  WORK_ORDER_TRANSITIONS,
+  CLOSED_WORK_ORDER_STATES,
+  ACTIVE_WORK_ORDER_STATES,
+  findTransition,
+  nextStates,
+  formatWorkOrderReference,
+  type WorkOrderState,
+  type WorkOrderPriority,
+  type WorkOrderTransition,
+} from './work-orders.js';
