@@ -142,6 +142,11 @@ export interface WorkOrderQuery {
   dueBefore?: Date;
   /** Not closed, and due before now. */
   overdue?: boolean;
+  /**
+   * Closed (complete, reviewed or cancelled) at or after this instant: when it was completed,
+   * or cancelled if it never was. A phone keeps this much history.
+   */
+  closedSince?: Date;
   /** Words from the title or description, or a reference such as `WO-000123` or `123`. */
   text?: string;
   order?: WorkOrderOrder;
@@ -367,6 +372,15 @@ export class WorkOrdersRepository extends TenantScopedRepository {
       select = select
         .where('work_orders.due_by', '<', sql<Date>`now()`)
         .where('work_orders.state', 'not in', ['complete', 'reviewed', 'cancelled']);
+    }
+    if (query.closedSince !== undefined) {
+      select = select
+        .where('work_orders.state', 'in', ['complete', 'reviewed', 'cancelled'])
+        .where(
+          sql<Date>`coalesce(work_orders.completed_at, work_orders.cancelled_at)`,
+          '>=',
+          query.closedSince,
+        );
     }
     if (query.text !== undefined && query.text.trim() !== '') {
       const reference = parseWorkOrderReference(query.text);
