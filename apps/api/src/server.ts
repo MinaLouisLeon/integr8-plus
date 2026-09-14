@@ -4,7 +4,9 @@ import { getAuthDataSource } from '@integr8/db';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import type { Services } from './composition.js';
-import type { ApiConfig } from './config.js';
+import { type ApiConfig, corsOrigins } from './config.js';
+import { registerCors } from './http/cors.js';
+import { LocalDiskStorage, LOCAL_MEDIA_PREFIX } from './media/local-disk.js';
 import { assessClientVersion, outdatedClientMessage } from './http/client-version.js';
 import {
   ApiError,
@@ -72,6 +74,10 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
 
   const limiter = createRateLimiter();
 
+  // Before anything that could refuse a request: a preflight carries none of
+  // the headers the later checks look for.
+  registerCors(app, corsOrigins(config));
+
   // ---------------------------------------------------------------------------
   // 1. Context, and the headers every response carries
   // ---------------------------------------------------------------------------
@@ -111,7 +117,14 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
     // The health endpoints answer regardless: a load balancer sends no client
     // version, and a deployment that fails its own health check because of a
     // header policy is a bad afternoon.
-    if (request.url.startsWith('/health') || request.url.startsWith('/openapi')) {
+    // Signed media links are followed by whatever fetched them — in production
+    // they point at R2 and never reach this server — so they carry no client
+    // headers and are authorised by their signature instead.
+    if (
+      request.url.startsWith('/health') ||
+      request.url.startsWith('/openapi') ||
+      request.url.startsWith(LOCAL_MEDIA_PREFIX)
+    ) {
       done();
       return;
     }
@@ -249,6 +262,10 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
   // ---------------------------------------------------------------------------
   // Failures
   // ---------------------------------------------------------------------------
+
+  if (services.media instanceof LocalDiskStorage) {
+    services.media.register(app, config.MEDIA_MAX_BYTES);
+  }
 
   app.setNotFoundHandler((request, reply) => {
     const error = notFound(`No route matches ${request.method} ${request.url}`);

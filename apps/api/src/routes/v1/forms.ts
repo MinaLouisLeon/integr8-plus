@@ -91,6 +91,8 @@ const formListItemSchema = formSchema.extend({
   latestVersionNumber: z.number().int().nullable(),
   latestPublishedAt: z.string().nullable(),
   hasDraft: z.boolean(),
+  /** Whether this person may start filling it: a published version, and a role the form allows. */
+  canFill: z.boolean(),
 });
 
 const formDetailSchema = z.object({
@@ -295,6 +297,10 @@ export const listFormsRoute = defineRoute({
               latestVersionNumber: latest?.versionNumber ?? null,
               latestPublishedAt: isoOrNull(latest?.publishedAt ?? null),
               hasDraft: manage && own.some((version) => version.status === 'draft'),
+              canFill:
+                latest !== undefined &&
+                can(context.principal.role, 'submission.fill') &&
+                form.fillRoles.includes(context.principal.role),
             };
           })
           // A form with nothing published is invisible to someone who cannot build it.

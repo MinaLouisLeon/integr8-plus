@@ -11,7 +11,9 @@ import {
   TokenService,
 } from '@integr8/auth';
 import { configureDatabase, loadDatabaseConfig } from '@integr8/db';
-import type { ApiConfig } from './config.js';
+import { type ApiConfig, publicUrl } from './config.js';
+import { LocalDiskStorage } from './media/local-disk.js';
+import type { MediaStorage } from './media/storage.js';
 
 /**
  * The composition root.
@@ -33,6 +35,8 @@ export interface Services {
   invitations: InvitationService;
   impersonation: ImpersonationService;
   identity: IdentityProvider;
+  /** Where uploaded files live. Local disk until P09 adds R2. */
+  media: MediaStorage;
 }
 
 export interface BuildServicesOptions {
@@ -70,6 +74,11 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     signIn: new SignInService({ identity, sessions, config: authConfig }),
     invitations: new InvitationService({ identity, sessions, config: authConfig }),
     impersonation: new ImpersonationService({ sessions, config: authConfig }),
+    media: new LocalDiskStorage({
+      directory: options.config.MEDIA_LOCAL_DIR,
+      secret: options.config.MEDIA_URL_SECRET,
+      publicUrl: publicUrl(options.config),
+    }),
   };
 }
 

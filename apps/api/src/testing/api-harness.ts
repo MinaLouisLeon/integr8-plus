@@ -3,6 +3,9 @@ import type { Role } from '@integr8/core';
 import { closeDatabase, getPlatformDataSource, withTenant } from '@integr8/db';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
 import { randomUUID } from 'node:crypto';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { buildServices } from '../composition.js';
 import { loadApiConfig } from '../config.js';
 import { createLogger } from '../http/logger.js';
@@ -53,6 +56,8 @@ export async function startApi(): Promise<ApiHarness> {
 
   const config = loadApiConfig({
     ...process.env,
+    // Each run uploads into its own directory, so nothing is left for the next one to trip over.
+    MEDIA_LOCAL_DIR: mkdtempSync(join(tmpdir(), 'integr8-media-')),
     API_MIN_SUPPORTED_CLIENT: '1.0.0',
     API_UPDATE_URL: 'https://integr8.example/download',
   });

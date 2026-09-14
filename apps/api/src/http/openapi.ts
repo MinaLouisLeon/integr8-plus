@@ -156,7 +156,9 @@ function responses(route: AnyRoute): Record<string, unknown> {
         ? {}
         : {
             content: {
-              'application/json': { schema: toJsonSchema(response.schema, 'output') },
+              [response.contentType ?? 'application/json']: {
+                schema: toJsonSchema(response.schema, 'output'),
+              },
             },
           }),
     };

@@ -42,3 +42,6 @@ Thumbs.db
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# Local media storage (MEDIA_STORAGE=local)
+.data/

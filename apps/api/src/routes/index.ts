@@ -3,6 +3,8 @@ import type { AnyRoute } from '../http/routes.js';
 import { healthRoutes } from './health.js';
 import { authRoutes } from './v1/auth.js';
 import { formRoutes } from './v1/forms.js';
+import { mediaRoutes } from './v1/media.js';
+import { submissionRoutes } from './v1/submissions.js';
 import { workspaceRoutes } from './v1/workspace.js';
 
 /**
@@ -13,7 +15,14 @@ import { workspaceRoutes } from './v1/workspace.js';
  * incomplete.
  */
 export function allRoutes(config: ApiConfig): AnyRoute[] {
-  return [...healthRoutes(config.APP_ENV), ...authRoutes, ...workspaceRoutes, ...formRoutes];
+  return [
+    ...healthRoutes(config.APP_ENV),
+    ...authRoutes,
+    ...workspaceRoutes,
+    ...formRoutes,
+    ...submissionRoutes,
+    ...mediaRoutes,
+  ];
 }
 
 /**

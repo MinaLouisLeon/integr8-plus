@@ -25,6 +25,11 @@ export const errorDetailSchema = z.object({
   field: z.string(),
   code: z.string(),
   message: z.string(),
+  /**
+   * Values the message was built from, for a client that shows its own
+   * translated text for `code`: `{ minimum: "3" }` for `too_short`.
+   */
+  params: z.record(z.string(), z.string()).optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

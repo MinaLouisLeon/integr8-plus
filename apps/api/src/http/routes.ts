@@ -50,6 +50,8 @@ export interface HandlerResult<T> {
 export interface RouteResponse {
   description: string;
   schema?: z.ZodType;
+  /** When the body is not JSON — a CSV export. The handler returns the body as a string. */
+  contentType?: string;
 }
 
 export type RouteSecurity = 'public' | 'authenticated';
