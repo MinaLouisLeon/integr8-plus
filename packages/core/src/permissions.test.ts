@@ -88,7 +88,12 @@ describe('who can do what', () => {
   });
 
   it('keeps audit and session control to owners and admins', () => {
-    for (const permission of ['audit.read', 'session.read', 'session.revoke'] as const) {
+    for (const permission of [
+      'audit.read',
+      'session.read',
+      'session.revoke',
+      'storage.read',
+    ] as const) {
       expect(can('owner', permission)).toBe(true);
       expect(can('admin', permission)).toBe(true);
       expect(can('dispatcher', permission)).toBe(false);
