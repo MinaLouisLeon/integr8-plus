@@ -87,6 +87,9 @@ interface RouteShape {
    */
   idempotent?: boolean;
 
+  /** Largest request body, in bytes, where this route needs more than `API_MAX_BODY_BYTES` — a CSV import. */
+  bodyLimit?: number;
+
   params: z.ZodType;
   query: z.ZodType;
   body: z.ZodType;

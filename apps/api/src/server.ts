@@ -193,6 +193,7 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
     app.route({
       method: route.method.toUpperCase(),
       url: route.path,
+      ...(route.bodyLimit === undefined ? {} : { bodyLimit: route.bodyLimit }),
       handler: async (request, reply) => {
         const context = request.integr8;
 

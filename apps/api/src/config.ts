@@ -105,6 +105,19 @@ export const apiConfigSchema = z.object({
    */
   CLOUDFLARE_API_TOKEN: z.string().optional(),
 
+  // -------------------------------------------------------------------------
+  // Geocoding
+  // -------------------------------------------------------------------------
+
+  /**
+   * Who turns site addresses into coordinates. `fake` derives stable
+   * coordinates from the address text, for development and tests; production
+   * refuses it.
+   */
+  GEOCODER: z.enum(['fake', 'mapbox']).default('fake'),
+  /** A secret Mapbox token with geocoding scope. Server-side only. */
+  MAPBOX_ACCESS_TOKEN: z.string().optional(),
+
   /**
    * Sentry. Optional: unset means errors are logged and not reported, which is
    * the right default for a developer's machine and the wrong one for
@@ -210,6 +223,15 @@ export function publicUrl(config: ApiConfig): string {
 
 export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const result = apiConfigSchema.safeParse(env);
+  if (
+    result.success &&
+    result.data.GEOCODER === 'mapbox' &&
+    (result.data.MAPBOX_ACCESS_TOKEN ?? '') === ''
+  ) {
+    throw new Error(
+      'Invalid API configuration:\n  GEOCODER is mapbox but MAPBOX_ACCESS_TOKEN is not set.\n\nSee apps/api/.env.example for the full list.',
+    );
+  }
   if (result.success && result.data.MEDIA_STORAGE === 'r2') {
     const { missing } = r2Settings(result.data);
     if (missing.length > 0) {
@@ -251,6 +273,9 @@ export function assertProductionReady(config: ApiConfig): void {
     problems.push(
       "MEDIA_STORAGE is local: uploads would live on one container's disk and vanish with it.",
     );
+  }
+  if (config.GEOCODER === 'fake') {
+    problems.push('GEOCODER is fake: every site would be placed somewhere invented.');
   }
   if (config.API_CORS_ORIGINS.trim() === '') {
     problems.push('API_CORS_ORIGINS is not set: no browser client could call this API.');

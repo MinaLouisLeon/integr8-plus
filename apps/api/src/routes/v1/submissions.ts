@@ -1,4 +1,4 @@
-import { can, type Principal } from '@integr8/core';
+import { can, formatWorkOrderReference, type Principal } from '@integr8/core';
 import {
   type Form,
   type FormVersion,
@@ -30,6 +30,7 @@ import {
   unprocessable,
 } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
+import { readableWorkOrder, requireWork } from './operations.js';
 import { iso, isoOrNull } from './schemas.js';
 
 /**
@@ -69,6 +70,10 @@ const personSchema = z.object({ id: z.uuid(), name: z.string() });
 
 const submissionSummarySchema = z.object({
   id: z.uuid(),
+  /** The job this form was filled for, if any. */
+  workOrder: z
+    .object({ id: z.uuid(), reference: z.number().int(), referenceLabel: z.string() })
+    .nullable(),
   formId: z.uuid(),
   formTitle: z.string(),
   formVersionId: z.uuid(),
@@ -122,6 +127,12 @@ const listQuery = z.object({
   to: dateSchema.optional(),
   /** Words anywhere in the written answers. */
   q: z.string().trim().max(200).optional(),
+  /** Filled for this job. */
+  workOrderId: z.uuid().optional(),
+  /** Filled for a job at this site. */
+  siteId: z.uuid().optional(),
+  /** Filled for a job for this customer. */
+  customerId: z.uuid().optional(),
   /**
    * `field:operator:value`, repeatable, all must match. Needs `formId`.
    * Operators: eq, ne, lt, lte, gt, gte, contains (text only).
@@ -177,18 +188,28 @@ async function readable(
 
 interface Lookups {
   people: Map<string, string>;
+  workOrders: Map<string, number>;
   forms: Map<string, string>;
   versions: Map<string, number | null>;
 }
 
-async function lookups(tx: TenantTransaction): Promise<Lookups> {
-  const [members, forms, versions] = await Promise.all([
+async function lookups(
+  tx: TenantTransaction,
+  submissions: readonly Submission[] = [],
+): Promise<Lookups> {
+  const [members, forms, versions, jobs] = await Promise.all([
     tx.tenantUsers.list({ includeDeleted: true }),
     tx.forms.listForms(),
     tx.forms.listVersionSummaries(),
+    tx.workOrders.findMany(
+      submissions.flatMap((submission) =>
+        submission.workOrderId === null ? [] : [submission.workOrderId],
+      ),
+    ),
   ]);
   return {
     people: new Map(members.map((member) => [member.userId, member.displayName])),
+    workOrders: new Map(jobs.map((job) => [job.id, job.reference])),
     forms: new Map(forms.map((form) => [form.id, form.title])),
     versions: new Map(versions.map((version) => [version.id, version.versionNumber])),
   };
@@ -197,8 +218,18 @@ async function lookups(tx: TenantTransaction): Promise<Lookups> {
 const person = (id: string, known: Lookups) => ({ id, name: known.people.get(id) ?? '' });
 
 function summaryBody(submission: Submission, known: Lookups) {
+  const reference =
+    submission.workOrderId === null ? undefined : known.workOrders.get(submission.workOrderId);
   return {
     id: submission.id,
+    workOrder:
+      submission.workOrderId === null || reference === undefined
+        ? null
+        : {
+            id: submission.workOrderId,
+            reference,
+            referenceLabel: formatWorkOrderReference(reference),
+          },
     formId: submission.formId,
     formTitle: known.forms.get(submission.formId) ?? '',
     formVersionId: submission.formVersionId,
@@ -215,7 +246,7 @@ function summaryBody(submission: Submission, known: Lookups) {
 
 async function detailBody(tx: TenantTransaction, principal: Principal, submission: Submission) {
   const [known, version, form, events] = await Promise.all([
-    lookups(tx),
+    lookups(tx, [submission]),
     tx.forms.findVersion(submission.formVersionId),
     tx.forms.findForm(submission.formId),
     tx.submissions.listEvents(submission.id),
@@ -449,6 +480,9 @@ async function buildQuery(
       ? {}
       : { submittedBefore: new Date(Date.parse(`${query.to}T00:00:00Z`) + 24 * 60 * 60 * 1000) }),
     ...(query.q === undefined || query.q === '' ? {} : { text: query.q }),
+    ...(query.workOrderId === undefined ? {} : { workOrderId: query.workOrderId }),
+    ...(query.siteId === undefined ? {} : { siteId: query.siteId }),
+    ...(query.customerId === undefined ? {} : { customerId: query.customerId }),
     values,
     order: drafts ? 'updated' : 'submitted',
     ...(query.cursor === undefined ? {} : { after: decodeCursor(query.cursor) }),
@@ -528,9 +562,17 @@ export const startSubmissionRoute = defineRoute({
   idempotent: true,
   params: noSchema,
   query: noSchema,
-  body: z.object({ formId: z.uuid() }),
+  body: z.object({
+    formId: z.uuid(),
+    /** Fill it for this job. The form must be one of the job's, and the job still open. */
+    workOrderId: z.uuid().optional(),
+  }),
   responses: {
     201: { description: 'The draft, with the version it is bound to.', schema: detailSchema },
+    409: {
+      description:
+        'The job is closed (`work_order_closed`), or the form is not one of its forms (`form_not_on_work_order`).',
+    },
     403: { description: 'This person’s role may not fill this form.' },
     404: { description: 'No such form, or nothing published to fill.' },
   },
@@ -545,9 +587,23 @@ export const startSubmissionRoute = defineRoute({
       if (!mayFill(principal, form)) {
         throw forbidden('Your role is not one this form may be filled by.');
       }
+      if (body.workOrderId !== undefined) {
+        const job = await readableWorkOrder(tx, principal, body.workOrderId);
+        await requireWork(tx, principal, job);
+        if (['complete', 'reviewed', 'cancelled'].includes(job.state)) {
+          throw conflict(
+            'work_order_closed',
+            'This job is closed; reopen it to fill forms for it.',
+          );
+        }
+        if (!(await tx.workOrders.listForms(job.id)).some((entry) => entry.formId === form.id)) {
+          throw conflict('form_not_on_work_order', 'This form is not one of the job’s forms.');
+        }
+      }
       const draft = await tx.submissions.startDraft({
         formVersionId: version.id,
         submittedBy: principal.userId,
+        ...(body.workOrderId === undefined ? {} : { workOrderId: body.workOrderId }),
       });
       return detailBody(tx, principal, draft);
     });
@@ -581,7 +637,8 @@ export const listSubmissionsRoute = defineRoute({
     const { principal } = context;
     const body = await withTenant(principal.tenantId, async (tx) => {
       const built = await buildQuery(tx, principal, query);
-      const [page, known] = await Promise.all([tx.submissions.list(built), lookups(tx)]);
+      const page = await tx.submissions.list(built);
+      const known = await lookups(tx, page.items);
       return {
         items: page.items.map((submission) => summaryBody(submission, known)),
         nextCursor: encodeCursor(page.next),
