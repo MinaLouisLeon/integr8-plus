@@ -150,13 +150,32 @@ export async function claimJobs(
   const now = options.now ?? new Date();
   const leaseUntil = new Date(now.getTime() + (options.leaseMs ?? 60_000));
 
+  // A job whose lease ran out on its final attempt was never failed — its
+  // worker died holding it — so it is dead-lettered here rather than claimed.
+  // Claimed, its attempt count would pass the limit the table enforces, and that
+  // refusal would fail the whole statement: one such job would stop every
+  // company's queue.
   const result = await sql<Selectable<JobsTable>>`
-    with claimable as (
+    with exhausted as (
+      update jobs
+         set status           = 'dead',
+             last_error       = coalesce(jobs.last_error, 'The worker stopped during the final attempt.'),
+             locked_by        = null,
+             locked_until     = null,
+             dead_lettered_at = ${now},
+             updated_at       = ${now}
+       where status = 'running'
+         and locked_until <= ${now}
+         and attempts >= max_attempts
+      returning id
+    ),
+    claimable as (
       select id
       from jobs
       where status in ('pending', 'running')
         and available_at <= ${now}
         and (locked_until is null or locked_until <= ${now})
+        and attempts < max_attempts
       order by available_at, created_at
       limit ${options.limit ?? 10}
       for update skip locked
