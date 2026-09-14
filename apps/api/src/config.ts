@@ -66,10 +66,11 @@ export const apiConfigSchema = z.object({
   // -------------------------------------------------------------------------
 
   /**
-   * Where uploaded files are kept. `local` writes to disk and signs its own
-   * upload and download links, for development and tests. P09 adds `r2`.
+   * Where uploaded files are kept. `r2` is Cloudflare R2, one bucket per
+   * company. `local` writes to disk and signs its own links, for development
+   * and tests; production refuses it.
    */
-  MEDIA_STORAGE: z.enum(['local']).default('local'),
+  MEDIA_STORAGE: z.enum(['local', 'r2']).default('local'),
   MEDIA_LOCAL_DIR: z.string().min(1).default('.data/media'),
   /**
    * Signs local upload and download links. Unset means a random secret per
@@ -78,6 +79,31 @@ export const apiConfigSchema = z.object({
   MEDIA_URL_SECRET: z.string().min(32).optional(),
   /** Largest single file accepted, in bytes. */
   MEDIA_MAX_BYTES: positiveInt(25 * 1024 * 1024),
+  /** How long a deleted file can be restored before its bytes are removed. */
+  MEDIA_RESTORE_DAYS: positiveInt(30),
+  /** How often the worker sweeps abandoned uploads and purges deleted files. */
+  MEDIA_MAINTENANCE_INTERVAL_SECONDS: positiveInt(15 * 60),
+
+  /** The Cloudflare account the R2 buckets belong to. */
+  CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
+  /** An account-level R2 token (Admin Read & Write): it creates and deletes buckets. */
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  /**
+   * The start of every bucket name, before the company id. Unset means
+   * `integr8-<APP_ENV>`, so staging and production never share a bucket.
+   */
+  R2_BUCKET_PREFIX: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9-]{0,24}$/u)
+    .optional(),
+  /** Overrides the account endpoint, for a jurisdiction-restricted account. */
+  R2_ENDPOINT: z.url().optional(),
+  /**
+   * Reads R2 storage analytics (Account Analytics: Read), to check the ledger
+   * against what Cloudflare bills. Only the verification command needs it.
+   */
+  CLOUDFLARE_API_TOKEN: z.string().optional(),
 
   /**
    * Sentry. Optional: unset means errors are logged and not reported, which is
@@ -118,6 +144,44 @@ export const apiConfigSchema = z.object({
 
 export type ApiConfig = z.infer<typeof apiConfigSchema>;
 
+/** The R2 settings, or the names of the ones missing. */
+export function r2Settings(config: ApiConfig):
+  | { missing: string[] }
+  | {
+      missing: [];
+      settings: {
+        accountId: string;
+        accessKeyId: string;
+        secretAccessKey: string;
+        bucketPrefix: string;
+        endpoint?: string;
+      };
+    } {
+  const accountId = config.CLOUDFLARE_ACCOUNT_ID ?? '';
+  const accessKeyId = config.R2_ACCESS_KEY_ID ?? '';
+  const secretAccessKey = config.R2_SECRET_ACCESS_KEY ?? '';
+  const missing = Object.entries({
+    CLOUDFLARE_ACCOUNT_ID: accountId,
+    R2_ACCESS_KEY_ID: accessKeyId,
+    R2_SECRET_ACCESS_KEY: secretAccessKey,
+  })
+    .filter(([, value]) => value === '')
+    .map(([name]) => name);
+  if (missing.length > 0) {
+    return { missing };
+  }
+  return {
+    missing: [],
+    settings: {
+      accountId,
+      accessKeyId,
+      secretAccessKey,
+      bucketPrefix: config.R2_BUCKET_PREFIX ?? `integr8-${config.APP_ENV}`,
+      ...(config.R2_ENDPOINT === undefined ? {} : { endpoint: config.R2_ENDPOINT }),
+    },
+  };
+}
+
 /** The local origins a developer's browser, desktop dev server and Tauri window use. */
 export const DEVELOPMENT_ORIGINS = [
   'http://localhost:3001',
@@ -146,6 +210,14 @@ export function publicUrl(config: ApiConfig): string {
 
 export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const result = apiConfigSchema.safeParse(env);
+  if (result.success && result.data.MEDIA_STORAGE === 'r2') {
+    const { missing } = r2Settings(result.data);
+    if (missing.length > 0) {
+      throw new Error(
+        `Invalid API configuration:\n  MEDIA_STORAGE is r2 but ${missing.join(', ')} not set.\n\nSee apps/api/.env.example for the full list.`,
+      );
+    }
+  }
   if (!result.success) {
     const problems = result.error.issues
       .map((issue) => `  ${issue.path.join('.')}: ${issue.message}`)

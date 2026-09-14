@@ -314,13 +314,13 @@ async function revalidate(
   if (details.length === 0) {
     const references = mediaReferences(compiled.definition, check.answers);
     const stored = new Map(
-      (await tx.media.findMany(references.map((reference) => reference.media.mediaId))).map(
-        (media) => [media.id, media],
+      (await tx.files.findMany(references.map((reference) => reference.media.mediaId))).map(
+        (file) => [file.id, file],
       ),
     );
     for (const { field, media } of references) {
       const found = stored.get(media.mediaId);
-      if (found?.status !== 'stored') {
+      if (found?.deletedAt !== null) {
         details.push({
           field: `body.answers.${field}`,
           code: 'media_not_found',

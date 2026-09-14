@@ -3,7 +3,8 @@ import { buildServices } from '../composition.js';
 import { loadApiConfig } from '../config.js';
 import { createLogger } from '../http/logger.js';
 import { flushSentry, initialiseSentry } from '../observability/sentry.js';
-import { jobHandlers } from './handlers.js';
+import { runMediaMaintenance } from '../media/maintenance.js';
+import { buildJobHandlers } from './handlers.js';
 import { Worker } from './worker.js';
 
 /**
@@ -26,12 +27,40 @@ async function main(): Promise<void> {
 
   // The worker uses the same service graph as the API: a job that sends an
   // invitation should go through the same code an HTTP request does.
-  await buildServices({ config });
+  const services = await buildServices({ config });
 
-  const worker = new Worker({ config, logger, handlers: jobHandlers });
+  const worker = new Worker({ config, logger, handlers: buildJobHandlers(services) });
+
+  // Media housekeeping on a timer, alongside the queue. Several workers running
+  // it at once is safe: every step is idempotent.
+  let stopping = false;
+  let maintenanceTimer: NodeJS.Timeout | undefined;
+  let maintenanceRun: Promise<void>;
+  const maintain = async (): Promise<void> => {
+    try {
+      const report = await runMediaMaintenance({ media: services.media });
+      if (report.failures.length > 0) {
+        logger.error('Media maintenance had failures', { ...report });
+      } else {
+        logger.info('Media maintenance finished', { ...report });
+      }
+    } catch (error) {
+      logger.error('Media maintenance failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    if (!stopping) {
+      maintenanceTimer = setTimeout(() => {
+        maintenanceRun = maintain();
+      }, config.MEDIA_MAINTENANCE_INTERVAL_SECONDS * 1000);
+    }
+  };
+  maintenanceRun = maintain();
 
   const shutdown = (signal: string): void => {
     logger.info('Worker shutting down', { signal });
+    stopping = true;
+    clearTimeout(maintenanceTimer);
     worker.stop();
   };
 
@@ -45,6 +74,7 @@ async function main(): Promise<void> {
   // `run` returns once `stop` has been called and the batch in flight has
   // finished, so a deploy never kills a job halfway.
   await worker.run();
+  await maintenanceRun;
   await closeDatabase();
   await flushSentry();
 }
