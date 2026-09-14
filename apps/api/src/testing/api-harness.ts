@@ -2,12 +2,13 @@ import { FakeIdentityProvider, generateSigningKeyPair } from '@integr8/auth';
 import type { Role } from '@integr8/core';
 import { closeDatabase, getPlatformDataSource, withTenant } from '@integr8/db';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildServices } from '../composition.js';
-import { loadApiConfig } from '../config.js';
+import { buildServices, type Services } from '../composition.js';
+import { type ApiConfig, loadApiConfig } from '../config.js';
+import { provisionTenantStorage } from '../media/tenant-storage.js';
 import { createLogger } from '../http/logger.js';
 import { allRoutes } from '../routes/index.js';
 import { buildServer } from '../server.js';
@@ -33,6 +34,10 @@ export interface Member {
 
 export interface ApiHarness {
   app: FastifyInstance;
+  config: ApiConfig;
+  services: Services;
+  /** The address this harness's requests come from. */
+  remoteAddress: string;
   tenantId: string;
   member(role: Role, label: string): Promise<Member>;
   signIn(member: Member): Promise<string>;
@@ -41,7 +46,9 @@ export interface ApiHarness {
   close(): Promise<void>;
 }
 
-export async function startApi(): Promise<ApiHarness> {
+export async function startApi(
+  options: { mediaStorage?: 'local' | 'r2' } = {},
+): Promise<ApiHarness> {
   if (process.env.APP_ENV !== 'test' || process.env.INTEGR8_TEST_DATABASE !== ACKNOWLEDGEMENT) {
     throw new Error(
       `API integration suites need APP_ENV=test, INTEGR8_TEST_DATABASE=${ACKNOWLEDGEMENT} and the test DATABASE_URL variables.`,
@@ -58,6 +65,9 @@ export async function startApi(): Promise<ApiHarness> {
     ...process.env,
     // Each run uploads into its own directory, so nothing is left for the next one to trip over.
     MEDIA_LOCAL_DIR: mkdtempSync(join(tmpdir(), 'integr8-media-')),
+    // Local unless a suite asks for R2 by name: credentials in .env must not
+    // turn every suite into one that creates Cloudflare buckets.
+    MEDIA_STORAGE: options.mediaStorage ?? 'local',
     API_MIN_SUPPORTED_CLIENT: '1.0.0',
     API_UPDATE_URL: 'https://integr8.example/download',
   });
@@ -76,6 +86,12 @@ export async function startApi(): Promise<ApiHarness> {
     slug: `api-${randomUUID().slice(0, 8)}`,
     name: 'API Test Ltd',
   });
+  await provisionTenantStorage(services.media, tenant.id);
+
+  // Each harness calls from its own address. The rate limiter keeps its windows
+  // in the database, so suites sharing 127.0.0.1 within a minute would spend one
+  // allowance between them.
+  const remoteAddress = `10.${String(randomInt(256))}.${String(randomInt(256))}.${String(randomInt(1, 255))}`;
 
   const member = async (role: Role, label: string): Promise<Member> => {
     const email = `${label}.${randomUUID().slice(0, 8)}@test.integr8.example`;
@@ -96,6 +112,7 @@ export async function startApi(): Promise<ApiHarness> {
     const response = await app.inject({
       method: 'POST',
       url: '/v1/auth/sign-in',
+      remoteAddress,
       headers: { 'x-client-version': '1.0.0', 'x-client-app': 'desktop' },
       payload: { email: who.email, password: who.password, clientApp: 'desktop' },
     });
@@ -107,6 +124,7 @@ export async function startApi(): Promise<ApiHarness> {
 
   const call = (token: string, options: InjectOptions) =>
     app.inject({
+      remoteAddress,
       ...options,
       headers: {
         authorization: `Bearer ${token}`,
@@ -118,6 +136,9 @@ export async function startApi(): Promise<ApiHarness> {
 
   return {
     app,
+    config,
+    services,
+    remoteAddress,
     tenantId: tenant.id,
     member,
     signIn,

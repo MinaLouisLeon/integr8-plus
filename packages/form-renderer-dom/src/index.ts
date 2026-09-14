@@ -16,3 +16,4 @@ export { ErrorText } from './field.js';
 export { FormFiller, type FormFillerProps, type SubmitOutcome } from './form-filler.js';
 export type { MediaAdapter } from './media.js';
 export { formatBytes, normaliseDigits, say, withLocalOffset } from './text.js';
+export { fitWithin, PHOTO_MAX_EDGE, PHOTO_QUALITY, preparePhoto } from './compress.js';

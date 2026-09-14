@@ -1,18 +1,20 @@
 import { withTenant } from '@integr8/db';
+import type { Services } from '../composition.js';
+import { makeThumbnail, THUMBNAIL_QUEUE } from '../media/thumbnails.js';
 import type { JobHandlers } from './worker.js';
 
 /**
- * The job handlers this build knows.
+ * The job handlers this build knows, over the same services the API uses.
  *
- * One entry today, and it is real work rather than a placeholder: writing an
- * audit entry from a background job is how a slow or failure-prone side effect
- * stops blocking the request that caused it.
+ * Writing an audit entry from a background job is how a slow or failure-prone
+ * side effect stops blocking the request that caused it; a thumbnail is the
+ * same idea for an uploaded image.
  *
  * Later phases add to this map. A job whose queue has no handler here is
  * dead-lettered rather than retried, because another attempt will not teach
  * this process a handler it does not have.
  */
-export const jobHandlers: JobHandlers = {
+export const buildJobHandlers = (services: Pick<Services, 'media'>): JobHandlers => ({
   'audit.record': async (payload, context) => {
     await withTenant(context.tenantId, (tx) =>
       tx.auditLog.append({
@@ -25,7 +27,17 @@ export const jobHandlers: JobHandlers = {
       }),
     );
   },
-};
+
+  [THUMBNAIL_QUEUE]: async (payload, context) => {
+    const fileId = text(payload, 'fileId');
+    if (fileId === null) {
+      context.logger.warn('Thumbnail job without a file id', { jobId: context.jobId });
+      return;
+    }
+    const outcome = await makeThumbnail(services.media, context.tenantId, fileId);
+    context.logger.info('Thumbnail job finished', { jobId: context.jobId, fileId, outcome });
+  },
+});
 
 /**
  * Reads a string out of a job payload.

@@ -1060,7 +1060,8 @@
                           "form.manage",
                           "submission.fill",
                           "submission.read_all",
-                          "submission.amend"
+                          "submission.amend",
+                          "storage.read"
                         ]
                       }
                     },
@@ -7535,7 +7536,7 @@
       "post": {
         "operationId": "createMediaUpload",
         "summary": "Start uploading a file",
-        "description": "Records the upload and returns where to send the bytes, with the headers to send. The link expires in fifteen minutes. Honours `Idempotency-Key`.",
+        "description": "Returns where to send the bytes, with the headers to send. The link is signed for exactly this type and size and expires in fifteen minutes. Honours `Idempotency-Key`.",
         "tags": [
           "media"
         ],
@@ -7604,8 +7605,7 @@
                         "status": {
                           "type": "string",
                           "enum": [
-                            "pending",
-                            "stored"
+                            "pending"
                           ]
                         },
                         "createdAt": {
@@ -7722,14 +7722,7 @@
             }
           },
           "503": {
-            "description": "This client build is older than the minimum supported.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "description": "The company's storage is still being set up."
           }
         },
         "security": [
@@ -7743,7 +7736,7 @@
       "post": {
         "operationId": "completeMediaUpload",
         "summary": "Confirm an upload arrived",
-        "description": "Checks storage holds exactly the type and size that were declared, then marks the file stored. Only a stored file can be named in a submission.",
+        "description": "Reads the object back from storage. If it is exactly the type and size declared, the file is recorded with the size and ETag storage reports, and can be named in a submission. If something else arrived, it is deleted and nothing is recorded. Confirming twice returns the same file.",
         "tags": [
           "media"
         ],
@@ -7761,7 +7754,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The stored file.",
+            "description": "The recorded file.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7784,10 +7777,28 @@
                       "type": "string",
                       "enum": [
                         "pending",
-                        "stored"
+                        "stored",
+                        "deleted"
+                      ]
+                    },
+                    "thumbnail": {
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "pending",
+                        "ready",
+                        "failed"
                       ]
                     },
                     "createdAt": {
+                      "type": "string"
+                    },
+                    "deletedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "purgeAfter": {
+                      "nullable": true,
                       "type": "string"
                     }
                   },
@@ -7796,7 +7807,10 @@
                     "contentType",
                     "byteSize",
                     "status",
-                    "createdAt"
+                    "thumbnail",
+                    "createdAt",
+                    "deletedAt",
+                    "purgeAfter"
                   ],
                   "additionalProperties": false
                 }
@@ -7827,7 +7841,326 @@
             "description": "No such upload."
           },
           "409": {
-            "description": "Nothing, or something different, arrived in storage."
+            "description": "Nothing has arrived yet (`upload_incomplete`), something other than what was declared arrived and was discarded (`upload_mismatch`), or the upload window closed (`upload_expired`)."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The company's storage is not available."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/media/{mediaId}": {
+      "get": {
+        "operationId": "getMedia",
+        "summary": "A link to read a stored file",
+        "description": "Anyone in the company may read a file they have the id of: ids are unguessable and are only handed out inside submissions the reader can already see. Links expire in five minutes; `thumbnailUrl` is set once a thumbnail has been made.",
+        "tags": [
+          "media"
+        ],
+        "parameters": [
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file and links to it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "contentType": {
+                      "type": "string"
+                    },
+                    "byteSize": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "stored",
+                        "deleted"
+                      ]
+                    },
+                    "thumbnail": {
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "pending",
+                        "ready",
+                        "failed"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "deletedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "purgeAfter": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "thumbnailUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "contentType",
+                    "byteSize",
+                    "status",
+                    "thumbnail",
+                    "createdAt",
+                    "deletedAt",
+                    "purgeAfter",
+                    "url",
+                    "thumbnailUrl",
+                    "expiresAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such stored file, or it was deleted."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "deleteMedia",
+        "summary": "Delete a file",
+        "description": "Deletes a file no submission names. It can be restored until `purgeAfter`; after that its bytes are removed from storage. A file a submission or its history names cannot be deleted.",
+        "tags": [
+          "media"
+        ],
+        "parameters": [
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted file.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "contentType": {
+                      "type": "string"
+                    },
+                    "byteSize": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "stored",
+                        "deleted"
+                      ]
+                    },
+                    "thumbnail": {
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "pending",
+                        "ready",
+                        "failed"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "deletedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "purgeAfter": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "contentType",
+                    "byteSize",
+                    "status",
+                    "thumbnail",
+                    "createdAt",
+                    "deletedAt",
+                    "purgeAfter"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such file."
+          },
+          "409": {
+            "description": "A submission names this file (`media_in_use`)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -7877,11 +8210,11 @@
         ]
       }
     },
-    "/v1/media/{mediaId}": {
-      "get": {
-        "operationId": "getMedia",
-        "summary": "A link to read a stored file",
-        "description": "Anyone in the company may read a file they have the id of: ids are unguessable and are only handed out inside submissions the reader can already see. The link expires in five minutes.",
+    "/v1/media/{mediaId}/restore": {
+      "post": {
+        "operationId": "restoreMedia",
+        "summary": "Restore a deleted file",
+        "description": "Undoes a deletion, until the file’s `purgeAfter`.",
         "tags": [
           "media"
         ],
@@ -7899,7 +8232,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The file and a link to it.",
+            "description": "The restored file.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7922,16 +8255,28 @@
                       "type": "string",
                       "enum": [
                         "pending",
-                        "stored"
+                        "stored",
+                        "deleted"
+                      ]
+                    },
+                    "thumbnail": {
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "pending",
+                        "ready",
+                        "failed"
                       ]
                     },
                     "createdAt": {
                       "type": "string"
                     },
-                    "url": {
+                    "deletedAt": {
+                      "nullable": true,
                       "type": "string"
                     },
-                    "expiresAt": {
+                    "purgeAfter": {
+                      "nullable": true,
                       "type": "string"
                     }
                   },
@@ -7940,9 +8285,10 @@
                     "contentType",
                     "byteSize",
                     "status",
+                    "thumbnail",
                     "createdAt",
-                    "url",
-                    "expiresAt"
+                    "deletedAt",
+                    "purgeAfter"
                   ],
                   "additionalProperties": false
                 }
@@ -7970,7 +8316,149 @@
             }
           },
           "404": {
-            "description": "No such stored file."
+            "description": "No such file."
+          },
+          "409": {
+            "description": "The restore window has passed (`restore_window_passed`)."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/storage/usage": {
+      "get": {
+        "operationId": "getStorageUsage",
+        "summary": "The company's storage use",
+        "description": "Bytes and objects in the company’s bucket, by kind, as the ledger records them. Deleted files count until their bytes are removed; thumbnails are their own kind.",
+        "tags": [
+          "media"
+        ],
+        "responses": {
+          "200": {
+            "description": "Storage use.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "categories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "image",
+                              "video",
+                              "document",
+                              "other",
+                              "thumbnail"
+                            ]
+                          },
+                          "bytes": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "objects": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "category",
+                          "bytes",
+                          "objects"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "totalBytes": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "totalObjects": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "categories",
+                    "totalBytes",
+                    "totalObjects"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
             "description": "The request failed validation.",

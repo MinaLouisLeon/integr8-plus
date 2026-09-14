@@ -427,21 +427,72 @@ export interface SubmissionValuesTable {
   submitted_at: ColumnType<Date, never, never>;
 }
 
-export const MEDIA_STATUSES = ['pending', 'stored'] as const;
-export type MediaStatus = (typeof MEDIA_STATUSES)[number];
+export const MEDIA_CATEGORIES = ['image', 'video', 'document', 'other'] as const;
+export type MediaCategory = (typeof MEDIA_CATEGORIES)[number];
 
-export interface MediaObjectsTable {
+/** Media categories, plus thumbnails, which occupy the bucket too. */
+export const USAGE_CATEGORIES = [...MEDIA_CATEGORIES, 'thumbnail'] as const;
+export type UsageCategory = (typeof USAGE_CATEGORIES)[number];
+
+export const STORAGE_PROVIDERS = ['local', 'r2'] as const;
+export type StorageProvider = (typeof STORAGE_PROVIDERS)[number];
+
+export const THUMBNAIL_STATUSES = ['none', 'pending', 'ready', 'failed'] as const;
+export type ThumbnailStatus = (typeof THUMBNAIL_STATUSES)[number];
+
+/** bigint columns: the driver returns them as text. */
+type BigIntColumn = ColumnType<string, number, number>;
+
+export interface TenantStorageTable {
+  tenant_id: string;
+  provider: StorageProvider;
+  bucket: string;
+  provisioned_at: CreatedAt;
+  purged_at: Date | null;
+}
+
+export interface UploadIntentsTable {
   id: Generated<string>;
   tenant_id: string;
-  content_type: string;
-  /** bigint: the driver returns it as text. */
-  byte_size: ColumnType<string, number, number>;
+  bucket: string;
   storage_key: string;
-  status: Generated<MediaStatus>;
+  content_type: string;
+  declared_bytes: BigIntColumn;
+  category: MediaCategory;
   created_by: string;
   created_at: CreatedAt;
-  updated_at: UpdatedAt;
-  stored_at: Date | null;
+  expires_at: Date;
+}
+
+export interface FilesTable {
+  id: string;
+  tenant_id: string;
+  bucket: string;
+  storage_key: string;
+  byte_size: BigIntColumn;
+  etag: string | null;
+  content_type: string;
+  category: MediaCategory;
+  linked_entity_type: string | null;
+  linked_entity_id: string | null;
+  uploaded_by: string;
+  created_at: CreatedAt;
+  thumbnail_status: Generated<ThumbnailStatus>;
+  thumbnail_key: string | null;
+  thumbnail_bytes: ColumnType<string | null, number | null, number | null>;
+  deleted_at: Date | null;
+  deleted_by: string | null;
+  purge_after: Date | null;
+  purged_at: Date | null;
+}
+
+/** Written only by trigger; the runtime role may read it. */
+export interface TenantStorageUsageTable {
+  tenant_id: ColumnType<string, never, never>;
+  category: ColumnType<UsageCategory, never, never>;
+  bytes: ColumnType<string, never, never>;
+  objects: ColumnType<number, never, never>;
+  updated_at: ColumnType<Date, never, never>;
 }
 
 export interface Database {
@@ -463,7 +514,10 @@ export interface Database {
   submissions: SubmissionsTable;
   submission_events: SubmissionEventsTable;
   submission_values: SubmissionValuesTable;
-  media_objects: MediaObjectsTable;
+  tenant_storage: TenantStorageTable;
+  upload_intents: UploadIntentsTable;
+  files: FilesTable;
+  tenant_storage_usage: TenantStorageUsageTable;
   form_templates: FormTemplatesTable;
   rate_limit_buckets: RateLimitBucketsTable;
   schema_migrations: SchemaMigrationsTable;
@@ -524,6 +578,8 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // Writes submission history and reportable values, which the runtime role
   // cannot write itself; see 0008.
   'record_submission_change',
+  // Keeps the storage usage rollup, which the runtime role can only read; see 0009.
+  'record_file_usage',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -562,7 +618,10 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   submissions: true,
   submission_events: true,
   submission_values: true,
-  media_objects: true,
+  tenant_storage: true,
+  upload_intents: true,
+  files: true,
+  tenant_storage_usage: true,
 };
 
 export const TENANT_SCOPED_TABLES: readonly TenantScopedTable[] = Object.freeze(

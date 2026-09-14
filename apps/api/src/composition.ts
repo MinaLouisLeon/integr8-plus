@@ -11,8 +11,9 @@ import {
   TokenService,
 } from '@integr8/auth';
 import { configureDatabase, loadDatabaseConfig } from '@integr8/db';
-import { type ApiConfig, publicUrl } from './config.js';
+import { type ApiConfig, corsOrigins, publicUrl, r2Settings } from './config.js';
 import { LocalDiskStorage } from './media/local-disk.js';
+import { R2Storage } from './media/r2.js';
 import type { MediaStorage } from './media/storage.js';
 
 /**
@@ -35,7 +36,7 @@ export interface Services {
   invitations: InvitationService;
   impersonation: ImpersonationService;
   identity: IdentityProvider;
-  /** Where uploaded files live. Local disk until P09 adds R2. */
+  /** Company buckets: R2, or local disk in development. Reach one through `getStorage`. */
   media: MediaStorage;
 }
 
@@ -74,12 +75,23 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     signIn: new SignInService({ identity, sessions, config: authConfig }),
     invitations: new InvitationService({ identity, sessions, config: authConfig }),
     impersonation: new ImpersonationService({ sessions, config: authConfig }),
-    media: new LocalDiskStorage({
-      directory: options.config.MEDIA_LOCAL_DIR,
-      secret: options.config.MEDIA_URL_SECRET,
-      publicUrl: publicUrl(options.config),
-    }),
+    media: buildMediaStorage(options.config),
   };
+}
+
+export function buildMediaStorage(config: ApiConfig): MediaStorage {
+  if (config.MEDIA_STORAGE === 'r2') {
+    const r2 = r2Settings(config);
+    if (!('settings' in r2)) {
+      throw new Error(`MEDIA_STORAGE is r2 but ${r2.missing.join(', ')} not set.`);
+    }
+    return new R2Storage({ ...r2.settings, corsOrigins: corsOrigins(config) });
+  }
+  return new LocalDiskStorage({
+    directory: config.MEDIA_LOCAL_DIR,
+    secret: config.MEDIA_URL_SECRET,
+    publicUrl: publicUrl(config),
+  });
 }
 
 /**

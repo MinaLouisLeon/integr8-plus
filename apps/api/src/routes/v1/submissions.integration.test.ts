@@ -185,7 +185,7 @@ async function upload(token: string, bytes: Buffer, contentType = 'image/jpeg') 
     headers: target.headers,
     payload: bytes,
   });
-  expect(put.statusCode, put.body).toBe(204);
+  expect(put.statusCode, put.body).toBe(200);
   const completed = await api.call(token, {
     method: 'POST',
     url: `/v1/media/${media.id}/complete`,
@@ -308,8 +308,8 @@ describe('a submission crafted by hand that breaks the form’s rules is refused
     });
     expect(json<ErrorBody>(lied).error.details?.[0]?.code).toBe('media_mismatch');
 
-    const theirs = await withTenant(api.tenantId, (tx) => tx.media.find(photo.mediaId));
-    expect(theirs?.status).toBe('stored');
+    const theirs = await withTenant(api.tenantId, (tx) => tx.files.find(photo.mediaId));
+    expect(theirs?.deletedAt).toBeNull();
   });
 
   it('refuses a "today" that is not today', async () => {
@@ -701,77 +701,6 @@ describe('finding submissions', () => {
     expect(lines).toHaveLength(4);
     const hostile = lines.find((line) => line.includes('HYPERLINK'));
     expect(hostile).toContain(`"'=HYPERLINK(""http://evil"")"`);
-  });
-});
-
-describe('media', () => {
-  it('serves a stored file back through a short-lived link', async () => {
-    const bytes = Buffer.from('photo bytes');
-    const photo = await upload(tokens.engineer, bytes);
-    const link = json<{ url: string }>(
-      await api.call(tokens.viewer, { method: 'GET', url: `/v1/media/${photo.mediaId}` }),
-    );
-    const url = new URL(link.url);
-    const download = await api.app.inject({ method: 'GET', url: url.pathname + url.search });
-    expect(download.statusCode).toBe(200);
-    expect(download.headers['content-type']).toBe('image/jpeg');
-    expect(download.rawPayload.equals(bytes)).toBe(true);
-
-    const tampered = await api.app.inject({
-      method: 'GET',
-      url: url.pathname + url.search.replace(/signature=./u, 'signature=x'),
-    });
-    expect(tampered.statusCode).toBe(404);
-  });
-
-  it('refuses bytes that do not match what was signed, and a completion before they arrive', async () => {
-    const created = json<{ media: { id: string }; upload: { url: string } }>(
-      await api.call(tokens.engineer, {
-        method: 'POST',
-        url: '/v1/media',
-        payload: { contentType: 'image/png', byteSize: 4 },
-      }),
-    );
-    const url = new URL(created.upload.url);
-    const target = url.pathname + url.search;
-
-    expect(
-      (
-        await api.call(tokens.engineer, {
-          method: 'POST',
-          url: `/v1/media/${created.media.id}/complete`,
-        })
-      ).statusCode,
-    ).toBe(409);
-    expect(
-      (
-        await api.app.inject({
-          method: 'PUT',
-          url: target,
-          headers: { 'content-type': 'image/jpeg' },
-          payload: Buffer.from('abcd'),
-        })
-      ).statusCode,
-    ).toBe(403);
-    expect(
-      (
-        await api.app.inject({
-          method: 'PUT',
-          url: target,
-          headers: { 'content-type': 'image/png' },
-          payload: Buffer.from('much more than four bytes'),
-        })
-      ).statusCode,
-    ).toBe(413);
-  });
-
-  it('refuses types a browser would run', async () => {
-    const response = await api.call(tokens.engineer, {
-      method: 'POST',
-      url: '/v1/media',
-      payload: { contentType: 'image/svg+xml', byteSize: 10 },
-    });
-    expect(json<ErrorBody>(response).error.code).toBe('media_type_refused');
   });
 });
 

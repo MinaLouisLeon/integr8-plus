@@ -638,7 +638,7 @@ export interface paths {
         put?: never;
         /**
          * Start uploading a file
-         * @description Records the upload and returns where to send the bytes, with the headers to send. The link expires in fifteen minutes. Honours `Idempotency-Key`.
+         * @description Returns where to send the bytes, with the headers to send. The link is signed for exactly this type and size and expires in fifteen minutes. Honours `Idempotency-Key`.
          */
         post: operations["createMediaUpload"];
         delete?: never;
@@ -658,7 +658,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm an upload arrived
-         * @description Checks storage holds exactly the type and size that were declared, then marks the file stored. Only a stored file can be named in a submission.
+         * @description Reads the object back from storage. If it is exactly the type and size declared, the file is recorded with the size and ETag storage reports, and can be named in a submission. If something else arrived, it is deleted and nothing is recorded. Confirming twice returns the same file.
          */
         post: operations["completeMediaUpload"];
         delete?: never;
@@ -676,9 +676,53 @@ export interface paths {
         };
         /**
          * A link to read a stored file
-         * @description Anyone in the company may read a file they have the id of: ids are unguessable and are only handed out inside submissions the reader can already see. The link expires in five minutes.
+         * @description Anyone in the company may read a file they have the id of: ids are unguessable and are only handed out inside submissions the reader can already see. Links expire in five minutes; `thumbnailUrl` is set once a thumbnail has been made.
          */
         get: operations["getMedia"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a file
+         * @description Deletes a file no submission names. It can be restored until `purgeAfter`; after that its bytes are removed from storage. A file a submission or its history names cannot be deleted.
+         */
+        delete: operations["deleteMedia"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/media/{mediaId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore a deleted file
+         * @description Undoes a deletion, until the file’s `purgeAfter`.
+         */
+        post: operations["restoreMedia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/storage/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The company's storage use
+         * @description Bytes and objects in the company’s bucket, by kind, as the ledger records them. Deleted files count until their bytes are removed; thumbnails are their own kind.
+         */
+        get: operations["getStorageUsage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1282,7 +1326,7 @@ export interface operations {
                         displayName: string;
                         /** @enum {string} */
                         role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
-                        permissions: ("tenant.read" | "tenant.update" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend")[];
+                        permissions: ("tenant.read" | "tenant.update" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -4635,7 +4679,7 @@ export interface operations {
                             contentType: string;
                             byteSize: number;
                             /** @enum {string} */
-                            status: "pending" | "stored";
+                            status: "pending";
                             createdAt: string;
                         };
                         upload: {
@@ -4704,14 +4748,12 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description This client build is older than the minimum supported. */
+            /** @description The company's storage is still being set up. */
             503: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
         };
     };
@@ -4726,7 +4768,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The stored file. */
+            /** @description The recorded file. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4738,8 +4780,12 @@ export interface operations {
                         contentType: string;
                         byteSize: number;
                         /** @enum {string} */
-                        status: "pending" | "stored";
+                        status: "pending" | "stored" | "deleted";
+                        /** @enum {string} */
+                        thumbnail: "none" | "pending" | "ready" | "failed";
                         createdAt: string;
+                        deletedAt: string | null;
+                        purgeAfter: string | null;
                     };
                 };
             };
@@ -4768,7 +4814,205 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Nothing, or something different, arrived in storage. */
+            /** @description Nothing has arrived yet (`upload_incomplete`), something other than what was declared arrived and was discarded (`upload_mismatch`), or the upload window closed (`upload_expired`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The company's storage is not available. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file and links to it. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        contentType: string;
+                        byteSize: number;
+                        /** @enum {string} */
+                        status: "pending" | "stored" | "deleted";
+                        /** @enum {string} */
+                        thumbnail: "none" | "pending" | "ready" | "failed";
+                        createdAt: string;
+                        deletedAt: string | null;
+                        purgeAfter: string | null;
+                        url: string;
+                        thumbnailUrl: string | null;
+                        expiresAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such stored file, or it was deleted. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The deleted file. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        contentType: string;
+                        byteSize: number;
+                        /** @enum {string} */
+                        status: "pending" | "stored" | "deleted";
+                        /** @enum {string} */
+                        thumbnail: "none" | "pending" | "ready" | "failed";
+                        createdAt: string;
+                        deletedAt: string | null;
+                        purgeAfter: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such file. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A submission names this file (`media_in_use`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4813,7 +5057,7 @@ export interface operations {
             };
         };
     };
-    getMedia: {
+    restoreMedia: {
         parameters: {
             query?: never;
             header?: never;
@@ -4824,7 +5068,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The file and a link to it. */
+            /** @description The restored file. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4836,10 +5080,12 @@ export interface operations {
                         contentType: string;
                         byteSize: number;
                         /** @enum {string} */
-                        status: "pending" | "stored";
+                        status: "pending" | "stored" | "deleted";
+                        /** @enum {string} */
+                        thumbnail: "none" | "pending" | "ready" | "failed";
                         createdAt: string;
-                        url: string;
-                        expiresAt: string;
+                        deletedAt: string | null;
+                        purgeAfter: string | null;
                     };
                 };
             };
@@ -4861,12 +5107,102 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description No such stored file. */
+            /** @description No such file. */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The restore window has passed (`restore_window_passed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getStorageUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Storage use. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        categories: {
+                            /** @enum {string} */
+                            category: "image" | "video" | "document" | "other" | "thumbnail";
+                            bytes: number;
+                            objects: number;
+                        }[];
+                        totalBytes: number;
+                        totalObjects: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description The request failed validation. */
             422: {

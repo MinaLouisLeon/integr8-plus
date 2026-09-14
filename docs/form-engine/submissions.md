@@ -11,7 +11,7 @@ apps/api  routes/v1/submissions.ts  revalidates every submit against its bound v
         │
 @integr8/db  migration 0008         lifecycle, history and reportable values, by trigger
         │
-media storage (apps/api/src/media)  local disk now, R2 in P09, behind one interface
+media storage (apps/api/src/media)  a bucket per company on R2 — see docs/media
 ```
 
 ---
@@ -95,17 +95,15 @@ prefixed with an apostrophe.
 ## Media
 
 ```
-POST /v1/media                → a pending record, and a link to PUT the bytes to
-PUT  <link>                   → straight to storage
-POST /v1/media/:id/complete   → the API checks storage holds exactly what was declared
-GET  /v1/media/:id            → a five-minute link to read it
+POST /v1/media                → an upload intent, and a presigned link to PUT the bytes to
+PUT  <link>                   → straight to the company's R2 bucket
+POST /v1/media/:id/complete   → the API reads the object back and records what storage holds
+GET  /v1/media/:id            → five-minute links to the file and its thumbnail
 ```
 
-`MediaStorage` (`apps/api/src/media/storage.ts`) has one implementation today:
-`LocalDiskStorage`, which signs its own upload and download links with HMAC so they behave
-like R2 presigned URLs, and serves them outside `/v1`. P09 adds the R2 implementation; the
-routes, the widgets and the submission checks do not change. Production refuses to start
-with local storage.
+The pipeline, the ledger it bills from, deletion and maintenance are described in
+[media storage](../media/README.md). What matters here: a submission may name only a file
+in the ledger, not deleted, described with the size and type storage reported.
 
 Types a browser would execute when a link is opened — HTML, SVG, XML, JavaScript — are
 refused whatever a form's question says. Everything else is checked against the question's
@@ -146,4 +144,5 @@ After the steps in [the engine's README](README.md#adding-a-field-type):
 
 The API needs `API_CORS_ORIGINS` outside development (in development the local web and
 desktop origins are allowed), and writes uploads to `MEDIA_LOCAL_DIR` (default
-`.data/media`, ignored by git). See `apps/api/.env.example`.
+`.data/media`, ignored by git) unless `MEDIA_STORAGE=r2`. See `apps/api/.env.example` and
+[media storage](../media/README.md).

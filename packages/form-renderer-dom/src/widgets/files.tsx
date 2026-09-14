@@ -1,6 +1,7 @@
 import { mediaReferenceSchema, type MediaReference } from '@integr8/form-engine';
 import { useTranslation } from '@integr8/i18n';
 import { useId, useState } from 'react';
+import { preparePhoto } from '../compress.js';
 import { formatBytes } from '../text.js';
 import { MediaImage, useMediaUrl } from './media-image.js';
 import type { MediaAdapter } from '../media.js';
@@ -10,10 +11,11 @@ import { buttonClass, type WidgetProps } from './types.js';
  * Photos and files.
  *
  * The native file input, which is a labelled, keyboard-operable control on
- * every platform, and on a phone offers the camera for `capture`. Each chosen
- * file is checked against the question's limits before it is sent, so a person
- * learns a photo is too large without waiting for the upload — the server
- * checks again when the form is submitted.
+ * every platform, and on a phone offers the camera for `capture`. A photo is
+ * made smaller first (see `compress.ts`); then each file is checked against
+ * the question's limits before it is sent, so a person learns a file is too
+ * large without waiting for the upload — the server checks again when the form
+ * is submitted.
  */
 
 interface Uploading {
@@ -70,12 +72,24 @@ export function FilesWidget(props: WidgetProps<'photo' | 'file'>) {
     if (chosen.length > room) {
       found.push(t('fill.files.tooMany', { maximum: field.maxFiles ?? 0 }));
     }
-    const sending = chosen.slice(0, Math.max(0, room)).filter((file) => {
+    const typed = chosen.slice(0, Math.max(0, room)).filter((file) => {
       if (!accepts(accepted, file.type)) {
         found.push(t('fill.files.wrongType', { name: file.name }));
         return false;
       }
-      if (field.maxFileBytes !== undefined && file.size > field.maxFileBytes) {
+      return true;
+    });
+    // The limit applies to what is sent: a 6 MB photo that becomes 700 KB fits a 1 MB limit.
+    const prepared = await Promise.all(
+      typed.map(async (file) => {
+        const ready = photos
+          ? await preparePhoto(file)
+          : { blob: file, contentType: file.type, compressed: false };
+        return { name: file.name, ...ready };
+      }),
+    );
+    const sending = prepared.filter((file) => {
+      if (field.maxFileBytes !== undefined && file.blob.size > field.maxFileBytes) {
         found.push(
           t('fill.files.tooLarge', {
             name: file.name,
@@ -94,8 +108,8 @@ export function FilesWidget(props: WidgetProps<'photo' | 'file'>) {
         const key = `${file.name}-${String(Date.now())}-${String(index)}`;
         setUploads((current) => [...current, { key, name: file.name, progress: 0, failed: false }]);
         try {
-          const reference = await media.upload(file, {
-            contentType: file.type,
+          const reference = await media.upload(file.blob, {
+            contentType: file.contentType,
             onProgress: (fraction) =>
               setUploads((current) =>
                 current.map((upload) =>

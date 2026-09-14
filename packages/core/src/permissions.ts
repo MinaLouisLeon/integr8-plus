@@ -61,6 +61,9 @@ export const PERMISSIONS = [
    * permission to add to that history, not to rewrite it.
    */
   'submission.amend',
+
+  /** See how much storage the company's files use, by kind. What the company is billed for. */
+  'storage.read',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -93,6 +96,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'submission.fill',
     'submission.read_all',
     'submission.amend',
+    'storage.read',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -115,6 +119,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'submission.fill',
     'submission.read_all',
     'submission.amend',
+    'storage.read',
   ],
 
   // Runs the day: needs to see who is available, not to change who they are.

@@ -108,13 +108,16 @@ export function apiMediaAdapter(client: Integr8Client): MediaAdapter {
         request.send(file);
       });
 
-      await client.POST('/v1/media/{mediaId}/complete', {
-        params: { path: { mediaId: created.media.id } },
-      });
+      // The reference carries what storage confirmed, not what was declared.
+      const stored = (
+        await client.POST('/v1/media/{mediaId}/complete', {
+          params: { path: { mediaId: created.media.id } },
+        })
+      ).data!;
       return {
-        mediaId: created.media.id,
-        contentType: created.media.contentType,
-        byteSize: created.media.byteSize,
+        mediaId: stored.id,
+        contentType: stored.contentType,
+        byteSize: stored.byteSize,
       } satisfies MediaReference;
     },
 
