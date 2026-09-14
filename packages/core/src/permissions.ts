@@ -46,6 +46,21 @@ export const PERMISSIONS = [
    * the permission to create the next one.
    */
   'form.manage',
+
+  /**
+   * Start, fill and submit a form, and read one's own submissions. The form's
+   * own fill roles narrow this further: holding the permission is necessary,
+   * being in the form's list is also necessary.
+   */
+  'submission.fill',
+  /** Read every submission in the company, not only one's own. */
+  'submission.read_all',
+  /**
+   * Reopen a submitted form so it can be corrected, and submit the correction.
+   * Every reopening and every amendment is kept (migration 0008); this is the
+   * permission to add to that history, not to rewrite it.
+   */
+  'submission.amend',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -75,6 +90,9 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'audit.read',
     'form.read',
     'form.manage',
+    'submission.fill',
+    'submission.read_all',
+    'submission.amend',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -94,15 +112,22 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'audit.read',
     'form.read',
     'form.manage',
+    'submission.fill',
+    'submission.read_all',
+    'submission.amend',
   ],
 
   // Runs the day: needs to see who is available, not to change who they are.
-  dispatcher: ['tenant.read', 'member.read', 'form.read'],
+  // Reads every submission to follow the day's work, and can fill a form on an
+  // engineer's behalf; correcting a submitted one is left to owners and admins.
+  dispatcher: ['tenant.read', 'member.read', 'form.read', 'submission.fill', 'submission.read_all'],
 
-  // Does the work. Sees colleagues so a job can be handed over.
-  engineer: ['tenant.read', 'member.read', 'form.read'],
+  // Does the work. Sees colleagues so a job can be handed over, and their own
+  // submissions — not everyone else's.
+  engineer: ['tenant.read', 'member.read', 'form.read', 'submission.fill'],
 
-  viewer: ['tenant.read', 'member.read', 'form.read'],
+  // Reads, and only reads: every submission, and nothing to fill.
+  viewer: ['tenant.read', 'member.read', 'form.read', 'submission.read_all'],
 });
 
 /** Lookup form of {@link MATRIX}, written out so no cast is needed to build it. */

@@ -67,10 +67,24 @@ describe('who can do what', () => {
     expect(can('dispatcher', 'member.update_role')).toBe(false);
   });
 
-  it('gives dispatcher, engineer and viewer the same capabilities at this phase', () => {
-    const dispatcher = permissionsFor('dispatcher').sort();
-    expect(permissionsFor('engineer').sort()).toEqual(dispatcher);
-    expect(permissionsFor('viewer').sort()).toEqual(dispatcher);
+  it('lets those who do the work fill forms, and those who oversee it read every submission', () => {
+    expect(ROLES.filter((role) => can(role, 'submission.fill'))).toEqual([
+      'owner',
+      'admin',
+      'dispatcher',
+      'engineer',
+    ]);
+    // An engineer reads their own submissions only; a viewer reads everything and fills nothing.
+    expect(ROLES.filter((role) => can(role, 'submission.read_all'))).toEqual([
+      'owner',
+      'admin',
+      'dispatcher',
+      'viewer',
+    ]);
+  });
+
+  it('keeps correcting a submitted form to owners and admins', () => {
+    expect(ROLES.filter((role) => can(role, 'submission.amend'))).toEqual(['owner', 'admin']);
   });
 
   it('keeps audit and session control to owners and admins', () => {
@@ -132,31 +146,13 @@ describe('the matrix cannot be mutated by a caller', () => {
 
 describe('the relationship to roleRank', () => {
   /**
-   * As it stands, every permission's holders happen to form a prefix of ROLES,
-   * so a rank comparison would currently give the same answers. That is a
-   * coincidence of this phase's small vocabulary, not a property being
-   * preserved: P10 adds `work_order.assign`, which a dispatcher needs and an
-   * owner has no reason to hold.
-   *
-   * This test records the coincidence so that the day it stops being true is a
-   * deliberate edit to this file rather than a surprise. Delete it then.
+   * P03 recorded that every permission's holders happened to form a prefix of
+   * ROLES, and asked for that test to be deleted the day it stopped being true.
+   * P08 is that day: a viewer reads every submission and an engineer, who
+   * outranks a viewer, reads only their own. This keeps the lesson instead.
    */
-  it('is currently rank-monotone, which is an observation and not a rule', () => {
-    const gaps: string[] = [];
-
-    for (const permission of PERMISSIONS) {
-      const holders = ROLES.filter((role) => can(role, permission));
-      const lowest = holders.at(-1);
-      if (lowest === undefined) {
-        continue;
-      }
-      for (const role of ROLES.slice(0, ROLES.indexOf(lowest))) {
-        if (!can(role, permission)) {
-          gaps.push(`${role} / ${permission}`);
-        }
-      }
-    }
-
-    expect(gaps).toEqual([]);
+  it('is not rank-monotone, so no call site may substitute a rank check for a permission', () => {
+    expect(can('viewer', 'submission.read_all')).toBe(true);
+    expect(can('engineer', 'submission.read_all')).toBe(false);
   });
 });
