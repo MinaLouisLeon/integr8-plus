@@ -6,9 +6,11 @@ import {
   toTenantId,
   toUserId,
 } from '@integr8/core';
+import { formDefinitionSchema, reportableFields } from '@integr8/form-engine';
 import { type Selectable, sql } from 'kysely';
 import {
   type FormsTable,
+  type ReportableFieldSpec,
   type FormVersionsTable,
   type FormVersionStatus,
   formVersionStatusSchema,
@@ -49,6 +51,8 @@ export interface FormVersion {
   revision: number;
   changeNote: string | null;
   changes: Record<string, unknown> | null;
+  /** Which answers are copied into submission_values. Null on versions published before 0008. */
+  reportableFields: ReportableFieldSpec[] | null;
 }
 
 /** A version without its definition, for lists where the definition is dead weight. */
@@ -89,6 +93,12 @@ export interface PublishOptions {
    * changes they never saw.
    */
   expectedRevision?: number;
+  /**
+   * Which answers become reportable. Worked out from the stored definition by
+   * @integr8/form-engine when omitted, which is what every caller should do
+   * unless it has just computed the same list itself.
+   */
+  reportableFields?: ReportableFieldSpec[];
 }
 
 /**
@@ -316,6 +326,7 @@ export class FormsRepository extends TenantScopedRepository {
     publishedBy: UserId | string,
     options: PublishOptions = {},
   ): Promise<FormVersion | undefined> {
+    const reportable = options.reportableFields ?? (await this.#reportableFieldsOf(versionId));
     let query = this.db
       .updateTable('form_versions')
       .set({
@@ -330,6 +341,7 @@ export class FormsRepository extends TenantScopedRepository {
         published_by: toUserId(publishedBy),
         change_note: options.changeNote ?? null,
         changes: options.changes ?? null,
+        reportable_fields: JSON.stringify(reportable) as unknown as ReportableFieldSpec[],
       })
       .where('tenant_id', '=', this.tenantId)
       .where('id', '=', versionId)
@@ -341,6 +353,16 @@ export class FormsRepository extends TenantScopedRepository {
 
     const row = await query.returningAll().executeTakeFirst();
     return row === undefined ? undefined : toVersion(row);
+  }
+
+  /** A draft that does not parse reports nothing — and would not have passed the publish check anyway. */
+  async #reportableFieldsOf(versionId: string): Promise<ReportableFieldSpec[]> {
+    const row = await this.#versions()
+      .select('definition')
+      .where('id', '=', versionId)
+      .executeTakeFirst();
+    const parsed = formDefinitionSchema.safeParse(row?.definition);
+    return parsed.success ? reportableFields(parsed.data) : [];
   }
 
   async findVersion(versionId: string): Promise<FormVersion | undefined> {
@@ -377,6 +399,7 @@ export class FormsRepository extends TenantScopedRepository {
         'revision',
         'change_note',
         'changes',
+        'reportable_fields',
       ])
       .orderBy(sql`version_number desc nulls last`)
       .execute();
@@ -451,6 +474,7 @@ function summaryOf(row: Omit<Selectable<FormVersionsTable>, 'definition'>): Form
     revision: row.revision,
     changeNote: row.change_note,
     changes: row.changes,
+    reportableFields: row.reportable_fields,
   };
 }
 

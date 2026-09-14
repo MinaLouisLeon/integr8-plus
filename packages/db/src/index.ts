@@ -191,16 +191,35 @@ export type {
 
 export type {
   CreateSubmissionInput,
+  StartDraftInput,
   Submission,
+  SubmissionEvent,
+  SubmissionPage,
+  SubmissionQuery,
   SubmissionsRepository,
+  ValueFilter,
+  ValueOperator,
+  WriteRefusal,
+  WriteResult,
 } from './repositories/submissions.js';
+
+export type { CreateMediaInput, MediaObject, MediaRepository } from './repositories/media.js';
 
 export {
   FORM_TEMPLATE_CATEGORIES,
   FORM_VERSION_STATUSES,
   formVersionStatusSchema,
+  MEDIA_STATUSES,
+  REPORTABLE_VALUE_TYPES,
+  SUBMISSION_EVENT_KINDS,
+  SUBMISSION_STATUSES,
   type FormTemplateCategory,
   type FormVersionStatus,
+  type MediaStatus,
+  type ReportableFieldSpec,
+  type ReportableValueType,
+  type SubmissionEventKind,
+  type SubmissionStatus,
 } from './schema.js';
 
 export {
