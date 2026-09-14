@@ -135,6 +135,39 @@ export function integr8Config(tsconfigRootDir, options = {}) {
 }
 
 /**
+ * The selectors behind the right-to-left rule, exported so an app that adds its
+ * own `no-restricted-syntax` entries can keep these rather than replace them —
+ * ESLint replaces a rule's options wholesale when a later config sets it.
+ */
+export const RTL_RESTRICTED_SYNTAX = [
+  // The class may be bare (`border-l`, `text-left`) or suffixed
+  // (`ml-4`, `rounded-l-md`), and may sit anywhere in a space-separated
+  // list. An earlier version of this pattern required a trailing
+  // hyphen, which silently let `text-left` and `border-l` through — the
+  // exact classes it existed to catch.
+  //
+  // `String.raw`, not an ordinary template literal: `\s` inside one is
+  // just `s`, which silently turns the word-boundary guards into a
+  // literal letter. That version matched a class at the start of a
+  // string and nothing after it, so `className="flex ml-4"` passed.
+  ...RTL_UNSAFE_CLASSES.map(([physical, logical]) => ({
+    selector: String.raw`Literal[value=/(^|\s)-?${physical}(-[^\s]*)?(\s|$)/]`,
+    message: `"${physical}" is a physical direction and mirrors wrongly in Arabic. Use "${logical}" instead.`,
+  })),
+  // React Native's equivalent. It does not accept `start` for text;
+  // the direction-following value is `auto`, and `left`/`right` stay
+  // put in a mirrored layout exactly as they do in CSS.
+  {
+    selector: "Property[key.name='textAlign'] > Literal[value='left']",
+    message: "textAlign: 'left' does not mirror in Arabic. Use 'auto'.",
+  },
+  {
+    selector: "Property[key.name='textAlign'] > Literal[value='right']",
+    message: "textAlign: 'right' does not mirror in Arabic. Use 'auto'.",
+  },
+];
+
+/**
  * Rules for the packages that render an interface.
  *
  * Three concerns, all of which are cheap now and expensive later: hook
@@ -157,34 +190,7 @@ function reactConfig() {
 
         // The rule that makes P05's RTL criterion enforceable rather than
         // aspirational.
-        'no-restricted-syntax': [
-          'error',
-          // The class may be bare (`border-l`, `text-left`) or suffixed
-          // (`ml-4`, `rounded-l-md`), and may sit anywhere in a space-separated
-          // list. An earlier version of this pattern required a trailing
-          // hyphen, which silently let `text-left` and `border-l` through — the
-          // exact classes it existed to catch.
-          //
-          // `String.raw`, not an ordinary template literal: `\s` inside one is
-          // just `s`, which silently turns the word-boundary guards into a
-          // literal letter. That version matched a class at the start of a
-          // string and nothing after it, so `className="flex ml-4"` passed.
-          ...RTL_UNSAFE_CLASSES.map(([physical, logical]) => ({
-            selector: String.raw`Literal[value=/(^|\s)-?${physical}(-[^\s]*)?(\s|$)/]`,
-            message: `"${physical}" is a physical direction and mirrors wrongly in Arabic. Use "${logical}" instead.`,
-          })),
-          // React Native's equivalent. It does not accept `start` for text;
-          // the direction-following value is `auto`, and `left`/`right` stay
-          // put in a mirrored layout exactly as they do in CSS.
-          {
-            selector: "Property[key.name='textAlign'] > Literal[value='left']",
-            message: "textAlign: 'left' does not mirror in Arabic. Use 'auto'.",
-          },
-          {
-            selector: "Property[key.name='textAlign'] > Literal[value='right']",
-            message: "textAlign: 'right' does not mirror in Arabic. Use 'auto'.",
-          },
-        ],
+        'no-restricted-syntax': ['error', ...RTL_RESTRICTED_SYNTAX],
       },
     },
     {
