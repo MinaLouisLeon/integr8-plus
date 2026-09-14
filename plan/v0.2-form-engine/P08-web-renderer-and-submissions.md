@@ -81,7 +81,7 @@ real screen reader before the first customer is worth doing and is not claimed h
   download links and confirms what storage holds; the local-disk adapter signs its own
   links so the flow is R2's. P09 replaces the adapter.
 - **CORS is an allow-list.** Found as a gap in P07. Local origins are allowed in
-  development; production refuses to start without \`API_CORS_ORIGINS\`, or with local media.
+  development; production refuses to start without `API_CORS_ORIGINS`, or with local media.
 - **The screens are shared too.** Fill, list and detail screens are in
   `@integr8/form-renderer-dom/screens`; each app supplies its client, routing and download.
   P01 now records the DOM-to-DOM exception to its rule about widgets.
