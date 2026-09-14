@@ -203,19 +203,34 @@ export type {
   WriteResult,
 } from './repositories/submissions.js';
 
-export type { CreateMediaInput, MediaObject, MediaRepository } from './repositories/media.js';
+export type {
+  ConfirmedFile,
+  CreateUploadIntentInput,
+  FileRecord,
+  FilesRepository,
+  StorageUsage,
+  UploadIntent,
+} from './repositories/files.js';
+
+export type { StorageRegistry, TenantBucket } from './repositories/storage-registry.js';
 
 export {
   FORM_TEMPLATE_CATEGORIES,
   FORM_VERSION_STATUSES,
   formVersionStatusSchema,
-  MEDIA_STATUSES,
+  MEDIA_CATEGORIES,
+  STORAGE_PROVIDERS,
+  THUMBNAIL_STATUSES,
+  USAGE_CATEGORIES,
   REPORTABLE_VALUE_TYPES,
   SUBMISSION_EVENT_KINDS,
   SUBMISSION_STATUSES,
   type FormTemplateCategory,
   type FormVersionStatus,
-  type MediaStatus,
+  type MediaCategory,
+  type StorageProvider,
+  type ThumbnailStatus,
+  type UsageCategory,
   type ReportableFieldSpec,
   type ReportableValueType,
   type SubmissionEventKind,

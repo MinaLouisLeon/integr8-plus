@@ -21,7 +21,8 @@ import {
 } from './repositories/jobs.js';
 import { FormTemplatesReader, FormTemplatesWriter } from './repositories/form-templates.js';
 import { FormsRepository } from './repositories/forms.js';
-import { MediaRepository } from './repositories/media.js';
+import { FilesRepository } from './repositories/files.js';
+import { StorageRegistry } from './repositories/storage-registry.js';
 import { SubmissionsRepository } from './repositories/submissions.js';
 import { InvitationsRepository } from './repositories/invitations.js';
 import { LoginSecurityRepository } from './repositories/login-security.js';
@@ -71,7 +72,7 @@ export interface TenantTransaction {
   readonly jobs: JobsRepository;
   readonly forms: FormsRepository;
   readonly submissions: SubmissionsRepository;
-  readonly media: MediaRepository;
+  readonly files: FilesRepository;
   /** The global template library. Read-only: the runtime role holds select and nothing else. */
   readonly formTemplates: FormTemplatesReader;
 }
@@ -127,6 +128,8 @@ export interface PlatformDataSource {
   readonly jobs: PlatformJobQueue;
   /** Loading the global template library, until P15 gives it a management screen. */
   readonly formTemplates: FormTemplatesWriter;
+  /** Which bucket each company has, and removing a company's media records. */
+  readonly storage: StorageRegistry;
 }
 
 /**
@@ -267,7 +270,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     jobs: new JobsRepository(scope),
     forms: new FormsRepository(scope),
     submissions: new SubmissionsRepository(scope),
-    media: new MediaRepository(scope),
+    files: new FilesRepository(scope),
     formTemplates: new FormTemplatesReader(scope.trx),
   };
 }
@@ -328,6 +331,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     tenants: new TenantsRepository(db),
     platformUsers: new PlatformUsersRepository(db),
     formTemplates: new FormTemplatesWriter(db),
+    storage: new StorageRegistry(db),
     jobs: {
       claim: (options) => claimJobs(db, options),
       complete: (jobId, at) => completeJob(db, jobId, at),
