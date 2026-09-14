@@ -21,6 +21,7 @@ import {
 } from './repositories/jobs.js';
 import { FormTemplatesReader, FormTemplatesWriter } from './repositories/form-templates.js';
 import { FormsRepository } from './repositories/forms.js';
+import { MediaRepository } from './repositories/media.js';
 import { SubmissionsRepository } from './repositories/submissions.js';
 import { InvitationsRepository } from './repositories/invitations.js';
 import { LoginSecurityRepository } from './repositories/login-security.js';
@@ -70,6 +71,7 @@ export interface TenantTransaction {
   readonly jobs: JobsRepository;
   readonly forms: FormsRepository;
   readonly submissions: SubmissionsRepository;
+  readonly media: MediaRepository;
   /** The global template library. Read-only: the runtime role holds select and nothing else. */
   readonly formTemplates: FormTemplatesReader;
 }
@@ -265,6 +267,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     jobs: new JobsRepository(scope),
     forms: new FormsRepository(scope),
     submissions: new SubmissionsRepository(scope),
+    media: new MediaRepository(scope),
     formTemplates: new FormTemplatesReader(scope.trx),
   };
 }

@@ -70,7 +70,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 
 - [~] **P06** — Form schema and logic core
 - [~] **P07** — Form builder UI
-- [ ] **P08** — Web renderer and submissions
+- [x] **P08** — Web renderer and submissions
 - [ ] **P09** — Media pipeline on R2
 
 ### v0.3 — Field Loop

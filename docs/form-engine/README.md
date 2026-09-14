@@ -14,7 +14,8 @@ compileDefinition(json)  ──▶  CompiledForm  ──▶  createFormState / t
 | Where it runs       | What it uses it for                                                                                                      |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | P07 builder         | `compileDefinition` to refuse an invalid publish, naming the fields; the authoring layer — see [the builder](builder.md) |
-| P08 web, P13 mobile | `createFormState`, `transition`, `viewForm`, `toSubmission`                                                              |
+| P08 web and desktop | `@integr8/form-renderer-dom` — see [submissions](submissions.md)                                                         |
+| P13 mobile          | `createFormState`, `transition`, `viewForm`, `toSubmission`                                                              |
 | API (P08)           | `validateSubmission` — the client validates for speed, the server for truth                                              |
 | Drafts (P12)        | `migrateAnswers` when a newer version is published under a draft                                                         |
 

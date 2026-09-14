@@ -37,6 +37,14 @@ The storage layer and its accounting. The super admin views over this data are P
 
 ## Notes
 
+- **Already in place from P08.** `media_objects` records every upload; the API issues
+  upload and download links through `MediaStorage` (`apps/api/src/media/storage.ts`),
+  confirms what storage holds before a file can be used, and refuses a submission naming
+  one it has not confirmed. The only implementation is `LocalDiskStorage`, which signs its
+  own links. This phase adds the R2 implementation behind the same interface, and grows
+  `media_objects` into the `files` ledger; the renderer, the routes and submission
+  validation should not need to change.
+
 - Cloudflare's GraphQL Analytics API reports storage **per bucket** and cannot break a
   bucket down by key prefix. That is the entire reason each company gets its own bucket.
 - Client-side compression is the single decision that most controls your storage bill.

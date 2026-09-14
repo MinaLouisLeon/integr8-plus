@@ -5,10 +5,17 @@ import {
   evaluateExpression,
   evaluateForm,
   type FormEvaluation,
+  ownAnswer,
   toRuleValue,
   truth,
 } from './evaluate.js';
-import { type FieldError, isAnswered, isCalculated, validateAnswer } from './field-types.js';
+import {
+  type FieldError,
+  hasAnswerShape,
+  isAnswered,
+  isCalculated,
+  validateAnswer,
+} from './field-types.js';
 import type { ElementId } from './ids.js';
 
 /**
@@ -122,6 +129,10 @@ export interface SubmissionCheck {
  *   package exists to prevent.
  * - **A value for a calculated field** is refused. The server works it out
  *   itself; accepting the client's would let a client decide a total.
+ * - **An answer of the wrong shape** is refused as `invalid`. Evaluation treats
+ *   a malformed answer as no answer, which is right while someone is typing and
+ *   wrong here: a number sent for a decimal would otherwise be dropped without a
+ *   word, and the submission stored without it.
  */
 export function validateSubmission(
   form: CompiledForm,
@@ -152,10 +163,32 @@ export function validateSubmission(
     }
   }
 
+  // A malformed answer to a visible, typed field: `invalid` in place of whatever
+  // validation said about the field as though it were unanswered.
+  const malformed = new Set(
+    form.fields
+      .filter(
+        (field) =>
+          !isCalculated(field) &&
+          validation.evaluation.visible.get(field.id) === true &&
+          Object.prototype.hasOwnProperty.call(answers, field.id) &&
+          !hasAnswerShape(field, ownAnswer(answers, field.id)),
+      )
+      .map((field) => field.id),
+  );
+  const errors: FieldError[] =
+    malformed.size === 0
+      ? [...validation.errors]
+      : form.fields.flatMap((field) =>
+          malformed.has(field.id)
+            ? [{ field: field.id, code: 'invalid' as const, params: {} }]
+            : validation.errors.filter((error) => error.field === field.id),
+        );
+
   return {
-    valid: issues.length === 0 && validation.valid,
+    valid: issues.length === 0 && errors.length === 0,
     issues,
-    errors: validation.errors,
+    errors,
     answers: Object.fromEntries(validation.evaluation.values),
   };
 }

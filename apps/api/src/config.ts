@@ -46,6 +46,40 @@ export const apiConfigSchema = z.object({
   API_MAX_BODY_BYTES: positiveInt(1_048_576),
 
   /**
+   * Browser origins allowed to call this API, comma-separated.
+   *
+   * The web app, the desktop app's dev server and the Tauri webview all run on
+   * origins other than the API's. Unset in development means the local ones
+   * (see `corsOrigins`); unset anywhere else means none, so a deployment that
+   * forgets this fails closed and loudly rather than open.
+   */
+  API_CORS_ORIGINS: z.string().default(''),
+
+  /**
+   * The address clients reach this API at, for links it hands out — such as
+   * where to upload a file when media is stored locally. Defaults to localhost.
+   */
+  API_PUBLIC_URL: z.url().optional(),
+
+  // -------------------------------------------------------------------------
+  // Media
+  // -------------------------------------------------------------------------
+
+  /**
+   * Where uploaded files are kept. `local` writes to disk and signs its own
+   * upload and download links, for development and tests. P09 adds `r2`.
+   */
+  MEDIA_STORAGE: z.enum(['local']).default('local'),
+  MEDIA_LOCAL_DIR: z.string().min(1).default('.data/media'),
+  /**
+   * Signs local upload and download links. Unset means a random secret per
+   * process: links stop working on restart, which is fine on a laptop.
+   */
+  MEDIA_URL_SECRET: z.string().min(32).optional(),
+  /** Largest single file accepted, in bytes. */
+  MEDIA_MAX_BYTES: positiveInt(25 * 1024 * 1024),
+
+  /**
    * Sentry. Optional: unset means errors are logged and not reported, which is
    * the right default for a developer's machine and the wrong one for
    * production — `assertProductionReady` says so at startup.
@@ -84,6 +118,32 @@ export const apiConfigSchema = z.object({
 
 export type ApiConfig = z.infer<typeof apiConfigSchema>;
 
+/** The local origins a developer's browser, desktop dev server and Tauri window use. */
+export const DEVELOPMENT_ORIGINS = [
+  'http://localhost:3001',
+  'http://localhost:3002',
+  'tauri://localhost',
+  'http://tauri.localhost',
+] as const;
+
+/** The origins allowed to call this API from a browser. */
+export function corsOrigins(config: ApiConfig): string[] {
+  const listed = config.API_CORS_ORIGINS.split(',')
+    .map((origin) => origin.trim().replace(/\/+$/u, ''))
+    .filter((origin) => origin !== '');
+  if (listed.length > 0) {
+    return listed;
+  }
+  return config.APP_ENV === 'development' || config.APP_ENV === 'test'
+    ? [...DEVELOPMENT_ORIGINS]
+    : [];
+}
+
+/** Where this API is reached from outside, without a trailing slash. */
+export function publicUrl(config: ApiConfig): string {
+  return (config.API_PUBLIC_URL ?? `http://localhost:${String(config.PORT)}`).replace(/\/+$/u, '');
+}
+
 export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const result = apiConfigSchema.safeParse(env);
   if (!result.success) {
@@ -114,6 +174,14 @@ export function assertProductionReady(config: ApiConfig): void {
 
   if (config.SENTRY_DSN === undefined || config.SENTRY_DSN === '') {
     problems.push('SENTRY_DSN is not set: nothing would report an unhandled error.');
+  }
+  if (config.MEDIA_STORAGE === 'local') {
+    problems.push(
+      "MEDIA_STORAGE is local: uploads would live on one container's disk and vanish with it.",
+    );
+  }
+  if (config.API_CORS_ORIGINS.trim() === '') {
+    problems.push('API_CORS_ORIGINS is not set: no browser client could call this API.');
   }
   if (config.API_RELEASE === 'development') {
     problems.push('API_RELEASE is not set: reported errors could not be tied to a build.');

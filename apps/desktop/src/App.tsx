@@ -20,6 +20,7 @@ import { session, whenSignedOut } from '~/lib/session';
 import { FormBuilderRoute } from '~/features/forms/routes/form-builder';
 import { FormVersionRoute } from '~/features/forms/routes/form-version';
 import { FormsListRoute } from '~/features/forms/routes/forms-list';
+import { FillRoute, SubmissionRoute, SubmissionsRoute } from '~/features/submissions/screens';
 import { DashboardRoute } from '~/routes/dashboard';
 import { SignInRoute } from '~/routes/sign-in';
 
@@ -104,6 +105,30 @@ export function App() {
                   element={
                     <RequireSession>
                       <FormVersionRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/fill"
+                  element={
+                    <RequireSession>
+                      <FillRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/submissions"
+                  element={
+                    <RequireSession>
+                      <SubmissionsRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/submissions/:submissionId"
+                  element={
+                    <RequireSession>
+                      <SubmissionRoute />
                     </RequireSession>
                   }
                 />

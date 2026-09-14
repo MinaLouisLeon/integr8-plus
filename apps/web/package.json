@@ -16,6 +16,8 @@
   "dependencies": {
     "@integr8/api-client": "workspace:*",
     "@integr8/core": "workspace:*",
+    "@integr8/form-engine": "workspace:*",
+    "@integr8/form-renderer-dom": "workspace:*",
     "@integr8/i18n": "workspace:*",
     "@integr8/tokens": "workspace:*",
     "@sentry/nextjs": "10.74.0",

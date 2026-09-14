@@ -1,6 +1,9 @@
 @import 'tailwindcss';
 @import '@integr8/tokens/theme.css';
 
+/* The shared form renderer writes Tailwind classes; scan them too. */
+@source '../../node_modules/@integr8/form-renderer-dom/dist';
+
 /*
  * Two imports and almost nothing else.
  *

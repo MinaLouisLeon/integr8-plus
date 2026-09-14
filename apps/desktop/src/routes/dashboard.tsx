@@ -69,13 +69,29 @@ export function DashboardRoute() {
         </Button>
       </header>
 
-      <Link
-        to="/forms"
-        className="flex flex-col gap-1 rounded-lg border border-border-subtle bg-surface p-6 text-start hover:bg-surface-muted"
-      >
-        <span className="text-lg font-semibold text-content">{t('forms.nav.forms')}</span>
-        <span className="text-sm text-content-muted">{t('forms.list.subtitle')}</span>
-      </Link>
+      <nav aria-label={t('submissions.nav')} className="grid gap-4 sm:grid-cols-3">
+        <Link
+          to="/forms"
+          className="flex flex-col gap-1 rounded-lg border border-border-subtle bg-surface p-6 text-start hover:bg-surface-muted"
+        >
+          <span className="text-lg font-semibold text-content">{t('forms.nav.forms')}</span>
+          <span className="text-sm text-content-muted">{t('forms.list.subtitle')}</span>
+        </Link>
+        <Link
+          to="/fill"
+          className="flex flex-col gap-1 rounded-lg border border-border-subtle bg-surface p-6 text-start hover:bg-surface-muted"
+        >
+          <span className="text-lg font-semibold text-content">{t('submissions.fillNav')}</span>
+          <span className="text-sm text-content-muted">{t('submissions.start.subtitle')}</span>
+        </Link>
+        <Link
+          to="/submissions"
+          className="flex flex-col gap-1 rounded-lg border border-border-subtle bg-surface p-6 text-start hover:bg-surface-muted"
+        >
+          <span className="text-lg font-semibold text-content">{t('submissions.nav')}</span>
+          <span className="text-sm text-content-muted">{t('submissions.list.title')}</span>
+        </Link>
+      </nav>
 
       <section className="rounded-lg border border-border-subtle bg-surface p-6 text-start">
         <dl className="grid gap-4 sm:grid-cols-2">

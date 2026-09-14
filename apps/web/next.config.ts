@@ -6,7 +6,14 @@ const config: NextConfig = {
 
   // The workspace packages ship TypeScript-compiled ESM; Next needs telling
   // which of its dependencies are local source rather than published builds.
-  transpilePackages: ['@integr8/api-client', '@integr8/core', '@integr8/i18n', '@integr8/tokens'],
+  transpilePackages: [
+    '@integr8/api-client',
+    '@integr8/core',
+    '@integr8/form-engine',
+    '@integr8/form-renderer-dom',
+    '@integr8/i18n',
+    '@integr8/tokens',
+  ],
 
   // The build fails on a type error or a lint error rather than shipping one.
   // Next's defaults already do this; stating it stops a future "just for now"

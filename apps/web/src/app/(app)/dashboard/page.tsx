@@ -3,6 +3,7 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button, ErrorState, LoadingState } from '~/components/ui';
 import { apiClient, signOut } from '~/lib/session';
@@ -67,6 +68,23 @@ export default function DashboardPage() {
           {t('common.signOut')}
         </Button>
       </header>
+
+      <nav aria-label={t('submissions.nav')} className="grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/fill"
+          className="flex flex-col gap-1 rounded-lg border border-border-subtle bg-surface p-6 text-start hover:bg-surface-muted"
+        >
+          <span className="text-lg font-semibold text-content">{t('submissions.fillNav')}</span>
+          <span className="text-sm text-content-muted">{t('submissions.start.subtitle')}</span>
+        </Link>
+        <Link
+          href="/submissions"
+          className="flex flex-col gap-1 rounded-lg border border-border-subtle bg-surface p-6 text-start hover:bg-surface-muted"
+        >
+          <span className="text-lg font-semibold text-content">{t('submissions.nav')}</span>
+          <span className="text-sm text-content-muted">{t('submissions.list.title')}</span>
+        </Link>
+      </nav>
 
       <section className="rounded-lg border border-border-subtle bg-surface p-6">
         <dl className="grid gap-4 sm:grid-cols-2">

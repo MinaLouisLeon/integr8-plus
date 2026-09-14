@@ -12,6 +12,7 @@ export default {
         'mobile',
         'core',
         'form-engine',
+        'form-renderer',
         'db',
         'auth',
         'config',

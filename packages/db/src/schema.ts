@@ -334,7 +334,25 @@ export interface FormVersionsTable {
   revision: Generated<number>;
   change_note: string | null;
   changes: Jsonb<Record<string, unknown>> | null;
+  /** Set at publish: which answers are copied into submission_values. Null on versions published before 0008. */
+  reportable_fields: Jsonb<ReportableFieldSpec[]> | null;
 }
+
+export interface ReportableFieldSpec {
+  field: string;
+  type: ReportableValueType;
+  multiple: boolean;
+}
+
+export const REPORTABLE_VALUE_TYPES = [
+  'text',
+  'number',
+  'date',
+  'time',
+  'datetime',
+  'boolean',
+] as const;
+export type ReportableValueType = (typeof REPORTABLE_VALUE_TYPES)[number];
 
 export const FORM_TEMPLATE_CATEGORIES = ['maintenance', 'safety', 'completion'] as const;
 export type FormTemplateCategory = (typeof FORM_TEMPLATE_CATEGORIES)[number];
@@ -350,15 +368,80 @@ export interface FormTemplatesTable {
   updated_at: UpdatedAt;
 }
 
+export const SUBMISSION_STATUSES = ['draft', 'submitted', 'reopened'] as const;
+export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
+
 export interface SubmissionsTable {
   id: Generated<string>;
   tenant_id: string;
+  form_id: string;
   form_version_id: string;
+  status: Generated<SubmissionStatus>;
   answers: Jsonb<Record<string, unknown>>;
+  /** The person filling it in. */
   submitted_by: string;
-  submitted_at: Generated<Date>;
+  /** Set by trigger when first submitted; null while a draft. */
+  submitted_at: Generated<Date | null>;
+  amended_at: Generated<Date | null>;
+  revision: Generated<number>;
+  /** Who is making this change. Required on every write; the history trigger records it. */
+  last_actor: string;
+  last_reason: string | null;
+  /** Generated full-text vector. Never written. */
+  search: ColumnType<string, never, never>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
+}
+
+export const SUBMISSION_EVENT_KINDS = ['submitted', 'reopened', 'amended'] as const;
+export type SubmissionEventKind = (typeof SUBMISSION_EVENT_KINDS)[number];
+
+/** Written only by trigger; the runtime role may read it. */
+export interface SubmissionEventsTable {
+  id: ColumnType<string, never, never>;
+  tenant_id: ColumnType<string, never, never>;
+  submission_id: ColumnType<string, never, never>;
+  sequence: ColumnType<number, never, never>;
+  kind: ColumnType<SubmissionEventKind, never, never>;
+  answers: ColumnType<Record<string, unknown> | null, never, never>;
+  actor_id: ColumnType<string, never, never>;
+  reason: ColumnType<string | null, never, never>;
+  occurred_at: ColumnType<Date, never, never>;
+}
+
+/** Written only by trigger; the runtime role may read it. */
+export interface SubmissionValuesTable {
+  tenant_id: ColumnType<string, never, never>;
+  submission_id: ColumnType<string, never, never>;
+  form_id: ColumnType<string, never, never>;
+  form_version_id: ColumnType<string, never, never>;
+  field_id: ColumnType<string, never, never>;
+  ordinal: ColumnType<number, never, never>;
+  value_type: ColumnType<ReportableValueType, never, never>;
+  value_text: ColumnType<string | null, never, never>;
+  value_number: ColumnType<string | null, never, never>;
+  value_date: ColumnType<Date | null, never, never>;
+  value_time: ColumnType<string | null, never, never>;
+  value_timestamp: ColumnType<Date | null, never, never>;
+  value_boolean: ColumnType<boolean | null, never, never>;
+  submitted_at: ColumnType<Date, never, never>;
+}
+
+export const MEDIA_STATUSES = ['pending', 'stored'] as const;
+export type MediaStatus = (typeof MEDIA_STATUSES)[number];
+
+export interface MediaObjectsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  content_type: string;
+  /** bigint: the driver returns it as text. */
+  byte_size: ColumnType<string, number, number>;
+  storage_key: string;
+  status: Generated<MediaStatus>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  stored_at: Date | null;
 }
 
 export interface Database {
@@ -378,6 +461,9 @@ export interface Database {
   forms: FormsTable;
   form_versions: FormVersionsTable;
   submissions: SubmissionsTable;
+  submission_events: SubmissionEventsTable;
+  submission_values: SubmissionValuesTable;
+  media_objects: MediaObjectsTable;
   form_templates: FormTemplatesTable;
   rate_limit_buckets: RateLimitBucketsTable;
   schema_migrations: SchemaMigrationsTable;
@@ -433,7 +519,12 @@ export type SecurityDefinerView = (typeof SECURITY_DEFINER_VIEWS)[number];
  * as the views above. The schema-invariant suite fails if another one appears,
  * or if one of these stops pinning its `search_path`.
  */
-export const SECURITY_DEFINER_FUNCTIONS = ['reject_platform_user_membership'] as const;
+export const SECURITY_DEFINER_FUNCTIONS = [
+  'reject_platform_user_membership',
+  // Writes submission history and reportable values, which the runtime role
+  // cannot write itself; see 0008.
+  'record_submission_change',
+] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
 export type PlatformTable = (typeof PLATFORM_TABLES)[number];
@@ -469,6 +560,9 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   forms: true,
   form_versions: true,
   submissions: true,
+  submission_events: true,
+  submission_values: true,
+  media_objects: true,
 };
 
 export const TENANT_SCOPED_TABLES: readonly TenantScopedTable[] = Object.freeze(
