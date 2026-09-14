@@ -312,6 +312,10 @@ export interface FormsTable {
   created_at: CreatedAt;
   updated_at: UpdatedAt;
   archived_at: Date | null;
+  fill_roles: Generated<TenantRole[]>;
+  signature_required: Generated<boolean>;
+  cloned_from_form_id: string | null;
+  source_template_key: string | null;
 }
 
 export interface FormVersionsTable {
@@ -327,6 +331,23 @@ export interface FormVersionsTable {
   updated_at: UpdatedAt;
   published_at: Date | null;
   published_by: string | null;
+  revision: Generated<number>;
+  change_note: string | null;
+  changes: Jsonb<Record<string, unknown>> | null;
+}
+
+export const FORM_TEMPLATE_CATEGORIES = ['maintenance', 'safety', 'completion'] as const;
+export type FormTemplateCategory = (typeof FORM_TEMPLATE_CATEGORIES)[number];
+
+export interface FormTemplatesTable {
+  key: string;
+  title: Jsonb<Record<string, string>>;
+  description: Jsonb<Record<string, string>>;
+  category: FormTemplateCategory;
+  definition: Jsonb<Record<string, unknown>>;
+  definition_schema_version: number;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
 }
 
 export interface SubmissionsTable {
@@ -357,6 +378,7 @@ export interface Database {
   forms: FormsTable;
   form_versions: FormVersionsTable;
   submissions: SubmissionsTable;
+  form_templates: FormTemplatesTable;
   rate_limit_buckets: RateLimitBucketsTable;
   schema_migrations: SchemaMigrationsTable;
   auth_memberships: AuthMembershipsView;
@@ -389,6 +411,9 @@ export const PLATFORM_TABLES = [
   // before there is any tenant to scope by. Keyed on an opaque bucket string
   // and reached only by the pre-authentication role; see 0004.
   'rate_limit_buckets',
+  // The global form template library belongs to no company, and every company
+  // may read it. The runtime role holds select and nothing else; see 0007.
+  'form_templates',
 ] as const;
 
 /**

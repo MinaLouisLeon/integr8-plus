@@ -19,6 +19,7 @@ import {
   failJob,
   JobsRepository,
 } from './repositories/jobs.js';
+import { FormTemplatesReader, FormTemplatesWriter } from './repositories/form-templates.js';
 import { FormsRepository } from './repositories/forms.js';
 import { SubmissionsRepository } from './repositories/submissions.js';
 import { InvitationsRepository } from './repositories/invitations.js';
@@ -69,6 +70,8 @@ export interface TenantTransaction {
   readonly jobs: JobsRepository;
   readonly forms: FormsRepository;
   readonly submissions: SubmissionsRepository;
+  /** The global template library. Read-only: the runtime role holds select and nothing else. */
+  readonly formTemplates: FormTemplatesReader;
 }
 
 /**
@@ -120,6 +123,8 @@ export interface PlatformDataSource {
   readonly tenants: TenantsRepository;
   readonly platformUsers: PlatformUsersRepository;
   readonly jobs: PlatformJobQueue;
+  /** Loading the global template library, until P15 gives it a management screen. */
+  readonly formTemplates: FormTemplatesWriter;
 }
 
 /**
@@ -260,6 +265,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     jobs: new JobsRepository(scope),
     forms: new FormsRepository(scope),
     submissions: new SubmissionsRepository(scope),
+    formTemplates: new FormTemplatesReader(scope.trx),
   };
 }
 
@@ -318,6 +324,7 @@ export function getPlatformDataSource(): PlatformDataSource {
   return {
     tenants: new TenantsRepository(db),
     platformUsers: new PlatformUsersRepository(db),
+    formTemplates: new FormTemplatesWriter(db),
     jobs: {
       claim: (options) => claimJobs(db, options),
       complete: (jobId, at) => completeJob(db, jobId, at),

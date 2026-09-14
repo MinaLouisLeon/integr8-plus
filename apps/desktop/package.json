@@ -17,8 +17,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@dnd-kit/core": "6.3.1",
+    "@dnd-kit/sortable": "10.0.0",
+    "@dnd-kit/utilities": "3.2.2",
     "@integr8/api-client": "workspace:*",
     "@integr8/core": "workspace:*",
+    "@integr8/form-engine": "workspace:*",
     "@integr8/i18n": "workspace:*",
     "@integr8/tokens": "workspace:*",
     "@sentry/react": "10.74.0",

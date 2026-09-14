@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/public.d.ts",
+      "default": "./dist/testing/public.js"
     }
   },
   "files": [
@@ -24,10 +28,12 @@
     "test": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
     "db": "tsx --env-file-if-exists=.env src/migrator/cli.ts",
-    "db:seed": "tsx --env-file-if-exists=.env src/seed/cli.ts"
+    "db:seed": "tsx --env-file-if-exists=.env src/seed/cli.ts",
+    "db:templates": "tsx --env-file-if-exists=.env src/seed/templates-cli.ts"
   },
   "dependencies": {
     "@integr8/core": "workspace:*",
+    "@integr8/form-engine": "workspace:*",
     "kysely": "0.28.9",
     "pg": "8.16.3",
     "zod": "4.6.1"

@@ -166,3 +166,66 @@ export {
   type DroppedReason,
   type FormVersionStatus,
 } from './versioning.js';
+
+// ---------------------------------------------------------------------------
+// Authoring — what the builder (P07) is made of. Pure, like everything above.
+// ---------------------------------------------------------------------------
+
+export {
+  canCompareWithField,
+  clauseProblem,
+  CONDITION_OPERATORS,
+  fromExpression,
+  operatorsFor,
+  takesValue,
+  toExpression,
+  type ClauseProblem,
+  type ConditionClause,
+  type ConditionModel,
+  type ConditionOperator,
+} from './authoring/conditions.js';
+
+export {
+  diffDefinitions,
+  type BreakingChange,
+  type BreakingReason,
+  type ChangeKind,
+  type DefinitionChange,
+  type DefinitionDiff,
+} from './authoring/diff.js';
+
+export {
+  addField,
+  addPage,
+  addSection,
+  allIds,
+  duplicate,
+  fieldsOf,
+  findField,
+  isEditError,
+  locate,
+  moveField,
+  movePage,
+  moveSection,
+  referencesTo,
+  remapExpression,
+  remove,
+  subtreeIds,
+  updateField,
+  updatePage,
+  updateSection,
+  type DuplicateResult,
+  type EditError,
+  type EditResult,
+  type Located,
+  type Reference,
+} from './authoring/editing.js';
+
+export {
+  emptyDefinition,
+  generateId,
+  newField,
+  newPage,
+  newSection,
+  text as localized,
+} from './authoring/scaffold.js';

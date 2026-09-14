@@ -270,6 +270,242 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/forms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Forms in this company */
+        get: operations["listForms"];
+        put?: never;
+        /**
+         * Start a new form
+         * @description Creates the form and an empty first draft. Honours `Idempotency-Key`.
+         */
+        post: operations["createForm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/{formId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A form, its draft and its live version
+         * @description The draft is included only for people who may build forms.
+         */
+        get: operations["getForm"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename a form or change its settings
+         * @description Settings take effect immediately and are not versioned: who may fill a form, and whether a signature is mandatory before a job using it can close. The job-type requirement arrives with job types in P10.
+         */
+        patch: operations["updateForm"];
+        trace?: never;
+    };
+    "/v1/forms/{formId}/clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy a form into a new one
+         * @description The copy starts as a draft of the latest published version, or of the draft if nothing is published. Nothing about the original changes, and the copy has no history. Honours `Idempotency-Key`.
+         */
+        post: operations["cloneForm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/{formId}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Autosave the draft
+         * @description Stores the definition as it is, valid or not. `expectedRevision` is the revision the builder last saw, or `null` to start a draft when there is none. A save based on an older revision is refused with 409, so a second tab cannot overwrite the first.
+         */
+        put: operations["saveFormDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/{formId}/draft/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate the draft and compare it with the live version
+         * @description What publishing would decide, without publishing: every issue that would refuse it, named by field, and every change against the live version with the breaking ones marked.
+         */
+        post: operations["checkFormDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/{formId}/draft/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish the draft as a new, immutable version
+         * @description Refused with 422 if the definition does not compile — the details name every offending field. Refused with 409 if the draft changed since `expectedRevision`, or if it contains breaking changes and `acknowledgeBreakingChanges` is not true. Existing submissions keep pointing at the version they were made against.
+         */
+        post: operations["publishFormDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/{formId}/draft/test-submission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit a test fill of the draft, storing nothing
+         * @description Runs exactly the validation a real submission gets, against the draft, and returns the verdict. Nothing is written — not to submissions, not anywhere — so a test fill can never be mistaken for a job record.
+         */
+        post: operations["testFormDraftSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/{formId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Version history
+         * @description Published versions, newest first, each with its change note and change summary.
+         */
+        get: operations["listFormVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/forms/{formId}/versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One version, read-only */
+        get: operations["getFormVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/form-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The global template library */
+        get: operations["listFormTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/form-templates/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One template, to preview */
+        get: operations["getFormTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/form-templates/{key}/clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a form from a template
+         * @description The new form starts as a draft of the template. The template itself never changes. Honours `Idempotency-Key`.
+         */
+        post: operations["cloneFormTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -862,7 +1098,7 @@ export interface operations {
                         displayName: string;
                         /** @enum {string} */
                         role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
-                        permissions: ("tenant.read" | "tenant.update" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read")[];
+                        permissions: ("tenant.read" | "tenant.update" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -1576,6 +1812,1651 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listForms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Forms, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            signatureRequired: boolean;
+                            /** Format: uuid */
+                            clonedFromFormId: string | null;
+                            sourceTemplateKey: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            latestVersionNumber: number | null;
+                            latestPublishedAt: string | null;
+                            hasDraft: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createForm: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    /** @default en */
+                    locale?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The new form and its draft. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        form: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            signatureRequired: boolean;
+                            /** Format: uuid */
+                            clonedFromFormId: string | null;
+                            sourceTemplateKey: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                        draft: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** @enum {string} */
+                            status: "draft" | "published";
+                            versionNumber: number | null;
+                            revision: number;
+                            changeNote: string | null;
+                            changes: {
+                                [key: string]: unknown;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            publishedAt: string | null;
+                            /** Format: uuid */
+                            publishedBy: string | null;
+                            definition: {
+                                [key: string]: unknown;
+                            };
+                        } | null;
+                        live: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** @enum {string} */
+                            status: "draft" | "published";
+                            versionNumber: number | null;
+                            revision: number;
+                            changeNote: string | null;
+                            changes: {
+                                [key: string]: unknown;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            publishedAt: string | null;
+                            /** Format: uuid */
+                            publishedBy: string | null;
+                            definition: {
+                                [key: string]: unknown;
+                            };
+                        } | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getForm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The form. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        form: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            signatureRequired: boolean;
+                            /** Format: uuid */
+                            clonedFromFormId: string | null;
+                            sourceTemplateKey: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                        draft: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** @enum {string} */
+                            status: "draft" | "published";
+                            versionNumber: number | null;
+                            revision: number;
+                            changeNote: string | null;
+                            changes: {
+                                [key: string]: unknown;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            publishedAt: string | null;
+                            /** Format: uuid */
+                            publishedBy: string | null;
+                            definition: {
+                                [key: string]: unknown;
+                            };
+                        } | null;
+                        live: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** @enum {string} */
+                            status: "draft" | "published";
+                            versionNumber: number | null;
+                            revision: number;
+                            changeNote: string | null;
+                            changes: {
+                                [key: string]: unknown;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            publishedAt: string | null;
+                            /** Format: uuid */
+                            publishedBy: string | null;
+                            definition: {
+                                [key: string]: unknown;
+                            };
+                        } | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such form, or nothing published that this person may see. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateForm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    fillRoles?: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                    signatureRequired?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The updated form. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                        signatureRequired: boolean;
+                        /** Format: uuid */
+                        clonedFromFormId: string | null;
+                        sourceTemplateKey: string | null;
+                        createdAt: string;
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such form. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cloneForm: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The copy and its draft. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        form: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            signatureRequired: boolean;
+                            /** Format: uuid */
+                            clonedFromFormId: string | null;
+                            sourceTemplateKey: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                        draft: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** @enum {string} */
+                            status: "draft" | "published";
+                            versionNumber: number | null;
+                            revision: number;
+                            changeNote: string | null;
+                            changes: {
+                                [key: string]: unknown;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            publishedAt: string | null;
+                            /** Format: uuid */
+                            publishedBy: string | null;
+                            definition: {
+                                [key: string]: unknown;
+                            };
+                        } | null;
+                        live: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** @enum {string} */
+                            status: "draft" | "published";
+                            versionNumber: number | null;
+                            revision: number;
+                            changeNote: string | null;
+                            changes: {
+                                [key: string]: unknown;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            publishedAt: string | null;
+                            /** Format: uuid */
+                            publishedBy: string | null;
+                            definition: {
+                                [key: string]: unknown;
+                            };
+                        } | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such form. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveFormDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    definition: {
+                        [key: string]: unknown;
+                    };
+                    expectedRevision: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The saved draft. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        formId: string;
+                        /** @enum {string} */
+                        status: "draft" | "published";
+                        versionNumber: number | null;
+                        revision: number;
+                        changeNote: string | null;
+                        changes: {
+                            [key: string]: unknown;
+                        } | null;
+                        createdAt: string;
+                        updatedAt: string;
+                        publishedAt: string | null;
+                        /** Format: uuid */
+                        publishedBy: string | null;
+                        definition: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such form. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Somebody saved first. Reload the draft and reapply. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    checkFormDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The verdict. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        revision: number;
+                        valid: boolean;
+                        issues: {
+                            code: string;
+                            message: string;
+                            path: string;
+                            elements: string[];
+                        }[];
+                        diff: {
+                            titleChanged: boolean;
+                            changes: {
+                                /** @enum {string} */
+                                kind: "added" | "removed" | "moved" | "changed";
+                                /** @enum {string} */
+                                elementKind: "page" | "section" | "field";
+                                element: string;
+                                properties: string[];
+                            }[];
+                            breaking: {
+                                field: string;
+                                /** @enum {string} */
+                                reason: "field_removed" | "type_changed" | "option_removed" | "now_calculated" | "now_required" | "constraint_tightened";
+                                /** @enum {string} */
+                                affects: "reporting" | "drafts";
+                                detail: string[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such form, or no draft. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    publishFormDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedRevision: number;
+                    changeNote?: string;
+                    /** @default false */
+                    acknowledgeBreakingChanges?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        formId: string;
+                        /** @enum {string} */
+                        status: "draft" | "published";
+                        versionNumber: number | null;
+                        revision: number;
+                        changeNote: string | null;
+                        changes: {
+                            [key: string]: unknown;
+                        } | null;
+                        createdAt: string;
+                        updatedAt: string;
+                        publishedAt: string | null;
+                        /** Format: uuid */
+                        publishedBy: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such form, or no draft. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The draft changed since it was reviewed, or breaking changes were not acknowledged. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The definition does not compile. Details name the fields. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    testFormDraftSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    answers: {
+                        [key: string]: unknown;
+                    };
+                    today?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description What the server decided. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        valid: boolean;
+                        issues: {
+                            code: string;
+                            field: string | null;
+                        }[];
+                        errors: {
+                            field: string;
+                            code: string;
+                            params: {
+                                [key: string]: string;
+                            };
+                        }[];
+                        answers: {
+                            [key: string]: unknown;
+                        };
+                        /** @enum {boolean} */
+                        stored: false;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such form, or no draft. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The draft itself does not compile yet. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listFormVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** @enum {string} */
+                            status: "draft" | "published";
+                            versionNumber: number | null;
+                            revision: number;
+                            changeNote: string | null;
+                            changes: {
+                                [key: string]: unknown;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            publishedAt: string | null;
+                            /** Format: uuid */
+                            publishedBy: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such form. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getFormVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formId: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The version, with its definition. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        formId: string;
+                        /** @enum {string} */
+                        status: "draft" | "published";
+                        versionNumber: number | null;
+                        revision: number;
+                        changeNote: string | null;
+                        changes: {
+                            [key: string]: unknown;
+                        } | null;
+                        createdAt: string;
+                        updatedAt: string;
+                        publishedAt: string | null;
+                        /** Format: uuid */
+                        publishedBy: string | null;
+                        definition: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such version of this form. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listFormTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Templates. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            key: string;
+                            title: {
+                                [key: string]: string;
+                            };
+                            description: {
+                                [key: string]: string;
+                            };
+                            /** @enum {string} */
+                            category: "maintenance" | "safety" | "completion";
+                            fieldCount: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The template. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        key: string;
+                        title: {
+                            [key: string]: string;
+                        };
+                        description: {
+                            [key: string]: string;
+                        };
+                        /** @enum {string} */
+                        category: "maintenance" | "safety" | "completion";
+                        fieldCount: number;
+                        definition: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such template. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cloneFormTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The new form and its draft. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        form: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            signatureRequired: boolean;
+                            /** Format: uuid */
+                            clonedFromFormId: string | null;
+                            sourceTemplateKey: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                        draft: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** @enum {string} */
+                            status: "draft" | "published";
+                            versionNumber: number | null;
+                            revision: number;
+                            changeNote: string | null;
+                            changes: {
+                                [key: string]: unknown;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            publishedAt: string | null;
+                            /** Format: uuid */
+                            publishedBy: string | null;
+                            definition: {
+                                [key: string]: unknown;
+                            };
+                        } | null;
+                        live: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** @enum {string} */
+                            status: "draft" | "published";
+                            versionNumber: number | null;
+                            revision: number;
+                            changeNote: string | null;
+                            changes: {
+                                [key: string]: unknown;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            publishedAt: string | null;
+                            /** Format: uuid */
+                            publishedBy: string | null;
+                            definition: {
+                                [key: string]: unknown;
+                            };
+                        } | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such template. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
             409: {

@@ -2,6 +2,7 @@ import type { ApiConfig } from '../config.js';
 import type { AnyRoute } from '../http/routes.js';
 import { healthRoutes } from './health.js';
 import { authRoutes } from './v1/auth.js';
+import { formRoutes } from './v1/forms.js';
 import { workspaceRoutes } from './v1/workspace.js';
 
 /**
@@ -12,7 +13,7 @@ import { workspaceRoutes } from './v1/workspace.js';
  * incomplete.
  */
 export function allRoutes(config: ApiConfig): AnyRoute[] {
-  return [...healthRoutes(config.APP_ENV), ...authRoutes, ...workspaceRoutes];
+  return [...healthRoutes(config.APP_ENV), ...authRoutes, ...workspaceRoutes, ...formRoutes];
 }
 
 /**

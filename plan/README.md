@@ -69,7 +69,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 > The heart of the product. An admin builds a form on the desktop; someone fills it and it is stored correctly and immutably.
 
 - [~] **P06** — Form schema and logic core
-- [ ] **P07** — Form builder UI
+- [~] **P07** — Form builder UI
 - [ ] **P08** — Web renderer and submissions
 - [ ] **P09** — Media pipeline on R2
 
