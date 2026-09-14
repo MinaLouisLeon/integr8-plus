@@ -228,6 +228,26 @@ describe('when the refresh is dead', () => {
     expect(signOuts).toEqual(['rejected']);
   });
 
+  it.each([502, 503, 429])(
+    'keeps the session when the refresh fails with %i, because that is an outage, not a refusal',
+    async (status) => {
+      const { manager, store, signOuts } = harness((request) =>
+        request.url.endsWith('/v1/auth/refresh')
+          ? new Response('<html>Bad gateway</html>', { status })
+          : protectedRoute(request),
+      );
+
+      await store.write(tokens({ accessTokenExpiresAt: new Date(NOW.getTime() - 1) }));
+
+      await expect(manager.client.GET('/v1/me')).rejects.toMatchObject({
+        status,
+        code: 'refresh_unavailable',
+      });
+      await expect(store.read()).resolves.toMatchObject({ refreshToken: 'refresh-1' });
+      expect(signOuts).toEqual([]);
+    },
+  );
+
   it('signs out without calling the server when the refresh token has expired', async () => {
     const { manager, store, calls, signOuts } = harness((request) => protectedRoute(request));
 
@@ -288,6 +308,26 @@ describe('the offline grant', () => {
 
     await expect(manager.isSignedIn()).resolves.toBe(true);
     await expect(manager.canWorkOffline()).resolves.toBe(true);
+  });
+
+  it('says the API cannot be reached on the grant alone, so nothing tries and ends the session', async () => {
+    const { manager, store, calls, signOuts } = harness((request) => protectedRoute(request));
+    await store.write(
+      tokens({
+        accessTokenExpiresAt: new Date(NOW.getTime() - 1),
+        refreshTokenExpiresAt: new Date(NOW.getTime() - 1),
+        offlineGrant: 'grant',
+        offlineGrantExpiresAt: new Date(NOW.getTime() + 24 * 60 * 60_000),
+      }),
+    );
+
+    expect(await manager.canReachApi()).toBe(false);
+    expect(await manager.isSignedIn()).toBe(true);
+    expect(calls).toEqual([]);
+    expect(signOuts).toEqual([]);
+
+    await store.write(tokens());
+    expect(await manager.canReachApi()).toBe(true);
   });
 
   it('is not signed in with no tokens at all', async () => {
