@@ -1,4 +1,4 @@
-import { SessionManager } from '@integr8/api-client';
+import { SessionManager, type SignOutReason } from '@integr8/api-client';
 import Constants from 'expo-constants';
 import { API_BASE_URL } from './env';
 import { SecureTokenStore } from './platform';
@@ -12,7 +12,7 @@ import { SecureTokenStore } from './platform';
  */
 
 let manager: SessionManager | undefined;
-let onSignedOut: (() => void) | undefined;
+let onSignedOut: ((reason: SignOutReason) => void) | undefined;
 
 /** The build, sent as `x-client-version` and used as the Sentry release. */
 export const APP_VERSION: string = Constants.expoConfig?.version ?? '0.1.0';
@@ -23,14 +23,14 @@ export function session(): SessionManager {
     clientApp: 'mobile',
     clientVersion: APP_VERSION,
     store: new SecureTokenStore(),
-    onSignedOut: () => {
-      onSignedOut?.();
+    onSignedOut: (reason) => {
+      onSignedOut?.(reason);
     },
   });
 
   return manager;
 }
 
-export function whenSignedOut(handler: () => void): void {
+export function whenSignedOut(handler: (reason: SignOutReason) => void): void {
   onSignedOut = handler;
 }

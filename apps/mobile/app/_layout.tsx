@@ -1,15 +1,16 @@
 import { createI18n, I18nextProvider } from '@integr8/i18n';
 import { isRtl } from '@integr8/i18n/core';
 import * as Sentry from '@sentry/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import * as Network from 'expo-network';
+import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { I18nManager } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AppState, I18nManager } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { APP_ENV, SENTRY_DSN } from '~/lib/env';
 import { deviceLocale } from '~/lib/preferences';
-import { APP_VERSION } from '~/lib/session';
+import { APP_VERSION, whenSignedOut } from '~/lib/session';
+import { localData } from '~/local/local-data';
 
 /**
  * The root layout.
@@ -41,33 +42,53 @@ const locale = deviceLocale();
 I18nManager.allowRTL(true);
 I18nManager.forceRTL(isRtl(locale));
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      retry: (failureCount, error) => {
-        // Retrying a 401 or a validation failure achieves nothing, and on a
-        // phone it also spends battery and a metered connection.
-        const status = (error as { status?: number }).status;
-        if (status !== undefined && status >= 400 && status < 500) {
-          return false;
-        }
-        return failureCount < 2;
-      },
-    },
-  },
+/**
+ * When the session ends, the company's data leaves the phone.
+ *
+ * - **Signed out, or refused by the server** — revoked from the office, the
+ *   membership ended — the phone is wiped. A revoked phone is wiped the next
+ *   time it reaches the API, which it tries on launch, on coming back to the
+ *   foreground and when the connection returns.
+ * - **Expired** — the refresh token lapsed on a phone left unopened — is not a
+ *   decision anybody made about this phone. Its work stays, encrypted, until
+ *   somebody signs in: the same person carries on, anybody else wipes it first.
+ */
+whenSignedOut((reason) => {
+  if (reason !== 'expired') {
+    void localData.wipe();
+  }
+  router.replace('/sign-in');
 });
 
 function RootLayout() {
   const [i18n] = useState(() => createI18n({ locale }));
 
+  // Keep the phone current whenever it could be: on launch, back in the
+  // foreground, and when a connection returns. Each attempt checks it is signed
+  // in and online first, and none of them holds up a screen.
+  useEffect(() => {
+    void localData.download();
+    const foreground = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void localData.download();
+      }
+    });
+    const network = Network.addNetworkStateListener((state) => {
+      if (state.isInternetReachable === true) {
+        void localData.download();
+      }
+    });
+    return () => {
+      foreground.remove();
+      network.remove();
+    };
+  }, []);
+
   return (
     <SafeAreaProvider>
       <I18nextProvider i18n={i18n}>
-        <QueryClientProvider client={queryClient}>
-          <StatusBar style="auto" />
-          <Stack screenOptions={{ headerShown: false }} />
-        </QueryClientProvider>
+        <StatusBar style="auto" />
+        <Stack screenOptions={{ headerShown: false }} />
       </I18nextProvider>
     </SafeAreaProvider>
   );

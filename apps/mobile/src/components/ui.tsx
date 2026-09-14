@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -26,7 +27,7 @@ import {
  * fix, checked by the same lint rule.
  */
 
-function useTheme(): SemanticColours {
+export function useTheme(): SemanticColours {
   // Follows the operating system. An in-app override lands with the settings
   // screen; until then, matching the phone is the behaviour people expect.
   return useColorScheme() === 'dark' ? colours.dark : colours.light;
@@ -38,6 +39,111 @@ export function Screen({ children }: { children: ReactNode }) {
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
       <View style={styles.screenInner}>{children}</View>
+    </View>
+  );
+}
+
+/**
+ * A screen that scrolls: every screen that lists work. The content is on the
+ * phone, so there is no pull-to-refresh spinner standing in for it.
+ */
+export function ScrollScreen({ children }: { children: ReactNode }) {
+  const theme = useTheme();
+
+  return (
+    <ScrollView
+      style={[styles.screen, { backgroundColor: theme.background }]}
+      contentContainerStyle={styles.scrollInner}
+      keyboardShouldPersistTaps="handled"
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
+export function Section({ title, children }: { title: string; children: ReactNode }) {
+  const theme = useTheme();
+
+  return (
+    <View style={styles.section}>
+      <Text accessibilityRole="header" style={[styles.sectionTitle, { color: theme.textMuted }]}>
+        {title}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+/** A tappable card in a list: a job, a customer, a site. */
+export function Row({
+  title,
+  lines = [],
+  tag,
+  onPress,
+}: {
+  title: string;
+  lines?: readonly string[];
+  tag?: { label: string; tone: 'danger' | 'muted' } | undefined;
+  onPress?: (() => void) | undefined;
+}) {
+  const theme = useTheme();
+
+  const body = (
+    <>
+      <Text style={[styles.rowTitle, { color: theme.text }]}>{title}</Text>
+      {lines
+        .filter((line) => line !== '')
+        .map((line, index) => (
+          <Text key={index} style={[styles.body, { color: theme.textMuted }]}>
+            {line}
+          </Text>
+        ))}
+      {tag === undefined ? null : <Badge label={tag.label} tone={tag.tone} />}
+    </>
+  );
+
+  const style = [styles.row, { backgroundColor: theme.surface, borderColor: theme.border }];
+  return onPress === undefined ? (
+    <View style={style}>{body}</View>
+  ) : (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [...style, { opacity: pressed ? 0.85 : 1 }]}
+    >
+      {body}
+    </Pressable>
+  );
+}
+
+export function Badge({ label, tone }: { label: string; tone: 'danger' | 'muted' | 'accent' }) {
+  const theme = useTheme();
+  const colours =
+    tone === 'danger'
+      ? { backgroundColor: theme.dangerSubtle, color: theme.danger }
+      : tone === 'accent'
+        ? { backgroundColor: theme.accentSubtle, color: theme.accent }
+        : { backgroundColor: theme.surfaceMuted, color: theme.textMuted };
+
+  return (
+    <View style={[styles.badge, { backgroundColor: colours.backgroundColor }]}>
+      <Text style={[styles.badgeLabel, { color: colours.color }]}>{label}</Text>
+    </View>
+  );
+}
+
+/** A label above a value, for details. */
+export function Detail({ label, children }: { label: string; children: ReactNode }) {
+  const theme = useTheme();
+
+  return (
+    <View style={styles.detail}>
+      <Text style={[styles.label, { color: theme.textMuted }]}>{label}</Text>
+      {typeof children === 'string' ? (
+        <Text style={[styles.body, { color: theme.text }]}>{children}</Text>
+      ) : (
+        children
+      )}
     </View>
   );
 }
@@ -193,6 +299,35 @@ export function ErrorState({
  */
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  scrollInner: {
+    gap: spacing[4],
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[6],
+  },
+  section: { gap: spacing[2] },
+  sectionTitle: {
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    textAlign: 'auto',
+  },
+  row: {
+    gap: spacing[1],
+    borderWidth: 1,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+  },
+  rowTitle: { fontSize: fontSize.base, fontWeight: '600', textAlign: 'auto' },
+  badge: {
+    alignSelf: 'flex-start',
+    borderRadius: radii.full,
+    paddingHorizontal: spacing[2],
+    paddingVertical: 2,
+  },
+  badgeLabel: { fontSize: fontSize.xs, fontWeight: '600' },
+  detail: { gap: 2 },
   screenInner: {
     flex: 1,
     gap: spacing[4],

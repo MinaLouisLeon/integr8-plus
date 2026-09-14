@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { LoadingState, Screen } from '~/components/ui';
+import { Screen } from '~/components/ui';
 import { session } from '~/lib/session';
 
 /**
@@ -29,12 +29,10 @@ export default function IndexScreen() {
     };
   }, []);
 
+  // Reading the keychain takes a moment and involves no network, so there is
+  // nothing to show a spinner for.
   if (destination === 'unknown') {
-    return (
-      <Screen>
-        <LoadingState />
-      </Screen>
-    );
+    return <Screen>{null}</Screen>;
   }
 
   return <Redirect href={destination} />;
