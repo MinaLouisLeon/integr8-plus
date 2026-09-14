@@ -71,13 +71,13 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 - [~] **P06** — Form schema and logic core
 - [~] **P07** — Form builder UI
 - [x] **P08** — Web renderer and submissions
-- [ ] **P09** — Media pipeline on R2
+- [~] **P09** — Media pipeline on R2
 
 ### v0.3 — Field Loop
 
 > A real engineer completes a real job on a phone, in a basement, with no signal.
 
-- [ ] **P10** — Customers, sites and work orders
+- [~] **P10** — Customers, sites and work orders
 - [ ] **P11** — Mobile shell and local database
 - [ ] **P12** — Offline sync engine
 - [ ] **P13** — Mobile form renderer
