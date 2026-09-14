@@ -78,7 +78,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 > A real engineer completes a real job on a phone, in a basement, with no signal.
 
 - [~] **P10** — Customers, sites and work orders
-- [ ] **P11** — Mobile shell and local database
+- [~] **P11** — Mobile shell and local database
 - [ ] **P12** — Offline sync engine
 - [ ] **P13** — Mobile form renderer
 - [ ] **P14** — Job execution on mobile
