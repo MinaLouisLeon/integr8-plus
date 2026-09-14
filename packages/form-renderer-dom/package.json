@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./screens": {
+      "types": "./dist/screens/index.d.ts",
+      "default": "./dist/screens/index.js"
     }
   },
   "files": [
@@ -24,11 +28,13 @@
   },
   "dependencies": {
     "@integr8/form-engine": "workspace:*",
-    "@integr8/i18n": "workspace:*"
+    "@integr8/i18n": "workspace:*",
+    "@integr8/api-client": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=19",
-    "react-dom": ">=19"
+    "react-dom": ">=19",
+    "@tanstack/react-query": ">=5"
   },
   "devDependencies": {
     "@integr8/eslint-config": "workspace:*",
@@ -46,6 +52,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "typescript": "6.0.3",
-    "vitest": "5.0.0"
+    "vitest": "5.0.0",
+    "@tanstack/react-query": "5.102.8"
   }
 }

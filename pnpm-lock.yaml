@@ -102,6 +102,9 @@ importers:
       '@integr8/form-engine':
         specifier: workspace:*
         version: link:../../packages/form-engine
+      '@integr8/form-renderer-dom':
+        specifier: workspace:*
+        version: link:../../packages/form-renderer-dom
       '@integr8/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -254,6 +257,12 @@ importers:
       '@integr8/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@integr8/form-engine':
+        specifier: workspace:*
+        version: link:../../packages/form-engine
+      '@integr8/form-renderer-dom':
+        specifier: workspace:*
+        version: link:../../packages/form-renderer-dom
       '@integr8/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -504,6 +513,9 @@ importers:
 
   packages/form-renderer-dom:
     dependencies:
+      '@integr8/api-client':
+        specifier: workspace:*
+        version: link:../api-client
       '@integr8/form-engine':
         specifier: workspace:*
         version: link:../form-engine
@@ -517,6 +529,9 @@ importers:
       '@integr8/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@tanstack/react-query':
+        specifier: 5.102.8
+        version: 5.102.8(react@19.3.0)
       '@testing-library/dom':
         specifier: 10.4.2
         version: 10.4.2
