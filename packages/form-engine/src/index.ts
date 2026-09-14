@@ -146,6 +146,15 @@ export {
   type Transition,
 } from './state.js';
 
+export {
+  type FieldMedia,
+  mediaReferences,
+  REPORTABLE_TYPES,
+  type ReportableField,
+  reportableFields,
+  type ReportableType,
+} from './reporting.js';
+
 export { parseDate, parseDatetime, parseTime } from './temporal.js';
 
 export {
