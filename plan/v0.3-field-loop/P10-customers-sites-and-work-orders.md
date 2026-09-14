@@ -28,6 +28,7 @@ Records and lifecycle on desktop and web. Mobile consumption is P14.
 - [ ] Attachments: site plans, manuals, previous reports
 - [ ] Comments, with internal notes kept separate from customer-visible notes
 - [ ] Job list with filters, saved views and bulk reassign / reschedule / cancel
+- [ ] Filter submissions by linked entity (customer, site, job) — moved here from P08, which built every other submission filter but had nothing to link a submission to. Needs a link from a submission to its job, and a `linkedEntity` filter on `GET /v1/submissions` and the list screen
 - [ ] CSV import for customers, sites and jobs
 
 ## Exit criteria

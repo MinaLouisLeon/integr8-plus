@@ -44,6 +44,10 @@ packages/  core (domain types + zod) · form-engine · api-client · config
 - Turborepo's remote cache is worth enabling early; four apps rebuilt serially gets slow fast.
 - Do not put shared **UI components** in `packages/`. React DOM and React Native do not
   share components usefully. Share logic, types and clients — never widgets.
+  **Exception (P08):** `packages/form-renderer-dom` holds the form widgets and submission
+  screens the web and desktop apps both render. Both are React DOM, so the reason above does
+  not apply, and two copies of eighteen accessible widgets would drift. React Native still
+  gets its own renderer (P13).
 
 ## Decisions taken during implementation
 
