@@ -385,6 +385,8 @@ const listQuery = z.object({
   /** Due before this instant. */
   dueBefore: z.iso.datetime({ offset: true }).optional(),
   overdue: booleanQuery,
+  /** Closed (complete, reviewed or cancelled) at or after this instant. */
+  closedSince: z.iso.datetime({ offset: true }).optional(),
   q: z.string().trim().max(200).optional(),
   order: z.enum(['due', 'created', 'reference']).default('due'),
   cursor: z.string().max(500).optional(),
@@ -409,6 +411,7 @@ function buildQuery(principal: Principal, query: ListQuery): WorkOrderQuery {
     ...(query.dueFrom === undefined ? {} : { dueFrom: new Date(query.dueFrom) }),
     ...(query.dueBefore === undefined ? {} : { dueBefore: new Date(query.dueBefore) }),
     ...(query.overdue === 'true' ? { overdue: true } : {}),
+    ...(query.closedSince === undefined ? {} : { closedSince: new Date(query.closedSince) }),
     ...(query.q === undefined || query.q === '' ? {} : { text: query.q }),
     order: query.order,
     ...(query.cursor === undefined ? {} : { after: query.cursor }),

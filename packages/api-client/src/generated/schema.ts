@@ -8220,6 +8220,7 @@ export interface operations {
                 dueFrom?: string;
                 dueBefore?: string;
                 overdue?: "true" | "false";
+                closedSince?: string;
                 q?: string;
                 order?: "due" | "created" | "reference";
                 cursor?: string;
@@ -11970,6 +11971,8 @@ export interface operations {
                         dueBefore?: string;
                         /** @enum {string} */
                         overdue?: "true" | "false";
+                        /** Format: date-time */
+                        closedSince?: string;
                         q?: string;
                         /**
                          * @default due
