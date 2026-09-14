@@ -206,6 +206,23 @@ describe('validateSubmission — what the server does with what a client sent', 
     expect(check.errors).toEqual([{ field: 'callout', code: 'required', params: {} }]);
   });
 
+  it('refuses an answer of the wrong shape rather than quietly dropping it', () => {
+    // A number where a decimal's text belongs. Evaluation sees no answer; the
+    // server must not store the submission without it and call that valid.
+    const optional = validateSubmission(quote, { callout: 'yes', fee: 35 });
+    expect(optional.valid).toBe(false);
+    expect(optional.errors).toEqual([{ field: 'fee', code: 'invalid', params: {} }]);
+    expect(optional.issues).toEqual([]);
+
+    // On a required field the problem is the shape, not absence.
+    expect(validateSubmission(quote, { callout: true }).errors).toEqual([
+      { field: 'callout', code: 'invalid', params: {} },
+    ]);
+    expect(validateSubmission(quote, { callout: null }).errors).toEqual([
+      { field: 'callout', code: 'invalid', params: {} },
+    ]);
+  });
+
   it('refuses something that is not an answers object at all', () => {
     for (const body of [null, [], 'answers', 42]) {
       expect(validateSubmission(quote, body)).toEqual({
