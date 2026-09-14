@@ -43,7 +43,7 @@ import {
   remove,
   subtreeIds,
 } from '@integr8/form-engine';
-import { useTranslation } from '@integr8/i18n';
+import { type TFunction, useTranslation } from '@integr8/i18n';
 import { useState, type ReactNode } from 'react';
 import { Button } from '~/components/ui';
 import { PALETTE } from '../model/catalog';
@@ -241,7 +241,7 @@ function describeDrag(
   definition: FormDefinition,
   id: string,
   locale: string,
-  t: ReturnType<typeof useTranslation>['t'],
+  t: TFunction,
 ): string {
   const parsed = parse(id);
   if (parsed.kind === 'palette') {
@@ -254,7 +254,7 @@ export function nameOf(
   definition: FormDefinition,
   id: string,
   locale: string,
-  t: ReturnType<typeof useTranslation>['t'],
+  t: TFunction,
 ): string {
   const at = locate(definition, id);
   if (at === undefined) {

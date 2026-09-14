@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:3000 https://api.integr8.example https://*.ingest.sentry.io; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:3000 https://api.integr8.example https://*.r2.cloudflarestorage.com https://*.ingest.sentry.io; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://localhost:3000 https://*.r2.cloudflarestorage.com https://tile.openstreetmap.org https://api.mapbox.com"
     }
   },
   "bundle": {
