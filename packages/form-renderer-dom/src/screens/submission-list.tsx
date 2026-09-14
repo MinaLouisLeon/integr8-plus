@@ -41,6 +41,10 @@ interface AnswerFilter {
 
 interface Filters {
   formId: string;
+  /** Filled for a job, for a job at a site, or for a job for a customer (P10). */
+  workOrderId: string;
+  siteId: string;
+  customerId: string;
   status: '' | 'submitted' | 'reopened';
   mine: boolean;
   from: string;
@@ -51,6 +55,9 @@ interface Filters {
 
 const EMPTY: Filters = {
   formId: '',
+  workOrderId: '',
+  siteId: '',
+  customerId: '',
   status: '',
   mine: false,
   from: '',
@@ -59,11 +66,16 @@ const EMPTY: Filters = {
   answers: [],
 };
 
-export function SubmissionListScreen() {
+export function SubmissionListScreen({
+  initialFilters = {},
+}: {
+  /** Where the list is opened from: a job's "all submissions" link names the job. */
+  initialFilters?: Partial<Pick<Filters, 'formId' | 'workOrderId' | 'siteId' | 'customerId'>>;
+} = {}) {
   const { t } = useTranslation();
   const { client, locale, navigate, paths, download } = useScreens();
-  const [draft, setDraft] = useState<Filters>(EMPTY);
-  const [applied, setApplied] = useState<Filters>(EMPTY);
+  const [draft, setDraft] = useState<Filters>({ ...EMPTY, ...initialFilters });
+  const [applied, setApplied] = useState<Filters>({ ...EMPTY, ...initialFilters });
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<unknown>(undefined);
 
@@ -81,6 +93,22 @@ export function SubmissionListScreen() {
       (await client.GET('/v1/forms/{formId}', { params: { path: { formId: draft.formId } } }))
         .data!,
     enabled: draft.formId !== '',
+  });
+
+  const customers = useQuery({
+    queryKey: ['customers', 'list', { limit: 200 }],
+    queryFn: async () =>
+      (await client.GET('/v1/customers', { params: { query: { limit: 200 } } })).data!.items,
+  });
+  const sites = useQuery({
+    queryKey: ['sites', 'list', draft.customerId],
+    queryFn: async () =>
+      (
+        await client.GET('/v1/sites', {
+          params: { query: { customerId: draft.customerId, limit: 200 } },
+        })
+      ).data!.items,
+    enabled: draft.customerId !== '',
   });
 
   const questions = reportableQuestions(form.data?.live?.definition as FormDefinition | undefined);
@@ -222,6 +250,67 @@ export function SubmissionListScreen() {
           </Labelled>
         </div>
 
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Labelled label={t('submissions.list.customer')}>
+            {(id) => (
+              <select
+                id={id}
+                value={draft.customerId}
+                onChange={(event) =>
+                  setDraft({ ...draft, customerId: event.target.value, siteId: '' })
+                }
+                className={inputClass}
+              >
+                <option value="">{t('submissions.list.anyCustomer')}</option>
+                {customers.data?.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Labelled>
+          <Labelled label={t('submissions.list.site')}>
+            {(id) => (
+              <select
+                id={id}
+                value={draft.siteId}
+                disabled={draft.customerId === ''}
+                onChange={(event) => setDraft({ ...draft, siteId: event.target.value })}
+                className={inputClass}
+              >
+                <option value="">{t('submissions.list.anySite')}</option>
+                {sites.data?.map((site) => (
+                  <option key={site.id} value={site.id}>
+                    {site.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Labelled>
+          {draft.workOrderId === '' ? null : (
+            <div className="flex items-end gap-2 lg:col-span-2">
+              <span className="rounded-full border border-accent px-3 py-1.5 text-sm text-content">
+                {items[0]?.workOrder?.referenceLabel === undefined
+                  ? t('submissions.list.thisWorkOrder')
+                  : t('submissions.list.workOrder', {
+                      reference: items[0].workOrder.referenceLabel,
+                    })}
+              </span>
+              <button
+                type="button"
+                className={buttonClass.ghost}
+                onClick={() => {
+                  setDraft({ ...draft, workOrderId: '' });
+                  setApplied({ ...applied, workOrderId: '' });
+                }}
+              >
+                {t('submissions.list.removeWorkOrder')}
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[14rem] flex-1">
             <Labelled label={t('submissions.list.search')}>
@@ -349,6 +438,11 @@ export function SubmissionListScreen() {
                     {item.versionNumber === null ? null : (
                       <span className="ms-2 text-xs text-content-muted">
                         {t('submissions.list.version', { number: item.versionNumber })}
+                      </span>
+                    )}
+                    {item.workOrder === null ? null : (
+                      <span className="block font-mono text-xs text-content-muted">
+                        {item.workOrder.referenceLabel}
                       </span>
                     )}
                   </td>
@@ -564,6 +658,9 @@ function toQuery(filters: Filters) {
     ...(filters.from === '' ? {} : { from: filters.from }),
     ...(filters.to === '' ? {} : { to: filters.to }),
     ...(filters.q.trim() === '' ? {} : { q: filters.q.trim() }),
+    ...(filters.workOrderId === '' ? {} : { workOrderId: filters.workOrderId }),
+    ...(filters.siteId === '' ? {} : { siteId: filters.siteId }),
+    ...(filters.customerId === '' ? {} : { customerId: filters.customerId }),
     ...(answers.length === 0 || filters.formId === '' ? {} : { filter: answers }),
     limit: 50,
   };
