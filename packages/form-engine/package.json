@@ -14,6 +14,10 @@
     "./templates": {
       "types": "./dist/templates/index.d.ts",
       "default": "./dist/templates/index.js"
+    },
+    "./conformance": {
+      "types": "./dist/conformance/index.d.ts",
+      "default": "./dist/conformance/index.js"
     }
   },
   "files": [
