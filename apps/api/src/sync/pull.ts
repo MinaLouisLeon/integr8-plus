@@ -1,5 +1,5 @@
 import { can, type Principal } from '@integr8/core';
-import type { Submission, TenantTransaction } from '@integr8/db';
+import type { Shift, Submission, TenantTransaction } from '@integr8/db';
 import { unprocessable } from '../http/errors.js';
 import { customerDetailBody } from '../routes/v1/customers.js';
 import { formDetailBody } from '../routes/v1/forms.js';
@@ -160,6 +160,17 @@ export async function pullPage(
     .filter((submission) => mayRead(principal, submission))
     .map((submission) => submissionSyncBody(submission, people));
 
+  // The caller's recent shifts, with the first page: small, and the phone keeps
+  // whether it is clocked in even if it was reinstalled or clocked in elsewhere.
+  const shifts =
+    options.page === undefined
+      ? await tx.shifts.list({
+          from: new Date(options.now.getTime() - 36 * 60 * 60 * 1000),
+          to: new Date(options.now.getTime() + 60 * 60 * 1000),
+          userId: principal.userId,
+        })
+      : [];
+
   const last = changed.ids.at(-1);
   return {
     reset: token.reset,
@@ -179,5 +190,17 @@ export async function pullPage(
     customers,
     forms,
     submissions,
+    shifts: shifts.map(shiftBody),
+  };
+}
+
+export function shiftBody(shift: Shift) {
+  return {
+    id: shift.id,
+    userId: shift.userId,
+    startedAt: shift.startedAt.toISOString(),
+    endedAt: shift.endedAt?.toISOString() ?? null,
+    startLocation: shift.startLocation,
+    endLocation: shift.endLocation,
   };
 }

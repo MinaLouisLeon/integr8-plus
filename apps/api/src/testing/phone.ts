@@ -12,9 +12,9 @@ import {
 import { NodeSqlDriver } from '@integr8/offline/testing';
 import { webcrypto } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
-import { open, stat } from 'node:fs/promises';
+import { mkdir, open, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { ApiHarness, Member } from './api-harness.js';
 
 /**
@@ -221,6 +221,18 @@ export async function openPhone(
             Buffer.from(body),
           ),
         );
+        return { status: answer.status };
+      },
+      download: async (link, relative) => {
+        const url = new URL(link);
+        const answer = await network.send('GET', url.pathname, () =>
+          inject('GET', url, {}, undefined),
+        );
+        if (answer.status === 200) {
+          const target = join(dirname(path), 'files', relative);
+          await mkdir(dirname(target), { recursive: true });
+          await writeFile(target, answer.body);
+        }
         return { status: answer.status };
       },
     },

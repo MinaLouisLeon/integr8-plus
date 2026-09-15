@@ -3,6 +3,12 @@ import type { Services } from '../composition.js';
 import { GEOCODE_QUEUE, geocodeSite } from '../geo/geocode-site.js';
 import { IMPORT_QUEUE, runImport } from '../imports/run-import.js';
 import { makeThumbnail, THUMBNAIL_QUEUE } from '../media/thumbnails.js';
+import {
+  checkReceipts,
+  notifyWorkOrderEvent,
+  PUSH_RECEIPTS_QUEUE,
+  WORK_ORDER_PUSH_QUEUE,
+} from '../push/notify.js';
 import type { JobHandlers } from './worker.js';
 
 /**
@@ -16,7 +22,41 @@ import type { JobHandlers } from './worker.js';
  * dead-lettered rather than retried, because another attempt will not teach
  * this process a handler it does not have.
  */
-export const buildJobHandlers = (services: Pick<Services, 'media' | 'geocoder'>): JobHandlers => ({
+export const buildJobHandlers = (
+  services: Pick<Services, 'media' | 'geocoder' | 'push'>,
+): JobHandlers => ({
+  [WORK_ORDER_PUSH_QUEUE]: async (payload, context) => {
+    const eventId = text(payload, 'eventId');
+    if (eventId === null) {
+      context.logger.warn('Push job without an event id', { jobId: context.jobId });
+      return;
+    }
+    const outcome = await notifyWorkOrderEvent(
+      services.push,
+      context.tenantId,
+      eventId,
+      context.logger,
+    );
+    context.logger.info('Push job finished', { jobId: context.jobId, eventId, ...outcome });
+  },
+
+  [PUSH_RECEIPTS_QUEUE]: async (payload, context) => {
+    const tickets = Array.isArray(payload.tickets)
+      ? payload.tickets.flatMap((ticket: unknown) => {
+          const entry = ticket as { id?: unknown; token?: unknown };
+          return typeof entry.id === 'string' && typeof entry.token === 'string'
+            ? [{ id: entry.id, token: entry.token }]
+            : [];
+        })
+      : [];
+    const disabled = await checkReceipts(services.push, context.tenantId, tickets, context.logger);
+    context.logger.info('Push receipts checked', {
+      jobId: context.jobId,
+      tickets: tickets.length,
+      disabled,
+    });
+  },
+
   'audit.record': async (payload, context) => {
     await withTenant(context.tenantId, (tx) =>
       tx.auditLog.append({

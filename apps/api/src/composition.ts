@@ -14,6 +14,7 @@ import { configureDatabase, loadDatabaseConfig } from '@integr8/db';
 import { type ApiConfig, corsOrigins, publicUrl, r2Settings } from './config.js';
 import { LocalDiskStorage } from './media/local-disk.js';
 import { FakeGeocoder, type Geocoder, MapboxGeocoder } from './geo/geocoder.js';
+import { ExpoPushSender, type PushSender, RecordingPushSender } from './push/sender.js';
 import { R2Storage } from './media/r2.js';
 import type { MediaStorage } from './media/storage.js';
 
@@ -41,6 +42,8 @@ export interface Services {
   media: MediaStorage;
   /** Site addresses to coordinates. Used by the worker, never in a request. */
   geocoder: Geocoder;
+  /** Push notifications to engineers' phones. Used by the worker, never in a request. */
+  push: PushSender;
 }
 
 export interface BuildServicesOptions {
@@ -80,7 +83,14 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     impersonation: new ImpersonationService({ sessions, config: authConfig }),
     media: buildMediaStorage(options.config),
     geocoder: buildGeocoder(options.config),
+    push: buildPushSender(options.config),
   };
+}
+
+export function buildPushSender(config: ApiConfig): PushSender {
+  return config.PUSH_SENDER === 'expo'
+    ? new ExpoPushSender({ accessToken: config.EXPO_ACCESS_TOKEN })
+    : new RecordingPushSender();
 }
 
 export function buildGeocoder(config: ApiConfig): Geocoder {

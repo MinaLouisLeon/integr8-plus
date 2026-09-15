@@ -23,7 +23,7 @@ import {
   revalidate,
   submitLocationSchema,
 } from '../routes/v1/submissions.js';
-import { audit as auditWorkOrder } from '../routes/v1/work-orders.js';
+import { audit as auditWorkOrder, completionBlockedMessage } from '../routes/v1/work-orders.js';
 import { mergeRecords, sameValue } from './merge.js';
 
 /**
@@ -120,6 +120,56 @@ export const mutationSchema = z.discriminatedUnion('kind', [
     }),
     base: z.object({ revision: z.number().int().min(1), answers: answersSchema }),
   }),
+  z.object({
+    ...common,
+    kind: z.literal('work_order.photo'),
+    payload: z.object({
+      /** Chosen by the phone, so a resend finds it. */
+      attachmentId: z.uuid(),
+      mediaId: z.uuid(),
+      stage: z.enum(['before', 'after']),
+      title: z.string().trim().min(1).max(200),
+    }),
+  }),
+  z.object({
+    ...common,
+    kind: z.literal('work_order.photo_remove'),
+    payload: z.object({ attachmentId: z.uuid() }),
+  }),
+  z.object({
+    ...common,
+    kind: z.literal('work_order.signoff'),
+    payload: z.union([
+      z.object({
+        mediaId: z.uuid(),
+        name: z.string().trim().min(1).max(200),
+        role: z.string().trim().max(100).nullable(),
+        /** When the customer signed, by the phone's clock. */
+        signedAt: z.iso.datetime({ offset: true }),
+      }),
+      z.object({
+        unavailableReason: z.string().trim().min(1).max(2000),
+        signedAt: z.iso.datetime({ offset: true }),
+      }),
+    ]),
+  }),
+  z.object({
+    ...common,
+    /** `entityId` is the shift's id, chosen by the phone. */
+    kind: z.literal('shift.start'),
+    payload: z.object({
+      startedAt: z.iso.datetime({ offset: true }),
+      location: submitLocationSchema.nullable(),
+    }),
+  }),
+  z.object({
+    ...common,
+    kind: z.literal('shift.end'),
+    payload: z.object({
+      endedAt: z.iso.datetime({ offset: true }),
+      location: submitLocationSchema.nullable(),
+    }),
+  }),
 ]);
 
 export type Mutation = z.infer<typeof mutationSchema>;
@@ -138,8 +188,14 @@ export const conflictSchema = z.discriminatedUnion('kind', [
     canReapply: z.boolean(),
   }),
   z.object({
-    kind: z.literal('forms_missing'),
-    forms: z.array(z.object({ formId: z.uuid(), title: z.string() })),
+    kind: z.literal('incomplete'),
+    /** What is still needed before the job can be completed (P14). */
+    missing: z.object({
+      forms: z.array(z.object({ formId: z.uuid(), title: z.string() })),
+      beforePhotos: z.number().int(),
+      afterPhotos: z.number().int(),
+      signoff: z.boolean(),
+    }),
   }),
   z.object({
     kind: z.literal('access_changed'),
@@ -440,6 +496,16 @@ async function apply(
       return saveAnswers(tx, mutation, push);
     case 'submission.submit':
       return submit(tx, mutation, push);
+    case 'work_order.photo':
+      return photo(tx, mutation, push);
+    case 'work_order.photo_remove':
+      return removePhoto(tx, mutation, push);
+    case 'work_order.signoff':
+      return signOff(tx, mutation, push);
+    case 'shift.start':
+      return startShift(tx, mutation, push);
+    case 'shift.end':
+      return endShift(tx, mutation, push);
   }
 }
 
@@ -500,7 +566,7 @@ async function stateChanged(
 async function transition(
   tx: TenantTransaction,
   mutation: Extract<Mutation, { kind: 'work_order.transition' }>,
-  { context }: PushContext,
+  { context, recordedAt }: PushContext,
 ): Promise<Outcome> {
   const { principal } = context;
   const job = await jobFor(tx, principal, mutation.entityId);
@@ -529,7 +595,18 @@ async function transition(
 
   // The state is the one the phone saw; anything else that changed (a new
   // description, a note) does not stand in the way, so apply on the current revision.
-  const result = await tx.workOrders.transition(job.id, job.revision, to, principal.userId, reason);
+  // Stamped with when the phone recorded it (P14): travel and time on site are
+  // measured from these, and they must not move to whenever the phone found signal.
+  const result = await tx.workOrders.transition(
+    job.id,
+    job.revision,
+    to,
+    principal.userId,
+    reason,
+    {
+      happenedAt: recordedAt(mutation),
+    },
+  );
   switch (result.outcome) {
     case 'written':
       await auditWorkOrder(tx, context, 'work_order.transitioned', job.id, {
@@ -546,12 +623,12 @@ async function transition(
         message: 'Changed while applying.',
         retryAfterSeconds: 1,
       };
-    case 'forms_missing':
+    case 'incomplete':
       return {
         outcome: 'conflict',
-        code: 'required_forms_missing',
-        message: `Submit ${result.forms.map((form) => form.title).join(', ')} before completing this job.`,
-        conflict: { kind: 'forms_missing', forms: result.forms },
+        code: 'completion_blocked',
+        message: completionBlockedMessage(result.missing),
+        conflict: { kind: 'incomplete', missing: result.missing },
       };
     case 'closed':
     case 'not_allowed':
@@ -620,6 +697,185 @@ async function comment(
     principal.userId,
   );
   return applied(null);
+}
+
+const CLOSED = ['complete', 'reviewed', 'cancelled'];
+
+const mediaNotReady = (): Outcome => ({
+  outcome: 'retry',
+  code: 'media_not_ready',
+  message: 'The file this change names has not finished uploading.',
+  retryAfterSeconds: 30,
+});
+
+async function photo(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'work_order.photo' }>,
+  { context }: PushContext,
+): Promise<Outcome> {
+  const { principal } = context;
+  const { attachmentId, mediaId, stage, title } = mutation.payload;
+  const existing = await tx.attachments.findAny(attachmentId);
+  if (existing !== undefined) {
+    return 'workOrderId' in existing.owner &&
+      existing.owner.workOrderId === mutation.entityId &&
+      existing.fileId === mediaId
+      ? applied(null, true)
+      : rejected('attachment_id_taken', 'This photo id belongs to another file.');
+  }
+  const job = await jobFor(tx, principal, mutation.entityId);
+  if (job === undefined) {
+    return unavailable();
+  }
+  await requireWork(tx, principal, job);
+  if (CLOSED.includes(job.state)) {
+    return rejected('work_order_closed', `This job is ${job.state}; the photo was not added.`);
+  }
+  const file = await tx.files.find(mediaId);
+  if (file === undefined) {
+    return mediaNotReady();
+  }
+  if (file.deletedAt !== null || !file.contentType.startsWith('image/')) {
+    return rejected('media_unusable', 'This photo was deleted, or is not an image.');
+  }
+  await tx.attachments.add(
+    { workOrderId: job.id },
+    { id: attachmentId, fileId: mediaId, title, kind: 'photo', stage },
+    principal.userId,
+  );
+  return applied(null);
+}
+
+async function removePhoto(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'work_order.photo_remove' }>,
+  { context }: PushContext,
+): Promise<Outcome> {
+  const { principal } = context;
+  const existing = await tx.attachments.findAny(mutation.payload.attachmentId);
+  if (existing === undefined || existing.removed) {
+    return applied(null, true);
+  }
+  const job = await jobFor(tx, principal, mutation.entityId);
+  if (
+    job === undefined ||
+    !('workOrderId' in existing.owner) ||
+    existing.owner.workOrderId !== job.id
+  ) {
+    return unavailable();
+  }
+  await requireWork(tx, principal, job);
+  if (CLOSED.includes(job.state)) {
+    return rejected('work_order_closed', `This job is ${job.state}; the photo stays.`);
+  }
+  await tx.attachments.remove(existing.id, principal.userId);
+  return applied(null);
+}
+
+async function signOff(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'work_order.signoff' }>,
+  { context, phoneTime }: PushContext,
+): Promise<Outcome> {
+  const { principal } = context;
+  const job = await jobFor(tx, principal, mutation.entityId);
+  if (job === undefined) {
+    return unavailable();
+  }
+  await requireWork(tx, principal, job);
+  const { payload } = mutation;
+  const signed = 'mediaId' in payload;
+  if (CLOSED.includes(job.state)) {
+    const same = signed
+      ? job.signoff?.fileId === payload.mediaId
+      : job.signoff?.unavailableReason === payload.unavailableReason.trim();
+    return same
+      ? applied(null, true)
+      : rejected('work_order_closed', `This job is ${job.state}; its sign-off cannot change.`);
+  }
+  if (signed) {
+    const file = await tx.files.find(payload.mediaId);
+    if (file === undefined) {
+      return mediaNotReady();
+    }
+    if (file.deletedAt !== null || !file.contentType.startsWith('image/')) {
+      return rejected('media_unusable', 'This signature was deleted, or is not an image.');
+    }
+  }
+  const signedAt = phoneTime(payload.signedAt);
+  const result = await tx.workOrders.signOff(
+    job.id,
+    signed
+      ? { fileId: payload.mediaId, name: payload.name, role: payload.role, signedAt }
+      : { unavailableReason: payload.unavailableReason, signedAt },
+    principal.userId,
+  );
+  if (result.outcome === 'not_found') {
+    return unavailable();
+  }
+  if (result.outcome === 'closed') {
+    return rejected('work_order_closed', 'This job was closed; its sign-off cannot change.');
+  }
+  await auditWorkOrder(tx, context, 'work_order.signed_off', job.id, { signed, via: 'sync' });
+  return applied(result.workOrder.revision);
+}
+
+function correctedLocation(
+  location: z.infer<typeof submitLocationSchema> | null,
+  phoneTime: (at: string) => Date,
+) {
+  return location?.status === 'captured'
+    ? { ...location, capturedAt: phoneTime(location.capturedAt).toISOString() }
+    : location;
+}
+
+async function startShift(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'shift.start' }>,
+  { context, phoneTime }: PushContext,
+): Promise<Outcome> {
+  const result = await tx.shifts.clockIn({
+    id: mutation.entityId,
+    userId: context.principal.userId,
+    startedAt: phoneTime(mutation.payload.startedAt),
+    location: correctedLocation(mutation.payload.location, phoneTime),
+  });
+  switch (result.outcome) {
+    case 'started':
+      return applied(null);
+    case 'already':
+      return applied(null, true);
+    case 'open_elsewhere':
+      return rejected(
+        'shift_open_elsewhere',
+        `You are already clocked in, since ${result.open.startedAt.toISOString()}, from another phone. Clock out there first.`,
+      );
+    case 'not_yours':
+      return rejected('shift_id_taken', 'This shift id belongs to someone else.');
+  }
+}
+
+async function endShift(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'shift.end' }>,
+  { context, phoneTime }: PushContext,
+): Promise<Outcome> {
+  const result = await tx.shifts.clockOut({
+    id: mutation.entityId,
+    userId: context.principal.userId,
+    endedAt: phoneTime(mutation.payload.endedAt),
+    location: correctedLocation(mutation.payload.location, phoneTime),
+  });
+  switch (result.outcome) {
+    case 'ended':
+      return applied(null);
+    case 'already':
+      return applied(null, true);
+    case 'not_found':
+      return rejected('shift_unavailable', 'This shift is not yours, or was never started.');
+    case 'before_start':
+      return rejected('shift_ends_before_start', 'This clock-out is earlier than its clock-in.');
+  }
 }
 
 // ---------------------------------------------------------------------------

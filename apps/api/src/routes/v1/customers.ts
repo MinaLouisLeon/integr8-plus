@@ -762,6 +762,8 @@ export const addAttachmentRoute = defineRoute({
     fileId: z.uuid(),
     title: z.string().trim().min(1).max(200),
     kind: z.enum(['site_plan', 'manual', 'report', 'photo', 'other']).optional(),
+    /** A job photo taken before or after the work (P14). Only on a work order, as a photo. */
+    stage: z.enum(['before', 'after']).optional(),
   }),
   responses: {
     201: { description: 'The attachment.', schema: attachmentSchema },
@@ -771,6 +773,22 @@ export const addAttachmentRoute = defineRoute({
   handler: async ({ body }, context) => {
     const result = await withTenant(context.principal.tenantId, async (tx) => {
       await requireAttachable(tx, context, body.owner);
+      if (
+        body.stage !== undefined &&
+        (!('workOrderId' in body.owner) || (body.kind ?? 'photo') !== 'photo')
+      ) {
+        throw unprocessable(
+          'stage_not_allowed',
+          'Only a photo on a work order is taken before or after.',
+          [
+            {
+              field: 'body.stage',
+              code: 'stage_not_allowed',
+              message: 'Attach it to a work order, as a photo.',
+            },
+          ],
+        );
+      }
       const file = await tx.files.find(body.fileId);
       if (file?.deletedAt !== null) {
         throw notFound('This file does not exist.');
@@ -780,7 +798,11 @@ export const addAttachmentRoute = defineRoute({
         {
           fileId: file.id,
           title: body.title,
-          ...(body.kind === undefined ? {} : { kind: body.kind }),
+          ...(body.stage === undefined
+            ? body.kind === undefined
+              ? {}
+              : { kind: body.kind }
+            : { kind: 'photo' as const, stage: body.stage }),
         },
         context.principal.userId,
       );
