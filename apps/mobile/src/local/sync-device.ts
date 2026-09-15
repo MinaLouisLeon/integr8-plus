@@ -46,6 +46,23 @@ export const deviceTransport: ByteTransport = {
     });
     return { status: response.status };
   },
+  /**
+   * Streams a file straight to disk (P14), never through JavaScript. A refused
+   * download rejects with the status in its message and leaves no file behind.
+   */
+  download: async (url, path) => {
+    const target = localFile(path);
+    if (!target.parentDirectory.exists) {
+      target.parentDirectory.create({ intermediates: true });
+    }
+    try {
+      await File.downloadFileAsync(url, target, { idempotent: true });
+      return { status: 200 };
+    } catch (error) {
+      const status = /\b([45]\d\d)\b/u.exec(error instanceof Error ? error.message : '')?.[1];
+      return { status: status === undefined ? 0 : Number(status) };
+    }
+  },
 };
 
 export async function deviceConditions(): Promise<SyncConditions> {

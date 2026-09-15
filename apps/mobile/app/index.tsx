@@ -1,7 +1,9 @@
-import { Redirect } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { Screen } from '~/components/ui';
 import { session } from '~/lib/session';
+import { localData } from '~/local/local-data';
+import { resumeHref, savedRoute } from '~/local/resume';
 
 /**
  * Decides where to send somebody on launch.
@@ -10,17 +12,31 @@ import { session } from '~/lib/session';
  * token has lapsed. An engineer a week into a job with no signal still has to
  * get in — that is the entire point of the grant, and forgetting it here would
  * quietly undo it.
+ *
+ * Signed in, they go back to the screen they were on when the app was last
+ * closed (P14), with their jobs underneath it, so Back still leads home.
  */
 export default function IndexScreen() {
-  const [destination, setDestination] = useState<'unknown' | '/sign-in' | '/home'>('unknown');
-
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
       const allowed = await session().isSignedIn();
-      if (!cancelled) {
-        setDestination(allowed ? '/home' : '/sign-in');
+      if (cancelled) {
+        return;
+      }
+      if (!allowed) {
+        router.replace('/sign-in');
+        return;
+      }
+      const db = await localData.open();
+      const saved = db === undefined ? undefined : await savedRoute(db).catch(() => undefined);
+      if (cancelled) {
+        return;
+      }
+      router.replace('/home');
+      if (saved !== undefined) {
+        router.push(resumeHref(saved));
       }
     })();
 
@@ -31,9 +47,5 @@ export default function IndexScreen() {
 
   // Reading the keychain takes a moment and involves no network, so there is
   // nothing to show a spinner for.
-  if (destination === 'unknown') {
-    return <Screen>{null}</Screen>;
-  }
-
-  return <Redirect href={destination} />;
+  return <Screen>{null}</Screen>;
 }

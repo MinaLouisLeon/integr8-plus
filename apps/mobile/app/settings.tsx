@@ -2,14 +2,17 @@ import { checkConformance, type ConformanceCheck } from '@integr8/form-engine/co
 import { useTranslation } from '@integr8/i18n';
 import { identity, RETENTION, storageSummary, unsentWorkCount } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
+import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import * as Updates from 'expo-updates';
+import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
+import { canLock } from '~/components/app-lock';
 import { LocalGate } from '~/components/local-gate';
 import { SyncBanner } from '~/components/sync-banner';
 import { Body, Button, Detail, Heading, ScrollScreen, Section } from '~/components/ui';
 import { formatBytes, formatWhen } from '~/lib/format';
-import { session } from '~/lib/session';
+import { APP_VERSION, session } from '~/lib/session';
 import { localData } from '~/local/local-data';
 import { useLocalQuery, useLocalStatus } from '~/local/react';
 
@@ -115,6 +118,8 @@ function Settings() {
         </Section>
       )}
 
+      <PhoneProtection />
+
       <EngineCheck />
 
       <View style={{ gap: spacing[2] }}>
@@ -127,6 +132,46 @@ function Settings() {
         />
       </View>
     </ScrollScreen>
+  );
+}
+
+/** How the app is protected and kept current on this phone (P14). */
+function PhoneProtection() {
+  const { t } = useTranslation();
+  const [lockable, setLockable] = useState<boolean | undefined>(undefined);
+  const [notifications, setNotifications] = useState<boolean | undefined>(undefined);
+  useEffect(() => {
+    void canLock().then(setLockable);
+    void Notifications.getPermissionsAsync()
+      .then((permission) => setNotifications(permission.granted))
+      .catch(() => setNotifications(false));
+  }, []);
+  return (
+    <Section title={t('mobile.settings.protection')}>
+      <Detail label={t('mobile.settings.appLock')}>
+        {lockable === undefined
+          ? ''
+          : lockable
+            ? t('mobile.settings.appLockOn')
+            : t('mobile.settings.appLockUnavailable')}
+      </Detail>
+      <Detail label={t('mobile.settings.notifications')}>
+        {notifications === undefined
+          ? ''
+          : notifications
+            ? t('mobile.settings.notificationsOn')
+            : t('mobile.settings.notificationsOff')}
+      </Detail>
+      <Detail label={t('mobile.settings.appUpdate')}>
+        {Updates.updateId === null
+          ? t('mobile.settings.appUpdateEmbedded', { version: APP_VERSION })
+          : t('mobile.settings.appUpdateId', {
+              version: APP_VERSION,
+              update: Updates.updateId.slice(0, 8),
+              channel: Updates.channel ?? '—',
+            })}
+      </Detail>
+    </Section>
   );
 }
 

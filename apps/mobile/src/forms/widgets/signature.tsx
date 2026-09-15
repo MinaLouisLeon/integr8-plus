@@ -90,7 +90,7 @@ export function SignatureWidget(props: WidgetProps<'signature'>) {
   );
 }
 
-function SignaturePad({
+export function SignaturePad({
   label,
   disabled,
   onSaved,

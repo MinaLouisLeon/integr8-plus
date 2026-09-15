@@ -1,3 +1,4 @@
+import type { CompletionMissing } from '@integr8/core';
 import type { TFunction } from '@integr8/i18n';
 import type { DescribedChange } from '@integr8/offline';
 
@@ -31,7 +32,39 @@ export function describeChange(t: TFunction, change: DescribedChange): string {
       return t('mobile.change.formAnswers', { job, form });
     case 'submission.submit':
       return t('mobile.change.formSubmitted', { job, form });
+    case 'work_order.photo':
+      return t(
+        change.payload.stage === 'before'
+          ? 'mobile.change.photoBefore'
+          : 'mobile.change.photoAfter',
+        { job },
+      );
+    case 'work_order.photo_remove':
+      return t('mobile.change.photoRemoved', { job });
+    case 'work_order.signoff':
+      return t('mobile.change.signoff', { job });
+    case 'shift.start':
+      return t('mobile.change.shiftStart');
+    case 'shift.end':
+      return t('mobile.change.shiftEnd');
   }
+}
+
+/**
+ * What a job still needs before it can be completed, one line each: "Submit Gas
+ * safety record", "Take 2 more after photos", "Get the customer's sign-off".
+ */
+export function missingLines(t: TFunction, missing: CompletionMissing): string[] {
+  return [
+    ...missing.forms.map((form) => t('mobile.complete.missing.form', { form: form.title })),
+    ...(missing.beforePhotos > 0
+      ? [t('mobile.complete.missing.beforePhotos', { count: missing.beforePhotos })]
+      : []),
+    ...(missing.afterPhotos > 0
+      ? [t('mobile.complete.missing.afterPhotos', { count: missing.afterPhotos })]
+      : []),
+    ...(missing.signoff ? [t('mobile.complete.missing.signoff')] : []),
+  ];
 }
 
 /** An answer or a field's value, shortly: text as it is, files counted. */

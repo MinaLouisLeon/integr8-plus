@@ -7,6 +7,7 @@ import { View } from 'react-native';
 import { Body, Button, Field, Heading, Screen } from '~/components/ui';
 import { session } from '~/lib/session';
 import { localData } from '~/local/local-data';
+import { channelNames, registerForPush } from '~/local/push';
 
 export default function SignInScreen() {
   const { t } = useTranslation();
@@ -31,6 +32,7 @@ export default function SignInScreen() {
         await localData.prepareFor(signedIn);
         router.replace('/home');
         void localData.sync('launch');
+        void registerForPush(channelNames(t));
       } catch (failure) {
         setError(messageFor(failure, t));
       } finally {
