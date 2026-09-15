@@ -519,6 +519,30 @@ describe('lists, bulk changes and saved views', () => {
       asked.items.every((item) => item.crew.some((member) => member.id === people.engineer.userId)),
     ).toBe(true);
     await call(tokens.bystander, 'GET', `/v1/work-orders/${theirs.workOrder.id}`, undefined, 404);
+
+    // What a phone asks for to keep a month of history: only closed jobs, only their own.
+    const since = new Date(Date.now() - 60_000).toISOString();
+    const closed = json<Detail>(
+      await move(
+        tokens.dispatcher,
+        await newJob([{ userId: people.engineer.userId }]),
+        'cancelled',
+        'Duplicate',
+      ),
+    );
+    const history = await call<{ items: { id: string; state: string }[] }>(
+      tokens.engineer,
+      'GET',
+      `/v1/work-orders?closedSince=${encodeURIComponent(since)}&limit=200`,
+    );
+    expect(history.items.map((item) => item.id)).toContain(closed.workOrder.id);
+    expect(history.items.map((item) => item.id)).not.toContain(theirs.workOrder.id);
+    expect(
+      history.items.every(
+        (item) =>
+          item.state === 'cancelled' || item.state === 'complete' || item.state === 'reviewed',
+      ),
+    ).toBe(true);
   });
 
   it('cancels many jobs, reporting each that cannot be cancelled without stopping the rest', async () => {

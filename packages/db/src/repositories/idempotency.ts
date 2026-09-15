@@ -162,6 +162,12 @@ export class IdempotencyRepository extends TenantScopedRepository {
     idempotencyKey: string,
     response: { status: number; body: unknown },
     at: Date = new Date(),
+    /**
+     * A new replay window. Sync (P12) claims with a window of minutes, so a claim
+     * whose server died mid-mutation frees itself quickly, then keeps the
+     * finished result for as long as a phone might still resend it.
+     */
+    expiresAt?: Date,
   ): Promise<boolean> {
     const result = await this.db
       .updateTable('idempotency_keys')
@@ -170,6 +176,7 @@ export class IdempotencyRepository extends TenantScopedRepository {
         response_status: response.status,
         response_body: response.body,
         completed_at: at,
+        ...(expiresAt === undefined ? {} : { expires_at: expiresAt }),
       })
       .where('tenant_id', '=', this.tenantId)
       .where('idempotency_key', '=', idempotencyKey)

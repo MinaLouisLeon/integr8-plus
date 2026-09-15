@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { Body, Button, Field, Heading, Screen } from '~/components/ui';
 import { session } from '~/lib/session';
+import { localData } from '~/local/local-data';
 
 export default function SignInScreen() {
   const { t } = useTranslation();
@@ -21,8 +22,15 @@ export default function SignInScreen() {
 
     void (async () => {
       try {
-        await session().signInWithPassword({ email, password, deviceLabel: 'Phone' });
+        const signedIn = await session().signInWithPassword({
+          email,
+          password,
+          deviceLabel: 'Phone',
+        });
+        // Another person's work on this phone is wiped before anything is shown.
+        await localData.prepareFor(signedIn);
         router.replace('/home');
+        void localData.sync('launch');
       } catch (failure) {
         setError(messageFor(failure, t));
       } finally {

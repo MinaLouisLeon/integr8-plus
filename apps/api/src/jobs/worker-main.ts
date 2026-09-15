@@ -4,6 +4,7 @@ import { loadApiConfig } from '../config.js';
 import { createLogger } from '../http/logger.js';
 import { flushSentry, initialiseSentry } from '../observability/sentry.js';
 import { runMediaMaintenance } from '../media/maintenance.js';
+import { runSyncMaintenance } from '../sync/maintenance.js';
 import { buildJobHandlers } from './handlers.js';
 import { Worker } from './worker.js';
 
@@ -43,6 +44,12 @@ async function main(): Promise<void> {
         logger.error('Media maintenance had failures', { ...report });
       } else {
         logger.info('Media maintenance finished', { ...report });
+      }
+      const sync = await runSyncMaintenance({ retentionDays: config.SYNC_LOG_RETENTION_DAYS });
+      if (sync.failures.length > 0) {
+        logger.error('Sync maintenance had failures', { ...sync });
+      } else {
+        logger.info('Sync maintenance finished', { ...sync });
       }
     } catch (error) {
       logger.error('Media maintenance failed', {

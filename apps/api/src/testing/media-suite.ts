@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { publicUrl } from '../config.js';
 import { createLogger } from '../http/logger.js';
 import { buildJobHandlers } from '../jobs/handlers.js';
-import { runMediaMaintenance } from '../media/maintenance.js';
+import { INCOMPLETE_UPLOAD_MAX_AGE_MS, runMediaMaintenance } from '../media/maintenance.js';
 import { R2Storage } from '../media/r2.js';
 import { mediaKey, type ObjectStore } from '../media/storage.js';
 import { getStorage, purgeTenantStorage } from '../media/tenant-storage.js';
@@ -496,11 +496,81 @@ export function defineMediaSuite(storage: 'local' | 'r2'): void {
         await utimes(partial, hourAgo, hourAgo);
       }
 
-      const report = await maintain(new Date(Date.now() + 2 * 60 * MINUTE));
+      // Once it is older than the longest a phone may take to resume it (P12).
+      const report = await maintain(
+        new Date(Date.now() + INCOMPLETE_UPLOAD_MAX_AGE_MS + 60 * MINUTE),
+      );
       expect(report.failures).toEqual([]);
       expect(report.uploadsAborted).toBeGreaterThanOrEqual(1);
       expect(await store.abortIncompleteUploads(new Date(Date.now() + DAY))).toBe(0);
       expect(await store.head(key)).toBeUndefined();
+    });
+
+    it('takes a large file in parts by the id a phone chose, resuming where it stopped (P12)', async () => {
+      const id = crypto.randomUUID();
+      const size = 12 * 1024 * 1024;
+      const bytes = new Uint8Array(size).map((_, index) => index % 251);
+      const prepare = (body: { contentType: string; byteSize: number }) =>
+        api.call(tokens.engineer, { method: 'PUT', url: `/v1/media/${id}`, payload: body });
+
+      const first = await prepare({ contentType: 'video/mp4', byteSize: size });
+      expect(first.statusCode, first.body).toBe(200);
+      expect(json(first)).toMatchObject({
+        media: { id, status: 'pending' },
+        upload: { kind: 'multipart', partSize: 8 * 1024 * 1024, partCount: 2 },
+      });
+
+      const links = json<{
+        parts: { number: number; url: string; headers: Record<string, string>; byteSize: number }[];
+      }>(
+        await api.call(tokens.engineer, {
+          method: 'POST',
+          url: `/v1/media/${id}/parts`,
+          payload: { partNumbers: [1, 2] },
+        }),
+      ).parts;
+      expect(links.map((link) => link.byteSize)).toEqual([8 * 1024 * 1024, 4 * 1024 * 1024]);
+      expect(await send(links[0]!.url, bytes.subarray(0, 8 * 1024 * 1024), links[0]!.headers)).toBe(
+        200,
+      );
+
+      // Stopped after one part: confirming says what is missing, and asking again resumes.
+      const early = await complete(tokens.engineer, id);
+      expect(early.statusCode).toBe(409);
+      expect(json<{ error: { code: string } }>(early).error.code).toBe('upload_incomplete');
+      expect(json(await prepare({ contentType: 'video/mp4', byteSize: size }))).toMatchObject({
+        upload: { kind: 'multipart', partCount: 2 },
+      });
+      expect(
+        json(await api.call(tokens.engineer, { method: 'GET', url: `/v1/media/${id}/parts` })),
+      ).toMatchObject({ partCount: 2, arrived: [{ number: 1, byteSize: 8 * 1024 * 1024 }] });
+
+      expect(await send(links[1]!.url, bytes.subarray(8 * 1024 * 1024), links[1]!.headers)).toBe(
+        200,
+      );
+      const done = await complete(tokens.engineer, id);
+      expect(done.statusCode, done.body).toBe(200);
+      expect(json(done)).toMatchObject({ id, byteSize: size, status: 'stored' });
+      uploadedIds.push(id);
+      expect((await bucketContents()).get(`media/${id}`)).toBe(size);
+
+      // Asked again, it says the file is stored; with a different file, the id is taken.
+      expect(json(await prepare({ contentType: 'video/mp4', byteSize: size }))).toMatchObject({
+        media: { status: 'stored' },
+        upload: null,
+      });
+      expect((await prepare({ contentType: 'video/mp4', byteSize: size - 1 })).statusCode).toBe(
+        409,
+      );
+      expect(
+        (
+          await api.call(tokens.colleague, {
+            method: 'PUT',
+            url: `/v1/media/${crypto.randomUUID()}`,
+            payload: { contentType: 'image/jpeg', byteSize: 100 },
+          })
+        ).statusCode,
+      ).toBe(200);
     });
 
     it('shows usage to owners and admins only', async () => {

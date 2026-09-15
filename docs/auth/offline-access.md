@@ -57,7 +57,8 @@ the honest statement. Everything below reduces it; nothing removes it.
 - **Report a lost phone immediately.** Revoking the session revokes the grant
   with it, so the next time that device has signal it is out. This is the single
   most effective control, and it depends on a person telling somebody.
-- **The mobile app must encrypt its local database at rest** — P11's job, and
+- **The mobile app must encrypt its local database at rest** — P11's job, done with
+  SQLCipher and a key in the keychain ([the mobile app's local data](../mobile/README.md)), and
   the reason this window is defensible rather than reckless.
 - **One live grant per device.** Issuing a new one supersedes the last, so a
   re-registered phone does not leave a second usable credential behind it.

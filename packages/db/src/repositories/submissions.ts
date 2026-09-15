@@ -46,6 +46,8 @@ export interface CreateSubmissionInput {
 }
 
 export interface StartDraftInput {
+  /** Chosen by a phone that started the form offline (P12), so a resend finds it. */
+  id?: string;
   formVersionId: string;
   submittedBy: UserId | string;
   answers?: Record<string, unknown>;
@@ -156,6 +158,7 @@ export class SubmissionsRepository extends TenantScopedRepository {
     const row = await this.db
       .insertInto('submissions')
       .values({
+        ...(input.id === undefined ? {} : { id: input.id }),
         tenant_id: this.tenantId,
         form_id: this.#formOf(input.formVersionId),
         form_version_id: input.formVersionId,

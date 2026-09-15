@@ -676,6 +676,19 @@ describe('crews and history', () => {
       ).items.map((job) => job.id),
     ).toEqual([mine.id]);
 
+    const cancelled = await moveTo(await newJob(), ['cancelled'], 'Customer rang to cancel');
+    const closedSince = (since: Date) =>
+      inTenant((tx) => tx.workOrders.list({ closedSince: since, limit: 500 }));
+    const recent = await closedSince(new Date(Date.now() - 60_000));
+    expect(recent.items.map((job) => job.id)).toContain(cancelled.id);
+    expect(
+      recent.items.every((job) => ['complete', 'reviewed', 'cancelled'].includes(job.state)),
+    ).toBe(true);
+    expect(recent.items.map((job) => job.id)).not.toContain(mine.id);
+    expect(
+      (await closedSince(new Date(Date.now() + 60_000))).items.map((job) => job.id),
+    ).not.toContain(cancelled.id);
+
     const seen = new Set<string>();
     let after: string | undefined;
     let pages = 0;

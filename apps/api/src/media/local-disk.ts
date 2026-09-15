@@ -10,7 +10,9 @@ import {
   type MediaStorage,
   OBJECT_KEY_PATTERN,
   type ObjectStore,
+  type PartUploadTarget,
   type StoredObject,
+  type StoredPart,
   type UploadTarget,
 } from './storage.js';
 
@@ -31,6 +33,7 @@ import {
  */
 
 export const LOCAL_MEDIA_PREFIX = '/local-media';
+export const LOCAL_MEDIA_PARTS_PREFIX = '/local-media-parts';
 
 interface Sidecar {
   contentType: string;
@@ -126,6 +129,55 @@ export class LocalDiskStorage implements MediaStorage {
         return reply.status(200).header('etag', etag).send();
       });
 
+      // One part of a multipart upload (P12), signed for its upload, number and size.
+      instance.put(`${LOCAL_MEDIA_PARTS_PREFIX}/*`, async (request, reply) => {
+        const link = this.#verifyPart(request.url);
+        if (link === undefined || link.byteSize > maxBytes) {
+          return reply.status(403).send();
+        }
+        const declared = request.headers['content-length'];
+        if (declared !== undefined && Number(declared) !== link.byteSize) {
+          return reply.status(403).send();
+        }
+        const directory = this.multipartDir(link.bucket, link.uploadId);
+        if ((await stat(join(directory, 'meta.json')).catch(() => undefined)) === undefined) {
+          return reply.status(404).send();
+        }
+        const partial = join(
+          directory,
+          `${String(link.number)}.${randomBytes(4).toString('hex')}.tmp`,
+        );
+        const hash = createHash('md5');
+        let written = 0;
+        try {
+          await pipeline(
+            request.body as Readable,
+            async function* limit(source: AsyncIterable<Buffer>) {
+              for await (const chunk of source) {
+                written += chunk.length;
+                if (written > link.byteSize) {
+                  throw new Error('larger than signed');
+                }
+                hash.update(chunk);
+                yield chunk;
+              }
+            },
+            createWriteStream(partial),
+          );
+        } catch {
+          await rm(partial, { force: true });
+          return reply.status(403).send();
+        }
+        if (written !== link.byteSize) {
+          await rm(partial, { force: true });
+          return reply.status(403).send();
+        }
+        const etag = `"${hash.digest('hex')}"`;
+        await writeFile(join(directory, `${String(link.number)}.json`), JSON.stringify({ etag }));
+        await rename(partial, join(directory, `${String(link.number)}.part`));
+        return reply.status(200).header('etag', etag).send();
+      });
+
       instance.get(`${LOCAL_MEDIA_PREFIX}/*`, async (request, reply) => {
         const link = this.#verify(request.url, 'GET');
         const found = link === undefined ? undefined : await this.open(link.bucket).head(link.key);
@@ -188,6 +240,80 @@ export class LocalDiskStorage implements MediaStorage {
       signature: this.#signature(method, bucket, key, contentType, byteSize, expires),
     });
     return `${this.#baseUrl}${LOCAL_MEDIA_PREFIX}/${bucket}/${key}?${query.toString()}`;
+  }
+
+  /** @internal Where an unfinished multipart upload keeps its parts. */
+  multipartDir(bucket: string, uploadId: string) {
+    if (!/^[0-9a-f]{32}$/u.test(uploadId)) {
+      throw new Error(`Not an upload id: ${uploadId}`);
+    }
+    return join(this.#bucketDir(bucket), 'uploads', 'multipart', uploadId);
+  }
+
+  /** @internal */
+  async placeFile(bucket: string, key: string, partial: string, sidecar: Sidecar) {
+    await this.#place(this.paths(bucket, key), partial, sidecar);
+  }
+
+  /** @internal */
+  signedPartUrl(
+    bucket: string,
+    uploadId: string,
+    number: number,
+    byteSize: number,
+    expiresAt: Date,
+  ) {
+    const expires = Math.floor(expiresAt.getTime() / 1000);
+    const query = new URLSearchParams({
+      size: String(byteSize),
+      expires: String(expires),
+      signature: this.#partSignature(bucket, uploadId, number, byteSize, expires),
+    });
+    return `${this.#baseUrl}${LOCAL_MEDIA_PARTS_PREFIX}/${bucket}/${uploadId}/${String(number)}?${query.toString()}`;
+  }
+
+  #partSignature(
+    bucket: string,
+    uploadId: string,
+    number: number,
+    byteSize: number,
+    expires: number,
+  ) {
+    return createHmac('sha256', this.#secret)
+      .update(
+        ['PART', bucket, uploadId, String(number), String(byteSize), String(expires)].join('\n'),
+      )
+      .digest('base64url');
+  }
+
+  #verifyPart(url: string) {
+    const parsed = new URL(url, 'http://local');
+    const [bucket = '', uploadId = '', numberText = ''] = decodeURIComponent(
+      parsed.pathname.slice(LOCAL_MEDIA_PARTS_PREFIX.length + 1),
+    ).split('/');
+    const number = Number(numberText);
+    const byteSize = Number(parsed.searchParams.get('size'));
+    const expires = Number(parsed.searchParams.get('expires'));
+    const given = Buffer.from(parsed.searchParams.get('signature') ?? '', 'utf8');
+    if (
+      !BUCKET_PATTERN.test(bucket) ||
+      !/^[0-9a-f]{32}$/u.test(uploadId) ||
+      !Number.isInteger(number) ||
+      number < 1 ||
+      !Number.isInteger(byteSize) ||
+      !Number.isInteger(expires) ||
+      expires * 1000 < Date.now()
+    ) {
+      return undefined;
+    }
+    const expected = Buffer.from(
+      this.#partSignature(bucket, uploadId, number, byteSize, expires),
+      'utf8',
+    );
+    if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
+      return undefined;
+    }
+    return { bucket, uploadId, number, byteSize };
   }
 
   async #place(paths: { file: string; sidecar: string }, partial: string, sidecar: Sidecar) {
@@ -280,6 +406,108 @@ class LocalBucket implements ObjectStore {
     });
   }
 
+  async createMultipartUpload(input: { key: string; contentType: string }) {
+    this.storage.paths(this.bucket, input.key);
+    const uploadId = randomBytes(16).toString('hex');
+    const directory = this.storage.multipartDir(this.bucket, uploadId);
+    await mkdir(directory, { recursive: true });
+    await writeFile(
+      join(directory, 'meta.json'),
+      JSON.stringify({ key: input.key, contentType: input.contentType }),
+    );
+    return { uploadId };
+  }
+
+  createPartUploads(input: {
+    key: string;
+    uploadId: string;
+    parts: readonly { number: number; byteSize: number }[];
+    expiresInSeconds: number;
+  }): Promise<PartUploadTarget[]> {
+    const expiresAt = new Date(Date.now() + input.expiresInSeconds * 1000);
+    return Promise.resolve(
+      input.parts.map((part) => ({
+        number: part.number,
+        url: this.storage.signedPartUrl(
+          this.bucket,
+          input.uploadId,
+          part.number,
+          part.byteSize,
+          expiresAt,
+        ),
+        method: 'PUT' as const,
+        headers: {},
+        expiresAt,
+      })),
+    );
+  }
+
+  async listParts(input: { key: string; uploadId: string }): Promise<StoredPart[]> {
+    const directory = this.storage.multipartDir(this.bucket, input.uploadId);
+    let names: string[];
+    try {
+      names = await readdir(directory);
+    } catch {
+      return [];
+    }
+    const parts: StoredPart[] = [];
+    for (const name of names) {
+      const match = /^(\d+)\.part$/u.exec(name);
+      if (match === null) {
+        continue;
+      }
+      const number = Number(match[1]);
+      const [info, sidecar] = await Promise.all([
+        stat(join(directory, name)),
+        readFile(join(directory, `${String(number)}.json`), 'utf8')
+          .then((text) => JSON.parse(text) as { etag: string })
+          .catch(() => undefined),
+      ]);
+      if (sidecar !== undefined) {
+        parts.push({ number, byteSize: info.size, etag: sidecar.etag });
+      }
+    }
+    return parts.sort((a, b) => a.number - b.number);
+  }
+
+  async completeMultipartUpload(input: {
+    key: string;
+    uploadId: string;
+    parts: readonly StoredPart[];
+  }): Promise<void> {
+    const directory = this.storage.multipartDir(this.bucket, input.uploadId);
+    const meta = JSON.parse(await readFile(join(directory, 'meta.json'), 'utf8')) as {
+      key: string;
+      contentType: string;
+    };
+    if (meta.key !== input.key) {
+      throw new Error('Upload is for another key');
+    }
+    const joined = join(directory, 'joined.tmp');
+    const output = createWriteStream(joined);
+    const hash = createHash('md5');
+    for (const part of [...input.parts].sort((a, b) => a.number - b.number)) {
+      const bytes = await readFile(join(directory, `${String(part.number)}.part`));
+      hash.update(createHash('md5').update(bytes).digest());
+      await new Promise<void>((resolve, reject) => {
+        output.write(bytes, (error) => (error ? reject(error) : resolve()));
+      });
+    }
+    await new Promise<void>((resolve) => output.end(resolve));
+    await this.storage.placeFile(this.bucket, input.key, joined, {
+      contentType: meta.contentType,
+      etag: `"${hash.digest('hex')}-${String(input.parts.length)}"`,
+    });
+    await rm(directory, { recursive: true, force: true });
+  }
+
+  async abortMultipartUpload(input: { key: string; uploadId: string }): Promise<void> {
+    await rm(this.storage.multipartDir(this.bucket, input.uploadId), {
+      recursive: true,
+      force: true,
+    });
+  }
+
   async head(key: string): Promise<StoredObject | undefined> {
     const paths = this.storage.paths(this.bucket, key);
     try {
@@ -351,7 +579,19 @@ class LocalBucket implements ObjectStore {
       return 0;
     }
     let aborted = 0;
+    for (const upload of await readdir(join(uploads, 'multipart')).catch(() => [] as string[])) {
+      const meta = await stat(join(uploads, 'multipart', upload, 'meta.json')).catch(
+        () => undefined,
+      );
+      if (meta === undefined || meta.mtime < startedBefore) {
+        await rm(join(uploads, 'multipart', upload), { recursive: true, force: true });
+        aborted += 1;
+      }
+    }
     for (const name of names) {
+      if (name === 'multipart') {
+        continue;
+      }
       const path = join(uploads, name);
       const info = await stat(path).catch(() => undefined);
       if (info !== undefined && info.mtime < startedBefore) {

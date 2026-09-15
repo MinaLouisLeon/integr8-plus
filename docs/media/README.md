@@ -31,7 +31,9 @@ one.
 `provisionTenantStorage` — from the worker's maintenance run, which provisions any company
 without one, or from `pnpm --filter @integr8/api storage provision <id>|--all`. Provisioning
 also sets the bucket's CORS rules (the API's allowed origins may `PUT`, `GET` and `HEAD`)
-and a lifecycle rule that aborts multipart uploads after a day. There is no company
+and a lifecycle rule that aborts multipart uploads after eight days, the backstop behind
+resumable uploads (below). Provisioning again re-applies both, so after a change to them run
+`storage provision --all` once per environment. There is no company
 creation flow in the product yet (P16); when there is, it calls the same function.
 
 Requests never provision: they read their own bucket through the tenant transaction, and
@@ -60,6 +62,23 @@ object, one method and fifteen minutes (uploads) or five (downloads). No bucket 
    `upload_mismatch` (409). Otherwise a `files` row is written from **what `HeadObject`
    reported** — size, type, ETag — and the intent is deleted in the same step, so two
    confirmations racing write one row. An image also gets a thumbnail job.
+
+### Resumable uploads, from the phone (P12)
+
+A phone chooses the file's id itself, so an upload survives the app being killed and the id can
+go into a form's answers before the file has arrived:
+
+- `PUT /v1/media/:mediaId { contentType, byteSize }` creates the intent, or — for an id it
+  already knows — says where the upload stands: stored (nothing to send), or a fresh link or
+  part plan. Repeating it is harmless; the same id with a different type or size is refused.
+- Up to 8 MiB it is one presigned `PUT`, as above. Larger files are an R2 multipart upload in
+  8 MiB **parts**: `POST /v1/media/:id/parts { partNumbers }` returns a link for each,
+  `GET /v1/media/:id/parts` lists the parts storage already holds, and `complete` joins them
+  (`CompleteMultipartUpload`) before the usual `HeadObject` check.
+- A resumable intent is kept for `RESUMABLE_UPLOAD_DAYS` (7) and renewed whenever the phone
+  asks again, so a phone that is offline for days can still finish.
+
+The engine that drives this is described in [offline sync](../sync/README.md#files).
 
 The file keeps the intent's id, which is the `mediaId` a submission's answer carries. A
 submission is refused if it names a file that is not in the ledger, is deleted, or is
@@ -97,12 +116,12 @@ record that the file existed.
 minutes), and by hand as `storage maintain`. Every step is idempotent and ordered so a
 crash leaves something the next run finishes:
 
-| Step      | What                                                      | Order                                                      |
-| --------- | --------------------------------------------------------- | ---------------------------------------------------------- |
-| provision | a bucket for any company without one                      | bucket, then `tenant_storage`                              |
-| sweep     | intents past their window (link lifetime + 15 minutes)    | object, then intent — confirmation refuses expired intents |
-| abort     | multipart uploads started over an hour ago, not completed | `ListMultipartUploads` → `AbortMultipartUpload`            |
-| purge     | deleted files past `purge_after`                          | re-check no submission names it; objects, then `purged_at` |
+| Step      | What                                                                                   | Order                                                                    |
+| --------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| provision | a bucket for any company without one                                                   | bucket, then `tenant_storage`                                            |
+| sweep     | intents past their window (link lifetime + 15 minutes; seven days for a resumable one) | object and any parts, then intent — confirmation refuses expired intents |
+| abort     | multipart uploads started over eight days ago, not completed                           | `ListMultipartUploads` → `AbortMultipartUpload`                          |
+| purge     | deleted files past `purge_after`                                                       | re-check no submission names it; objects, then `purged_at`               |
 
 ## Thumbnails
 

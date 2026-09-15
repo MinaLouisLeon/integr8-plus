@@ -464,6 +464,9 @@ export interface UploadIntentsTable {
   created_by: string;
   created_at: CreatedAt;
   expires_at: Date;
+  /** Set when the bytes arrive in parts (P12). */
+  multipart_upload_id: string | null;
+  part_size: number | null;
 }
 
 export interface FilesTable {
@@ -782,6 +785,61 @@ export interface ImportsTable {
   completed_at: Date | null;
 }
 
+export const SYNC_ENTITY_KINDS = ['work_order', 'customer', 'site', 'form'] as const;
+export type SyncEntityKind = (typeof SYNC_ENTITY_KINDS)[number];
+
+/** A record a transaction changed, by that transaction's id (P12). Written by trigger. */
+export interface SyncTouchesTable {
+  tenant_id: string;
+  entity_kind: SyncEntityKind;
+  entity_id: string;
+  /** A transaction id (`xid8`), which the driver returns as a decimal string. */
+  xid: Generated<string>;
+  created_at: CreatedAt;
+}
+
+export interface SyncLogMarksTable {
+  tenant_id: string;
+  pruned_before: string;
+}
+
+export const SYNC_TRIGGERS = [
+  'launch',
+  'foreground',
+  'reconnect',
+  'background',
+  'manual',
+  'change',
+] as const;
+export type SyncTrigger = (typeof SYNC_TRIGGERS)[number];
+export const SYNC_OUTCOMES = ['complete', 'partial', 'offline', 'failed'] as const;
+export type SyncOutcome = (typeof SYNC_OUTCOMES)[number];
+
+export interface SyncReportsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  user_id: string;
+  report_id: string;
+  started_at: Date;
+  duration_ms: number;
+  trigger: SyncTrigger;
+  outcome: SyncOutcome;
+  pushed: Generated<number>;
+  conflicts: Generated<number>;
+  rejected: Generated<number>;
+  retried: Generated<number>;
+  pulled: Generated<number>;
+  uploads_completed: Generated<number>;
+  uploads_failed: Generated<number>;
+  uploaded_bytes: ColumnType<string, number | undefined, number>;
+  queue_depth: Generated<number>;
+  pending_uploads: Generated<number>;
+  network_type: string | null;
+  clock_offset_ms: number | null;
+  app_version: string | null;
+  received_at: CreatedAt;
+}
+
 export interface Database {
   tenants: TenantsTable;
   platform_users: PlatformUsersTable;
@@ -820,6 +878,9 @@ export interface Database {
   attachments: AttachmentsTable;
   saved_views: SavedViewsTable;
   imports: ImportsTable;
+  sync_touches: SyncTouchesTable;
+  sync_log_marks: SyncLogMarksTable;
+  sync_reports: SyncReportsTable;
   form_templates: FormTemplatesTable;
   rate_limit_buckets: RateLimitBucketsTable;
   schema_migrations: SchemaMigrationsTable;
@@ -887,6 +948,9 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // Write work order history, which the runtime role can only read; see 0010.
   'record_work_order_change',
   'record_work_order_assignment',
+  // Write and prune the sync change log, which the runtime role can only read; see 0011.
+  'touch_sync',
+  'prune_sync_touches',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -944,6 +1008,9 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   attachments: true,
   saved_views: true,
   imports: true,
+  sync_touches: true,
+  sync_log_marks: true,
+  sync_reports: true,
 };
 
 export const TENANT_SCOPED_TABLES: readonly TenantScopedTable[] = Object.freeze(

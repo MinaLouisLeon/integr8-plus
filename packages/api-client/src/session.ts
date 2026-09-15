@@ -26,7 +26,14 @@ import { ApiRequestError, createClient, type Integr8Client } from './index.js';
  *   would 401.
  * - **A dead refresh token signs the person out** rather than leaving the app
  *   retrying a credential that will never work again.
+ * - **Only a refusal is dead.** A 502 from a proxy or a 503 during a deploy says
+ *   nothing about the session. On a phone, signing out wipes the work stored on
+ *   it (P11), so mistaking an outage for a revocation would destroy an
+ *   engineer's unsent work because a load balancer restarted.
  */
+
+/** What the refresh endpoint answers when the session is truly over. */
+const DEAD_REFRESH_STATUSES: ReadonlySet<number> = new Set([400, 401, 403]);
 
 export interface SessionManagerOptions {
   baseUrl: string;
@@ -188,6 +195,20 @@ export class SessionManager {
     return !requiresSignIn(tokens, this.#now()) || canOpenOffline(tokens, this.#now());
   }
 
+  /**
+   * True when a request could be authenticated: there is a refresh token that has
+   * not expired.
+   *
+   * A phone opened on its offline grant alone must not try: the attempt would
+   * find the refresh token expired and end the session — grant included —
+   * before sending anything. Background work checks this first and leaves the
+   * engineer on their downloaded jobs.
+   */
+  async canReachApi(): Promise<boolean> {
+    const tokens = await this.#options.store.read();
+    return tokens !== undefined && !requiresSignIn(tokens, this.#now());
+  }
+
   /** True when the app may open on cached work with no network at all. */
   async canWorkOffline(): Promise<boolean> {
     const tokens = await this.#options.store.read();
@@ -249,11 +270,21 @@ export class SessionManager {
     });
 
     if (!response.ok) {
-      // Revoked, reused, or the membership ended. None of those is retriable,
-      // and holding the token would leave the app trying a credential that
-      // will never work again.
-      await this.#endSession('rejected');
-      return null;
+      if (DEAD_REFRESH_STATUSES.has(response.status)) {
+        // Revoked, reused, or the membership ended. None of those is retriable,
+        // and holding the token would leave the app trying a credential that
+        // will never work again.
+        await this.#endSession('rejected');
+        return null;
+      }
+      // Anything else is the server, or something in front of it, failing. The
+      // session is kept, and the request that needed it fails with the reason.
+      throw new ApiRequestError(
+        response.status,
+        'refresh_unavailable',
+        'The session could not be renewed just now. Try again shortly.',
+        response.headers.get('x-request-id') ?? '',
+      );
     }
 
     const refreshed = (await response.json()) as TokenPayload;

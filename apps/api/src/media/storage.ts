@@ -24,6 +24,19 @@ export interface UploadTarget {
   expiresAt: Date;
 }
 
+export interface PartUploadTarget extends UploadTarget {
+  number: number;
+}
+
+export interface StoredPart {
+  number: number;
+  byteSize: number;
+  etag: string;
+}
+
+/** Parts are this size, except the last. R2, like S3, refuses parts under 5 MiB. */
+export const MULTIPART_PART_BYTES = 8 * 1024 * 1024;
+
 /** What storage says it holds. The only source of a ledger row's facts. */
 export interface StoredObject {
   byteSize: number;
@@ -45,6 +58,32 @@ export interface ObjectStore {
     byteSize: number;
     expiresInSeconds: number;
   }): Promise<UploadTarget>;
+
+  /**
+   * Starts an upload whose bytes arrive in parts (P12). Parts can be sent over
+   * several connections and days; nothing is an object until it is completed.
+   */
+  createMultipartUpload(input: { key: string; contentType: string }): Promise<{ uploadId: string }>;
+
+  /** Links to send the given parts to, each signed for its exact size. */
+  createPartUploads(input: {
+    key: string;
+    uploadId: string;
+    parts: readonly { number: number; byteSize: number }[];
+    expiresInSeconds: number;
+  }): Promise<PartUploadTarget[]>;
+
+  /** The parts storage holds for an unfinished upload, in part order. */
+  listParts(input: { key: string; uploadId: string }): Promise<StoredPart[]>;
+
+  /** Joins the parts into the object. */
+  completeMultipartUpload(input: {
+    key: string;
+    uploadId: string;
+    parts: readonly StoredPart[];
+  }): Promise<void>;
+
+  abortMultipartUpload(input: { key: string; uploadId: string }): Promise<void>;
 
   /** What storage holds under `key`, or `undefined` if nothing complete arrived. */
   head(key: string): Promise<StoredObject | undefined>;

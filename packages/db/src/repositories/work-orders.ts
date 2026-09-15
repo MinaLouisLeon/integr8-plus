@@ -142,6 +142,11 @@ export interface WorkOrderQuery {
   dueBefore?: Date;
   /** Not closed, and due before now. */
   overdue?: boolean;
+  /**
+   * Closed (complete, reviewed or cancelled) at or after this instant: when it was completed,
+   * or cancelled if it never was. A phone keeps this much history.
+   */
+  closedSince?: Date;
   /** Words from the title or description, or a reference such as `WO-000123` or `123`. */
   text?: string;
   order?: WorkOrderOrder;
@@ -367,6 +372,15 @@ export class WorkOrdersRepository extends TenantScopedRepository {
       select = select
         .where('work_orders.due_by', '<', sql<Date>`now()`)
         .where('work_orders.state', 'not in', ['complete', 'reviewed', 'cancelled']);
+    }
+    if (query.closedSince !== undefined) {
+      select = select
+        .where('work_orders.state', 'in', ['complete', 'reviewed', 'cancelled'])
+        .where(
+          sql<Date>`coalesce(work_orders.completed_at, work_orders.cancelled_at)`,
+          '>=',
+          query.closedSince,
+        );
     }
     if (query.text !== undefined && query.text.trim() !== '') {
       const reference = parseWorkOrderReference(query.text);
@@ -846,14 +860,33 @@ export class WorkOrdersRepository extends TenantScopedRepository {
     return true;
   }
 
+  /** A comment by id, on any job in the company. */
+  async findComment(
+    commentId: string,
+  ): Promise<(WorkOrderComment & { workOrderId: string }) | undefined> {
+    const row = await this.db
+      .selectFrom('work_order_comments')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', commentId)
+      .executeTakeFirst();
+    return row === undefined ? undefined : { ...toComment(row), workOrderId: row.work_order_id };
+  }
+
   async addComment(
     workOrderId: string,
-    input: { body: string; visibility: CommentVisibility },
+    input: {
+      body: string;
+      visibility: CommentVisibility;
+      /** Chosen by a phone that wrote the comment offline (P12), so a resend finds it. */
+      id?: string;
+    },
     author: UserId | string,
   ): Promise<WorkOrderComment> {
     const row = await this.db
       .insertInto('work_order_comments')
       .values({
+        ...(input.id === undefined ? {} : { id: input.id }),
         tenant_id: this.tenantId,
         work_order_id: workOrderId,
         author_id: toUserId(author),

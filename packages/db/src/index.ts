@@ -282,6 +282,7 @@ export {
   type ImportRecord,
   type ImportsRepository,
 } from './repositories/imports.js';
+export { SyncRepository, type SyncPageQuery, type SyncReportInput } from './repositories/sync.js';
 
 export {
   ATTACHMENT_KINDS,
@@ -290,6 +291,12 @@ export {
   customerStatusSchema,
   GEOCODE_STATUSES,
   IMPORT_KINDS,
+  SYNC_ENTITY_KINDS,
+  SYNC_OUTCOMES,
+  SYNC_TRIGGERS,
+  type SyncEntityKind,
+  type SyncOutcome,
+  type SyncTrigger,
   IMPORT_STATUSES,
   WORK_ORDER_EVENT_KINDS,
   type AttachmentKind,
