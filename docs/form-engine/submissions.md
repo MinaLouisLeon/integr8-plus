@@ -92,7 +92,9 @@ A submission filled for a job (P10) carries the job, and `workOrderId`, `siteId`
 submissions" link opens it at that job. See [customers, sites and work orders](../operations/README.md).
 
 `GET /v1/submissions/export?formId=…` streams CSV with the same filters: one column per
-question any published version asked, headed by its answer key; a byte-order mark so a
+question any published version asked, headed by its answer key — a repeatable section's
+questions numbered per entry, `appliances[1].make`, and reported per entry in
+`submission_values` (see [repeating groups](repeating-groups.md#reporting)); a byte-order mark so a
 spreadsheet opens Arabic as UTF-8; and text that a spreadsheet would run as a formula
 prefixed with an apostrophe.
 

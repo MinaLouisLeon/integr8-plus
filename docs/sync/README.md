@@ -91,6 +91,10 @@ that change on the Sync screen. The engineer keeps theirs (`discardChange`), mak
 (`resolveAccessConflict`, `resolveAnswersConflict`). A resolved change is re-sent under a new
 id, in its original place in the order.
 
+A repeatable section's entries are merged entry by entry and answer by answer, and conflict
+only when the same entry's answer was changed both ways, or an entry removed on one side was
+changed on the other (P13b, [repeating groups](../form-engine/repeating-groups.md#files-prefill-and-sync)).
+
 ## Pulling: this person's work, nothing skipped
 
 `GET /v1/sync/pull?cursor=` returns the jobs the person is on — open, or closed within the phone's

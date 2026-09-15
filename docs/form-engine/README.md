@@ -73,6 +73,9 @@ Pages of sections of fields, stored verbatim in `form_versions.definition`.
 - **Strict.** An unknown property is refused, not ignored.
 - **Bounded.** 50 pages, 1,000 fields, rules of at most 500 nodes and 32 levels. A
   definition is customer input evaluated on a cheap phone and a shared server.
+- **Repeatable sections** ask their questions once per thing found on site, stored as a
+  list of `{ id, values }` entries under the section's id — see
+  [repeating groups](repeating-groups.md) (P13b).
 
 ## Field types
 

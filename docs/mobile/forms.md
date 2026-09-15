@@ -43,6 +43,12 @@ it is on — is derived from it on each change, the way the web renderer does it
 - **Correcting** a reopened submission asks why before submitting, as on the web.
 - A **submitted** form opens read-only.
 
+### Entries, one at a time
+
+A repeatable section (P13b) is a list of its entries; adding or tapping one opens it on its
+own, with only its questions, and the way to the next, to move it and to remove it. See
+[repeating groups](../form-engine/repeating-groups.md#on-a-screen).
+
 ## Every change is saved
 
 Each accepted answer is written straight away through `recordAnswers`: the phone's
