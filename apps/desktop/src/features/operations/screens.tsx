@@ -7,6 +7,7 @@ import {
   type OperationsConfig,
   OperationsContext,
   SiteScreen,
+  TimesheetsScreen,
   WorkOrderFormScreen,
   WorkOrderListScreen,
   WorkOrderScreen,
@@ -132,6 +133,14 @@ export function ImportsRoute() {
   return (
     <OperationsScreens>
       <ImportsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function TimesheetsRoute() {
+  return (
+    <OperationsScreens>
+      <TimesheetsScreen />
     </OperationsScreens>
   );
 }

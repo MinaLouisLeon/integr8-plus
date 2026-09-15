@@ -1,5 +1,5 @@
 import { ApiRequestError } from '@integr8/api-client';
-import { formatDateTime, useTranslation } from '@integr8/i18n';
+import { formatDateTime, formatNumber, useTranslation } from '@integr8/i18n';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import type { Priority, WorkOrderState } from './api.js';
 
@@ -196,6 +196,25 @@ export function PriorityBadge({ priority }: { priority: Priority }) {
       {t(`operations.priority.${priority}`)}
     </span>
   );
+}
+
+/**
+ * A length of time, to the minute: `2 h 5 min`, `40 min`. Every duration on
+ * these screens goes through here, so a job's time and a shift's read alike.
+ */
+export function useDuration(): (ms: number) => string {
+  const { t, i18n } = useTranslation();
+  return (ms) => {
+    const total = Math.round(Math.max(0, ms) / 60_000);
+    const hours = Math.floor(total / 60);
+    const minutes = formatNumber(total % 60, { locale: i18n.language });
+    return hours === 0
+      ? t('operations.duration.minutes', { minutes })
+      : t('operations.duration.hoursMinutes', {
+          hours: formatNumber(hours, { locale: i18n.language }),
+          minutes,
+        });
+  };
 }
 
 export function when(value: string | null | undefined, locale: string): string {

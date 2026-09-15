@@ -88,7 +88,7 @@ export function apiError(
   status: number,
   code: string,
   message: string,
-  details: { field: string; code: string; message: string }[] = [],
+  details: { field: string; code: string; message: string; params?: Record<string, string> }[] = [],
 ) {
   return { status, body: { error: { code, message, requestId: 'req-test', details } } };
 }

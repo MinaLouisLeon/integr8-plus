@@ -71,6 +71,7 @@ export type ImportRecord = Json<'/v1/imports', 'get', 200>['items'][number];
 export type ImportDetail = Json<'/v1/imports/{importId}', 'get', 200>;
 export type Me = Json<'/v1/me', 'get', 200>;
 export type Member = Json<'/v1/members', 'get', 200>['items'][number];
+export type Timesheet = Json<'/v1/timesheets', 'get', 200>;
 
 export const keys = {
   me: ['me'] as const,
@@ -87,4 +88,6 @@ export const keys = {
   imports: ['imports'] as const,
   import: (id: string) => ['imports', id] as const,
   columns: (kind: string) => ['imports', 'columns', kind] as const,
+  timesheet: (query: { from: string; to: string; userId: string }) =>
+    ['timesheets', query] as const,
 };

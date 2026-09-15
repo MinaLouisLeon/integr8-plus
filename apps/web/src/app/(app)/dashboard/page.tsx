@@ -93,6 +93,10 @@ export default function DashboardPage() {
             ['/customers', 'customers', 'customersHint'],
             ['/settings/job-types', 'jobTypes', 'jobTypesHint'],
             ['/imports', 'imports', 'importsHint'],
+            // Everyone's time is the office's to read.
+            ...(person?.permissions.includes('work_order.manage') === true
+              ? ([['/timesheets', 'timesheets', 'timesheetsHint']] as const)
+              : []),
           ] as const
         ).map(([href, label, hint]) => (
           <Link
