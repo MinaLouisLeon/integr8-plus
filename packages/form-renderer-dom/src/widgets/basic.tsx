@@ -1,6 +1,7 @@
 import { useTranslation } from '@integr8/i18n';
 import { type ReactNode, useState } from 'react';
-import { normaliseDigits, say, withLocalOffset } from '../text.js';
+import { readDecimal, readInteger, toggleOption } from '@integr8/form-input';
+import { say, withLocalOffset } from '../text.js';
 import { inputClass, type WidgetProps } from './types.js';
 
 /**
@@ -91,12 +92,10 @@ export function NumberWidget(props: WidgetProps<'number'>) {
         aria-describedby={describedBy}
         aria-required={field.required === true}
         onChange={(event) => {
-          const typed = normaliseDigits(event.target.value).trim();
-          setTyping(typed);
-          if (typed === '') {
-            onAnswer('');
-          } else if (/^-?\d+$/u.test(typed)) {
-            onAnswer(Number.parseInt(typed, 10));
+          const typed = readInteger(event.target.value);
+          setTyping(typed.text);
+          if (typed.answer !== undefined) {
+            onAnswer(typed.answer);
           }
         }}
         onBlur={() => {
@@ -124,7 +123,7 @@ export function DecimalWidget(props: WidgetProps<'decimal'>) {
         aria-invalid={invalid}
         aria-describedby={describedBy}
         aria-required={field.required === true}
-        onChange={(event) => onAnswer(normaliseDigits(event.target.value).trim())}
+        onChange={(event) => onAnswer(readDecimal(event.target.value))}
         onBlur={onBlur}
         className={inputClass}
       />
@@ -275,15 +274,7 @@ export function MultiSelectWidget(props: WidgetProps<'multi_select'>) {
             disabled={disabled}
             aria-invalid={invalid}
             onChange={(event) =>
-              onAnswer(
-                event.target.checked
-                  ? field.options
-                      .map((candidate) => candidate.value)
-                      .filter(
-                        (candidate) => candidate === option.value || selected.includes(candidate),
-                      )
-                  : selected.filter((candidate) => candidate !== option.value),
-              )
+              onAnswer(toggleOption(field.options, selected, option.value, event.target.checked))
             }
             onBlur={onBlur}
           />

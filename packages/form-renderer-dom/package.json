@@ -29,7 +29,8 @@
   "dependencies": {
     "@integr8/form-engine": "workspace:*",
     "@integr8/i18n": "workspace:*",
-    "@integr8/api-client": "workspace:*"
+    "@integr8/api-client": "workspace:*",
+    "@integr8/form-input": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=19",

@@ -5,6 +5,7 @@ import {
   isCalculated,
   parseDecimal,
 } from '@integr8/form-engine';
+import { errorMessage } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import type { ReactNode } from 'react';
 import type { MediaAdapter } from './media.js';
@@ -241,21 +242,8 @@ export function ErrorText({
   locale: string;
 }) {
   const { t } = useTranslation();
-  if (error.code === 'rule_failed') {
-    const rule = field.rules?.find((candidate) => candidate.id === error.params.rule);
-    if (rule !== undefined) {
-      return <>{say(rule.message, locale)}</>;
-    }
-  }
-  if (
-    error.code === 'pattern_mismatch' &&
-    field.type === 'text' &&
-    field.pattern?.message !== undefined
-  ) {
-    return <>{say(field.pattern.message, locale)}</>;
-  }
   // One key chosen at run time from the engine's codes; the i18n package's test
   // holds that every code has a message and every parameter is one the engine sends.
   const translate = t as unknown as (key: string, options: Record<string, string>) => string;
-  return <>{translate(`form.errors.${error.code}`, { ...error.params })}</>;
+  return <>{errorMessage(field, error, locale, translate)}</>;
 }

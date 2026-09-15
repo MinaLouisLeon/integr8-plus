@@ -1,6 +1,7 @@
 import { mediaReferenceSchema, type MediaReference } from '@integr8/form-engine';
 import { useTranslation } from '@integr8/i18n';
 import { useId, useState } from 'react';
+import { accepts } from '@integr8/form-input';
 import { preparePhoto } from '../compress.js';
 import { formatBytes } from '../text.js';
 import { MediaImage, useMediaUrl } from './media-image.js';
@@ -23,15 +24,6 @@ interface Uploading {
   name: string;
   progress: number;
   failed: boolean;
-}
-
-function accepts(accepted: readonly string[] | undefined, type: string): boolean {
-  if (accepted === undefined) {
-    return true;
-  }
-  return accepted.some((pattern) =>
-    pattern.endsWith('/*') ? type.startsWith(pattern.slice(0, -1)) : pattern === type,
-  );
 }
 
 export function FilesWidget(props: WidgetProps<'photo' | 'file'>) {

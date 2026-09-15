@@ -360,6 +360,9 @@ function History({
                   {t('submissions.detail.reason', { reason: event.reason })}
                 </p>
               )}
+              {event.location === null ? null : (
+                <SubmitLocationLine location={event.location} locale={locale} />
+              )}
               {event.answers === null ? null : (
                 <div className="flex flex-col gap-2">
                   <div>
@@ -461,5 +464,47 @@ function ReopenDialog({
       </label>
       {error === undefined ? null : <Failure error={error} />}
     </Dialog>
+  );
+}
+
+/**
+ * Where a phone was when it submitted (P13), or why it does not say. Evidence
+ * about the visit, shown with the history entry it belongs to.
+ */
+function SubmitLocationLine({
+  location,
+  locale,
+}: {
+  location: NonNullable<SubmissionDetail['events'][number]['location']>;
+  locale: string;
+}) {
+  const { t } = useTranslation();
+  if (location.status !== 'captured') {
+    return (
+      <p className="text-sm text-content-muted">
+        {t(`submissions.detail.location.${location.status}`)}
+      </p>
+    );
+  }
+  const when = formatDateTime(location.capturedAt, { locale });
+  const map = `https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}#map=18/${location.latitude}/${location.longitude}`;
+  return (
+    <p className="text-sm text-content-muted">
+      {location.accuracyMeters === undefined
+        ? t('submissions.detail.location.capturedNoAccuracy', {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            when,
+          })
+        : t('submissions.detail.location.captured', {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            meters: location.accuracyMeters,
+            when,
+          })}{' '}
+      <a href={map} target="_blank" rel="noreferrer noopener" className="text-accent underline">
+        {t('submissions.detail.location.openMap')}
+      </a>
+    </p>
   );
 }

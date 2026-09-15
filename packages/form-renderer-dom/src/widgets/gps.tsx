@@ -1,7 +1,7 @@
 import { geoPointSchema } from '@integr8/form-engine';
 import { useTranslation } from '@integr8/i18n';
 import { useState } from 'react';
-import { normaliseDigits } from '../text.js';
+import { editGeoPoint, geoPointFrom } from '@integr8/form-input';
 import { buttonClass, inputClass, type WidgetProps } from './types.js';
 
 /**
@@ -12,8 +12,6 @@ import { buttonClass, inputClass, type WidgetProps } from './types.js';
  * whether the browser could tell. Coordinates are stored as decimal text, as
  * the engine requires, never as floating-point numbers.
  */
-
-const DECIMALS = 6;
 
 export function GpsWidget(props: WidgetProps<'gps'>) {
   const { value, id, describedBy, disabled, invalid, onAnswer, onClear, onBlur } = props;
@@ -33,11 +31,7 @@ export function GpsWidget(props: WidgetProps<'gps'>) {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setStatus('idle');
-        onAnswer({
-          latitude: position.coords.latitude.toFixed(DECIMALS),
-          longitude: position.coords.longitude.toFixed(DECIMALS),
-          accuracyMeters: Math.max(0, position.coords.accuracy).toFixed(1),
-        });
+        onAnswer(geoPointFrom(position.coords));
         onBlur();
       },
       (error) => {
@@ -49,16 +43,8 @@ export function GpsWidget(props: WidgetProps<'gps'>) {
   };
 
   const update = (part: 'latitude' | 'longitude' | 'accuracyMeters', text: string) => {
-    const next = {
-      latitude: point?.latitude ?? '',
-      longitude: point?.longitude ?? '',
-      ...(point?.accuracyMeters === undefined ? {} : { accuracyMeters: point.accuracyMeters }),
-      [part]: normaliseDigits(text).trim(),
-    };
-    if (next.accuracyMeters === '') {
-      delete next.accuracyMeters;
-    }
-    if (next.latitude === '' && next.longitude === '') {
+    const next = editGeoPoint(point, part, text);
+    if (next === undefined) {
       onClear();
     } else {
       onAnswer(next);

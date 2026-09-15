@@ -1,16 +1,7 @@
 /**
- * Photos are made smaller on the device, before they are uploaded.
- *
- * This is the single decision that most controls a company's storage bill, and
- * how long an upload takes over a site's weak signal, so it is fixed here rather
- * than left to each app:
- *
- * - **Longest edge 2048 pixels.** Enough to read a gauge, a serial plate or a
- *   crack in a flue at full-screen size on a laptop; a modern phone's 4000-pixel
- *   photo is four times the pixels for detail nobody zooms into.
- * - **Quality 0.82**, JPEG or WebP. Artefacts are not visible at that size, and a
- *   typical site photo lands between 400 KB and 900 KB, against 3–6 MB straight
- *   from the camera.
+ * Photos are made smaller in the browser, before they are uploaded, to the
+ * size and quality `@integr8/form-input` fixes for every renderer (see there for
+ * why those numbers).
  *
  * A JPEG or WebP stays its own type; a PNG is resized but stays lossless, since
  * a PNG is usually a screenshot or a drawing where JPEG artefacts are ugly. The
@@ -20,29 +11,12 @@
  * metadata, GPS position included; a form that needs a location asks for it.
  */
 
-export const PHOTO_MAX_EDGE = 2048;
-export const PHOTO_QUALITY = 0.82;
+import { fitWithin, PHOTO_QUALITY } from '@integr8/form-input';
+
+export { fitWithin, PHOTO_MAX_EDGE, PHOTO_QUALITY } from '@integr8/form-input';
 
 const REENCODED = new Set(['image/jpeg', 'image/webp']);
 const RESIZED = new Set(['image/jpeg', 'image/webp', 'image/png']);
-
-/** The size a photo is drawn at: its own, or scaled so the longest edge is `maxEdge`. */
-export function fitWithin(
-  width: number,
-  height: number,
-  maxEdge = PHOTO_MAX_EDGE,
-): { width: number; height: number; scaled: boolean } {
-  const longest = Math.max(width, height);
-  if (longest <= maxEdge) {
-    return { width, height, scaled: false };
-  }
-  const ratio = maxEdge / longest;
-  return {
-    width: Math.max(1, Math.round(width * ratio)),
-    height: Math.max(1, Math.round(height * ratio)),
-    scaled: true,
-  };
-}
 
 export interface PreparedPhoto {
   blob: Blob;
