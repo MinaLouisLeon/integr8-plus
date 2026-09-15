@@ -82,7 +82,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 - [~] **P12** — Offline sync engine
 - [~] **P13** — Mobile form renderer
 - [ ] **P13b** — Repeating groups
-- [ ] **P14** — Job execution on mobile
+- [~] **P14** — Job execution on mobile
 
 ### v1.0 — Launch
 

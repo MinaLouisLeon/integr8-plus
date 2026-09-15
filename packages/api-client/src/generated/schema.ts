@@ -1103,9 +1103,29 @@ export interface paths {
         put?: never;
         /**
          * Move a work order to another state
-         * @description Only along the transitions the state machine allows, by someone allowed to make that transition. Cancelling, reopening a completed job and reinstating a cancelled one need a `reason`. Dispatching needs someone assigned; completing needs every required form submitted for this job.
+         * @description Only along the transitions the state machine allows, by someone allowed to make that transition. Cancelling, reopening a completed job and reinstating a cancelled one need a `reason`. Dispatching needs someone assigned; completing needs every required form submitted, the before and after photos the job asks for, and the customer’s sign-off when it is required.
          */
         post: operations["transitionWorkOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work-orders/{workOrderId}/signoff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Record the customer’s sign-off on a job
+         * @description A signature (an uploaded, confirmed image) with the signer’s name and role, or why nobody could sign. Replaces an earlier one until the job is completed; kept in the job’s history. Phones send this through `/v1/sync/push` instead.
+         */
+        put: operations["signOffWorkOrder"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1390,6 +1410,66 @@ export interface paths {
          * @description Duration, what moved, what is still waiting, the network and the measured clock offset, one entry per sync run. Each report has an id, so resending one stores it once.
          */
         post: operations["syncReports"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/timesheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shifts and time on jobs in a window
+         * @description Every shift that overlaps the window, and the jobs worked in it: each job’s state changes in the window, whoever made them, with the last change before the window so a job already under way is counted from the window’s start, and who was on its crew. For one person, the jobs they changed or were on the crew of; for the office, everyone’s. Totals are for the client to add up with `jobTimes` and `shiftDurationMs` from `@integr8/core`. An engineer may read only their own. At most 62 days; `truncated` says the window held more changes than were returned.
+         */
+        get: operations["getTimesheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/push-device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Receive push notifications on this phone
+         * @description Registers the phone’s Expo push token for the signed-in person, tied to this session: signing out, or the session being revoked, stops notifications to it. Registering a token already registered moves it to this person and session.
+         */
+        put: operations["registerPushDevice"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/push-device/unregister": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop push notifications to this phone
+         * @description For the phone’s own person only. Signing out does this too.
+         */
+        post: operations["unregisterPushDevice"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6778,6 +6858,8 @@ export interface operations {
                             title: string;
                             /** @enum {string} */
                             kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
                             contentType: string;
                             byteSize: number;
                             addedBy: {
@@ -7626,6 +7708,8 @@ export interface operations {
                             title: string;
                             /** @enum {string} */
                             kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
                             contentType: string;
                             byteSize: number;
                             addedBy: {
@@ -8053,6 +8137,8 @@ export interface operations {
                     title: string;
                     /** @enum {string} */
                     kind?: "site_plan" | "manual" | "report" | "photo" | "other";
+                    /** @enum {string} */
+                    stage?: "before" | "after";
                 };
             };
         };
@@ -8071,6 +8157,8 @@ export interface operations {
                         title: string;
                         /** @enum {string} */
                         kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                        /** @enum {string|null} */
+                        stage: "before" | "after" | null;
                         contentType: string;
                         byteSize: number;
                         addedBy: {
@@ -8278,6 +8366,9 @@ export interface operations {
                                 title: string;
                                 required: boolean;
                             }[];
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
                             archived: boolean;
                             createdAt: string;
                             updatedAt: string;
@@ -8371,6 +8462,9 @@ export interface operations {
                         formId: string;
                         required: boolean;
                     }[];
+                    beforePhotos?: number;
+                    afterPhotos?: number;
+                    signatureRequired?: boolean;
                 };
             };
         };
@@ -8401,6 +8495,9 @@ export interface operations {
                             title: string;
                             required: boolean;
                         }[];
+                        beforePhotos: number;
+                        afterPhotos: number;
+                        signatureRequired: boolean;
                         archived: boolean;
                         createdAt: string;
                         updatedAt: string;
@@ -8508,6 +8605,9 @@ export interface operations {
                             title: string;
                             required: boolean;
                         }[];
+                        beforePhotos: number;
+                        afterPhotos: number;
+                        signatureRequired: boolean;
                         archived: boolean;
                         createdAt: string;
                         updatedAt: string;
@@ -8606,6 +8706,9 @@ export interface operations {
                         formId: string;
                         required: boolean;
                     }[];
+                    beforePhotos?: number;
+                    afterPhotos?: number;
+                    signatureRequired?: boolean;
                     archived?: boolean;
                 };
             };
@@ -8637,6 +8740,9 @@ export interface operations {
                             title: string;
                             required: boolean;
                         }[];
+                        beforePhotos: number;
+                        afterPhotos: number;
+                        signatureRequired: boolean;
                         archived: boolean;
                         createdAt: string;
                         updatedAt: string;
@@ -9040,7 +9146,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -9060,6 +9166,7 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                             occurredAt: string;
+                            recordedAt: string;
                         }[];
                         attachments: {
                             /** Format: uuid */
@@ -9069,6 +9176,8 @@ export interface operations {
                             title: string;
                             /** @enum {string} */
                             kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
                             contentType: string;
                             byteSize: number;
                             addedBy: {
@@ -9078,6 +9187,34 @@ export interface operations {
                             };
                             createdAt: string;
                         }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
                         previousAtSite: {
                             /** Format: uuid */
                             id: string;
@@ -9487,7 +9624,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -9507,6 +9644,7 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                             occurredAt: string;
+                            recordedAt: string;
                         }[];
                         attachments: {
                             /** Format: uuid */
@@ -9516,6 +9654,8 @@ export interface operations {
                             title: string;
                             /** @enum {string} */
                             kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
                             contentType: string;
                             byteSize: number;
                             addedBy: {
@@ -9525,6 +9665,34 @@ export interface operations {
                             };
                             createdAt: string;
                         }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
                         previousAtSite: {
                             /** Format: uuid */
                             id: string;
@@ -9830,7 +9998,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -9850,6 +10018,7 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                             occurredAt: string;
+                            recordedAt: string;
                         }[];
                         attachments: {
                             /** Format: uuid */
@@ -9859,6 +10028,8 @@ export interface operations {
                             title: string;
                             /** @enum {string} */
                             kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
                             contentType: string;
                             byteSize: number;
                             addedBy: {
@@ -9868,6 +10039,34 @@ export interface operations {
                             };
                             createdAt: string;
                         }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
                         previousAtSite: {
                             /** Format: uuid */
                             id: string;
@@ -10171,7 +10370,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -10191,6 +10390,7 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                             occurredAt: string;
+                            recordedAt: string;
                         }[];
                         attachments: {
                             /** Format: uuid */
@@ -10200,6 +10400,8 @@ export interface operations {
                             title: string;
                             /** @enum {string} */
                             kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
                             contentType: string;
                             byteSize: number;
                             addedBy: {
@@ -10209,6 +10411,34 @@ export interface operations {
                             };
                             createdAt: string;
                         }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
                         previousAtSite: {
                             /** Format: uuid */
                             id: string;
@@ -10286,7 +10516,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Not a transition from the current state (`transition_not_allowed`), nobody assigned (`nobody_assigned`), required forms not submitted (`required_forms_missing`, naming them), or changed elsewhere (`work_order_changed`). */
+            /** @description Not a transition from the current state (`transition_not_allowed`), nobody assigned (`nobody_assigned`), something needed before completing is missing (`completion_blocked`, with a detail for each required form, the before and after photos still needed, and the sign-off), or changed elsewhere (`work_order_changed`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -10299,6 +10529,378 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    signOffWorkOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    fileId: string;
+                    name: string;
+                    role?: string | null;
+                } | {
+                    unavailableReason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The work order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            description: string | null;
+                            instructions: string | null;
+                            lastReason: string | null;
+                            completedAt: string | null;
+                            reviewedAt: string | null;
+                            cancelledAt: string | null;
+                        };
+                        site: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            address: {
+                                line1: string;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            location: {
+                                latitude: number;
+                                longitude: number;
+                            } | null;
+                            /** @enum {string} */
+                            geocodeStatus: "pending" | "found" | "not_found" | "failed" | "manual";
+                            access: {
+                                gateCode: string | null;
+                                parking: string | null;
+                                askFor: string | null;
+                                hazards: string | null;
+                                notes: string | null;
+                                updatedAt: string | null;
+                                updatedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                            };
+                        };
+                        siteContact: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            jobTitle: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            isPrimary: boolean;
+                            notes: string | null;
+                            archived: boolean;
+                        } | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            accountNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "on_hold" | "closed";
+                            phone: string | null;
+                        };
+                        jobType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            code: string;
+                            expectedDurationMinutes: number | null;
+                        };
+                        crew: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            lead: boolean;
+                            assignedAt: string;
+                        }[];
+                        forms: {
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                            required: boolean;
+                            submission: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "reopened";
+                                submittedAt: string | null;
+                            } | null;
+                        }[];
+                        checklist: {
+                            /** Format: uuid */
+                            id: string;
+                            label: string;
+                            done: boolean;
+                            doneBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            doneAt: string | null;
+                        }[];
+                        comments: {
+                            /** Format: uuid */
+                            id: string;
+                            author: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            visibility: "internal" | "customer";
+                            body: string;
+                            createdAt: string;
+                        }[];
+                        events: {
+                            /** @enum {string} */
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            /** @enum {string|null} */
+                            fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            /** @enum {string|null} */
+                            toState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            person: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            actor: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            reason: string | null;
+                            details: {
+                                [key: string]: unknown;
+                            };
+                            occurredAt: string;
+                            recordedAt: string;
+                        }[];
+                        attachments: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
+                        previousAtSite: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            assign: boolean;
+                            work: boolean;
+                            comment: boolean;
+                            transitions: {
+                                /** @enum {string} */
+                                to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                requiresReason: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not on this job’s crew. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such work order, or no such signature file. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The job is closed (`work_order_closed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description Rate limit exceeded. */
             429: {
@@ -10510,7 +11112,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -10530,6 +11132,7 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                             occurredAt: string;
+                            recordedAt: string;
                         }[];
                         attachments: {
                             /** Format: uuid */
@@ -10539,6 +11142,8 @@ export interface operations {
                             title: string;
                             /** @enum {string} */
                             kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
                             contentType: string;
                             byteSize: number;
                             addedBy: {
@@ -10548,6 +11153,34 @@ export interface operations {
                             };
                             createdAt: string;
                         }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
                         previousAtSite: {
                             /** Format: uuid */
                             id: string;
@@ -10848,7 +11481,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -10868,6 +11501,7 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                             occurredAt: string;
+                            recordedAt: string;
                         }[];
                         attachments: {
                             /** Format: uuid */
@@ -10877,6 +11511,8 @@ export interface operations {
                             title: string;
                             /** @enum {string} */
                             kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
                             contentType: string;
                             byteSize: number;
                             addedBy: {
@@ -10886,6 +11522,34 @@ export interface operations {
                             };
                             createdAt: string;
                         }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
                         previousAtSite: {
                             /** Format: uuid */
                             id: string;
@@ -11180,7 +11844,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -11200,6 +11864,7 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                             occurredAt: string;
+                            recordedAt: string;
                         }[];
                         attachments: {
                             /** Format: uuid */
@@ -11209,6 +11874,8 @@ export interface operations {
                             title: string;
                             /** @enum {string} */
                             kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
                             contentType: string;
                             byteSize: number;
                             addedBy: {
@@ -11218,6 +11885,34 @@ export interface operations {
                             };
                             createdAt: string;
                         }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
                         previousAtSite: {
                             /** Format: uuid */
                             id: string;
@@ -11511,7 +12206,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -11531,6 +12226,7 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                             occurredAt: string;
+                            recordedAt: string;
                         }[];
                         attachments: {
                             /** Format: uuid */
@@ -11540,6 +12236,8 @@ export interface operations {
                             title: string;
                             /** @enum {string} */
                             kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
                             contentType: string;
                             byteSize: number;
                             addedBy: {
@@ -11549,6 +12247,34 @@ export interface operations {
                             };
                             createdAt: string;
                         }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
                         previousAtSite: {
                             /** Format: uuid */
                             id: string;
@@ -11835,7 +12561,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -11855,6 +12581,7 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                             occurredAt: string;
+                            recordedAt: string;
                         }[];
                         attachments: {
                             /** Format: uuid */
@@ -11864,6 +12591,8 @@ export interface operations {
                             title: string;
                             /** @enum {string} */
                             kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
                             contentType: string;
                             byteSize: number;
                             addedBy: {
@@ -11873,6 +12602,34 @@ export interface operations {
                             };
                             createdAt: string;
                         }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
                         previousAtSite: {
                             /** Format: uuid */
                             id: string;
@@ -12178,7 +12935,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -12198,6 +12955,7 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                             occurredAt: string;
+                            recordedAt: string;
                         }[];
                         attachments: {
                             /** Format: uuid */
@@ -12207,6 +12965,8 @@ export interface operations {
                             title: string;
                             /** @enum {string} */
                             kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
                             contentType: string;
                             byteSize: number;
                             addedBy: {
@@ -12216,6 +12976,34 @@ export interface operations {
                             };
                             createdAt: string;
                         }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
                         previousAtSite: {
                             /** Format: uuid */
                             id: string;
@@ -13308,7 +14096,7 @@ export interface operations {
                             }[];
                             events: {
                                 /** @enum {string} */
-                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed";
+                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
                                 /** @enum {string|null} */
                                 fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                                 /** @enum {string|null} */
@@ -13328,6 +14116,7 @@ export interface operations {
                                     [key: string]: unknown;
                                 };
                                 occurredAt: string;
+                                recordedAt: string;
                             }[];
                             attachments: {
                                 /** Format: uuid */
@@ -13337,6 +14126,8 @@ export interface operations {
                                 title: string;
                                 /** @enum {string} */
                                 kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                                /** @enum {string|null} */
+                                stage: "before" | "after" | null;
                                 contentType: string;
                                 byteSize: number;
                                 addedBy: {
@@ -13346,6 +14137,34 @@ export interface operations {
                                 };
                                 createdAt: string;
                             }[];
+                            execution: {
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signatureRequired: boolean;
+                                signoff: {
+                                    signedAt: string;
+                                    signedBy: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                    /** Format: uuid */
+                                    fileId: string | null;
+                                    name: string | null;
+                                    role: string | null;
+                                    unavailableReason: string | null;
+                                } | null;
+                                missing: {
+                                    forms: {
+                                        /** Format: uuid */
+                                        formId: string;
+                                        title: string;
+                                    }[];
+                                    beforePhotos: number;
+                                    afterPhotos: number;
+                                    signoff: boolean;
+                                };
+                            };
                             previousAtSite: {
                                 /** Format: uuid */
                                 id: string;
@@ -13481,6 +14300,8 @@ export interface operations {
                                 title: string;
                                 /** @enum {string} */
                                 kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                                /** @enum {string|null} */
+                                stage: "before" | "after" | null;
                                 contentType: string;
                                 byteSize: number;
                                 addedBy: {
@@ -13616,6 +14437,38 @@ export interface operations {
                             };
                             submittedAt: string | null;
                             updatedAt: string;
+                        }[];
+                        shifts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            userId: string;
+                            startedAt: string;
+                            endedAt: string | null;
+                            startLocation: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                            endLocation: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
                         }[];
                     };
                 };
@@ -13834,6 +14687,108 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                         };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "work_order.photo";
+                        payload: {
+                            /** Format: uuid */
+                            attachmentId: string;
+                            /** Format: uuid */
+                            mediaId: string;
+                            /** @enum {string} */
+                            stage: "before" | "after";
+                            title: string;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "work_order.photo_remove";
+                        payload: {
+                            /** Format: uuid */
+                            attachmentId: string;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "work_order.signoff";
+                        payload: {
+                            /** Format: uuid */
+                            mediaId: string;
+                            name: string;
+                            role: string | null;
+                            /** Format: date-time */
+                            signedAt: string;
+                        } | {
+                            unavailableReason: string;
+                            /** Format: date-time */
+                            signedAt: string;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "shift.start";
+                        payload: {
+                            /** Format: date-time */
+                            startedAt: string;
+                            location: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "shift.end";
+                        payload: {
+                            /** Format: date-time */
+                            endedAt: string;
+                            location: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                        };
                     })[];
                 };
             };
@@ -13884,12 +14839,17 @@ export interface operations {
                                 canReapply: boolean;
                             } | {
                                 /** @enum {string} */
-                                kind: "forms_missing";
-                                forms: {
-                                    /** Format: uuid */
-                                    formId: string;
-                                    title: string;
-                                }[];
+                                kind: "incomplete";
+                                missing: {
+                                    forms: {
+                                        /** Format: uuid */
+                                        formId: string;
+                                        title: string;
+                                    }[];
+                                    beforePhotos: number;
+                                    afterPhotos: number;
+                                    signoff: boolean;
+                                };
                             } | {
                                 /** @enum {string} */
                                 kind: "access_changed";
@@ -14078,6 +15038,304 @@ export interface operations {
                         duplicates: number;
                     };
                 };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getTimesheet: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                userId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The window’s shifts and state changes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        people: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        shifts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            userId: string;
+                            startedAt: string;
+                            endedAt: string | null;
+                            startLocation: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                            endLocation: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
+                        }[];
+                        changes: {
+                            /** Format: uuid */
+                            workOrderId: string;
+                            /** @enum {string} */
+                            fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            toState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** Format: uuid */
+                            actorId: string;
+                            occurredAt: string;
+                            recordedAt: string;
+                        }[];
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                        }[];
+                        crews: {
+                            /** Format: uuid */
+                            workOrderId: string;
+                            /** Format: uuid */
+                            userId: string;
+                        }[];
+                        truncated: boolean;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Only the office may read someone else’s time. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The window ends before it starts, or is longer than 62 days. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    registerPushDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                    /** @enum {string} */
+                    platform: "ios" | "android";
+                    deviceLabel?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Registered. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    unregisterPushDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Stopped, or was not registered. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Authentication is required. */
             401: {

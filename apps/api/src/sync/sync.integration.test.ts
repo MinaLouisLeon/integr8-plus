@@ -17,6 +17,7 @@ import {
   changesNeedingAttention,
   discardChange,
   job as localJob,
+  localCompletion,
   jobSyncState,
   queueUpload,
   recordAccessChange,
@@ -24,6 +25,10 @@ import {
   recordChecklist,
   recordComment,
   recordFormStarted,
+  recordPhoto,
+  recordShiftEnd,
+  recordShiftStart,
+  recordSignoff,
   recordSubmit,
   recordTransition,
   resolveAccessConflict,
@@ -32,8 +37,9 @@ import {
 } from '@integr8/offline';
 import { randomBytes } from 'node:crypto';
 import { mkdtempSync, writeFileSync } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type ApiHarness, type Member, startApi } from '../testing/api-harness.js';
 import { openPhone, type Phone, SkewedClock } from '../testing/phone.js';
@@ -938,6 +944,182 @@ describe('the same form on the phone and on the desktop (P13)', () => {
       checked: ['flue', 'fan'],
       where: { latitude: '53.800712', longitude: '-1.549100', accuracyMeters: '6.0' },
     });
+  });
+});
+
+describe('a working day on the phone (P14)', () => {
+  const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const upload = async (token: string, contentType: string, bytes: number) => {
+    const created = await call<{
+      media: { id: string };
+      upload: { url: string; headers: Record<string, string> };
+    }>(token, 'POST', '/v1/media', { contentType, byteSize: bytes }, 201);
+    const target = new URL(created.upload.url);
+    const put = await api.app.inject({
+      remoteAddress: api.remoteAddress,
+      method: 'PUT',
+      url: target.pathname + target.search,
+      headers: created.upload.headers,
+      payload: randomBytes(bytes),
+    });
+    expect(put.statusCode, put.body).toBe(200);
+    await call(token, 'POST', `/v1/media/${created.media.id}/complete`);
+    return created.media.id;
+  };
+
+  it('arrives with its photos, sign-off, form and times intact, and the site plan was on the phone', async () => {
+    const typeId = (
+      await call<{ id: string }>(
+        ownerToken,
+        'POST',
+        '/v1/job-types',
+        {
+          name: 'Boiler repair',
+          code: 'boiler-repair',
+          forms: [{ formId, required: true }],
+          beforePhotos: 1,
+          afterPhotos: 2,
+          signatureRequired: true,
+        },
+        201,
+      )
+    ).id;
+    const created = await call<Detail>(
+      officeToken,
+      'POST',
+      '/v1/work-orders',
+      { customerId, siteId, jobTypeId: typeId, crew: [{ userId: engineer.userId, lead: true }] },
+      201,
+    );
+    const id = created.workOrder.id;
+    await call(officeToken, 'POST', `/v1/work-orders/${id}/transitions`, {
+      to: 'dispatched',
+      expectedRevision: created.workOrder.revision,
+    });
+    const plan = await upload(officeToken, 'application/pdf', 40_000);
+    await call(
+      officeToken,
+      'POST',
+      '/v1/attachments',
+      { owner: { workOrderId: id }, fileId: plan, title: 'Site plan', kind: 'site_plan' },
+      201,
+    );
+
+    const phone = await openPhone(api, engineer);
+    expect(await phone.sync()).toMatchObject({ outcome: 'complete', downloaded: 1 });
+    expect((await stat(join(dirname(phone.path), 'files', 'attachments', plan))).size).toBe(40_000);
+
+    // The whole day with no signal.
+    phone.network.online = false;
+    const shiftId = await recordShiftStart(phone.context, { location: { status: 'unavailable' } });
+    await pause(150);
+    await recordTransition(phone.context, { workOrderId: id, to: 'travelling' });
+    await pause(300);
+    await recordTransition(phone.context, { workOrderId: id, to: 'on_site' });
+    await recordPhoto(phone.context, {
+      workOrderId: id,
+      stage: 'before',
+      file: { localPath: file('before', 90_000), contentType: 'image/jpeg', byteSize: 90_000 },
+    });
+    await pause(100);
+    await recordTransition(phone.context, { workOrderId: id, to: 'in_progress' });
+    const { submissionId } = await recordFormStarted(phone.context, {
+      formId,
+      formVersionId: await liveVersion(phone),
+      workOrderId: id,
+    });
+    const signature = await photo(phone, id, 'image/png', 12_000);
+    await recordSubmit(phone.context, {
+      submissionId,
+      answers: {
+        note: 'Replaced the fan',
+        engineer_signature: signature,
+        customer_signature: signature,
+      },
+      filledOn: today(phone.clock),
+    });
+    for (const name of ['after-1', 'after-2']) {
+      await recordPhoto(phone.context, {
+        workOrderId: id,
+        stage: 'after',
+        file: { localPath: file(name, 80_000), contentType: 'image/jpeg', byteSize: 80_000 },
+      });
+    }
+    // Nothing missing but the sign-off, as the phone sees it.
+    expect((await phone.db.read((sql) => localCompletion(sql, id)))?.missing).toEqual({
+      forms: [],
+      beforePhotos: 0,
+      afterPhotos: 0,
+      signoff: true,
+    });
+    await recordSignoff(phone.context, {
+      workOrderId: id,
+      signoff: {
+        signature: {
+          localPath: file('customer', 15_000),
+          contentType: 'image/png',
+          byteSize: 15_000,
+        },
+        name: 'Mrs Patel',
+        role: 'Tenant',
+      },
+    });
+    await pause(200);
+    await recordTransition(phone.context, { workOrderId: id, to: 'complete' });
+    await recordShiftEnd(phone.context, { shiftId, location: null });
+    const onPhone = (await phone.db.read((sql) => localJob(sql, id)))!.detail;
+
+    // Signal again, a while later.
+    await pause(1000);
+    phone.network.online = true;
+    expect((await phone.sync()).outcome).toBe('complete');
+
+    const server = await call<
+      Detail & {
+        attachments: { stage: string | null; kind: string }[];
+        events: { kind: string; toState: string | null; occurredAt: string; recordedAt: string }[];
+        execution: { signoff: { name: string; role: string } | null };
+        forms: { submission: { status: string } | null }[];
+      }
+    >(officeToken, 'GET', `/v1/work-orders/${id}`);
+    expect(server.workOrder.state).toBe('complete');
+    expect(server.forms[0]?.submission?.status).toBe('submitted');
+    expect(
+      server.attachments.map((attachment) => attachment.stage ?? attachment.kind).sort(),
+    ).toEqual(['after', 'after', 'before', 'site_plan']);
+    expect(server.execution.signoff).toMatchObject({ name: 'Mrs Patel', role: 'Tenant' });
+
+    // Times as the phone recorded them, not as they synced.
+    const moment = (events: { toState: string | null; occurredAt: string }[], to: string) =>
+      Date.parse(events.find((event) => event.toState === to)!.occurredAt);
+    const serverEvents = server.events;
+    const phoneEvents = onPhone.events;
+    for (const [from, to] of [
+      ['travelling', 'on_site'],
+      ['on_site', 'in_progress'],
+      ['in_progress', 'complete'],
+    ] as const) {
+      const onServer = moment(serverEvents, to) - moment(serverEvents, from);
+      const recorded = moment(phoneEvents, to) - moment(phoneEvents, from);
+      expect(Math.abs(onServer - recorded), `${from} → ${to}`).toBeLessThan(100);
+    }
+    const completedEvent = serverEvents.find((event) => event.toState === 'complete')!;
+    expect(
+      Date.parse(completedEvent.recordedAt) - Date.parse(completedEvent.occurredAt),
+    ).toBeGreaterThan(900);
+
+    const from = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const to = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const timesheet = await call<{
+      shifts: { id: string; startedAt: string; endedAt: string | null }[];
+    }>(
+      officeToken,
+      'GET',
+      `/v1/timesheets?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&userId=${engineer.userId}`,
+    );
+    const shift = timesheet.shifts.find((candidate) => candidate.id === shiftId)!;
+    expect(shift.endedAt).not.toBeNull();
+    expect(Date.parse(shift.startedAt)).toBeLessThan(moment(serverEvents, 'travelling'));
   });
 });
 

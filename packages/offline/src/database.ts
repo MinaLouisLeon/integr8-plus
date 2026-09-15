@@ -13,7 +13,8 @@ export type LocalTable =
   | 'outbox'
   | 'uploads'
   | 'submissions'
-  | 'sync_runs';
+  | 'sync_runs'
+  | 'shifts';
 
 export class LocalDatabaseClosedError extends Error {
   constructor() {

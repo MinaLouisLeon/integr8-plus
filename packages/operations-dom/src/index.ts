@@ -7,4 +7,5 @@ export { CustomerScreen } from './screens/customer-screen.js';
 export { SiteScreen } from './screens/site-screen.js';
 export { JobTypesScreen } from './screens/job-types-screen.js';
 export { ImportsScreen } from './screens/imports-screen.js';
+export { TimesheetsScreen } from './screens/timesheets-screen.js';
 export { AccessNotesPanel } from './access-notes.js';

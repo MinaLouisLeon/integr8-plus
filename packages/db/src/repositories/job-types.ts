@@ -26,6 +26,11 @@ export interface JobType {
   instructions: string | null;
   checklist: ChecklistTemplateItem[];
   forms: JobTypeForm[];
+  /** Photos to take before and after the work (P14). */
+  beforePhotos: number;
+  afterPhotos: number;
+  /** Whether the customer must sign off before a job of this type completes. */
+  signatureRequired: boolean;
   archivedAt: Date | null;
   createdBy: UserId;
   createdAt: Date;
@@ -40,6 +45,9 @@ export interface JobTypeInput {
   defaultPriority?: WorkOrderPriority;
   instructions?: string | null;
   checklist?: readonly ChecklistTemplateItem[];
+  beforePhotos?: number;
+  afterPhotos?: number;
+  signatureRequired?: boolean;
   /** Replaces the list. Order is kept. */
   forms?: readonly { formId: string; required: boolean }[];
 }
@@ -58,7 +66,8 @@ export function normaliseJobTypeCode(code: string): string {
 
 /**
  * The kinds of job a company does, and what each carries onto a new work order:
- * forms (some required), a checklist, instructions, an expected duration.
+ * forms (some required), a checklist, instructions, an expected duration, how
+ * many before and after photos to take, and whether the customer signs off.
  *
  * A work order copies these when it is created, so changing a type changes the
  * jobs created afterwards and none that are already out.
@@ -269,6 +278,11 @@ function columns(input: Partial<JobTypeInput>) {
       ? {}
       : { expected_duration_minutes: input.expectedDurationMinutes }),
     ...(input.defaultPriority === undefined ? {} : { default_priority: input.defaultPriority }),
+    ...(input.beforePhotos === undefined ? {} : { before_photos: input.beforePhotos }),
+    ...(input.afterPhotos === undefined ? {} : { after_photos: input.afterPhotos }),
+    ...(input.signatureRequired === undefined
+      ? {}
+      : { signature_required: input.signatureRequired }),
     ...(input.instructions === undefined ? {} : { instructions: blank(input.instructions) }),
     ...(input.checklist === undefined
       ? {}
@@ -295,6 +309,9 @@ function toJobType(row: Selectable<JobTypesTable>, forms: JobTypeForm[]): JobTyp
     instructions: row.instructions,
     checklist: row.checklist,
     forms,
+    beforePhotos: row.before_photos,
+    afterPhotos: row.after_photos,
+    signatureRequired: row.signature_required,
     archivedAt: row.archived_at,
     createdBy: toUserId(row.created_by),
     createdAt: row.created_at,

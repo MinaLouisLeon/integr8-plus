@@ -2,7 +2,7 @@ import { fillSession, type FillSession, recordAnswers } from '@integr8/offline';
 import { useTranslation } from '@integr8/i18n';
 import { spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
 import { LocalGate } from '~/components/local-gate';
 import { Body, Button, EmptyState, Heading, ScrollScreen, useTheme } from '~/components/ui';
@@ -79,21 +79,40 @@ function Session({ session, notice }: { session: FillSession; notice: string | u
       ? undefined
       : t('mobile.fill.jobLine', { job: session.job.referenceLabel, title: session.job.title });
 
-  const [model] = useState(() =>
-    form === undefined
-      ? undefined
-      : new FillModel({
-          form,
-          answers: session.submission.answers,
-          context: { today },
-          save: async (answers) => {
-            const context = localData.changeContext();
-            if (context === undefined) {
-              throw new Error('The phone’s database is not open.');
-            }
-            await recordAnswers(context, { submissionId: session.submission.id, answers });
-          },
-        }),
+  const { page } = useLocalSearchParams<{ page?: string }>();
+  const [model] = useState(() => {
+    if (form === undefined) {
+      return undefined;
+    }
+    const opened = new FillModel({
+      form,
+      answers: session.submission.answers,
+      context: { today },
+      save: async (answers) => {
+        const context = localData.changeContext();
+        if (context === undefined) {
+          throw new Error('The phone’s database is not open.');
+        }
+        await recordAnswers(context, { submissionId: session.submission.id, answers });
+      },
+    });
+    // Reopened after the app was closed: the page the engineer was on (P14).
+    const resumed = Number(page);
+    if (Number.isInteger(resumed) && resumed > 0) {
+      opened.goToPage(Math.min(resumed, opened.snapshot().pages.length - 1));
+    }
+    return opened;
+  });
+  // The page in the route, so the screen remembered for a force close includes it.
+  useEffect(
+    () =>
+      model?.subscribe(() => {
+        const index = String(model.snapshot().pageIndex);
+        if (index !== page) {
+          router.setParams({ page: index });
+        }
+      }),
+    [model, page],
   );
 
   if (form === undefined || model === undefined) {

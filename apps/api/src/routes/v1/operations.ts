@@ -191,6 +191,8 @@ export const attachmentSchema = z.object({
   fileId: z.uuid(),
   title: z.string(),
   kind: z.enum(['site_plan', 'manual', 'report', 'photo', 'other']),
+  /** For a job photo: taken before the work started, or after it was done (P14). */
+  stage: z.enum(['before', 'after']).nullable(),
   contentType: z.string(),
   byteSize: z.number().int(),
   addedBy: personSchema,
@@ -319,6 +321,7 @@ export async function attachmentBodies(
         fileId: attachment.fileId,
         title: attachment.title,
         kind: attachment.kind,
+        stage: attachment.stage,
         contentType: file.contentType,
         byteSize: file.byteSize,
         addedBy: personBody(attachment.addedBy, people),

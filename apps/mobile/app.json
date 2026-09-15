@@ -51,7 +51,20 @@
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false
         }
-      ]
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Integr8 Plus uses Face ID to unlock, so customers’ details stay private on a phone left unattended."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "jobs"
+        }
+      ],
+      "expo-updates"
     ],
     "experiments": {
       "typedRoutes": true
@@ -60,6 +73,14 @@
       "eas": {
         "projectId": "00000000-0000-0000-0000-000000000000"
       }
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/00000000-0000-0000-0000-000000000000",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     }
   }
 }

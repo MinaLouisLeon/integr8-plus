@@ -119,6 +119,7 @@ const LAZY_BASE: ReadonlySet<MutationKind> = new Set(['submission.answers', 'sub
 
 const OUTBOX_TABLES = [
   'meta',
+  'shifts',
   'outbox',
   'work_orders',
   'sites',
@@ -243,12 +244,13 @@ export async function recordTransition(
       to: input.to,
       ...(input.reason === undefined ? {} : { reason: input.reason }),
     };
-    // Completing waits for the job's forms to reach the server first, or the
-    // server would refuse it for want of forms that are only on their way.
+    // Completing waits for the job's forms, photos and sign-off to reach the
+    // server first, or the server would refuse it for want of what is only on its way.
     const waitsFor: Waits = { media: [], mutations: [] };
     if (input.to === 'complete') {
       const pendingForms = await sql.all<{ id: string }>(
-        `select id from outbox where work_order_id = ? and kind like 'submission.%' and state <> 'done'`,
+        `select id from outbox where work_order_id = ? and state <> 'done'
+           and (kind like 'submission.%' or kind in ('work_order.photo', 'work_order.photo_remove', 'work_order.signoff'))`,
         [input.workOrderId],
       );
       waitsFor.mutations = pendingForms.map((row) => row.id);
@@ -600,6 +602,262 @@ export async function queueUpload(
       ],
     );
     return mediaId;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// The working day (P14)
+// ---------------------------------------------------------------------------
+
+export interface CapturedFileInput {
+  /** Relative to the files directory. */
+  localPath: string;
+  thumbnailPath?: string;
+  contentType: string;
+  byteSize: number;
+}
+
+async function insertUpload(
+  sql: SqlConnection,
+  input: CapturedFileInput & { mediaId: string; workOrderId: string | null; at: string },
+): Promise<void> {
+  await sql.run(
+    `insert into uploads (media_id, local_path, thumbnail_path, content_type, byte_size, work_order_id, state, created_at)
+     values (?, ?, ?, ?, ?, ?, 'queued', ?)`,
+    [
+      input.mediaId,
+      input.localPath,
+      input.thumbnailPath ?? null,
+      input.contentType,
+      input.byteSize,
+      input.workOrderId,
+      input.at,
+    ],
+  );
+}
+
+/** Clocks in: a shift the phone keeps, and the server learns of when it can. */
+export async function recordShiftStart(
+  context: ChangeContext,
+  input: { location: SubmitLocation | null },
+): Promise<string> {
+  const { db, clock, random } = context;
+  return db.write(OUTBOX_TABLES, async (sql) => {
+    const open = await sql.get<{ id: string }>('select id from shifts where ended_at is null');
+    if (open !== undefined) {
+      throw new LocalChangeError('shift_open', 'You are already clocked in.');
+    }
+    const now = clock.now();
+    const at = now.toISOString();
+    const shiftId = uuidv7(now.getTime(), random);
+    await sql.run(
+      `insert into shifts (id, started_at, ended_at, start_location, end_location, updated_at)
+       values (?, ?, null, ?, null, ?)`,
+      [shiftId, at, input.location === null ? null : JSON.stringify(input.location), at],
+    );
+    await insertChange(sql, {
+      id: uuidv7(now.getTime(), random),
+      kind: 'shift.start',
+      entityKey: `shift:${shiftId}`,
+      entityId: shiftId,
+      workOrderId: null,
+      payload: { startedAt: at, location: input.location },
+      base: null,
+      at,
+    });
+    return shiftId;
+  });
+}
+
+export async function recordShiftEnd(
+  context: ChangeContext,
+  input: { shiftId: string; location: SubmitLocation | null },
+): Promise<string> {
+  const { db, clock, random } = context;
+  return db.write(OUTBOX_TABLES, async (sql) => {
+    const shift = await sql.get<{ ended_at: string | null }>(
+      'select ended_at from shifts where id = ?',
+      [input.shiftId],
+    );
+    if (shift?.ended_at !== null) {
+      throw new LocalChangeError('shift_not_open', 'You are not clocked in.');
+    }
+    const now = clock.now();
+    const at = now.toISOString();
+    await sql.run('update shifts set ended_at = ?, end_location = ?, updated_at = ? where id = ?', [
+      at,
+      input.location === null ? null : JSON.stringify(input.location),
+      at,
+      input.shiftId,
+    ]);
+    const id = uuidv7(now.getTime(), random);
+    await insertChange(sql, {
+      id,
+      kind: 'shift.end',
+      entityKey: `shift:${input.shiftId}`,
+      entityId: input.shiftId,
+      workOrderId: null,
+      payload: { endedAt: at, location: input.location },
+      base: null,
+      at,
+    });
+    return id;
+  });
+}
+
+/**
+ * A before or after photo of a job. Queued for upload, shown on the job at once,
+ * and added to the job on the server once the file has arrived. It has a record of
+ * its own in the outbox, so a slow upload holds up nothing but the completion
+ * that needs it.
+ */
+export async function recordPhoto(
+  context: ChangeContext,
+  input: { workOrderId: string; stage: 'before' | 'after'; file: CapturedFileInput },
+): Promise<{ attachmentId: string; mediaId: string }> {
+  const { db, clock, random } = context;
+  return db.write(OUTBOX_TABLES, async (sql) => {
+    await jobDetail(sql, input.workOrderId);
+    const now = clock.now();
+    const at = now.toISOString();
+    const mediaId = uuidv7(now.getTime(), random);
+    const attachmentId = uuidv7(now.getTime(), random);
+    await insertUpload(sql, { ...input.file, mediaId, workOrderId: input.workOrderId, at });
+    const payload = {
+      attachmentId,
+      mediaId,
+      stage: input.stage,
+      title: input.stage === 'before' ? 'Before photo' : 'After photo',
+      contentType: input.file.contentType,
+      byteSize: input.file.byteSize,
+    };
+    await applyLocally(sql, input.workOrderId, { kind: 'work_order.photo', payload }, at);
+    await insertChange(sql, {
+      id: uuidv7(now.getTime(), random),
+      kind: 'work_order.photo',
+      entityKey: `photo:${attachmentId}`,
+      entityId: input.workOrderId,
+      workOrderId: input.workOrderId,
+      payload,
+      base: null,
+      waitsFor: { media: [mediaId], mutations: [] },
+      at,
+    });
+    return { attachmentId, mediaId };
+  });
+}
+
+/**
+ * Takes a photo back off a job. One that never left the phone is simply dropped,
+ * with its upload when that has not started; one the server has is removed there.
+ * Returns local file paths the caller may delete.
+ */
+export async function recordPhotoRemoved(
+  context: ChangeContext,
+  input: { workOrderId: string; attachmentId: string },
+): Promise<string[]> {
+  const { db, clock, random } = context;
+  return db.write(OUTBOX_TABLES, async (sql) => {
+    const now = clock.now();
+    const at = now.toISOString();
+    await applyLocally(
+      sql,
+      input.workOrderId,
+      { kind: 'work_order.photo_remove', payload: { attachmentId: input.attachmentId } },
+      at,
+    );
+    const unsent = await sql.get<{ seq: number; payload: string }>(
+      `select seq, payload from outbox
+       where kind = 'work_order.photo' and entity_key = ? and state = 'pending' and sent_at is null`,
+      [`photo:${input.attachmentId}`],
+    );
+    if (unsent !== undefined) {
+      await sql.run('delete from outbox where seq = ?', [unsent.seq]);
+      const { mediaId } = JSON.parse(unsent.payload) as { mediaId: string };
+      const upload = await sql.get<{ local_path: string; thumbnail_path: string | null }>(
+        `select local_path, thumbnail_path from uploads
+         where media_id = ? and state <> 'confirmed' and bytes_sent = 0 and kind is null`,
+        [mediaId],
+      );
+      if (upload === undefined) {
+        return [];
+      }
+      await sql.run('delete from uploads where media_id = ?', [mediaId]);
+      return upload.thumbnail_path === null
+        ? [upload.local_path]
+        : [upload.local_path, upload.thumbnail_path];
+    }
+    await insertChange(sql, {
+      id: uuidv7(now.getTime(), random),
+      kind: 'work_order.photo_remove',
+      entityKey: `photo:${input.attachmentId}`,
+      entityId: input.workOrderId,
+      workOrderId: input.workOrderId,
+      payload: { attachmentId: input.attachmentId },
+      base: null,
+      at,
+    });
+    return [];
+  });
+}
+
+/**
+ * The customer's sign-off: a drawn signature with who signed, or why nobody
+ * could. A later sign-off replaces an earlier one until the job is completed.
+ */
+export async function recordSignoff(
+  context: ChangeContext,
+  input: {
+    workOrderId: string;
+    signoff:
+      | { signature: CapturedFileInput; name: string; role: string | null }
+      | { unavailableReason: string };
+  },
+): Promise<string> {
+  const { db, clock, random } = context;
+  return db.write(OUTBOX_TABLES, async (sql) => {
+    await jobDetail(sql, input.workOrderId);
+    const now = clock.now();
+    const at = now.toISOString();
+    let payload:
+      | { mediaId: string; name: string; role: string | null; signedAt: string }
+      | { unavailableReason: string; signedAt: string };
+    const waitsFor: Waits = { media: [], mutations: [] };
+    if ('signature' in input.signoff) {
+      const mediaId = uuidv7(now.getTime(), random);
+      await insertUpload(sql, {
+        ...input.signoff.signature,
+        mediaId,
+        workOrderId: input.workOrderId,
+        at,
+      });
+      payload = {
+        mediaId,
+        name: input.signoff.name.trim(),
+        role:
+          input.signoff.role === null || input.signoff.role.trim() === ''
+            ? null
+            : input.signoff.role.trim(),
+        signedAt: at,
+      };
+      waitsFor.media = [mediaId];
+    } else {
+      payload = { unavailableReason: input.signoff.unavailableReason.trim(), signedAt: at };
+    }
+    await applyLocally(sql, input.workOrderId, { kind: 'work_order.signoff', payload }, at);
+    const id = uuidv7(now.getTime(), random);
+    await insertChange(sql, {
+      id,
+      kind: 'work_order.signoff',
+      entityKey: `signoff:${input.workOrderId}`,
+      entityId: input.workOrderId,
+      workOrderId: input.workOrderId,
+      payload,
+      base: null,
+      waitsFor,
+      at,
+    });
+    return id;
   });
 }
 

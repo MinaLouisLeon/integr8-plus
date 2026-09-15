@@ -252,6 +252,8 @@ export {
   type ChecklistItem,
   type CreateWorkOrderInput,
   type CrewMember,
+  type Signoff,
+  type SignoffInput,
   type TransitionRefusal,
   type WorkOrder,
   type WorkOrderChanges,
@@ -283,6 +285,13 @@ export {
   type ImportsRepository,
 } from './repositories/imports.js';
 export { SyncRepository, type SyncPageQuery, type SyncReportInput } from './repositories/sync.js';
+export {
+  type ClockInResult,
+  type ClockOutResult,
+  type Shift,
+  ShiftsRepository,
+} from './repositories/shifts.js';
+export { type PushDevice, PushDevicesRepository } from './repositories/push-devices.js';
 
 export {
   ATTACHMENT_KINDS,
@@ -299,6 +308,13 @@ export {
   type SyncTrigger,
   IMPORT_STATUSES,
   WORK_ORDER_EVENT_KINDS,
+  PHOTO_STAGES,
+  PUSH_PLATFORMS,
+  PUSH_DISABLED_REASONS,
+  type DeviceLocation,
+  type PhotoStage,
+  type PushDisabledReason,
+  type PushPlatform,
   type AttachmentKind,
   type ChecklistTemplateItem,
   type CommentVisibility,

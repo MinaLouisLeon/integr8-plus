@@ -1,4 +1,10 @@
-import { can, findTransition, formatWorkOrderReference, type Principal } from '@integr8/core';
+import {
+  can,
+  type CompletionMissing,
+  findTransition,
+  formatWorkOrderReference,
+  type Principal,
+} from '@integr8/core';
 import {
   type TenantTransaction,
   type WorkOrder,
@@ -68,6 +74,7 @@ const eventSchema = z.object({
     'assigned',
     'unassigned',
     'lead_changed',
+    'signed_off',
   ]),
   fromState: workOrderStateSchema.nullable(),
   toState: workOrderStateSchema.nullable(),
@@ -75,7 +82,29 @@ const eventSchema = z.object({
   actor: personSchema,
   reason: z.string().nullable(),
   details: z.record(z.string(), z.unknown()),
+  /** When it happened: for a change made offline, when the phone recorded it. */
   occurredAt: z.string(),
+  /** When the server learned of it. */
+  recordedAt: z.string(),
+});
+
+/** What still stands between a job and completing it (P14). */
+export const completionSchema = z.object({
+  forms: z.array(z.object({ formId: z.uuid(), title: z.string() })),
+  beforePhotos: z.number().int(),
+  afterPhotos: z.number().int(),
+  signoff: z.boolean(),
+});
+
+export const signoffSchema = z.object({
+  signedAt: z.string(),
+  signedBy: personSchema,
+  /** The signature, when the customer signed. */
+  fileId: z.uuid().nullable(),
+  name: z.string().nullable(),
+  role: z.string().nullable(),
+  /** Why nobody could sign, when nobody did. */
+  unavailableReason: z.string().nullable(),
 });
 
 export const detailSchema = z.object({
@@ -145,6 +174,14 @@ export const detailSchema = z.object({
   ),
   events: z.array(eventSchema),
   attachments: z.array(attachmentSchema),
+  /** Running the job (P14): photos and sign-off it needs, and what is still missing. */
+  execution: z.object({
+    beforePhotos: z.number().int(),
+    afterPhotos: z.number().int(),
+    signatureRequired: z.boolean(),
+    signoff: signoffSchema.nullable(),
+    missing: completionSchema,
+  }),
   /** Earlier jobs at the same site that this person may see: the previous reports. */
   previousAtSite: z.array(workOrderSummarySchema),
   can: z.object({
@@ -183,6 +220,7 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     tx.workOrders.listPreviousAtSite(job.siteId, job.id),
     peopleOf(tx),
   ]);
+  const missing = await tx.workOrders.completionMissing(job);
   const contacts = site?.contactId == null ? [] : await tx.customers.findContacts([site.contactId]);
   const visiblePrevious = readAll
     ? previous
@@ -266,8 +304,26 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
       reason: event.reason,
       details: event.details,
       occurredAt: iso(event.occurredAt),
+      recordedAt: iso(event.recordedAt),
     })),
     attachments: await attachmentBodies(tx, attachments, people),
+    execution: {
+      beforePhotos: job.beforePhotos,
+      afterPhotos: job.afterPhotos,
+      signatureRequired: job.signatureRequired,
+      signoff:
+        job.signoff === null
+          ? null
+          : {
+              signedAt: iso(job.signoff.signedAt),
+              signedBy: personBody(job.signoff.signedBy, people),
+              fileId: job.signoff.fileId,
+              name: job.signoff.name,
+              role: job.signoff.role,
+              unavailableReason: job.signoff.unavailableReason,
+            },
+      missing,
+    },
     previousAtSite: await workOrderSummaries(tx, visiblePrevious, people),
     can: {
       edit:
@@ -305,17 +361,12 @@ export function refusal(
       ]);
     case 'nobody_assigned':
       throw conflict('nobody_assigned', 'Assign someone before dispatching this job.');
-    case 'forms_missing':
+    case 'incomplete':
       throw new ApiError(
         409,
-        'required_forms_missing',
-        `Submit ${result.forms.map((form) => form.title).join(', ')} before completing this job.`,
-        result.forms.map((form, index) => ({
-          field: `forms.${String(index)}`,
-          code: 'required_form_missing',
-          message: form.title,
-          params: { formId: form.formId },
-        })),
+        'completion_blocked',
+        completionBlockedMessage(result.missing),
+        completionDetails(result.missing),
       );
     case 'not_allowed':
       throw conflict(
@@ -323,6 +374,60 @@ export function refusal(
         `A job that is ${result.current.state.replace('_', ' ')} cannot move to ${(to ?? 'that state').replace('_', ' ')}.`,
       );
   }
+}
+
+/** What stands in the way of completing, said the way a person would. */
+export function completionBlockedMessage(missing: CompletionMissing): string {
+  const parts = [
+    ...missing.forms.map((form) => `submit ${form.title}`),
+    ...(missing.beforePhotos > 0
+      ? [
+          `take ${String(missing.beforePhotos)} more before photo${missing.beforePhotos === 1 ? '' : 's'}`,
+        ]
+      : []),
+    ...(missing.afterPhotos > 0
+      ? [
+          `take ${String(missing.afterPhotos)} more after photo${missing.afterPhotos === 1 ? '' : 's'}`,
+        ]
+      : []),
+    ...(missing.signoff ? ["get the customer's sign-off"] : []),
+  ];
+  const sentence = parts.join(', ');
+  return `Before completing this job, ${sentence}.`;
+}
+
+export function completionDetails(missing: CompletionMissing) {
+  return [
+    ...missing.forms.map((form, index) => ({
+      field: `forms.${String(index)}`,
+      code: 'required_form_missing',
+      message: form.title,
+      params: { formId: form.formId },
+    })),
+    ...(missing.beforePhotos > 0
+      ? [
+          {
+            field: 'photos.before',
+            code: 'photos_missing',
+            message: `${String(missing.beforePhotos)} before photo(s) still needed`,
+            params: { needed: String(missing.beforePhotos) },
+          },
+        ]
+      : []),
+    ...(missing.afterPhotos > 0
+      ? [
+          {
+            field: 'photos.after',
+            code: 'photos_missing',
+            message: `${String(missing.afterPhotos)} after photo(s) still needed`,
+            params: { needed: String(missing.afterPhotos) },
+          },
+        ]
+      : []),
+    ...(missing.signoff
+      ? [{ field: 'signoff', code: 'signoff_missing', message: 'The customer has not signed off' }]
+      : []),
+  ];
 }
 
 export async function audit(
@@ -709,7 +814,7 @@ export const transitionWorkOrderRoute = defineRoute({
   operationId: 'transitionWorkOrder',
   summary: 'Move a work order to another state',
   description:
-    'Only along the transitions the state machine allows, by someone allowed to make that transition. Cancelling, reopening a completed job and reinstating a cancelled one need a `reason`. Dispatching needs someone assigned; completing needs every required form submitted for this job.',
+    'Only along the transitions the state machine allows, by someone allowed to make that transition. Cancelling, reopening a completed job and reinstating a cancelled one need a `reason`. Dispatching needs someone assigned; completing needs every required form submitted, the before and after photos the job asks for, and the customer\u2019s sign-off when it is required.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'customer.read',
@@ -726,7 +831,7 @@ export const transitionWorkOrderRoute = defineRoute({
     404: { description: 'No such work order this person may see.' },
     409: {
       description:
-        'Not a transition from the current state (`transition_not_allowed`), nobody assigned (`nobody_assigned`), required forms not submitted (`required_forms_missing`, naming them), or changed elsewhere (`work_order_changed`).',
+        'Not a transition from the current state (`transition_not_allowed`), nobody assigned (`nobody_assigned`), something needed before completing is missing (`completion_blocked`, with a detail for each required form, the before and after photos still needed, and the sign-off), or changed elsewhere (`work_order_changed`).',
     },
     422: { description: 'A reason is required (`reason_required`).' },
   },
@@ -937,6 +1042,64 @@ export const removeWorkOrderFormRoute = defineRoute({
         );
       }
       return detailBody(tx, context.principal, job);
+    });
+    return { status: 200, body: detail };
+  },
+});
+
+export const signOffWorkOrderRoute = defineRoute({
+  method: 'put',
+  path: '/v1/work-orders/:workOrderId/signoff',
+  operationId: 'signOffWorkOrder',
+  summary: 'Record the customer\u2019s sign-off on a job',
+  description:
+    'A signature (an uploaded, confirmed image) with the signer\u2019s name and role, or why nobody could sign. Replaces an earlier one until the job is completed; kept in the job\u2019s history. Phones send this through `/v1/sync/push` instead.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'work_order.progress',
+  params: workOrderParams,
+  query: noSchema,
+  body: z.union([
+    z.object({
+      fileId: z.uuid(),
+      name: z.string().trim().min(1).max(200),
+      role: z.string().trim().max(100).nullable().optional(),
+    }),
+    z.object({ unavailableReason: z.string().trim().min(1).max(2000) }),
+  ]),
+  responses: {
+    200: { description: 'The work order.', schema: detailSchema },
+    403: { description: 'Not on this job\u2019s crew.' },
+    404: { description: 'No such work order, or no such signature file.' },
+    409: { description: 'The job is closed (`work_order_closed`).' },
+  },
+  handler: async ({ params, body }, context) => {
+    const detail = await withTenant(context.principal.tenantId, async (tx) => {
+      const job = await readableWorkOrder(tx, context.principal, params.workOrderId);
+      await requireWork(tx, context.principal, job);
+      if ('fileId' in body) {
+        const file = await tx.files.find(body.fileId);
+        if (file?.deletedAt !== null || !file.contentType.startsWith('image/')) {
+          throw notFound('This signature file does not exist.');
+        }
+      }
+      const result = await tx.workOrders.signOff(
+        job.id,
+        'fileId' in body
+          ? { fileId: body.fileId, name: body.name, role: body.role ?? null, signedAt: new Date() }
+          : { unavailableReason: body.unavailableReason, signedAt: new Date() },
+        context.principal.userId,
+      );
+      if (result.outcome === 'not_found') {
+        throw notFound('This work order does not exist.');
+      }
+      if (result.outcome === 'closed') {
+        refusal({ outcome: 'closed', current: job });
+      }
+      await audit(tx, context, 'work_order.signed_off', job.id, {
+        signed: 'fileId' in body,
+      });
+      return detailBody(tx, context.principal, result.workOrder);
     });
     return { status: 200, body: detail };
   },
@@ -1259,6 +1422,7 @@ export const workOrderRoutes = [
   getWorkOrderRoute,
   updateWorkOrderRoute,
   transitionWorkOrderRoute,
+  signOffWorkOrderRoute,
   setCrewRoute,
   addChecklistItemRoute,
   setChecklistItemRoute,

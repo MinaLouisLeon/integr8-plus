@@ -55,12 +55,20 @@ export interface ClientOptions {
   fetch?: typeof globalThis.fetch;
 }
 
+/** One thing wrong with a request: which field, what, and the values that say more. */
+export interface ApiErrorDetail {
+  field: string;
+  code: string;
+  message: string;
+  params?: Record<string, string>;
+}
+
 /** The error model every failure uses. Mirrors `errorResponseSchema` in the API. */
 export interface ApiErrorBody {
   error: {
     code: string;
     message: string;
-    details?: { field: string; code: string; message: string }[];
+    details?: ApiErrorDetail[];
     requestId: string;
   };
 }
@@ -78,7 +86,7 @@ export class ApiRequestError extends Error {
     readonly code: string,
     message: string,
     readonly requestId: string,
-    readonly details: { field: string; code: string; message: string }[] = [],
+    readonly details: ApiErrorDetail[] = [],
   ) {
     super(message);
     this.name = 'ApiRequestError';

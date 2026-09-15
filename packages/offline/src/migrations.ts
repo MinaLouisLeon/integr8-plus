@@ -351,6 +351,23 @@ export const MIGRATIONS: readonly Migration[] = [
       `create index submissions_by_form on submissions (form_id, status)`,
     ],
   },
+  {
+    version: 6,
+    name: 'working day',
+    statements: [
+      // The engineer's shifts: clocked in and out on the phone (P14). Kept while
+      // unsent, and the last day and a half from the server otherwise.
+      `create table shifts (
+        id text primary key,
+        started_at text not null,
+        ended_at text,
+        start_location text,
+        end_location text,
+        updated_at text not null
+      ) strict`,
+      `create index shifts_by_start on shifts (started_at)`,
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.at(-1)?.version ?? 0;

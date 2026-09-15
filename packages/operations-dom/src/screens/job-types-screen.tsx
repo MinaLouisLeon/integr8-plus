@@ -14,6 +14,9 @@ interface Draft {
   instructions: string;
   checklist: { id?: string; label: string }[];
   forms: { formId: string; required: boolean }[];
+  beforePhotos: string;
+  afterPhotos: string;
+  signatureRequired: boolean;
 }
 
 const EMPTY: Draft = {
@@ -25,7 +28,18 @@ const EMPTY: Draft = {
   instructions: '',
   checklist: [],
   forms: [],
+  beforePhotos: '0',
+  afterPhotos: '0',
+  signatureRequired: false,
 };
+
+const MAX_PHOTOS = 20;
+
+/** A photo count as typed, as the whole number the API takes: empty is none. */
+function photoCount(value: string): number {
+  const count = Math.trunc(Number(value));
+  return Number.isFinite(count) ? Math.min(MAX_PHOTOS, Math.max(0, count)) : 0;
+}
 
 function toDraft(type: JobType): Draft {
   return {
@@ -38,6 +52,9 @@ function toDraft(type: JobType): Draft {
     instructions: type.instructions ?? '',
     checklist: type.checklist.map((item) => ({ id: item.id, label: item.label })),
     forms: type.forms.map((form) => ({ formId: form.formId, required: form.required })),
+    beforePhotos: String(type.beforePhotos),
+    afterPhotos: String(type.afterPhotos),
+    signatureRequired: type.signatureRequired,
   };
 }
 
@@ -129,6 +146,23 @@ export function JobTypesScreen() {
                   ? t(`operations.priority.${type.defaultPriority}`)
                   : `${t('operations.workOrder.expectedDuration', { minutes: type.expectedDurationMinutes })} · ${t(`operations.priority.${type.defaultPriority}`)}`}
               </p>
+              {type.beforePhotos === 0 &&
+              type.afterPhotos === 0 &&
+              !type.signatureRequired ? null : (
+                <p className="text-xs text-content-muted">
+                  {[
+                    type.beforePhotos === 0
+                      ? ''
+                      : t('operations.jobTypes.beforePhotosCount', { count: type.beforePhotos }),
+                    type.afterPhotos === 0
+                      ? ''
+                      : t('operations.jobTypes.afterPhotosCount', { count: type.afterPhotos }),
+                    type.signatureRequired ? t('operations.jobTypes.signs') : '',
+                  ]
+                    .filter((part) => part !== '')
+                    .join(' · ')}
+                </p>
+              )}
               <ul className="flex flex-col gap-0.5 text-sm">
                 {type.forms.map((form) => (
                   <li key={form.formId} className="text-content">
@@ -180,6 +214,9 @@ function JobTypeDialog({ draft: initial, onClose }: { draft: Draft; onClose: () 
         label: item.label.trim(),
       })),
     forms: draft.forms,
+    beforePhotos: photoCount(draft.beforePhotos),
+    afterPhotos: photoCount(draft.afterPhotos),
+    signatureRequired: draft.signatureRequired,
   });
 
   const save = useMutation({
@@ -334,6 +371,44 @@ function JobTypeDialog({ draft: initial, onClose }: { draft: Draft; onClose: () 
           )}
         </Field>
       </div>
+
+      <fieldset className="flex flex-col gap-3">
+        <legend className="text-sm font-medium text-content">
+          {t('operations.jobTypes.completion')}
+        </legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(['beforePhotos', 'afterPhotos'] as const).map((field) => (
+            <Field
+              key={field}
+              label={t(`operations.jobTypes.${field}`)}
+              hint={t('operations.jobTypes.photosHint')}
+            >
+              {(id, describedBy) => (
+                <input
+                  id={id}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={MAX_PHOTOS}
+                  step={1}
+                  aria-describedby={describedBy}
+                  className={inputClass}
+                  value={draft[field]}
+                  onChange={(event) => setDraft({ ...draft, [field]: event.target.value })}
+                />
+              )}
+            </Field>
+          ))}
+        </div>
+        <label className="flex items-center gap-2 text-sm text-content">
+          <input
+            type="checkbox"
+            checked={draft.signatureRequired}
+            onChange={(event) => setDraft({ ...draft, signatureRequired: event.target.checked })}
+          />
+          {t('operations.jobTypes.signatureRequired')}
+        </label>
+      </fieldset>
 
       <fieldset className="flex flex-col gap-2">
         <legend className="text-sm font-medium text-content">

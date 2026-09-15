@@ -6,6 +6,7 @@ import { applyMutations, mutationSchema, resultSchema } from '../../sync/push.js
 import { customerDetailSchema } from './customers.js';
 import { formDetailSchema } from './forms.js';
 import { answersSchema } from './submissions.js';
+import { shiftSchema } from './time.js';
 import { detailSchema as workOrderDetailSchema } from './work-orders.js';
 
 /**
@@ -64,6 +65,8 @@ export const pullRoute = defineRoute({
         customers: z.array(customerDetailSchema),
         forms: z.array(formDetailSchema),
         submissions: z.array(submissionSyncSchema),
+        /** The caller's shifts from the last day and a half, on the first page only (P14). */
+        shifts: z.array(shiftSchema),
       }),
     },
     422: { description: 'A cursor or page token the server did not issue.' },

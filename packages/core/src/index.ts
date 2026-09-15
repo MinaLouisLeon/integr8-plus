@@ -80,3 +80,15 @@ export {
   type WorkOrderPriority,
   type WorkOrderTransition,
 } from './work-orders.js';
+
+export {
+  canComplete,
+  completionMissing,
+  jobTimes,
+  shiftDurationMs,
+  type CompletionFacts,
+  type CompletionMissing,
+  type JobTimes,
+  type ShiftSpan,
+  type StateChange,
+} from './job-execution.js';

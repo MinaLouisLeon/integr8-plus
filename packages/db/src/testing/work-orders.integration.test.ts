@@ -464,8 +464,8 @@ describe('the state machine, for every client', () => {
       tx.workOrders.transition(job.id, job.revision, 'complete', ENGINEER),
     );
     expect(refused).toMatchObject({
-      outcome: 'forms_missing',
-      forms: [{ formId: requiredFormId, title: 'Gas safety record' }],
+      outcome: 'incomplete',
+      missing: { forms: [{ formId: requiredFormId, title: 'Gas safety record' }], signoff: false },
     });
     for (const client of [app, owner]) {
       const write = () =>
@@ -489,7 +489,7 @@ describe('the state machine, for every client', () => {
     expect(
       (await inTenant((tx) => tx.workOrders.transition(job.id, job.revision, 'complete', ENGINEER)))
         .outcome,
-    ).toBe('forms_missing');
+    ).toBe('incomplete');
     const submitted = await inTenant((tx) =>
       tx.submissions.submit(draft.id, { note: 'ok' }, draft.revision, ENGINEER),
     );

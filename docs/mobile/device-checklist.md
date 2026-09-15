@@ -1,6 +1,6 @@
 # The mobile app on a phone
 
-The parts of P11, P12 and P13 that only a phone can prove. Everything else is covered by
+The parts of P11, P12, P13 and P14 that only a phone can prove. Everything else is covered by
 `packages/offline/src/**/*.test.ts` and `apps/mobile/src/**/*.test.ts` against real SQLite, and by
 `apps/api/src/sync/sync.integration.test.ts` against the real API. Record the result of each step
 in the phase's plan file under `plan/v0.3-field-loop/`.
@@ -216,3 +216,72 @@ Wear work gloves (or a touchscreen glove) for this section.
       says how many answers came from which job.
 - [ ] Settings → **Check the form engine** on a release build: _All … cases give the same results
       as the server._
+
+## P14
+
+A **release-like development build** from an EAS project with push credentials, per
+[setting it up](job-execution.md#setting-it-up), and an API with `PUSH_SENDER=expo`. The phone
+needs a screen lock. The data:
+
+- a job type needing two before photos, one after photo, a customer sign-off and one required
+  form;
+- three of today's jobs of that type for the engineer, one urgent, at sites with coordinates;
+- a dispatcher signed in on the web.
+
+### 1. A real day, on the phone only
+
+This is the phase's first exit criterion. An engineer does a real day's work while someone
+watches and takes notes: what they looked for and could not find, what they tapped twice, and
+every time they reached for paper or rang the office. Put the notes in the plan file.
+
+- [ ] Open the app: Today shows _Not clocked in_ and the first job. Tap **Start travel**: the
+      phone offers to clock in. Accept: the clock starts counting.
+- [ ] **Directions** opens the maps app with turn-by-turn directions to the site, not a search.
+      Try it with Google Maps uninstalled on Android and on iOS.
+- [ ] **Arrived**, then **Start work**: the phone asks for the two before photos. Take them.
+      The job's Photos section shows _Before: 2 of 2_.
+- [ ] The job screen reads, top to bottom: access notes, the steps, instructions, forms, photos,
+      checklist, files. Open the site plan in aeroplane mode: it opens from the phone.
+- [ ] Tick the checklist, fill the form, then **Complete job** with nothing else done. The
+      screen says exactly what is missing: the after photo and the sign-off.
+- [ ] Take the after photo there. The customer signs with a finger, and their name and role are
+      typed. **Complete job** becomes available: complete.
+- [ ] Do the second job in aeroplane mode throughout, including **Nobody can sign** with a
+      reason. Turn signal on at the end of the day.
+- [ ] **Clock out**. On the web, Timesheets shows the day: the shift, and travel, on site and
+      working for each job, matching what the engineer remembers.
+
+### 2. Everything arrives intact
+
+- [ ] On the web, each completed job has its forms, before and after photos, and the sign-off
+      (name, role, time, signature image, or the reason nobody signed).
+- [ ] Its times are the phone's: for the aeroplane-mode job, the history says _recorded on the
+      phone at …, synced at …_, and the job's time section matches what happened, not when
+      signal returned.
+
+### 3. Back exactly where they were
+
+- [ ] Open the third job's form, go to page two, and force-quit the app from the switcher.
+      Reopen: after unlocking, the form is open on page two, and **Back** leads to the job,
+      then to Today.
+- [ ] On the completion screen, force-quit and reopen: the completion screen is open.
+- [ ] Leave the app in the background for more than five minutes: it asks for a fingerprint or
+      face. Cancel the biometric prompt and use the phone's passcode instead: it opens. Under
+      five minutes, it does not ask.
+
+### 4. A new assignment within thirty seconds
+
+- [ ] With the app in the background and the phone locked, the dispatcher assigns the engineer
+      to a new job. Time from **Save** to the notification on the lock screen: under 30 s.
+      Record the time taken, on Wi-Fi and on mobile data.
+- [ ] Tap the notification: the app opens that job, downloaded.
+- [ ] Mark a job urgent: the _Urgent callouts_ channel sounds. On Android, both channels are in
+      the app's notification settings.
+- [ ] Sign out: a new assignment for that engineer sends nothing to the phone.
+
+### 5. Crashes and updates
+
+- [ ] In aeroplane mode, trigger a test crash from a development menu, or a build with a
+      crashing screen. Reopen with signal: the crash reaches Sentry with `update_id`.
+- [ ] Publish a visible text change with `eas update --channel <the build's channel>`. Open the
+      app, close it fully and reopen: the change shows. Settings shows the update id.

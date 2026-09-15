@@ -7,6 +7,7 @@ import { View } from 'react-native';
 import { JobRow } from '~/components/job-row';
 import { LocalGate } from '~/components/local-gate';
 import { SyncBanner } from '~/components/sync-banner';
+import { Today } from '~/components/today';
 import {
   Body,
   Button,
@@ -22,9 +23,10 @@ import { useLocalQuery } from '~/local/react';
 const SECTION_ORDER = ['overdue', 'today', 'upcoming', 'unscheduled'] as const;
 
 /**
- * The engineer's jobs, from the phone.
+ * The engineer's day and jobs, from the phone.
  *
- * Open jobs by when they are due, then what was closed in the last 30 days, and
+ * The day first (P14): clocked in or not, and the job to do next with its one
+ * step forward. Then open jobs by when they are due, then what was closed in the last 30 days, and
  * a search over both and their customers. Every line of it is read from SQLite;
  * the banner says how current it is and never stands in front of it.
  */
@@ -68,6 +70,8 @@ function Jobs() {
       </View>
 
       <SyncBanner />
+
+      {searching || open.status !== 'ready' ? null : <Today open={open.data} />}
 
       <Field
         label={t('mobile.jobs.searchLabel')}

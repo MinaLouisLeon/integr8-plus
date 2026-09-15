@@ -8,6 +8,7 @@ import {
   saveClockOffset,
   serverNow,
 } from './clock.js';
+import { attachmentsToFetch, fetchAttachment } from './downloads.js';
 import { type RandomBytes, uuidv7 } from './ids.js';
 import {
   adoptUnqueuedForms,
@@ -66,6 +67,8 @@ export interface SyncRunSummary {
   uploadsFailed: number;
   uploadedBytes: number;
   uploadsPaused: 'low_battery' | null;
+  /** Job attachments fetched to the phone this run (P14). */
+  downloaded: number;
   /** Paths of local files evicted, for the app to delete from disk. */
   evictedFiles: string[];
   error: unknown;
@@ -147,6 +150,7 @@ export class SyncEngine {
       uploadsFailed: 0,
       uploadedBytes: 0,
       uploadsPaused: null,
+      downloaded: 0,
       evictedFiles: [],
       error: undefined,
     };
@@ -169,6 +173,9 @@ export class SyncEngine {
         );
         summary.pulled = pulled.workOrders + (await refreshRequested(db, this.#options.api));
         summary.evictedFiles = pulled.evicted.filePaths;
+        if (summary.uploadsPaused === null) {
+          summary.downloaded = await this.#downloadAll();
+        }
         await db.write(['meta'], async (sql) => {
           await sql.run(
             `insert into meta (key, value) values ('last_sync_success_at', ?)
@@ -278,6 +285,25 @@ export class SyncEngine {
         return;
       }
     }
+  }
+
+  /** Attachments of open jobs, a few at a time; stops quietly when the signal goes. */
+  async #downloadAll(): Promise<number> {
+    const { db, api, transport, clock } = this.#options;
+    let fetched = 0;
+    for (const attachment of await attachmentsToFetch(db)) {
+      try {
+        if (await fetchAttachment(db, api, transport, attachment, clock.now())) {
+          fetched += 1;
+        }
+      } catch (error) {
+        if (isNoConnection(error)) {
+          break;
+        }
+        // One file that cannot be fetched does not stop the others.
+      }
+    }
+    return fetched;
   }
 
   async #uploadAll(

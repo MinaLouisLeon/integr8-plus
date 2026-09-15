@@ -1,6 +1,7 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { apiMediaAdapter } from '@integr8/form-renderer-dom/screens';
-import { formatDateTime, formatList, useTranslation } from '@integr8/i18n';
+import { jobTimes } from '@integr8/core';
+import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { AccessNotesPanel } from '../access-notes.js';
@@ -17,6 +18,7 @@ import {
   Loading,
   PriorityBadge,
   StateBadge,
+  useDuration,
   when,
 } from '../ui.js';
 
@@ -209,6 +211,7 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
         <Checklist job={job} onChanged={refresh} />
       </div>
 
+      <Completion job={job} />
       <Attachments job={job} onChanged={() => void detail.refetch()} />
       <Comments job={job} onChanged={refresh} />
       <History job={job} />
@@ -401,21 +404,81 @@ function Transitions({
   );
 }
 
+type Missing = WorkOrderDetail['execution']['missing'];
+
+/**
+ * What a refused completion names, read from the error's details: one per
+ * required form, the before and after photos still needed, and the sign-off.
+ * A detail this screen does not know is kept in the server's own words.
+ */
+function missingFromError(error: ApiRequestError): {
+  missing: Missing;
+  other: { key: string; text: string }[];
+} {
+  const missing: Missing = { forms: [], beforePhotos: 0, afterPhotos: 0, signoff: false };
+  const other: { key: string; text: string }[] = [];
+  error.details.forEach((detail, index) => {
+    const params = detail.params ?? {};
+    const needed = Number(params.needed);
+    if (detail.code === 'required_form_missing') {
+      missing.forms.push({
+        formId: typeof params.formId === 'string' ? params.formId : detail.field,
+        title: detail.message,
+      });
+    } else if (detail.code === 'photos_missing' && detail.field === 'photos.before' && needed > 0) {
+      missing.beforePhotos = needed;
+    } else if (detail.code === 'photos_missing' && detail.field === 'photos.after' && needed > 0) {
+      missing.afterPhotos = needed;
+    } else if (detail.code === 'signoff_missing') {
+      missing.signoff = true;
+    } else {
+      other.push({ key: `${detail.field}-${String(index)}`, text: detail.message });
+    }
+  });
+  return { missing, other };
+}
+
+function MissingItems({
+  missing,
+  other = [],
+}: {
+  missing: Missing;
+  other?: { key: string; text: string }[];
+}) {
+  const { t } = useTranslation();
+  return (
+    <ul className="list-disc ps-5 text-sm text-content">
+      {missing.forms.map((form) => (
+        <li key={`form-${form.formId}`} dir="auto">
+          {t('operations.workOrder.missing.form', { title: form.title })}
+        </li>
+      ))}
+      {missing.beforePhotos > 0 ? (
+        <li>{t('operations.workOrder.missing.beforePhotos', { count: missing.beforePhotos })}</li>
+      ) : null}
+      {missing.afterPhotos > 0 ? (
+        <li>{t('operations.workOrder.missing.afterPhotos', { count: missing.afterPhotos })}</li>
+      ) : null}
+      {missing.signoff ? <li>{t('operations.workOrder.missing.signoff')}</li> : null}
+      {other.map((entry) => (
+        <li key={entry.key}>{entry.text}</li>
+      ))}
+    </ul>
+  );
+}
+
 function TransitionFailure({ error }: { error: unknown }) {
-  const { t, i18n } = useTranslation();
-  if (error instanceof ApiRequestError && error.code === 'required_forms_missing') {
+  const { t } = useTranslation();
+  if (error instanceof ApiRequestError && error.code === 'completion_blocked') {
+    const { missing, other } = missingFromError(error);
     return (
-      <p
+      <div
         role="alert"
-        className="rounded-md border border-danger bg-danger-subtle p-3 text-sm text-content"
+        className="flex flex-col gap-2 rounded-md border border-danger bg-danger-subtle p-3 text-start text-sm text-content"
       >
-        {t('operations.workOrder.formsMissing', {
-          forms: formatList(
-            error.details.map((detail) => detail.message),
-            { locale: i18n.language },
-          ),
-        })}
-      </p>
+        <p>{error.message}</p>
+        <MissingItems missing={missing} other={other} />
+      </div>
     );
   }
   if (error instanceof ApiRequestError && error.code === 'work_order_changed') {
@@ -829,6 +892,174 @@ function Checklist({
 }
 
 // ---------------------------------------------------------------------------
+// Completion: photos, sign-off, what is missing, time on the job
+// ---------------------------------------------------------------------------
+
+const CLOSED: readonly WorkOrderState[] = ['complete', 'reviewed', 'cancelled'];
+
+/**
+ * What the engineer did on site, as the office checks it: the before and after
+ * photos against what the job type asks for, the customer's sign-off, what the
+ * job still needs before it can be completed, and the time spent — added up by
+ * `jobTimes`, the same rule the phone and the timesheets use.
+ */
+function Completion({ job }: { job: WorkOrderDetail }) {
+  const { t } = useTranslation();
+  const { client, locale } = useOperations();
+  const media = useMemo(() => apiMediaAdapter(client), [client]);
+  const duration = useDuration();
+  const { execution } = job;
+  const { signoff } = execution;
+  const closed = CLOSED.includes(job.workOrder.state);
+
+  const changes = job.events.flatMap((event) =>
+    event.kind === 'transitioned' && event.fromState !== null && event.toState !== null
+      ? [{ fromState: event.fromState, toState: event.toState, occurredAt: event.occurredAt }]
+      : [],
+  );
+  const times = jobTimes(changes, new Date());
+  const open = async (fileId: string, contentType: string, byteSize: number) => {
+    const url = await media.url({ mediaId: fileId, contentType, byteSize });
+    window.open(url, '_blank', 'noopener');
+  };
+
+  return (
+    <section aria-labelledby="completion-heading" className={cardClass}>
+      <h2 id="completion-heading" className="text-lg font-semibold text-content">
+        {t('operations.workOrder.completion.title')}
+      </h2>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {(['before', 'after'] as const).map((stage) => {
+          const needed = stage === 'before' ? execution.beforePhotos : execution.afterPhotos;
+          const photos = job.attachments.filter((attachment) => attachment.stage === stage);
+          return (
+            <div key={stage} className="flex flex-col gap-1 text-sm">
+              <h3 className="font-medium text-content-muted">
+                {t(`operations.workOrder.completion.${stage}Photos`)}
+              </h3>
+              <p className="text-content">
+                {needed > 0
+                  ? t('operations.workOrder.completion.photosOf', {
+                      taken: photos.length,
+                      needed,
+                    })
+                  : photos.length === 0
+                    ? t('operations.workOrder.completion.photosNotNeeded')
+                    : t('operations.workOrder.completion.photosTaken', { count: photos.length })}
+              </p>
+              {photos.length === 0 ? null : (
+                <ul className="flex flex-wrap gap-x-3 gap-y-1">
+                  {photos.map((photo) => (
+                    <li key={photo.id}>
+                      <button
+                        type="button"
+                        dir="auto"
+                        className="text-start text-accent underline-offset-4 hover:underline"
+                        onClick={() => void open(photo.fileId, photo.contentType, photo.byteSize)}
+                      >
+                        {photo.title}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+
+        <div className="flex flex-col items-start gap-1 text-sm">
+          <h3 className="font-medium text-content-muted">
+            {t('operations.workOrder.completion.signoff')}
+          </h3>
+          {signoff === null ? (
+            <p className="text-content">
+              {execution.signatureRequired
+                ? t('operations.workOrder.completion.notSigned')
+                : t('operations.workOrder.completion.notRequired')}
+            </p>
+          ) : (
+            <>
+              <p dir="auto" className="text-content">
+                {signoff.unavailableReason !== null
+                  ? t('operations.workOrder.completion.nobodySigned', {
+                      reason: signoff.unavailableReason,
+                    })
+                  : signoff.role === null
+                    ? t('operations.workOrder.completion.signed', { name: signoff.name ?? '' })
+                    : t('operations.workOrder.completion.signedWithRole', {
+                        name: signoff.name ?? '',
+                        role: signoff.role,
+                      })}
+              </p>
+              <p className="text-xs text-content-muted">
+                {t('operations.workOrder.completion.recordedBy', {
+                  name: signoff.signedBy.name,
+                  when: when(signoff.signedAt, locale),
+                })}
+              </p>
+              {signoff.fileId === null ? null : (
+                <button
+                  type="button"
+                  className={buttonClass.secondary}
+                  onClick={() => {
+                    if (signoff.fileId !== null) {
+                      void open(signoff.fileId, 'image/png', 0);
+                    }
+                  }}
+                >
+                  {t('operations.workOrder.completion.viewSignature')}
+                </button>
+              )}
+            </>
+          )}
+        </div>
+
+        {closed ? null : (
+          <div className="flex flex-col gap-1 text-sm">
+            <h3 className="font-medium text-content-muted">
+              {t('operations.workOrder.missing.title')}
+            </h3>
+            {execution.missing.forms.length === 0 &&
+            execution.missing.beforePhotos === 0 &&
+            execution.missing.afterPhotos === 0 &&
+            !execution.missing.signoff ? (
+              <p className="text-content">{t('operations.workOrder.missing.none')}</p>
+            ) : (
+              <MissingItems missing={execution.missing} />
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1 text-sm">
+        <h3 className="font-medium text-content-muted">
+          {t('operations.workOrder.completion.time')}
+        </h3>
+        {changes.length === 0 ? (
+          <p className="text-content">{t('operations.workOrder.completion.noTime')}</p>
+        ) : (
+          <dl className="grid gap-3 sm:grid-cols-4">
+            {(
+              [
+                ['travel', times.travelMs],
+                ['onSite', times.onSiteMs],
+                ['working', times.workMs],
+                ['waiting', times.waitingMs],
+              ] as const
+            ).map(([label, ms]) => (
+              <Detail key={label} label={t(`operations.workOrder.completion.${label}`)}>
+                {duration(ms)}
+              </Detail>
+            ))}
+          </dl>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Files, notes, history
 // ---------------------------------------------------------------------------
 
@@ -903,7 +1134,11 @@ function Attachments({ job, onChanged }: { job: WorkOrderDetail; onChanged: () =
                 {attachment.title}
               </button>
               <span className="text-xs text-content-muted">
-                {t(`operations.workOrder.kind.${attachment.kind}`)} · {attachment.addedBy.name}
+                {t(`operations.workOrder.kind.${attachment.kind}`)}
+                {attachment.stage === null
+                  ? ''
+                  : ` · ${t(`operations.workOrder.stage.${attachment.stage}`)}`}{' '}
+                · {attachment.addedBy.name}
               </span>
               {job.can.work ? (
                 <button
@@ -1099,6 +1334,9 @@ function Comments({
   );
 }
 
+/** How far behind `occurredAt` an event may be recorded before the history says so. */
+const RECORDED_LATE_MS = 60_000;
+
 function History({ job }: { job: WorkOrderDetail }) {
   const { t } = useTranslation();
   const { locale } = useOperations();
@@ -1108,25 +1346,49 @@ function History({ job }: { job: WorkOrderDetail }) {
         {t('operations.workOrder.history')}
       </h2>
       <ol className="flex flex-col gap-2 text-sm">
-        {job.events.map((event, index) => (
-          <li key={`${event.occurredAt}-${String(index)}`} className="flex flex-col">
-            <span className="text-content">
-              {t(`operations.workOrder.event.${event.kind}`, {
-                actor: event.actor.name,
-                person: event.person?.name ?? '',
-                from: event.fromState === null ? '' : t(`operations.state.${event.fromState}`),
-                to: event.toState === null ? '' : t(`operations.state.${event.toState}`),
-                fields: Array.isArray(event.details.fields)
-                  ? (event.details.fields as string[]).join(', ')
-                  : '',
-              })}
-            </span>
-            <span className="text-xs text-content-muted">
-              {formatDateTime(event.occurredAt, { locale })}
-              {event.reason === null ? '' : ` — ${event.reason}`}
-            </span>
-          </li>
-        ))}
+        {job.events.map((event, index) => {
+          const unavailable =
+            event.kind === 'signed_off' && typeof event.details.unavailableReason === 'string'
+              ? event.details.unavailableReason
+              : undefined;
+          // Recorded on a phone without signal and synced later: say both.
+          const late =
+            Date.parse(event.recordedAt) - Date.parse(event.occurredAt) > RECORDED_LATE_MS;
+          return (
+            <li key={`${event.occurredAt}-${String(index)}`} className="flex flex-col">
+              <span dir="auto" className="text-content">
+                {unavailable === undefined
+                  ? t(`operations.workOrder.event.${event.kind}`, {
+                      actor: event.actor.name,
+                      person: event.person?.name ?? '',
+                      name: typeof event.details.name === 'string' ? event.details.name : '',
+                      from:
+                        event.fromState === null ? '' : t(`operations.state.${event.fromState}`),
+                      to: event.toState === null ? '' : t(`operations.state.${event.toState}`),
+                      fields: Array.isArray(event.details.fields)
+                        ? (event.details.fields as string[]).join(', ')
+                        : '',
+                    })
+                  : t('operations.workOrder.nobodySignedEvent', {
+                      actor: event.actor.name,
+                      reason: unavailable,
+                    })}
+              </span>
+              <span className="text-xs text-content-muted">
+                {formatDateTime(event.occurredAt, { locale })}
+                {event.reason === null ? '' : ` — ${event.reason}`}
+              </span>
+              {late ? (
+                <span className="text-xs italic text-content-muted">
+                  {t('operations.workOrder.recordedLater', {
+                    occurred: formatDateTime(event.occurredAt, { locale }),
+                    recorded: formatDateTime(event.recordedAt, { locale }),
+                  })}
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
       </ol>
     </section>
   );

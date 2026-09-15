@@ -1,4 +1,8 @@
 import {
+  canComplete,
+  CLOSED_WORK_ORDER_STATES,
+  type CompletionMissing,
+  completionMissing,
   findTransition,
   type TenantId,
   type UserId,
@@ -44,7 +48,24 @@ export interface WorkOrder {
   createdBy: UserId;
   createdAt: Date;
   updatedAt: Date;
+  /** Photos to take before and after the work, copied from the job type (P14). */
+  beforePhotos: number;
+  afterPhotos: number;
+  signatureRequired: boolean;
+  signoff: Signoff | null;
 }
+
+/** The customer's sign-off on a job, or why nobody could give one (P14). */
+export type Signoff = {
+  signedAt: Date;
+  signedBy: UserId;
+} & (
+  | { fileId: string; name: string; role: string | null; unavailableReason: null }
+  | { fileId: null; name: null; role: null; unavailableReason: string }
+);
+
+export type SignoffInput =
+  { fileId: string; name: string; role?: string | null } | { unavailableReason: string };
 
 export interface CrewMember {
   userId: string;
@@ -94,7 +115,10 @@ export interface WorkOrderEvent {
   actorId: UserId;
   reason: string | null;
   details: Record<string, unknown>;
+  /** When it happened: for a change made offline, when the phone recorded it. */
   occurredAt: Date;
+  /** When the server wrote it. */
+  recordedAt: Date;
 }
 
 export interface CreateWorkOrderInput {
@@ -166,7 +190,7 @@ export type TransitionRefusal =
   | { outcome: 'not_allowed'; current: WorkOrder }
   | { outcome: 'reason_required'; current: WorkOrder }
   | { outcome: 'nobody_assigned'; current: WorkOrder }
-  | { outcome: 'forms_missing'; current: WorkOrder; forms: { formId: string; title: string }[] }
+  | { outcome: 'incomplete'; current: WorkOrder; missing: CompletionMissing }
   | { outcome: 'closed'; current: WorkOrder };
 
 export type WorkOrderWrite = { outcome: 'written'; workOrder: WorkOrder } | TransitionRefusal;
@@ -182,6 +206,9 @@ export function parseWorkOrderReference(text: string): number | undefined {
   const match = /^\s*(?:wo-?)?0*(\d{1,9})\s*$/iu.exec(text);
   return match === null ? undefined : Number(match[1]);
 }
+
+/** More changes than a timesheet shows at once: a sign the window is too wide. */
+export const TIMESHEET_CHANGE_LIMIT = 10_000;
 
 /**
  * Work orders for one company: the job, its crew, checklist, forms, comments
@@ -205,7 +232,15 @@ export class WorkOrdersRepository extends TenantScopedRepository {
   async create(input: CreateWorkOrderInput, actor: UserId | string): Promise<WorkOrder> {
     const jobType = await this.db
       .selectFrom('job_types')
-      .select(['name', 'instructions', 'default_priority', 'checklist'])
+      .select([
+        'name',
+        'instructions',
+        'default_priority',
+        'checklist',
+        'before_photos',
+        'after_photos',
+        'signature_required',
+      ])
       .where('tenant_id', '=', this.tenantId)
       .where('id', '=', input.jobTypeId)
       .executeTakeFirstOrThrow();
@@ -224,6 +259,9 @@ export class WorkOrdersRepository extends TenantScopedRepository {
         priority: input.priority ?? jobType.default_priority,
         due_from: input.dueFrom ?? null,
         due_by: input.dueBy ?? null,
+        before_photos: jobType.before_photos,
+        after_photos: jobType.after_photos,
+        signature_required: jobType.signature_required,
         last_actor: toUserId(actor),
         created_by: toUserId(actor),
       })
@@ -513,13 +551,20 @@ export class WorkOrdersRepository extends TenantScopedRepository {
     });
   }
 
-  /** Moves a job to another state, if the state machine and its preconditions allow it. */
+  /**
+   * Moves a job to another state, if the state machine and its preconditions allow it.
+   *
+   * `happenedAt` is when a phone recorded the change offline (P14): the job and its
+   * history say it happened then, kept by the database between the previous state
+   * change and now.
+   */
   async transition(
     workOrderId: string,
     expectedRevision: number,
     to: WorkOrderState,
     actor: UserId | string,
     reason?: string,
+    options: { happenedAt?: Date } = {},
   ): Promise<WorkOrderWrite> {
     const current = await this.find(workOrderId);
     if (current === undefined) {
@@ -540,22 +585,97 @@ export class WorkOrdersRepository extends TenantScopedRepository {
       return { outcome: 'nobody_assigned', current };
     }
     if (to === 'complete') {
-      const missing = (await this.listForms(workOrderId)).filter(
-        (form) => form.required && form.submission?.status !== 'submitted',
-      );
-      if (missing.length > 0) {
-        return {
-          outcome: 'forms_missing',
-          current,
-          forms: missing.map((form) => ({ formId: form.formId, title: form.title })),
-        };
+      const missing = await this.completionMissing(current);
+      if (!canComplete(missing)) {
+        return { outcome: 'incomplete', current, missing };
       }
     }
-    return this.#write(workOrderId, expectedRevision, {
-      state: to,
-      last_actor: toUserId(actor),
-      last_reason: why === '' ? null : why,
+    if (options.happenedAt !== undefined) {
+      await sql`select set_config('integr8.happened_at', ${options.happenedAt.toISOString()}, true)`.execute(
+        this.db,
+      );
+    }
+    try {
+      return await this.#write(workOrderId, expectedRevision, {
+        state: to,
+        last_actor: toUserId(actor),
+        last_reason: why === '' ? null : why,
+      });
+    } finally {
+      if (options.happenedAt !== undefined) {
+        await sql`select set_config('integr8.happened_at', '', true)`.execute(this.db);
+      }
+    }
+  }
+
+  /** What stands between a job and completing it, in the terms every client uses. */
+  async completionMissing(job: WorkOrder): Promise<CompletionMissing> {
+    const [forms, photos] = await Promise.all([this.listForms(job.id), this.photoCounts(job.id)]);
+    return completionMissing({
+      forms: forms.map((form) => ({
+        formId: form.formId,
+        title: form.title,
+        required: form.required,
+        submitted: form.submission?.status === 'submitted',
+      })),
+      photos: {
+        before: { needed: job.beforePhotos, taken: photos.before },
+        after: { needed: job.afterPhotos, taken: photos.after },
+      },
+      signoff: { required: job.signatureRequired, recorded: job.signoff !== null },
     });
+  }
+
+  /** Before and after photos on a job, not removed. */
+  async photoCounts(workOrderId: string): Promise<{ before: number; after: number }> {
+    const rows = await this.db
+      .selectFrom('attachments')
+      .select(['stage', (eb) => eb.fn.countAll<string>().as('count')])
+      .where('tenant_id', '=', this.tenantId)
+      .where('work_order_id', '=', workOrderId)
+      .where('removed_at', 'is', null)
+      .where('stage', 'is not', null)
+      .groupBy('stage')
+      .execute();
+    const count = (stage: string) => Number(rows.find((row) => row.stage === stage)?.count ?? 0);
+    return { before: count('before'), after: count('after') };
+  }
+
+  /**
+   * Records the customer's sign-off, or why nobody could sign, replacing an earlier
+   * one. Refused once the job is closed: a completed job's sign-off is part of it.
+   */
+  async signOff(
+    workOrderId: string,
+    input: SignoffInput & { signedAt: Date },
+    actor: UserId | string,
+  ): Promise<
+    { outcome: 'written'; workOrder: WorkOrder } | { outcome: 'not_found' } | { outcome: 'closed' }
+  > {
+    const signed = 'fileId' in input;
+    const row = await this.db
+      .updateTable('work_orders')
+      .set({
+        signed_off_at: input.signedAt,
+        signed_off_by: toUserId(actor),
+        signoff_file_id: signed ? input.fileId : null,
+        signoff_name: signed ? input.name.trim() : null,
+        signoff_role: signed ? textOrNull(input.role) : null,
+        signoff_unavailable_reason: signed ? null : input.unavailableReason.trim(),
+        last_actor: toUserId(actor),
+        last_reason: null,
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', workOrderId)
+      .where('state', 'not in', [...CLOSED_WORK_ORDER_STATES])
+      .returningAll()
+      .executeTakeFirst();
+    if (row !== undefined) {
+      return { outcome: 'written', workOrder: toWorkOrder(row) };
+    }
+    return (await this.find(workOrderId)) === undefined
+      ? { outcome: 'not_found' }
+      : { outcome: 'closed' };
   }
 
   async #write(
@@ -913,6 +1033,116 @@ export class WorkOrdersRepository extends TenantScopedRepository {
     return (await select.orderBy('created_at').orderBy('id').execute()).map(toComment);
   }
 
+  /**
+   * What a timesheet is made of: the jobs worked in a window, each with its whole
+   * history there — whoever tapped each change, since a crew shares one job — and
+   * the change before the window, so a job already under way when the window
+   * opens is counted from its start. With a person, the jobs they changed or were
+   * on the crew of; with none, every job changed in the window.
+   */
+  async listTransitions(query: { from: Date; to: Date; userId?: UserId | string }): Promise<{
+    changes: (WorkOrderEvent & { workOrderId: string })[];
+    crews: { workOrderId: string; userId: string }[];
+    truncated: boolean;
+  }> {
+    const limit = TIMESHEET_CHANGE_LIMIT;
+    const inWindow = this.db
+      .selectFrom('work_order_events')
+      .select('work_order_id')
+      .where('tenant_id', '=', this.tenantId)
+      .where('kind', '=', 'transitioned')
+      .where('occurred_at', '>=', query.from)
+      .where('occurred_at', '<', query.to);
+    let jobs = inWindow;
+    if (query.userId !== undefined) {
+      const userId = toUserId(query.userId);
+      jobs = inWindow.where((where) =>
+        where.or([
+          where('actor_id', '=', userId),
+          where(
+            'work_order_id',
+            'in',
+            this.db
+              .selectFrom('work_order_assignments')
+              .select('work_order_id')
+              .where('tenant_id', '=', this.tenantId)
+              .where('user_id', '=', userId)
+              .where('assigned_at', '<', query.to)
+              .where((open) =>
+                open.or([
+                  open('unassigned_at', 'is', null),
+                  open('unassigned_at', '>', query.from),
+                ]),
+              ),
+          ),
+        ]),
+      );
+    }
+    const ids = [...new Set((await jobs.execute()).map((row) => row.work_order_id))];
+    if (ids.length === 0) {
+      return { changes: [], crews: [], truncated: false };
+    }
+    const [rows, before, crews] = await Promise.all([
+      this.db
+        .selectFrom('work_order_events')
+        .selectAll()
+        .where('tenant_id', '=', this.tenantId)
+        .where('kind', '=', 'transitioned')
+        .where('work_order_id', 'in', ids)
+        .where('occurred_at', '>=', query.from)
+        .where('occurred_at', '<', query.to)
+        .orderBy('occurred_at')
+        .limit(limit + 1)
+        .execute(),
+      this.db
+        .selectFrom('work_order_events')
+        .selectAll()
+        .distinctOn('work_order_id')
+        .where('tenant_id', '=', this.tenantId)
+        .where('kind', '=', 'transitioned')
+        .where('work_order_id', 'in', ids)
+        .where('occurred_at', '<', query.from)
+        .orderBy('work_order_id')
+        .orderBy('occurred_at', 'desc')
+        .execute(),
+      this.db
+        .selectFrom('work_order_assignments')
+        .select(['work_order_id', 'user_id'])
+        .distinct()
+        .where('tenant_id', '=', this.tenantId)
+        .where('work_order_id', 'in', ids)
+        .where('assigned_at', '<', query.to)
+        .where((open) =>
+          open.or([open('unassigned_at', 'is', null), open('unassigned_at', '>', query.from)]),
+        )
+        .execute(),
+    ]);
+    const withJob = (row: (typeof rows)[number]) => ({
+      ...toEvent(row),
+      workOrderId: row.work_order_id,
+    });
+    return {
+      changes: [...before.map(withJob), ...rows.slice(0, limit).map(withJob)].sort(
+        (a, b) => a.occurredAt.getTime() - b.occurredAt.getTime(),
+      ),
+      crews: crews.map((row) => ({ workOrderId: row.work_order_id, userId: row.user_id })),
+      truncated: rows.length > limit,
+    };
+  }
+
+  /** One history entry, with the job it belongs to. */
+  async findEvent(
+    eventId: string,
+  ): Promise<(WorkOrderEvent & { workOrderId: string }) | undefined> {
+    const row = await this.db
+      .selectFrom('work_order_events')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', eventId)
+      .executeTakeFirst();
+    return row === undefined ? undefined : { ...toEvent(row), workOrderId: row.work_order_id };
+  }
+
   async listEvents(workOrderId: string): Promise<WorkOrderEvent[]> {
     return (
       await this.db
@@ -985,7 +1215,33 @@ function toWorkOrder(row: Selectable<WorkOrdersTable>): WorkOrder {
     createdBy: toUserId(row.created_by),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    beforePhotos: row.before_photos,
+    afterPhotos: row.after_photos,
+    signatureRequired: row.signature_required,
+    signoff: toSignoff(row),
   };
+}
+
+function toSignoff(row: Selectable<WorkOrdersTable>): Signoff | null {
+  if (row.signed_off_at === null || row.signed_off_by === null) {
+    return null;
+  }
+  const base = { signedAt: row.signed_off_at, signedBy: toUserId(row.signed_off_by) };
+  return row.signoff_file_id === null
+    ? {
+        ...base,
+        fileId: null,
+        name: null,
+        role: null,
+        unavailableReason: row.signoff_unavailable_reason ?? '',
+      }
+    : {
+        ...base,
+        fileId: row.signoff_file_id,
+        name: row.signoff_name ?? '',
+        role: row.signoff_role,
+        unavailableReason: null,
+      };
 }
 
 function toAssignment(row: Selectable<WorkOrderAssignmentsTable>): Assignment {
@@ -1030,5 +1286,6 @@ function toEvent(row: Selectable<WorkOrderEventsTable>): WorkOrderEvent {
     reason: row.reason,
     details: row.details,
     occurredAt: row.occurred_at,
+    recordedAt: row.recorded_at,
   };
 }

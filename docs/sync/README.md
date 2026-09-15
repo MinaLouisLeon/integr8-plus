@@ -24,25 +24,32 @@ the phone gives it SQLite, files, `fetch`, the battery and the clock
 ## Recording a change
 
 Screens never send anything. They call `recordTransition`, `recordChecklist`, `recordComment`,
-`recordAccessChange`, `recordFormStarted`, `recordAnswers`, `recordSubmit` and `queueUpload`,
+`recordAccessChange`, `recordFormStarted`, `recordAnswers`, `recordSubmit`, `queueUpload` and,
+for the working day (P14), `recordShiftStart`, `recordShiftEnd`, `recordPhoto`,
+`recordPhotoRemoved` and `recordSignoff`,
 each of which writes the change to the phone's copy of the record **and** to the outbox in one
 SQLite transaction. The screen shows it at once; it cannot be lost between the two.
 
-| Change                 | Sent as                                    | Base (what it was made against)          |
-| ---------------------- | ------------------------------------------ | ---------------------------------------- |
-| Move a job on          | `work_order.transition`                    | the state the engineer saw               |
-| Tick a checklist item  | `work_order.checklist`                     | —                                        |
-| Add a note             | `work_order.comment`                       | — (the note's id is chosen on the phone) |
-| Correct access notes   | `site.access`                              | the values the engineer saw              |
-| Start a form           | `submission.start`                         | — (the form's id is chosen on the phone) |
-| Autosave / submit      | `submission.answers` / `submission.submit` | the answers the server last confirmed    |
-| Photo, signature, file | the upload queue                           | — (the file's id is chosen on the phone) |
+| Change                 | Sent as                                        | Base (what it was made against)           |
+| ---------------------- | ---------------------------------------------- | ----------------------------------------- |
+| Move a job on          | `work_order.transition`                        | the state the engineer saw                |
+| Tick a checklist item  | `work_order.checklist`                         | —                                         |
+| Add a note             | `work_order.comment`                           | — (the note's id is chosen on the phone)  |
+| Correct access notes   | `site.access`                                  | the values the engineer saw               |
+| Start a form           | `submission.start`                             | — (the form's id is chosen on the phone)  |
+| Autosave / submit      | `submission.answers` / `submission.submit`     | the answers the server last confirmed     |
+| Photo, signature, file | the upload queue                               | — (the file's id is chosen on the phone)  |
+| Clock in / out         | `shift.start` / `shift.end`                    | — (the shift's id is chosen on the phone) |
+| Before / after photo   | `work_order.photo` / `work_order.photo_remove` | — (waits for its file)                    |
+| Customer sign-off      | `work_order.signoff`                           | — (waits for the signature's file)        |
 
 Every change has a **UUIDv7** id made on the phone. Autosaves of a form that have not been sent
 are folded into one — never into a change the engine has already handed to the network, which it
 marks (`sent_at`) in the same transaction that chooses the batch, since the server may have
-applied that id already (P13); a submit replaces an unsent autosave. Completing a job waits for its forms'
-changes; submitting a form waits for the files it names.
+applied that id already (P13); a submit replaces an unsent autosave. Completing a job waits for its forms',
+photos' and sign-off's changes; submitting a form waits for the files it names. A transition carries
+when the phone recorded it, and the server keeps that time within bounds
+([the working day](../mobile/job-execution.md#time)).
 
 ## Sending: once, in order
 
@@ -70,13 +77,13 @@ changes; submitting a form waits for the files it names.
 A change made against a version the server no longer holds is merged when that loses nobody's
 work, and otherwise parked as a conflict. Nothing is resolved by whose clock is later.
 
-| Record       | Merged automatically when                                                                                 | Otherwise                                                                                  |
-| ------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Job state    | the job is still in the state the engineer saw (other edits don't matter), or already where they moved it | `state_changed`: who moved it, to what, why; "move it again" if the state machine allows   |
-| Checklist    | always — a box is ticked or not                                                                           | —                                                                                          |
-| Access notes | nobody else changed the same note                                                                         | `access_changed`: each disputed note, theirs and mine                                      |
-| Form answers | nobody else changed the same question                                                                     | `answers_changed`: each disputed question; other answers are kept                          |
-| Submitting   | —                                                                                                         | `already_submitted` from elsewhere; `forms_missing` when completing without required forms |
+| Record       | Merged automatically when                                                                                 | Otherwise                                                                                                            |
+| ------------ | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Job state    | the job is still in the state the engineer saw (other edits don't matter), or already where they moved it | `state_changed`: who moved it, to what, why; "move it again" if the state machine allows                             |
+| Checklist    | always — a box is ticked or not                                                                           | —                                                                                                                    |
+| Access notes | nobody else changed the same note                                                                         | `access_changed`: each disputed note, theirs and mine                                                                |
+| Form answers | nobody else changed the same question                                                                     | `answers_changed`: each disputed question; other answers are kept                                                    |
+| Submitting   | —                                                                                                         | `already_submitted` from elsewhere; `incomplete` when completing without the forms, photos or sign-off the job needs |
 
 The phone shows the server's version of a record with a change in conflict or refused, and lists
 that change on the Sync screen. The engineer keeps theirs (`discardChange`), makes theirs again

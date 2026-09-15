@@ -111,24 +111,22 @@ async function publishForm(title: string) {
 
 async function runJobs(queue: string) {
   const handlers = buildJobHandlers(api.services);
+  // The test database is shared: other suites leave jobs of their own companies,
+  // which stay leased here and are never run. Claim until nothing is left.
   for (;;) {
-    const claimed = (
-      await getPlatformDataSource().jobs.claim({ workerId: 'test', limit: 50 })
-    ).filter((job) => job.tenantId === api.tenantId);
-    const mine = claimed.filter((job) => job.queue === queue);
-    for (const job of claimed.filter((other) => other.queue !== queue)) {
-      await getPlatformDataSource().jobs.complete(job.id);
-    }
-    if (mine.length === 0) {
+    const claimed = await getPlatformDataSource().jobs.claim({ workerId: 'test', limit: 50 });
+    if (claimed.length === 0) {
       return;
     }
-    for (const job of mine) {
-      await handlers[queue]!(job.payload, {
-        tenantId: job.tenantId,
-        jobId: job.id,
-        attempt: job.attempts,
-        logger,
-      });
+    for (const job of claimed.filter((candidate) => candidate.tenantId === api.tenantId)) {
+      if (job.queue === queue) {
+        await handlers[queue]!(job.payload, {
+          tenantId: job.tenantId,
+          jobId: job.id,
+          attempt: job.attempts,
+          logger,
+        });
+      }
       await getPlatformDataSource().jobs.complete(job.id);
     }
   }
@@ -293,8 +291,8 @@ describe('a job whose required forms are unsubmitted cannot be completed', () =>
 
     const refused = json<ErrorBody>(await move(tokens.engineer, job, 'complete', undefined, 409));
     expect(refused.error).toMatchObject({
-      code: 'required_forms_missing',
-      message: 'Submit Gas safety record before completing this job.',
+      code: 'completion_blocked',
+      message: 'Before completing this job, submit Gas safety record.',
     });
 
     // Filled for a different job, it does not count.

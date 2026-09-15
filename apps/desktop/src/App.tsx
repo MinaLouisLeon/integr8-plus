@@ -27,6 +27,7 @@ import {
   JobTypesRoute,
   NewWorkOrderRoute,
   SiteRoute,
+  TimesheetsRoute,
   WorkOrderRoute,
   WorkOrdersRoute,
 } from '~/features/operations/screens';
@@ -203,6 +204,14 @@ export function App() {
                   element={
                     <RequireSession>
                       <ImportsRoute />
+                    </RequireSession>
+                  }
+                />
+                <Route
+                  path="/timesheets"
+                  element={
+                    <RequireSession>
+                      <TimesheetsRoute />
                     </RequireSession>
                   }
                 />

@@ -1,11 +1,21 @@
+import { CLOSED_WORK_ORDER_STATES } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
-import { addressText, job, type JobForm, jobForms } from '@integr8/offline';
+import { addressText, job } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { AccessNotes } from '~/components/access-notes';
+import { JobForms } from '~/components/job-forms';
 import { JobSyncBadge, JobSyncCard } from '~/components/job-sync';
+import {
+  JobActions,
+  JobAttachments,
+  JobChecklist,
+  JobPhotos,
+  JobTimes,
+  navigateTo,
+  SignoffSummary,
+} from '~/components/job-work';
 import { LocalGate } from '~/components/local-gate';
 import {
   Badge,
@@ -19,14 +29,14 @@ import {
   Section,
   useTheme,
 } from '~/components/ui';
-import { type EarlierOffer, earlierOffer, startForm } from '~/forms/session';
 import { formatWhen } from '~/lib/format';
-import { localData } from '~/local/local-data';
 import { useLocalQuery } from '~/local/react';
 
 /**
- * One job, from the phone. How to get in comes first — before the title, before
- * the customer — because it is what the engineer needs at the gate.
+ * One job, from the phone, in the order the engineer works through it (P14):
+ * how to get in, then what to do — the next step, the instructions, the forms,
+ * the photos, the checklist, the files — and only then the job's particulars.
+ * How to get in comes before the title, because it is what they need at the gate.
  */
 export default function JobScreen() {
   return (
@@ -38,7 +48,6 @@ export default function JobScreen() {
 
 function Job() {
   const { t, i18n } = useTranslation();
-  const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const state = useLocalQuery(`job:${id}`, ['work_orders'], (sql) => job(sql, id));
 
@@ -57,7 +66,8 @@ function Job() {
   const { detail, downloadedAt } = state.data;
   const { workOrder, site, customer, siteContact } = detail;
   const when = (value: string) => formatWhen(value, i18n.language);
-  const location = site.location;
+  const closed = CLOSED_WORK_ORDER_STATES.includes(workOrder.state);
+  const address = addressText(site.address);
 
   return (
     <ScrollScreen>
@@ -80,7 +90,26 @@ function Job() {
             tone={workOrder.priority === 'urgent' ? 'danger' : 'muted'}
           />
         </View>
+        <Body>{address}</Body>
       </View>
+
+      {closed ? null : <JobActions detail={detail} />}
+
+      {workOrder.instructions === null ? null : (
+        <Section title={t('mobile.job.instructions')}>
+          <Body>{workOrder.instructions}</Body>
+        </Section>
+      )}
+
+      <JobForms workOrderId={workOrder.id} siteId={site.id} />
+
+      <JobPhotos detail={detail} closed={closed} />
+
+      <JobChecklist detail={detail} closed={closed} />
+
+      <JobAttachments detail={detail} />
+
+      <JobTimes detail={detail} />
 
       <Section title={t('mobile.job.details')}>
         <Detail label={t('mobile.job.customer')}>
@@ -96,17 +125,8 @@ function Job() {
             label={site.name}
             onPress={() => router.push({ pathname: '/sites/[id]', params: { id: site.id } })}
           />
-          <Body>{addressText(site.address)}</Body>
-          {location === null ? null : (
-            <Link
-              label={t('mobile.job.openInMaps')}
-              onPress={() =>
-                void Linking.openURL(
-                  `geo:${String(location.latitude)},${String(location.longitude)}?q=${String(location.latitude)},${String(location.longitude)}`,
-                )
-              }
-            />
-          )}
+          <Body>{address}</Body>
+          <Link label={t('mobile.job.openInMaps')} onPress={() => void navigateTo(site, address)} />
         </Detail>
         {siteContact === null ? null : (
           <Detail label={t('mobile.job.siteContact')}>
@@ -132,9 +152,7 @@ function Job() {
         {workOrder.description === null ? null : (
           <Detail label={t('mobile.job.description')}>{workOrder.description}</Detail>
         )}
-        {workOrder.instructions === null ? null : (
-          <Detail label={t('mobile.job.instructions')}>{workOrder.instructions}</Detail>
-        )}
+        <SignoffSummary detail={detail} />
       </Section>
 
       {detail.crew.length === 0 ? null : (
@@ -143,22 +161,6 @@ function Job() {
             <Body key={member.id}>
               {member.lead ? `${member.name} · ${t('mobile.job.lead')}` : member.name}
             </Body>
-          ))}
-        </Section>
-      )}
-
-      <JobForms workOrderId={workOrder.id} siteId={site.id} />
-
-      {detail.checklist.length === 0 ? null : (
-        <Section title={t('mobile.job.checklist')}>
-          {detail.checklist.map((item) => (
-            <Text
-              key={item.id}
-              accessibilityLabel={`${item.label}: ${item.done ? t('mobile.job.done') : t('mobile.job.notDone')}`}
-              style={{ color: theme.text, textAlign: 'auto' }}
-            >
-              {item.done ? '☑' : '☐'} {item.label}
-            </Text>
           ))}
         </Section>
       )}
@@ -195,89 +197,6 @@ function Job() {
 
       <Body muted>{t('mobile.job.downloadedAt', { when: when(downloadedAt) })}</Body>
     </ScrollScreen>
-  );
-}
-
-/**
- * The forms this job needs, as the phone has them. Tapping one opens it; a form
- * not started yet is started on the phone, from the answers last given at this
- * site if the engineer wants them.
- */
-function JobForms({ workOrderId, siteId }: { workOrderId: string; siteId: string }) {
-  const { t, i18n } = useTranslation();
-  const forms = useLocalQuery(
-    `job-forms:${workOrderId}`,
-    ['work_orders', 'submissions', 'forms', 'outbox'],
-    (sql) => jobForms(sql, workOrderId),
-  );
-  const [opening, setOpening] = useState<string | undefined>(undefined);
-
-  if (forms.status !== 'ready' || forms.data.length === 0) {
-    return null;
-  }
-
-  const open = async (form: JobForm) => {
-    if (form.submission !== null) {
-      router.push({ pathname: '/forms/[id]', params: { id: form.submission.id } });
-      return;
-    }
-    const context = localData.changeContext();
-    if (form.liveVersionId === null || context === undefined) {
-      Alert.alert(form.title, t('mobile.fill.noLiveVersion'));
-      return;
-    }
-    setOpening(form.formId);
-    try {
-      const offer = await earlierOffer(context, { form, siteId });
-      const start = async (startFrom: EarlierOffer | undefined) => {
-        const id = await startForm(context, { form, workOrderId, startFrom });
-        router.push({
-          pathname: '/forms/[id]',
-          params:
-            startFrom === undefined
-              ? { id }
-              : { id, prefilled: String(startFrom.filled), from: startFrom.job },
-        });
-      };
-      if (offer === undefined) {
-        await start(undefined);
-        return;
-      }
-      Alert.alert(
-        t('mobile.fill.start.title'),
-        t('mobile.fill.start.body', {
-          job: offer.job,
-          when: offer.submittedAt === null ? '' : formatWhen(offer.submittedAt, i18n.language),
-        }),
-        [
-          { text: t('mobile.fill.start.empty'), onPress: () => void start(undefined) },
-          { text: t('mobile.fill.start.useEarlier'), onPress: () => void start(offer) },
-        ],
-      );
-    } finally {
-      setOpening(undefined);
-    }
-  };
-
-  return (
-    <Section title={t('mobile.job.forms')}>
-      {forms.data.map((form) => (
-        <Row
-          key={form.formId}
-          title={form.title}
-          lines={[
-            form.required ? t('mobile.job.required') : '',
-            opening === form.formId
-              ? t('common.loading')
-              : t(`mobile.job.formStatus.${form.submission?.status ?? 'none'}`),
-          ]}
-          {...(form.submission !== null && !form.submission.sent
-            ? { tag: { label: t('mobile.jobSync.notYet'), tone: 'muted' as const } }
-            : {})}
-          onPress={() => void open(form)}
-        />
-      ))}
-    </Section>
   );
 }
 

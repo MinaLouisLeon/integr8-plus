@@ -131,6 +131,20 @@ export const apiConfigSchema = z.object({
   /** A secret Mapbox token with geocoding scope. Server-side only. */
   MAPBOX_ACCESS_TOKEN: z.string().optional(),
 
+  // -------------------------------------------------------------------------
+  // Push notifications
+  // -------------------------------------------------------------------------
+
+  /**
+   * Who delivers push notifications. `expo` sends through Expo's push service,
+   * which relays to Apple and Google with the credentials held in the EAS project;
+   * `recording` keeps them in memory, for development and tests. Production
+   * refuses `recording`.
+   */
+  PUSH_SENDER: z.enum(['recording', 'expo']).default('recording'),
+  /** An Expo access token, when the EAS project has enhanced push security on. */
+  EXPO_ACCESS_TOKEN: z.string().optional(),
+
   /**
    * Sentry. Optional: unset means errors are logged and not reported, which is
    * the right default for a developer's machine and the wrong one for
@@ -289,6 +303,9 @@ export function assertProductionReady(config: ApiConfig): void {
   }
   if (config.GEOCODER === 'fake') {
     problems.push('GEOCODER is fake: every site would be placed somewhere invented.');
+  }
+  if (config.PUSH_SENDER === 'recording') {
+    problems.push('PUSH_SENDER is recording: no engineer would be told about a new job.');
   }
   if (config.API_CORS_ORIGINS.trim() === '') {
     problems.push('API_CORS_ORIGINS is not set: no browser client could call this API.');

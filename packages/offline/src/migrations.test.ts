@@ -71,6 +71,8 @@ const UNSENT_WORK_AT: Record<number, (driver: SqlDriver) => Promise<void>> = {
   },
   // Version 4 kept unsent forms in submissions and pending files in uploads, as
   // a version 3 phone was moved to; its outbox had no sent_at yet.
+  // Version 5 added outbox.sent_at and uploads.thumbnail_path, which nothing unsent needs.
+  5: (driver) => UNSENT_WORK_AT[4]!(driver),
   4: async (driver) => {
     await UNSENT_WORK_AT[3]!(driver);
     await driver.run(

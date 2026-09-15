@@ -22,7 +22,7 @@ import {
   Section,
   useTheme,
 } from '~/components/ui';
-import { describeChange, describeValue } from '~/lib/describe-change';
+import { describeChange, describeValue, missingLines } from '~/lib/describe-change';
 import { formatWhen } from '~/lib/format';
 import { localData } from '~/local/local-data';
 import { useLocalQuery } from '~/local/react';
@@ -157,13 +157,21 @@ function Conflict() {
             onPress={keepTheirs}
           />
         </>
-      ) : conflict.kind === 'forms_missing' ? (
+      ) : conflict.kind === 'incomplete' ? (
         <>
-          <Body>
-            {t('mobile.conflict.formsMissing', {
-              forms: conflict.forms.map((form) => form.title).join(', '),
-            })}
-          </Body>
+          <Body>{t('mobile.conflict.incomplete')}</Body>
+          {missingLines(t, conflict.missing).map((line) => (
+            <Body key={line}>{`• ${line}`}</Body>
+          ))}
+          {change.workOrderId === null ? null : (
+            <Button
+              label={t('mobile.conflict.openJob')}
+              variant="secondary"
+              onPress={() =>
+                router.push({ pathname: '/jobs/[id]', params: { id: change.workOrderId! } })
+              }
+            />
+          )}
           <Button
             label={t('mobile.syncScreen.retry')}
             busy={busy}

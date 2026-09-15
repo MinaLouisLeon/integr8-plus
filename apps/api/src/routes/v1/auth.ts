@@ -1,4 +1,5 @@
 import { toTenantId } from '@integr8/core';
+import { withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { iso, signInResponseSchema, tokensSchema } from './schemas.js';
@@ -186,6 +187,15 @@ export const signOutRoute = defineRoute({
   }),
   responses: { 200: { description: 'Signed out.', schema: z.object({ revoked: z.number() }) } },
   handler: async ({ body }, context) => {
+    // A phone signed out of stops hearing about jobs at once (P14).
+    await withTenant(context.principal.tenantId, (tx) =>
+      tx.pushDevices.disableSignedOut(
+        body.everywhere
+          ? { userId: context.principal.userId }
+          : { sessionId: context.principal.sessionId },
+      ),
+    );
+
     if (body.everywhere) {
       const revoked = await context.services.sessions.revokeAllForUser(
         context.principal.tenantId,

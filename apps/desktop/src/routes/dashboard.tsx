@@ -103,6 +103,10 @@ export function DashboardRoute() {
             ['/customers', 'customers', 'customersHint'],
             ['/settings/job-types', 'jobTypes', 'jobTypesHint'],
             ['/imports', 'imports', 'importsHint'],
+            // Everyone's time is the office's to read.
+            ...(me.data?.permissions.includes('work_order.manage') === true
+              ? ([['/timesheets', 'timesheets', 'timesheetsHint']] as const)
+              : []),
           ] as const
         ).map(([to, label, hint]) => (
           <Link

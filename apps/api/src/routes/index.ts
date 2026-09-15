@@ -10,6 +10,7 @@ import { formRoutes } from './v1/forms.js';
 import { mediaRoutes } from './v1/media.js';
 import { submissionRoutes } from './v1/submissions.js';
 import { syncRoutes } from './v1/sync.js';
+import { timeRoutes } from './v1/time.js';
 import { workspaceRoutes } from './v1/workspace.js';
 
 /**
@@ -32,6 +33,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...workOrderRoutes,
     ...importRoutes,
     ...syncRoutes,
+    ...timeRoutes,
   ];
 }
 

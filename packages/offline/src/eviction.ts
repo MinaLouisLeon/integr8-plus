@@ -84,6 +84,14 @@ export async function evict(
     ]);
   }
 
+  // Shifts older than three days that the server has: the timesheet is the office's.
+  await sql.run(
+    `delete from shifts
+     where started_at < ?
+       and id not in (select entity_id from outbox where kind like 'shift.%' and state <> 'done')`,
+    [new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()],
+  );
+
   const customers = await sql.run(
     `delete from customers
      where id not in (select customer_id from work_orders)

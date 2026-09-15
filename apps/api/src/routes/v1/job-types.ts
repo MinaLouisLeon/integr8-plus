@@ -30,6 +30,11 @@ const jobTypeSchema = z.object({
   instructions: z.string().nullable(),
   checklist: z.array(z.object({ id: z.string(), label: z.string() })),
   forms: z.array(z.object({ formId: z.uuid(), title: z.string(), required: z.boolean() })),
+  /** Photos to take before starting and when done; a job needs them to complete (P14). */
+  beforePhotos: z.number().int(),
+  afterPhotos: z.number().int(),
+  /** Whether the customer signs off before a job of this type completes. */
+  signatureRequired: z.boolean(),
   archived: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -62,6 +67,9 @@ const jobTypeInputSchema = z.object({
     .array(z.object({ formId: z.uuid(), required: z.boolean() }))
     .max(20)
     .optional(),
+  beforePhotos: z.number().int().min(0).max(20).optional(),
+  afterPhotos: z.number().int().min(0).max(20).optional(),
+  signatureRequired: z.boolean().optional(),
 });
 
 async function jobTypeBody(tx: TenantTransaction, jobType: JobType) {
@@ -80,6 +88,9 @@ async function jobTypeBody(tx: TenantTransaction, jobType: JobType) {
       title: titles.get(form.formId) ?? '',
       required: form.required,
     })),
+    beforePhotos: jobType.beforePhotos,
+    afterPhotos: jobType.afterPhotos,
+    signatureRequired: jobType.signatureRequired,
     archived: jobType.archivedAt !== null,
     createdAt: iso(jobType.createdAt),
     updatedAt: iso(jobType.updatedAt),
@@ -216,6 +227,11 @@ export const createJobTypeRoute = defineRoute({
             ...(body.instructions === undefined ? {} : { instructions: body.instructions }),
             ...(body.checklist === undefined ? {} : { checklist: withIds(body.checklist)! }),
             ...(body.forms === undefined ? {} : { forms: body.forms }),
+            ...(body.beforePhotos === undefined ? {} : { beforePhotos: body.beforePhotos }),
+            ...(body.afterPhotos === undefined ? {} : { afterPhotos: body.afterPhotos }),
+            ...(body.signatureRequired === undefined
+              ? {}
+              : { signatureRequired: body.signatureRequired }),
           },
           context.principal.userId,
         )
@@ -264,6 +280,11 @@ export const updateJobTypeRoute = defineRoute({
           ...(changes.instructions === undefined ? {} : { instructions: changes.instructions }),
           ...(changes.checklist === undefined ? {} : { checklist: withIds(changes.checklist)! }),
           ...(changes.forms === undefined ? {} : { forms: changes.forms }),
+          ...(changes.beforePhotos === undefined ? {} : { beforePhotos: changes.beforePhotos }),
+          ...(changes.afterPhotos === undefined ? {} : { afterPhotos: changes.afterPhotos }),
+          ...(changes.signatureRequired === undefined
+            ? {}
+            : { signatureRequired: changes.signatureRequired }),
         })
         .catch(codeTaken);
       if (type !== undefined && archived !== undefined) {
