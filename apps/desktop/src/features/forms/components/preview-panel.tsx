@@ -9,12 +9,18 @@ import {
   transition,
   viewForm,
 } from '@integr8/form-engine';
+import { SectionProblem } from '@integr8/form-renderer-dom';
 import { useTranslation } from '@integr8/i18n';
 import { useMemo, useState } from 'react';
 import { Button } from '~/components/ui';
 import { type TestSubmission, testSubmission } from '../api';
 import { say } from '../model/text';
+import { nameOf } from './canvas';
 import { ErrorText, FormRenderer } from './form-renderer';
+
+/** A fresh test fill: a repeatable section that needs entries opens with that many. */
+const freshState = (form: CompiledForm) =>
+  createFormState(form, {}, { newEntryId: () => crypto.randomUUID() });
 
 /**
  * Two viewports side by side, filled in together, and a test fill checked by
@@ -41,7 +47,7 @@ export function PreviewPanel({
 }) {
   const { t } = useTranslation();
   const [today, setToday] = useState(() => localDate(new Date()));
-  const [state, setState] = useState<FormState>(() => createFormState(form));
+  const [state, setState] = useState<FormState>(() => freshState(form));
   const [result, setResult] = useState<TestSubmission | undefined>(undefined);
   const [failure, setFailure] = useState<string | undefined>(undefined);
   const [checking, setChecking] = useState(false);
@@ -73,9 +79,16 @@ export function PreviewPanel({
   };
 
   const fieldName = (id: string | null) => {
-    const field = id === null ? undefined : findField(form.definition, id);
-    return field === undefined ? (id ?? '') : say(field.label, locale);
+    if (id === null) {
+      return '';
+    }
+    const field = findField(form.definition, id);
+    return field === undefined ? nameOf(form.definition, id, locale, t) : say(field.label, locale);
   };
+  const sectionOf = (id: string) =>
+    form.definition.pages
+      .flatMap((page) => page.sections)
+      .find((section) => section.id === id && section.repeat !== undefined);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
@@ -96,7 +109,7 @@ export function PreviewPanel({
         <Button
           variant="secondary"
           onClick={() => {
-            setState(createFormState(form));
+            setState(freshState(form));
             setResult(undefined);
           }}
         >
@@ -133,7 +146,9 @@ export function PreviewPanel({
               <p className="font-medium">{t('forms.preview.rejected')}</p>
               <ul className="mt-2 list-disc ps-5">
                 {result.issues.map((issue) => (
-                  <li key={`${issue.code}-${issue.field ?? ''}`}>
+                  <li
+                    key={`${issue.code}-${issue.field ?? ''}-${'entry' in issue ? String(issue.entry) : ''}`}
+                  >
                     {t(`forms.preview.issue.${issue.code as 'unknown_field'}`, {
                       field: fieldName(issue.field),
                     })}
@@ -141,8 +156,22 @@ export function PreviewPanel({
                 ))}
                 {result.errors.map((error) => {
                   const field = findField(form.definition, error.field);
+                  const section = sectionOf(error.field);
+                  if (section !== undefined) {
+                    return (
+                      <li key={`${error.field}-${error.code}`}>
+                        <SectionProblem
+                          section={section}
+                          error={{ ...error, code: error.code as 'invalid' }}
+                          locale={locale}
+                        />
+                      </li>
+                    );
+                  }
                   return (
-                    <li key={`${error.field}-${error.code}-${error.params.rule ?? ''}`}>
+                    <li
+                      key={`${error.field}-${'entry' in error ? String(error.entry) : ''}-${error.code}-${error.params.rule ?? ''}`}
+                    >
                       <span className="font-medium">{fieldName(error.field)}</span>
                       {': '}
                       {field === undefined ? (

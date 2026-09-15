@@ -2,16 +2,21 @@ import {
   type Answers,
   type CompiledForm,
   createFormState,
+  type FieldError,
   type FormEvent,
   type FormState,
+  ownAnswer,
+  storedEntries,
   toSubmission,
+  touchKey,
   transition,
   viewForm,
 } from '@integr8/form-engine';
-import { firstPerField } from '@integr8/form-input';
+import { firstPerField, pageIndexOfField } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { useId, useMemo, useRef, useState } from 'react';
 import { AnswerView } from './answer-view.js';
+import { EntryList, entryName, entryPrefix, sectionName, sectionProblemsId } from './entries.js';
 import { controlId, FieldBlock } from './field.js';
 import type { MediaAdapter } from './media.js';
 import { say } from './text.js';
@@ -39,7 +44,7 @@ export type SubmitOutcome =
   | {
       ok: false;
       /** The server's field-level details, keyed by answer id where there is one. */
-      problems: { field: string | undefined; message: string }[];
+      problems: { field: string | undefined; entry?: string | undefined; message: string }[];
     };
 
 export interface FormFillerProps {
@@ -58,7 +63,11 @@ export interface FormFillerProps {
   ) => Promise<SubmitOutcome>;
   /** Correcting a submitted form: a reason is asked for before it goes. */
   correction?: boolean;
+  /** Makes the id of a new entry of a repeatable section. A UUID unless a test says otherwise. */
+  newEntryId?: () => string;
 }
+
+const randomEntryId = () => crypto.randomUUID();
 
 export function FormFiller({
   form,
@@ -69,11 +78,15 @@ export function FormFiller({
   onAnswersChange,
   onSubmit,
   correction = false,
+  newEntryId = randomEntryId,
 }: FormFillerProps) {
   const { t } = useTranslation();
   const prefix = useId().replaceAll(':', '');
   const context = useMemo(() => (today === undefined ? {} : { today }), [today]);
-  const [state, setState] = useState<FormState>(() => createFormState(form, initialAnswers));
+  // A repeatable section that needs entries opens with that many.
+  const [state, setState] = useState<FormState>(() =>
+    createFormState(form, initialAnswers, { newEntryId }),
+  );
   const [pageIndex, setPageIndex] = useState(0);
   const [reviewing, setReviewing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -96,20 +109,41 @@ export function FormFiller({
     const result = transition(form, latest.current, event, context);
     latest.current = result.state;
     setState(result.state);
-    if (result.accepted && (event.type === 'answer' || event.type === 'clear')) {
+    if (
+      result.accepted &&
+      event.type !== 'touch' &&
+      event.type !== 'submit' &&
+      event.type !== 'reopen'
+    ) {
       onAnswersChange?.({ ...result.state.answers });
     }
     return result;
   };
 
   const pageOfField = (fieldId: string) => {
-    const index = pages.findIndex((page) =>
-      page.sections.some((section) => section.fields.some((field) => field.id === fieldId)),
-    );
+    const index = pageIndexOfField(pages, fieldId);
     return index === -1 ? currentIndex : index;
   };
 
-  const goToField = (fieldId: string) => {
+  /**
+   * The control a problem is about: a question, a question in one entry, or a
+   * repeatable section's own problems — or, for a question in a repeatable
+   * section named without its entry, the section.
+   */
+  const targetOf = (fieldId: string, entry: string | undefined) => {
+    const section = form.elements.get(fieldId)?.entries;
+    if (form.elements.get(fieldId)?.repeat !== undefined) {
+      return [sectionProblemsId(prefix, fieldId), `${prefix}-section-${fieldId}-title`];
+    }
+    if (section === undefined) {
+      return [controlId(prefix, fieldId)];
+    }
+    return entry === undefined
+      ? [`${prefix}-section-${section}-title`, `${prefix}-section-${section}-add`]
+      : [controlId(entryPrefix(prefix, entry), fieldId)];
+  };
+
+  const goToField = (fieldId: string, entry?: string) => {
     if (reviewing) {
       dispatch({ type: 'reopen' });
       setReviewing(false);
@@ -117,7 +151,9 @@ export function FormFiller({
     setPageIndex(pageOfField(fieldId));
     // After the page it is on has rendered.
     setTimeout(() => {
-      const target = document.getElementById(controlId(prefix, fieldId));
+      const target = targetOf(fieldId, entry)
+        .map((id) => document.getElementById(id))
+        .find((element) => element !== null);
       target?.focus();
       target?.scrollIntoView?.({ block: 'center' });
     }, 0);
@@ -161,8 +197,38 @@ export function FormFiller({
   };
 
   const labelOf = (fieldId: string | undefined) => {
-    const field = fieldId === undefined ? undefined : form.elements.get(fieldId)?.field;
+    if (fieldId === undefined) {
+      return '';
+    }
+    const element = form.elements.get(fieldId);
+    if (element?.repeat !== undefined) {
+      const section = form.definition.pages
+        .flatMap((page) => page.sections)
+        .find((candidate) => candidate.id === fieldId);
+      return section === undefined ? fieldId : sectionName(section, locale);
+    }
+    const field = element?.field;
     return field === undefined ? '' : say(field.label, locale) || field.id;
+  };
+
+  /** "Go to “Make” in Appliance 2 · Worcester": the problem list names the entry. */
+  const problemLink = (error: FieldError) => {
+    const sectionId = form.elements.get(error.field)?.entries;
+    const section =
+      sectionId === undefined
+        ? undefined
+        : form.definition.pages
+            .flatMap((page) => page.sections)
+            .find((candidate) => candidate.id === sectionId);
+    const entries = sectionId === undefined ? [] : (view.entries.get(sectionId) ?? []);
+    const index = entries.findIndex((entry) => entry.id === error.entry);
+    if (section === undefined || index === -1) {
+      return t('fill.summary.goTo', { question: labelOf(error.field) });
+    }
+    return t('fill.summary.goToInEntry', {
+      question: labelOf(error.field),
+      entry: entryName(section, entries[index]!, index, locale, t),
+    });
   };
 
   // One entry per question, in reading order: its first problem.
@@ -254,13 +320,13 @@ export function FormFiller({
             </h3>
             <ul className="flex flex-col gap-1">
               {problems.map((error) => (
-                <li key={error.field}>
+                <li key={touchKey(error.field, error.entry)}>
                   <button
                     type="button"
                     className="text-start text-sm text-danger underline"
-                    onClick={() => goToField(error.field)}
+                    onClick={() => goToField(error.field, error.entry)}
                   >
-                    {t('fill.summary.goTo', { question: labelOf(error.field) })}
+                    {problemLink(error)}
                   </button>
                 </li>
               ))}
@@ -286,17 +352,18 @@ export function FormFiller({
                 <ul className="flex flex-col gap-1">
                   {refused.problems.map((problem) => (
                     <li
-                      key={`${problem.field ?? ''}-${problem.message}`}
+                      key={`${problem.field ?? ''}-${problem.entry ?? ''}-${problem.message}`}
                       className="text-sm text-content"
                     >
                       {problem.field === undefined ||
-                      form.elements.get(problem.field)?.field === undefined ? (
+                      (form.elements.get(problem.field)?.field === undefined &&
+                        form.elements.get(problem.field)?.repeat === undefined) ? (
                         problem.message
                       ) : (
                         <button
                           type="button"
                           className="text-start text-danger underline"
-                          onClick={() => goToField(problem.field!)}
+                          onClick={() => goToField(problem.field!, problem.entry)}
                         >
                           {`${labelOf(problem.field)}: ${problem.message}`}
                         </button>
@@ -398,19 +465,64 @@ export function FormFiller({
                   {section.title === undefined ? null : (
                     <h4
                       id={`${prefix}-section-${section.id}-title`}
-                      className="text-base font-semibold text-content"
+                      tabIndex={section.repeat === undefined ? undefined : -1}
+                      className="text-base font-semibold text-content outline-none"
                     >
                       {say(section.title, locale)}
                     </h4>
                   )}
+                  {section.repeat === undefined ? null : (
+                    <EntryList
+                      section={section}
+                      view={view}
+                      locale={locale}
+                      prefix={prefix}
+                      newEntryId={newEntryId}
+                      onEvent={(event) => void dispatch(event)}
+                      renderField={(field, { entry, prefix: own, errors }) => (
+                        <FieldBlock
+                          key={field.id}
+                          field={field}
+                          value={
+                            entry.values.get(field.id) ??
+                            ownAnswer(
+                              storedEntries(state.answers, section.id).find(
+                                (stored) => stored.id === entry.id,
+                              )?.values ?? {},
+                              field.id,
+                            )
+                          }
+                          errors={errors}
+                          prefix={own}
+                          locale={locale}
+                          media={media}
+                          disabled={false}
+                          onAnswer={(value) =>
+                            dispatch({ type: 'answer', field: field.id, value, entry: entry.id })
+                          }
+                          onClear={() =>
+                            dispatch({ type: 'clear', field: field.id, entry: entry.id })
+                          }
+                          onBlur={() =>
+                            dispatch({ type: 'touch', field: field.id, entry: entry.id })
+                          }
+                        />
+                      )}
+                    />
+                  )}
                   {section.fields
-                    .filter((field) => view.visible.get(field.id) === true)
+                    .filter(
+                      (field) =>
+                        section.repeat === undefined && view.visible.get(field.id) === true,
+                    )
                     .map((field) => (
                       <FieldBlock
                         key={field.id}
                         field={field}
                         value={view.values.get(field.id) ?? state.answers[field.id]}
-                        errors={view.shownErrors.filter((error) => error.field === field.id)}
+                        errors={view.shownErrors.filter(
+                          (error) => error.field === field.id && error.entry === undefined,
+                        )}
                         prefix={prefix}
                         locale={locale}
                         media={media}

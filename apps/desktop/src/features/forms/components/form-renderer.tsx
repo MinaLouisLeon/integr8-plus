@@ -1,12 +1,16 @@
 import {
   type CompiledForm,
+  type EntryEvaluation,
   type Field,
   type FieldError,
   type FormEvent,
   type FormState,
   type FormView,
   isCalculated,
+  ownAnswer,
+  storedEntries,
 } from '@integr8/form-engine';
+import { EntryList } from '@integr8/form-renderer-dom';
 import { useTranslation } from '@integr8/i18n';
 import { useId, useState, type ReactNode } from 'react';
 import { Button } from '~/components/ui';
@@ -22,6 +26,10 @@ import { say } from '../model/text';
  *
  * `phone` shows one page at a time in a single column, the way a field engineer
  * moves through a form; `desktop` shows every page at once.
+ *
+ * A repeatable section lists its entries with the web renderer's own list, so
+ * adding, removing and reordering them behaves here as it will for the person
+ * filling the form in (P13b).
  */
 
 export interface FormRendererProps {
@@ -33,11 +41,14 @@ export interface FormRendererProps {
   locale: string;
   /** Show the controls without accepting input — a past version, a template. */
   readOnly?: boolean;
+  /** Makes the id of an added entry. A UUID unless a test says otherwise. */
+  newEntryId?: (() => string) | undefined;
 }
 
 export function FormRenderer(props: FormRendererProps) {
-  const { form, view, viewport, locale } = props;
+  const { form, view, viewport, locale, onEvent, readOnly = false, newEntryId } = props;
   const { t } = useTranslation();
+  const prefix = useId().replaceAll(':', '');
   const pages = form.definition.pages.filter((page) => view.visible.get(page.id) === true);
   const [pageIndex, setPageIndex] = useState(0);
   const current = Math.min(pageIndex, Math.max(pages.length - 1, 0));
@@ -73,11 +84,31 @@ export function FormRenderer(props: FormRendererProps) {
                     {say(section.title, locale)}
                   </legend>
                 )}
-                {section.fields
-                  .filter((field) => view.visible.get(field.id) === true)
-                  .map((field) => (
-                    <FieldControl key={field.id} {...props} field={field} />
-                  ))}
+                {section.repeat === undefined ? (
+                  section.fields
+                    .filter((field) => view.visible.get(field.id) === true)
+                    .map((field) => <FieldControl key={field.id} {...props} field={field} />)
+                ) : (
+                  <EntryList
+                    section={section}
+                    view={view}
+                    locale={locale}
+                    prefix={prefix}
+                    onEvent={onEvent}
+                    newEntryId={newEntryId}
+                    disabled={readOnly}
+                    headingLevel={4}
+                    renderField={(field, { entry, errors }) => (
+                      <FieldControl
+                        key={field.id}
+                        {...props}
+                        field={field}
+                        entry={entry}
+                        entryErrors={errors}
+                      />
+                    )}
+                  />
+                )}
               </fieldset>
             ))}
         </div>
@@ -108,17 +139,36 @@ export function FormRenderer(props: FormRendererProps) {
   );
 }
 
-function FieldControl(props: FormRendererProps & { field: Field }) {
-  const { field, state, view, onEvent, locale, readOnly = false } = props;
+function FieldControl(
+  props: FormRendererProps & {
+    field: Field;
+    /** For a question of a repeatable section: the entry it is answered in, and its errors there. */
+    entry?: EntryEvaluation | undefined;
+    entryErrors?: readonly FieldError[] | undefined;
+  },
+) {
+  const { field, state, view, onEvent, locale, readOnly = false, entry, entryErrors } = props;
   const { t } = useTranslation();
   const id = useId();
-  const errors = view.shownErrors.filter((error) => error.field === field.id);
+  const errors =
+    entryErrors ??
+    view.shownErrors.filter((error) => error.field === field.id && error.entry === undefined);
   const calculated = isCalculated(field);
   const disabled = readOnly || calculated || field.readOnly === true;
-  const value = calculated ? view.values.get(field.id) : state.answers[field.id];
+  const stored =
+    entry === undefined
+      ? state.answers
+      : (storedEntries(state.answers, sectionOf(props)).find(
+          (candidate) => candidate.id === entry.id,
+        )?.values ?? {});
+  const value = calculated
+    ? (entry?.values ?? view.values).get(field.id)
+    : ownAnswer(stored, field.id);
+  const inEntry = entry === undefined ? {} : { entry: entry.id };
 
-  const answer = (next: unknown) => onEvent({ type: 'answer', field: field.id, value: next });
-  const touch = () => onEvent({ type: 'touch', field: field.id });
+  const answer = (next: unknown) =>
+    onEvent({ type: 'answer', field: field.id, value: next, ...inEntry });
+  const touch = () => onEvent({ type: 'touch', field: field.id, ...inEntry });
   const describedBy = errors.length > 0 ? `${id}-errors` : field.help ? `${id}-help` : undefined;
 
   const common = {
@@ -347,7 +397,7 @@ function FieldControl(props: FormRendererProps & { field: Field }) {
           value={value}
           disabled={disabled}
           onAnswer={answer}
-          onClear={() => onEvent({ type: 'clear', field: field.id })}
+          onClear={() => onEvent({ type: 'clear', field: field.id, ...inEntry })}
         />
       );
       break;
@@ -385,6 +435,11 @@ function FieldControl(props: FormRendererProps & { field: Field }) {
       )}
     </div>
   );
+}
+
+/** The repeatable section a field of the form is asked in. */
+function sectionOf(props: FormRendererProps & { field: Field }): string {
+  return props.form.elements.get(props.field.id)?.entries ?? '';
 }
 
 /** A rule's own message when it has one; the catalogue's otherwise. */

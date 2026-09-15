@@ -27,6 +27,9 @@ export type ComparisonOperator = (typeof COMPARISON_OPERATORS)[number];
 export const ARITHMETIC_OPERATORS = ['add', 'subtract', 'multiply', 'divide'] as const;
 export type ArithmeticOperator = (typeof ARITHMETIC_OPERATORS)[number];
 
+export const AGGREGATE_OPERATORS = ['sum', 'min', 'max'] as const;
+export type AggregateOperator = (typeof AGGREGATE_OPERATORS)[number];
+
 export type Expression =
   // Literals. Numbers are decimal text, never doubles — see decimal.ts.
   | { kind: 'text'; value: string }
@@ -47,7 +50,16 @@ export type Expression =
   | { kind: 'all'; operands: Expression[] }
   | { kind: 'any'; operands: Expression[] }
   | { kind: 'compare'; operator: ComparisonOperator; left: Expression; right: Expression }
-  | { kind: 'arithmetic'; operator: ArithmeticOperator; left: Expression; right: Expression };
+  | { kind: 'arithmetic'; operator: ArithmeticOperator; left: Expression; right: Expression }
+  // Across the entries of a repeatable section (P13b). Inside `some` and
+  // `every`, `condition` reads each entry's own answers in turn.
+  // How many entries there are: never unknown, and 0 while the section is hidden.
+  | { kind: 'count'; section: ElementId }
+  // The sum, least or greatest answer to a number field across the entries.
+  | { kind: 'aggregate'; operator: AggregateOperator; section: ElementId; field: ElementId }
+  // Whether the condition holds for at least one entry, or for every entry.
+  | { kind: 'some'; section: ElementId; condition: Expression }
+  | { kind: 'every'; section: ElementId; condition: Expression };
 
 export const expressionSchema: z.ZodType<Expression> = z.lazy(() =>
   z.discriminatedUnion('kind', [
@@ -80,6 +92,23 @@ export const expressionSchema: z.ZodType<Expression> = z.lazy(() =>
       left: expressionSchema,
       right: expressionSchema,
     }),
+    z.strictObject({ kind: z.literal('count'), section: elementIdSchema }),
+    z.strictObject({
+      kind: z.literal('aggregate'),
+      operator: z.enum(AGGREGATE_OPERATORS),
+      section: elementIdSchema,
+      field: elementIdSchema,
+    }),
+    z.strictObject({
+      kind: z.literal('some'),
+      section: elementIdSchema,
+      condition: expressionSchema,
+    }),
+    z.strictObject({
+      kind: z.literal('every'),
+      section: elementIdSchema,
+      condition: expressionSchema,
+    }),
   ]),
 );
 
@@ -92,9 +121,32 @@ export const expressionSchema: z.ZodType<Expression> = z.lazy(() =>
 export function referencedFields(expression: Expression): ElementId[] {
   const seen: ElementId[] = [];
   visit(expression, (node) => {
-    if (node.kind === 'answer' || node.kind === 'answered' || node.kind === 'includes') {
+    if (
+      node.kind === 'answer' ||
+      node.kind === 'answered' ||
+      node.kind === 'includes' ||
+      node.kind === 'aggregate'
+    ) {
       if (!seen.includes(node.field)) {
         seen.push(node.field);
+      }
+    }
+  });
+  return seen;
+}
+
+/** Every repeatable section an expression reads across, in first-appearance order. */
+export function referencedSections(expression: Expression): ElementId[] {
+  const seen: ElementId[] = [];
+  visit(expression, (node) => {
+    if (
+      node.kind === 'count' ||
+      node.kind === 'aggregate' ||
+      node.kind === 'some' ||
+      node.kind === 'every'
+    ) {
+      if (!seen.includes(node.section)) {
+        seen.push(node.section);
       }
     }
   });
@@ -118,6 +170,10 @@ export function visit(expression: Expression, callback: (node: Expression) => vo
     case 'arithmetic':
       visit(expression.left, callback);
       visit(expression.right, callback);
+      return;
+    case 'some':
+    case 'every':
+      visit(expression.condition, callback);
       return;
     default:
       return;
@@ -150,6 +206,11 @@ export function measure(expression: Expression): { nodes: number; depth: number 
         nodes: left.nodes + right.nodes + 1,
         depth: Math.max(left.depth, right.depth) + 1,
       };
+    }
+    case 'some':
+    case 'every': {
+      const inner = measure(expression.condition);
+      return { nodes: inner.nodes + 1, depth: inner.depth + 1 };
     }
     default:
       return { nodes: 1, depth: 1 };

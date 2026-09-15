@@ -1,26 +1,35 @@
 import {
   canCompareWithField,
   choiceValues,
-  clauseProblem,
   type ConditionClause,
   type ConditionModel,
   type ConditionOperator,
   describeFieldType,
+  ENTRY_COUNT_OPERATORS,
   type Expression,
   type Field,
-  fieldsOf,
   findField,
   type FormDefinition,
   fromExpression,
   operatorsFor,
   referencedFields,
-  subtreeIds,
+  type Section,
   takesValue,
   toExpression,
 } from '@integr8/form-engine';
 import { useTranslation } from '@integr8/i18n';
 import { useId, useState } from 'react';
 import { Button } from '~/components/ui';
+import {
+  clauseBase,
+  clauseFor,
+  clauseSubjectKey,
+  comparableSubjects,
+  type Subject,
+  subjectKey,
+  subjectProblem,
+  subjectsFor,
+} from '../model/subjects';
 import { say } from '../model/text';
 import { withLocalOffset } from './form-renderer';
 
@@ -35,6 +44,10 @@ import { withLocalOffset } from './form-renderer';
  * A clause that is not finished yet stays on screen but is left out of the
  * saved rule until it is, so a half-built condition never hides a question in
  * the preview.
+ *
+ * A question asked once per entry of another repeatable section comes with a
+ * fourth dropdown — "in any entry" or "in every entry" — and a repeatable
+ * section can itself be counted: "Number of Appliances is at least 2" (P13b).
  */
 
 export type Lookup = (id: string) => Field | undefined;
@@ -44,9 +57,19 @@ export const lookupIn =
   (id) =>
     findField(definition, id);
 
-/** The saved form of a model: complete clauses only, or `undefined` when there are none. */
-export function completeExpression(model: ConditionModel, lookup: Lookup): Expression | undefined {
-  const complete = model.clauses.filter((clause) => clauseProblem(clause, lookup) === undefined);
+/**
+ * The saved form of a model: complete clauses only, or `undefined` when there
+ * are none. With `subjects`, a clause that reads another section's entries
+ * without saying "any" or "every" is not complete either.
+ */
+export function completeExpression(
+  model: ConditionModel,
+  lookup: Lookup,
+  subjects: readonly Subject[] = [],
+): Expression | undefined {
+  const complete = model.clauses.filter(
+    (clause) => subjectProblem(clause, lookup, subjects) === undefined,
+  );
   return complete.length === 0 ? undefined : toExpression({ ...model, clauses: complete }, lookup);
 }
 
@@ -54,11 +77,16 @@ export function newClause(field: Field): ConditionClause {
   return { field: field.id, operator: operatorsFor(field)[0]! };
 }
 
+/** What a section is called in a sentence: its title, or what one entry is called. */
+export function sectionTitle(section: Section, locale: string): string {
+  return say(section.title, locale) || say(section.repeat?.entryLabel, locale) || section.id;
+}
+
 interface ConditionBuilderProps {
   model: ConditionModel;
   onChange: (model: ConditionModel) => void;
-  /** The questions a clause may read, in form order. */
-  candidates: readonly Field[];
+  /** What a clause may read, in form order: questions, and counts of repeatable sections. */
+  subjects: readonly Subject[];
   lookup: Lookup;
   locale: string;
   /** In a check, the field being checked is offered first, as "This answer". */
@@ -69,14 +97,16 @@ interface ConditionBuilderProps {
 export function ConditionBuilder({
   model,
   onChange,
-  candidates,
+  subjects,
   lookup,
   locale,
   selfId,
   lead,
 }: ConditionBuilderProps) {
   const { t } = useTranslation();
-  const incomplete = model.clauses.some((clause) => clauseProblem(clause, lookup) !== undefined);
+  const incomplete = model.clauses.some(
+    (clause) => subjectProblem(clause, lookup, subjects) !== undefined,
+  );
 
   const setClause = (index: number, clause: ConditionClause) =>
     onChange({
@@ -109,7 +139,7 @@ export function ConditionBuilder({
             // Clauses have no identity of their own; position is what the person sees.
             key={index}
             clause={clause}
-            candidates={candidates}
+            subjects={subjects}
             lookup={lookup}
             locale={locale}
             selfId={selfId}
@@ -125,12 +155,12 @@ export function ConditionBuilder({
         <p className="text-xs text-content-muted">{t('forms.conditions.incomplete')}</p>
       ) : null}
 
-      {candidates.length === 0 ? null : (
+      {subjects.length === 0 ? null : (
         <div>
           <Button
             variant="secondary"
             onClick={() =>
-              onChange({ ...model, clauses: [...model.clauses, newClause(candidates[0]!)] })
+              onChange({ ...model, clauses: [...model.clauses, clauseFor(subjects[0]!)] })
             }
           >
             {t('forms.conditions.add')}
@@ -143,7 +173,7 @@ export function ConditionBuilder({
 
 function ClauseRow({
   clause,
-  candidates,
+  subjects,
   lookup,
   locale,
   selfId,
@@ -151,7 +181,7 @@ function ClauseRow({
   onRemove,
 }: {
   clause: ConditionClause;
-  candidates: readonly Field[];
+  subjects: readonly Subject[];
   lookup: Lookup;
   locale: string;
   selfId: string | undefined;
@@ -160,12 +190,36 @@ function ClauseRow({
 }) {
   const { t } = useTranslation();
   const id = useId();
-  const target = lookup(clause.field);
-  const problem = clauseProblem(clause, lookup);
-  const operators = target === undefined ? [] : operatorsFor(target);
+  const counting = clause.subject === 'entry_count';
+  const target = counting ? undefined : lookup(clause.field);
+  const subject = subjects.find((candidate) => subjectKey(candidate) === clauseSubjectKey(clause));
+  const problem = subjectProblem(clause, lookup, subjects);
+  const operators = counting
+    ? ENTRY_COUNT_OPERATORS
+    : target === undefined
+      ? []
+      : operatorsFor(target);
   const comparingField = clause.valueField !== undefined;
+  const others = target === undefined ? [] : comparableSubjects(clause, target, subjects);
 
-  const name = (field: Field) =>
+  const name = (candidate: Subject) => {
+    if (candidate.kind === 'entry_count') {
+      return t('forms.conditions.entryCount', {
+        section: sectionTitle(candidate.section, locale),
+      });
+    }
+    const question =
+      candidate.field.id === selfId
+        ? t('forms.conditions.thisAnswer')
+        : say(candidate.field.label, locale) || candidate.field.id;
+    return candidate.across === undefined
+      ? question
+      : t('forms.conditions.inSection', {
+          question,
+          section: sectionTitle(candidate.across, locale),
+        });
+  };
+  const fieldName = (field: Field) =>
     field.id === selfId ? t('forms.conditions.thisAnswer') : say(field.label, locale) || field.id;
 
   const selectClass = 'rounded-md border border-border-subtle bg-surface px-2 py-1.5 text-sm';
@@ -175,24 +229,46 @@ function ClauseRow({
       <div className="flex flex-wrap items-center gap-2">
         <select
           aria-label={t('forms.conditions.question')}
-          value={clause.field}
+          value={subject === undefined ? '' : clauseSubjectKey(clause)}
           onChange={(event) => {
-            const field = lookup(event.target.value);
-            if (field !== undefined) {
-              onChange(newClause(field));
+            const chosen = subjects.find(
+              (candidate) => subjectKey(candidate) === event.target.value,
+            );
+            if (chosen !== undefined) {
+              onChange(clauseFor(chosen));
             }
           }}
           className={`${selectClass} max-w-[14rem]`}
         >
-          {target === undefined ? (
+          {subject === undefined ? (
             <option value="">{t('forms.conditions.chooseQuestion')}</option>
           ) : null}
-          {candidates.map((field) => (
-            <option key={field.id} value={field.id}>
-              {name(field)}
+          {subjects.map((candidate) => (
+            <option key={subjectKey(candidate)} value={subjectKey(candidate)}>
+              {name(candidate)}
             </option>
           ))}
         </select>
+
+        {subject?.kind === 'field' && subject.across !== undefined ? (
+          <select
+            aria-label={t('forms.conditions.entries')}
+            value={clause.entries?.quantifier ?? 'some'}
+            onChange={(event) =>
+              onChange({
+                ...clause,
+                entries: {
+                  section: subject.across!.id,
+                  quantifier: event.target.value as 'some' | 'every',
+                },
+              })
+            }
+            className={selectClass}
+          >
+            <option value="some">{t('forms.conditions.quantifier.some')}</option>
+            <option value="every">{t('forms.conditions.quantifier.every')}</option>
+          </select>
+        ) : null}
 
         <select
           aria-label={t('forms.conditions.comparison')}
@@ -202,14 +278,14 @@ function ClauseRow({
             onChange(
               takesValue(operator)
                 ? {
-                    field: clause.field,
+                    ...clauseBase(clause),
                     operator,
                     ...(clause.value === undefined ? {} : { value: clause.value }),
                     ...(clause.valueField !== undefined && canCompareWithField(operator)
                       ? { valueField: clause.valueField }
                       : {}),
                   }
-                : { field: clause.field, operator },
+                : { ...clauseBase(clause), operator },
             );
           }}
           className={selectClass}
@@ -221,6 +297,25 @@ function ClauseRow({
           ))}
         </select>
 
+        {counting ? (
+          <input
+            id={id}
+            aria-label={t('forms.conditions.value')}
+            type="text"
+            inputMode="numeric"
+            value={clause.value ?? ''}
+            onChange={(event) => {
+              const value = event.target.value.trim();
+              onChange({
+                ...clauseBase(clause),
+                operator: clause.operator,
+                ...(value === '' ? {} : { value }),
+              });
+            }}
+            className={`${selectClass} w-20`}
+          />
+        ) : null}
+
         {target !== undefined && takesValue(clause.operator) ? (
           <>
             {canCompareWithField(clause.operator) ? (
@@ -228,16 +323,11 @@ function ClauseRow({
                 aria-label={t('forms.conditions.compareWith')}
                 value={comparingField ? 'field' : 'value'}
                 onChange={(event) => {
-                  const other = candidates.find(
-                    (field) =>
-                      field.id !== target.id &&
-                      describeFieldType(field.type).valueType ===
-                        describeFieldType(target.type).valueType,
-                  );
+                  const other = others[0];
                   onChange(
                     event.target.value === 'field' && other !== undefined
-                      ? { field: clause.field, operator: clause.operator, valueField: other.id }
-                      : { field: clause.field, operator: clause.operator },
+                      ? { ...clauseBase(clause), operator: clause.operator, valueField: other.id }
+                      : { ...clauseBase(clause), operator: clause.operator },
                   );
                 }}
                 className={selectClass}
@@ -254,18 +344,11 @@ function ClauseRow({
                 onChange={(event) => onChange({ ...clause, valueField: event.target.value })}
                 className={`${selectClass} max-w-[14rem]`}
               >
-                {candidates
-                  .filter(
-                    (field) =>
-                      field.id !== target.id &&
-                      describeFieldType(field.type).valueType ===
-                        describeFieldType(target.type).valueType,
-                  )
-                  .map((field) => (
-                    <option key={field.id} value={field.id}>
-                      {name(field)}
-                    </option>
-                  ))}
+                {others.map((field) => (
+                  <option key={field.id} value={field.id}>
+                    {fieldName(field)}
+                  </option>
+                ))}
               </select>
             ) : (
               <ValueInput
@@ -276,7 +359,7 @@ function ClauseRow({
                 locale={locale}
                 onChange={(value) =>
                   onChange({
-                    field: clause.field,
+                    ...clauseBase(clause),
                     operator: clause.operator,
                     ...(value === '' ? {} : { value }),
                   })
@@ -291,7 +374,11 @@ function ClauseRow({
         </Button>
       </div>
       {problem === undefined ? null : (
-        <p className="text-xs text-danger">{t(`forms.conditions.problem.${problem}`)}</p>
+        <p className="text-xs text-danger">
+          {counting && problem === 'value_invalid'
+            ? t('forms.conditions.problem.count_invalid')
+            : t(`forms.conditions.problem.${problem}`)}
+        </p>
       )}
     </li>
   );
@@ -432,8 +519,7 @@ export function VisibilityEditor({
   );
 
   // A question cannot depend on itself, and a section cannot depend on its own questions.
-  const own = new Set(subtreeIds(definition, elementId));
-  const candidates = fieldsOf(definition).filter((field) => !own.has(field.id));
+  const subjects = subjectsFor(definition, elementId);
 
   if (model === undefined) {
     return (
@@ -463,10 +549,10 @@ export function VisibilityEditor({
     return (
       <div className="flex flex-col items-start gap-2">
         <p className="text-sm text-content-muted">{t('forms.conditions.always')}</p>
-        {candidates.length === 0 ? null : (
+        {subjects.length === 0 ? null : (
           <Button
             variant="secondary"
-            onClick={() => setModel({ match: 'all', clauses: [newClause(candidates[0]!)] })}
+            onClick={() => setModel({ match: 'all', clauses: [clauseFor(subjects[0]!)] })}
           >
             {t('forms.conditions.addFirst')}
           </Button>
@@ -478,13 +564,13 @@ export function VisibilityEditor({
   return (
     <ConditionBuilder
       model={model}
-      candidates={candidates}
+      subjects={subjects}
       lookup={lookup}
       locale={locale}
       lead={t('forms.conditions.showWhen')}
       onChange={(next) => {
         setModel(next);
-        onChange(completeExpression(next, lookup));
+        onChange(completeExpression(next, lookup, subjects));
       }}
     />
   );

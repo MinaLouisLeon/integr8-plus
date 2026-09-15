@@ -18,6 +18,16 @@ export {
   toggleOption,
   type GeoPart,
 } from './answers.js';
+export {
+  canAddEntry,
+  entriesOf,
+  entryErrors,
+  entryTitle,
+  removingLeavesTooFew,
+  sectionErrors,
+  sectionOfEntries,
+  type EntryTitle,
+} from './entries.js';
 export { errorMessage } from './errors.js';
 export {
   accepts,

@@ -73,8 +73,14 @@ export function describeValue(t: TFunction, value: unknown): string {
     return t('mobile.conflict.empty');
   }
   if (Array.isArray(value)) {
-    return value.length === 0
-      ? t('mobile.conflict.empty')
+    if (value.length === 0) {
+      return t('mobile.conflict.empty');
+    }
+    // The entries of a repeatable section (P13b), or a list of files.
+    return value.every(
+      (item) => typeof item === 'object' && item !== null && 'id' in item && 'values' in item,
+    )
+      ? t('mobile.conflict.entries', { count: value.length })
       : t('mobile.jobSync.files', { count: value.length });
   }
   if (typeof value === 'object') {

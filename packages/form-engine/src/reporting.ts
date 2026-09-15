@@ -1,6 +1,6 @@
 import type { FormDefinition } from './definition.js';
 import type { Answers } from './evaluate.js';
-import { ownAnswer } from './evaluate.js';
+import { ownAnswer, storedEntries } from './evaluate.js';
 import { type FieldType, type MediaReference, mediaReferenceSchema } from './field-types.js';
 import type { ElementId } from './ids.js';
 
@@ -20,6 +20,12 @@ export interface ReportableField {
   type: ReportableType;
   /** A multi-select contributes one row per chosen option. */
   multiple: boolean;
+  /**
+   * For a field of a repeatable section: that section, whose entries each
+   * contribute their own rows (P13b). Absent for every other field, so versions
+   * published before entries existed read the same.
+   */
+  section?: ElementId;
 }
 
 /**
@@ -58,7 +64,14 @@ export function reportableFields(definition: FormDefinition): ReportableField[] 
         const type = REPORTABLE_TYPES[field.type];
         return type === null
           ? []
-          : [{ field: field.id, type, multiple: field.type === 'multi_select' }];
+          : [
+              {
+                field: field.id,
+                type,
+                multiple: field.type === 'multi_select',
+                ...(section.repeat === undefined ? {} : { section: section.id }),
+              },
+            ];
       }),
     ),
   );
@@ -67,6 +80,8 @@ export function reportableFields(definition: FormDefinition): ReportableField[] 
 export interface FieldMedia {
   field: ElementId;
   media: MediaReference;
+  /** For a field of a repeatable section: the entry the file is in. */
+  entry?: string;
 }
 
 /**
@@ -81,16 +96,30 @@ export function mediaReferences(definition: FormDefinition, answers: Answers): F
   const found: FieldMedia[] = [];
   for (const page of definition.pages) {
     for (const section of page.sections) {
-      for (const field of section.fields) {
-        if (field.type !== 'signature' && field.type !== 'photo' && field.type !== 'file') {
-          continue;
-        }
-        const value = ownAnswer(answers, field.id);
-        const candidates = Array.isArray(value) ? value : value === undefined ? [] : [value];
-        for (const candidate of candidates) {
-          const parsed = mediaReferenceSchema.safeParse(candidate);
-          if (parsed.success) {
-            found.push({ field: field.id, media: parsed.data });
+      // A repeatable section's files are in its entries, each answer in turn.
+      const sets: { values: Answers; entry: string | undefined }[] =
+        section.repeat === undefined
+          ? [{ values: answers, entry: undefined }]
+          : storedEntries(answers, section.id).map((entry) => ({
+              values: entry.values,
+              entry: entry.id,
+            }));
+      for (const { values, entry } of sets) {
+        for (const field of section.fields) {
+          if (field.type !== 'signature' && field.type !== 'photo' && field.type !== 'file') {
+            continue;
+          }
+          const value = ownAnswer(values, field.id);
+          const candidates = Array.isArray(value) ? value : value === undefined ? [] : [value];
+          for (const candidate of candidates) {
+            const parsed = mediaReferenceSchema.safeParse(candidate);
+            if (parsed.success) {
+              found.push({
+                field: field.id,
+                media: parsed.data,
+                ...(entry === undefined ? {} : { entry }),
+              });
+            }
           }
         }
       }

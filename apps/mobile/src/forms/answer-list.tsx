@@ -6,7 +6,7 @@ import {
   isAnswered,
   mediaReferenceSchema,
 } from '@integr8/form-engine';
-import { formatBytes, say } from '@integr8/form-input';
+import { entryTitle, formatBytes, say } from '@integr8/form-input';
 import { formatDate, formatDateTime, formatList, useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
 import { Image, StyleSheet, Text, View } from 'react-native';
@@ -18,7 +18,8 @@ import { ActionButton } from './widgets/kit';
 /**
  * Answers, read back: the review before submitting, and a submitted form. Only
  * questions visible for these answers are listed — the same evaluation the form
- * used — so what is shown is exactly what is sent.
+ * used — so what is shown is exactly what is sent. A repeatable section lists
+ * each entry under its own title (P13b).
  */
 export function AnswerList({
   form,
@@ -36,7 +37,11 @@ export function AnswerList({
 }) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { visible, values } = evaluateForm(form, answers, today === undefined ? {} : { today });
+  const { visible, values, entries } = evaluateForm(
+    form,
+    answers,
+    today === undefined ? {} : { today },
+  );
   const pages = form.definition.pages.filter((page) => visible.get(page.id) === true);
 
   return (
@@ -70,16 +75,51 @@ export function AnswerList({
                     {say(section.title, locale)}
                   </Text>
                 )}
-                {section.fields
-                  .filter((field) => visible.get(field.id) === true)
-                  .map((field) => (
-                    <View key={field.id} style={styles.answer}>
-                      <Text style={[styles.question, { color: theme.textMuted }]}>
-                        {say(field.label, locale) || field.id}
-                      </Text>
-                      <AnswerValue field={field} value={values.get(field.id)} locale={locale} />
-                    </View>
-                  ))}
+                {section.repeat === undefined
+                  ? section.fields
+                      .filter((field) => visible.get(field.id) === true)
+                      .map((field) => (
+                        <View key={field.id} style={styles.answer}>
+                          <Text style={[styles.question, { color: theme.textMuted }]}>
+                            {say(field.label, locale) || field.id}
+                          </Text>
+                          <AnswerValue field={field} value={values.get(field.id)} locale={locale} />
+                        </View>
+                      ))
+                  : null}
+                {section.repeat !== undefined && (entries.get(section.id) ?? []).length === 0 ? (
+                  <Text style={[styles.value, { color: theme.textMuted }]}>
+                    {t('mobile.fill.entries.none')}
+                  </Text>
+                ) : null}
+                {(section.repeat === undefined ? [] : (entries.get(section.id) ?? [])).map(
+                  (entry, index) => {
+                    const title = entryTitle(section, entry, index, locale);
+                    return (
+                      <View key={entry.id} style={[styles.entry, { borderColor: theme.border }]}>
+                        <Text style={[styles.entryTitle, { color: theme.text }]}>
+                          {title.name === undefined
+                            ? title.label
+                            : `${title.label} · ${title.name}`}
+                        </Text>
+                        {section.fields
+                          .filter((field) => entry.visible.get(field.id) === true)
+                          .map((field) => (
+                            <View key={field.id} style={styles.answer}>
+                              <Text style={[styles.question, { color: theme.textMuted }]}>
+                                {say(field.label, locale) || field.id}
+                              </Text>
+                              <AnswerValue
+                                field={field}
+                                value={entry.values.get(field.id)}
+                                locale={locale}
+                              />
+                            </View>
+                          ))}
+                      </View>
+                    );
+                  },
+                )}
               </View>
             ))}
         </View>
@@ -195,6 +235,8 @@ const styles = StyleSheet.create({
   section: { gap: spacing[3], borderWidth: 1, borderRadius: radii.lg, padding: spacing[4] },
   sectionTitle: { fontSize: fontSize.sm, fontWeight: '600', textAlign: 'auto' },
   answer: { gap: 2 },
+  entry: { gap: spacing[3], borderTopWidth: 1, paddingTop: spacing[3] },
+  entryTitle: { fontSize: fontSize.base, fontWeight: '700', textAlign: 'auto' },
   question: { fontSize: fontSize.sm, textAlign: 'auto' },
   value: { fontSize: fontSize.lg, textAlign: 'auto' },
   signature: { width: '100%', aspectRatio: 3, borderRadius: radii.md, backgroundColor: '#ffffff' },

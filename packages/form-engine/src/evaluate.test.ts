@@ -48,6 +48,7 @@ const F = bool(false);
 
 const scope = (values: Record<string, RuleValue> = {}, context = {}): Scope => ({
   value: (id) => values[id],
+  entries: () => [],
   context,
 });
 

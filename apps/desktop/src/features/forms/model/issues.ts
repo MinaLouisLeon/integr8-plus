@@ -1,4 +1,5 @@
-import { type FormDefinition, locate } from '@integr8/form-engine';
+import { type BreakingChange, type FormDefinition, locate } from '@integr8/form-engine';
+import type { TFunction } from '@integr8/i18n';
 
 /**
  * Which element to open for a problem the compiler reported.
@@ -37,4 +38,53 @@ export function issueElement(
     return id;
   }
   return issue.elements.find((element) => locate(definition, element) !== undefined);
+}
+
+/**
+ * The words for a problem the compiler reported.
+ *
+ * The engine's own message is English written about ids; for the problems
+ * repeatable sections bring (P13b) the builder has its own copy, naming the
+ * questions and sections as the admin titled them. `name` turns an id into
+ * that title.
+ */
+export function issueText(
+  issue: { code: string; path: string; message: string; elements: readonly string[] },
+  name: (id: string) => string,
+  t: TFunction,
+): string {
+  const [first = '', second = ''] = issue.elements;
+  switch (issue.code) {
+    case 'invalid_repeat':
+      return issue.path.endsWith('.minEntries')
+        ? t('forms.issues.entryLimits', { section: name(first) })
+        : issue.path.endsWith('.titleField')
+          ? t('forms.issues.titleField', { section: name(first) })
+          : t('forms.issues.noQuestions', { section: name(first) });
+    case 'not_repeatable':
+      return t('forms.issues.not_repeatable', { section: name(first) });
+    case 'inside_repeat':
+      return t('forms.issues.inside_repeat', { question: name(first), section: name(second) });
+    case 'not_in_section':
+      return t('forms.issues.not_in_section', { question: name(first), section: name(second) });
+    default:
+      return issue.message;
+  }
+}
+
+/**
+ * Why a change affects existing data. Tightened limits on a repeatable section
+ * name the limits in words — "fewest entries" — rather than as properties.
+ */
+export function breakingText(entry: BreakingChange, t: TFunction): string {
+  if (
+    entry.reason === 'constraint_tightened' &&
+    entry.detail.length > 0 &&
+    entry.detail.every((detail) => detail === 'minEntries' || detail === 'maxEntries')
+  ) {
+    return t('forms.changes.breaking.entryLimits', {
+      detail: entry.detail.map((detail) => t(`forms.changes.limit.${detail}`)).join(', '),
+    });
+  }
+  return t(`forms.changes.breaking.${entry.reason}`, { detail: entry.detail.join(', ') });
 }

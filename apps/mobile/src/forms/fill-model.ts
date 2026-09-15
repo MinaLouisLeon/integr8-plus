@@ -8,6 +8,7 @@ import {
   type FormState,
   type FormView,
   type Page,
+  type Section,
   toSubmission,
   type Transition,
   transition,
@@ -35,6 +36,11 @@ import {
  * answers wait, so fast typing costs one write per save rather than one per
  * keystroke queued behind each other. A killed app or a dead battery loses at
  * most the change being written that moment.
+ *
+ * **Entries, one at a time (P13b).** A repeatable section shows as a list of its
+ * entries; adding one, or tapping one, opens it on its own, with only its
+ * questions on the screen. Adding, removing and moving an entry are saved like
+ * any answer.
  */
 
 export type SaveStatus = 'saved' | 'saving' | 'failed';
@@ -51,6 +57,13 @@ export interface FillSnapshot {
   readonly problems: readonly FieldError[];
   readonly problemsPerPage: readonly number[];
   readonly progress: number;
+  /** The entry open on its own, if one is. */
+  readonly openEntry: OpenEntry | undefined;
+}
+
+export interface OpenEntry {
+  section: string;
+  entry: string;
 }
 
 export interface FillOptions {
@@ -59,6 +72,8 @@ export interface FillOptions {
   context: EvaluationContext;
   /** Writes everything typed so far. */
   save: (answers: Record<string, unknown>) => Promise<void>;
+  /** Makes an id for a new entry: a UUID. */
+  newEntryId: () => string;
 }
 
 type Listener = () => void;
@@ -67,6 +82,8 @@ export class FillModel {
   readonly form: CompiledForm;
   readonly #context: EvaluationContext;
   readonly #save: FillOptions['save'];
+  readonly #newEntryId: FillOptions['newEntryId'];
+  #openEntry: OpenEntry | undefined;
   readonly #listeners = new Set<Listener>();
   #state: FormState;
   #pageIndex = 0;
@@ -80,7 +97,11 @@ export class FillModel {
     this.form = options.form;
     this.#context = options.context;
     this.#save = options.save;
-    this.#state = createFormState(options.form, options.answers);
+    this.#newEntryId = options.newEntryId;
+    // A section that needs entries, and has none, opens with that many.
+    this.#state = createFormState(options.form, options.answers, {
+      newEntryId: options.newEntryId,
+    });
     this.#snapshot = this.#build();
   }
 
@@ -93,16 +114,65 @@ export class FillModel {
 
   snapshot = (): FillSnapshot => this.#snapshot;
 
-  answer(field: string, value: unknown): Transition {
-    return this.#dispatch({ type: 'answer', field, value });
+  answer(field: string, value: unknown, entry?: string): Transition {
+    return this.#dispatch(
+      entry === undefined
+        ? { type: 'answer', field, value }
+        : { type: 'answer', field, value, entry },
+    );
   }
 
-  clear(field: string): Transition {
-    return this.#dispatch({ type: 'clear', field });
+  clear(field: string, entry?: string): Transition {
+    return this.#dispatch(
+      entry === undefined ? { type: 'clear', field } : { type: 'clear', field, entry },
+    );
   }
 
-  touch(field: string): void {
-    this.#dispatch({ type: 'touch', field });
+  touch(field: string, entry?: string): void {
+    this.#dispatch(
+      entry === undefined ? { type: 'touch', field } : { type: 'touch', field, entry },
+    );
+  }
+
+  /** Adds an entry to a repeatable section and opens it. */
+  addEntry(section: string): Transition {
+    const entry = this.#newEntryId();
+    const result = this.#dispatch({ type: 'add_entry', section, entry });
+    if (result.accepted) {
+      this.#openEntry = { section, entry };
+      this.#changed();
+    }
+    return result;
+  }
+
+  removeEntry(section: string, entry: string): Transition {
+    const result = this.#dispatch({ type: 'remove_entry', section, entry });
+    if (result.accepted && this.#openEntry?.entry === entry) {
+      this.#openEntry = undefined;
+      this.#changed();
+    }
+    return result;
+  }
+
+  moveEntry(section: string, entry: string, index: number): Transition {
+    return this.#dispatch({ type: 'move_entry', section, entry, index });
+  }
+
+  /** A section of the form, by id. */
+  definitionSection(id: string): Section | undefined {
+    for (const page of this.form.definition.pages) {
+      const found = page.sections.find((section) => section.id === id);
+      if (found !== undefined) {
+        return found;
+      }
+    }
+    return undefined;
+  }
+
+  /** Shows one entry on its own; `undefined` goes back to the page. */
+  openEntry(open: OpenEntry | undefined): void {
+    this.#openEntry = open;
+    this.#changed();
   }
 
   goToPage(index: number): void {
@@ -110,6 +180,7 @@ export class FillModel {
       this.#reopen();
     }
     this.#pageIndex = index;
+    this.#openEntry = undefined;
     this.#changed();
   }
 
@@ -121,10 +192,17 @@ export class FillModel {
     this.goToPage(Math.max(this.#pageIndex - 1, 0));
   }
 
-  /** Opens the page a question is on and returns its index, for the screen to scroll to it. */
-  goToField(fieldId: string): number {
+  /**
+   * Opens the page a question is on — and the entry, for a question asked per
+   * entry — and returns the page's index, for the screen to scroll to it.
+   */
+  goToField(fieldId: string, entry?: string): number {
     const index = pageIndexOfField(this.#snapshot.pages, fieldId);
     this.goToPage(index === -1 ? this.#pageIndex : index);
+    const section = this.form.elements.get(fieldId)?.entries;
+    if (entry !== undefined && section !== undefined) {
+      this.openEntry({ section, entry });
+    }
     return this.#pageIndex;
   }
 
@@ -139,11 +217,11 @@ export class FillModel {
       this.#changed();
       return { ok: true };
     }
-    const first = this.#snapshot.problems[0]?.field;
+    const first = this.#snapshot.problems[0];
     if (first !== undefined) {
-      this.goToField(first);
+      this.goToField(first.field, first.entry);
     }
-    return { ok: false, firstField: first };
+    return { ok: false, firstField: first?.field };
   }
 
   /** Back from the review screen to the answers. */
@@ -179,7 +257,12 @@ export class FillModel {
   #dispatch(event: FormEvent): Transition {
     const result = transition(this.form, this.#state, event, this.#context);
     this.#state = result.state;
-    if (result.accepted && (event.type === 'answer' || event.type === 'clear')) {
+    if (
+      result.accepted &&
+      event.type !== 'touch' &&
+      event.type !== 'submit' &&
+      event.type !== 'reopen'
+    ) {
       this.#queued = { ...result.state.answers };
       this.#startSaving();
     }
@@ -224,7 +307,16 @@ export class FillModel {
     const view = viewForm(this.form, this.#state, this.#context);
     const pages = visiblePages(this.form, view);
     const pageIndex = Math.min(this.#pageIndex, Math.max(pages.length - 1, 0));
+    const open = this.#openEntry;
+    // An entry that has gone — removed, or its section now hidden — is not open.
+    const stillOpen =
+      open !== undefined &&
+      !this.#reviewing &&
+      (view.entries.get(open.section) ?? []).some((entry) => entry.id === open.entry)
+        ? open
+        : undefined;
     return {
+      openEntry: stillOpen,
       state: this.#state,
       view,
       pages,

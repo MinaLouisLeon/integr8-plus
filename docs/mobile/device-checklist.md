@@ -1,6 +1,6 @@
 # The mobile app on a phone
 
-The parts of P11, P12, P13 and P14 that only a phone can prove. Everything else is covered by
+The parts of P11, P12, P13, P13b and P14 that only a phone can prove. Everything else is covered by
 `packages/offline/src/**/*.test.ts` and `apps/mobile/src/**/*.test.ts` against real SQLite, and by
 `apps/api/src/sync/sync.integration.test.ts` against the real API. Record the result of each step
 in the phase's plan file under `plan/v0.3-field-loop/`.
@@ -216,6 +216,44 @@ Wear work gloves (or a touchscreen glove) for this section.
       says how many answers came from which job.
 - [ ] Settings → **Check the form engine** on a release build: _All … cases give the same results
       as the server._
+
+## P13b
+
+A form with a repeatable section built in the desktop builder: **Radiators**, at least one and
+at most five, each with a room (the title question, required), an output in watts, a
+yes/no "Bled" and a photo; a question after it shown when any radiator was not bled; and a
+total output worked out across them. The same form open in the web app.
+
+### 1. Built in the builder, filled on the web and on a phone
+
+- [ ] In the builder, make the section repeatable, set the limits and the title question,
+      and add the "any radiator not bled" condition and the total. The preview fills it.
+      Publish.
+- [ ] On the web: the section opens with one radiator. Add two more, answer them, move the
+      last one up, and remove one. Every step can be done with the keyboard alone, and a
+      screen reader announces each addition, move and removal.
+- [ ] On the phone: the section is a list with **Add Radiator**. Adding opens the new
+      radiator on its own; **Next** and **Previous** go between them; the list shows
+      "Radiator 2 · Kitchen" once the room is answered.
+- [ ] Try a sixth radiator: the phone says all five have been added.
+
+### 2. One entry at a time, with gloves on
+
+- [ ] Every button in an open radiator — **Previous**, **Next**, **Move up**, **Move down**,
+      **Remove** — can be hit first time wearing work gloves.
+- [ ] Remove a radiator with answers: the phone asks first. Remove an empty one: it goes.
+- [ ] Review with a room missing in the second radiator: the problem list says "Room in
+      Radiator 2"; tapping it opens that radiator scrolled to the room.
+- [ ] Force-quit with a radiator open. Reopen: the same radiator is open, answers intact.
+
+### 3. Photos in entries, offline, and the same answers on both
+
+- [ ] In aeroplane mode, take a photo in two radiators and submit. With signal, the photos
+      upload before the form; on the web the submission shows each radiator with its photo.
+- [ ] Fill the same radiators on the desktop. Export CSV from the web: one row each, with
+      `radiators[1].room`, `radiators[2].room`… columns, and the two rows match apart from
+      the files and the submitted time.
+- [ ] Filter the submission list by a radiator's room: both submissions are found.
 
 ## P14
 

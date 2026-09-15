@@ -12,6 +12,7 @@ import {
   rescale,
   subtract,
 } from './decimal.js';
+import { ENTRY_ID, type Entry, LIMITS } from './definition.js';
 import type { ComparisonOperator, Expression } from './expression.js';
 import { type Field, hasAnswerShape, isAnswered, isCalculated } from './field-types.js';
 import type { ElementId } from './ids.js';
@@ -45,6 +46,16 @@ import { parseDate, parseDatetime, parseTime } from './temporal.js';
  * The compiled form's evaluation order puts every dependency first, so one pass
  * is enough. There is no fixpoint iteration to converge in one runtime and
  * oscillate in another.
+ *
+ * ## Entries
+ *
+ * A field of a repeatable section is worked out once per entry, at its place in
+ * the order, against a scope that reads that entry's answers first and the rest
+ * of the form after. Across entries, `count` is never unknown (a hidden section
+ * has none); `sum` adds the answers that are known, and is 0 over none; `min`
+ * and `max` over no known answer are unknown; `some` and `every` are "any" and
+ * "all" over the entries, with the same three-valued logic — so `every` over no
+ * entries is true, and `some` is false.
  */
 
 export interface EvaluationContext {
@@ -63,14 +74,27 @@ export type RuleValue =
   | { type: 'options'; value: readonly string[] }
   | { type: 'opaque' };
 
+/** One entry of a repeatable section, worked out. */
+export interface EntryEvaluation {
+  readonly id: string;
+  /** Every field of the section, for this entry. */
+  readonly visible: ReadonlyMap<ElementId, boolean>;
+  /** This entry's effective answers, calculated ones included. Hidden fields are absent. */
+  readonly values: ReadonlyMap<ElementId, unknown>;
+}
+
 export interface FormEvaluation {
-  /** Every page, section and field id. */
+  /** Every page, section and field id — except the fields of repeatable sections, which are per entry. */
   readonly visible: ReadonlyMap<ElementId, boolean>;
   /**
    * The effective answer to every visible field that has one: typed answers as
-   * given, and calculated fields as computed. Hidden fields are absent.
+   * given, and calculated fields as computed. Hidden fields are absent. A
+   * visible repeatable section with entries has its entries here, as stored:
+   * `[{ id, values }]`, each with its effective answers.
    */
   readonly values: ReadonlyMap<ElementId, unknown>;
+  /** Every repeatable section's entries, in order. A hidden section has none. */
+  readonly entries: ReadonlyMap<ElementId, readonly EntryEvaluation[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -133,6 +157,11 @@ function temporal(
 export interface Scope {
   /** The effective value of a field: unknown if hidden or unanswered. */
   value(field: ElementId): RuleValue | undefined;
+  /**
+   * A repeatable section's entries, each as a scope that reads that entry's
+   * answers and then this scope's. None while the section is hidden.
+   */
+  entries(section: ElementId): readonly Scope[];
   context: EvaluationContext;
 }
 
@@ -185,7 +214,50 @@ export function evaluateExpression(expression: Expression, scope: Scope): RuleVa
         evaluateExpression(expression.left, scope),
         evaluateExpression(expression.right, scope),
       );
+    case 'count':
+      return { type: 'number', value: fromInteger(scope.entries(expression.section).length) };
+    case 'aggregate':
+      return aggregate(expression, scope);
+    case 'some':
+    case 'every': {
+      // "any" and "all" over the entries: one decisive entry settles it.
+      const decisive = expression.kind === 'some';
+      let unknown = false;
+      for (const entry of scope.entries(expression.section)) {
+        const value = truth(evaluateExpression(expression.condition, entry));
+        if (value === undefined) {
+          unknown = true;
+        } else if (value === decisive) {
+          return { type: 'boolean', value: decisive };
+        }
+      }
+      return unknown ? undefined : { type: 'boolean', value: !decisive };
+    }
   }
+}
+
+function aggregate(
+  expression: Extract<Expression, { kind: 'aggregate' }>,
+  scope: Scope,
+): RuleValue | undefined {
+  let result: Decimal | undefined = expression.operator === 'sum' ? fromInteger(0) : undefined;
+  for (const entry of scope.entries(expression.section)) {
+    const value = entry.value(expression.field);
+    if (value?.type !== 'number') {
+      continue;
+    }
+    if (result === undefined) {
+      result = value.value;
+    } else if (expression.operator === 'sum') {
+      result = add(result, value.value);
+    } else {
+      const order = compareDecimal(value.value, result);
+      if (expression.operator === 'min' ? order < 0 : order > 0) {
+        result = value.value;
+      }
+    }
+  }
+  return result === undefined ? undefined : { type: 'number', value: result };
 }
 
 /** `true`, `false`, or unknown. Anything that is not a boolean is unknown. */
@@ -292,6 +364,92 @@ function arithmetic(
 // The whole form
 // ---------------------------------------------------------------------------
 
+/** What a scope needs to read one set of answers: an entry's, or the form's own. */
+interface Frame {
+  readonly ruleValues: ReadonlyMap<ElementId, RuleValue>;
+  /** For an entry: the fields of its section, read here before anywhere else. */
+  readonly fields: ReadonlySet<ElementId> | undefined;
+}
+
+/**
+ * A scope over the form's answers, or an entry's inside it. `entriesOf` gives
+ * each repeatable section's entries as frames; an entry's scope is built on the
+ * scope that asked for it, so a rule inside one entry can read across another
+ * section and still see its own entry's answers.
+ */
+function scopeOver(
+  frame: Frame,
+  parent: Scope | undefined,
+  entriesOf: (section: ElementId) => readonly Frame[],
+  context: EvaluationContext,
+): Scope {
+  const scope: Scope = {
+    value: (field) =>
+      frame.fields === undefined || frame.fields.has(field)
+        ? frame.ruleValues.get(field)
+        : parent?.value(field),
+    entries: (section) =>
+      entriesOf(section).map((entry) => scopeOver(entry, scope, entriesOf, context)),
+    context,
+  };
+  return scope;
+}
+
+/** The fields of each repeatable section, from the compiled form. */
+function sectionFields(form: CompiledForm): Map<ElementId, Set<ElementId>> {
+  const found = new Map<ElementId, Set<ElementId>>();
+  for (const element of form.elements.values()) {
+    if (element.entries !== undefined) {
+      const fields = found.get(element.entries) ?? new Set<ElementId>();
+      fields.add(element.id);
+      found.set(element.entries, fields);
+    }
+  }
+  return found;
+}
+
+/**
+ * The entries stored for a section, as evaluation reads them: an array of
+ * `{ id, values }` with distinct, well-formed ids. Anything else in the list is
+ * not an entry, and is passed over — `validateSubmission` is what refuses it.
+ */
+export function storedEntries(answers: Answers, section: ElementId): Entry[] {
+  const stored = ownAnswer(answers, section);
+  if (!Array.isArray(stored)) {
+    return [];
+  }
+  const seen = new Set<string>();
+  const entries: Entry[] = [];
+  for (const candidate of stored.slice(0, LIMITS.entriesPerSection) as unknown[]) {
+    if (typeof candidate !== 'object' || candidate === null || Array.isArray(candidate)) {
+      continue;
+    }
+    const { id, values } = candidate as { id?: unknown; values?: unknown };
+    if (
+      typeof id !== 'string' ||
+      !ENTRY_ID.test(id) ||
+      seen.has(id) ||
+      typeof values !== 'object' ||
+      values === null ||
+      Array.isArray(values)
+    ) {
+      continue;
+    }
+    seen.add(id);
+    entries.push({ id, values: values as Record<string, unknown> });
+  }
+  return entries;
+}
+
+interface WorkingEntry {
+  readonly id: string;
+  readonly answers: Answers;
+  readonly visible: Map<ElementId, boolean>;
+  readonly values: Map<ElementId, unknown>;
+  readonly ruleValues: Map<ElementId, RuleValue>;
+  readonly fields: ReadonlySet<ElementId>;
+}
+
 export function evaluateForm(
   form: CompiledForm,
   answers: Answers,
@@ -300,16 +458,61 @@ export function evaluateForm(
   const visible = new Map<ElementId, boolean>();
   const values = new Map<ElementId, unknown>();
   const ruleValues = new Map<ElementId, RuleValue>();
+  const fieldsBySection = sectionFields(form);
+  const working = new Map<ElementId, WorkingEntry[]>();
 
-  const scope: Scope = {
-    value: (field) => ruleValues.get(field),
+  const scope = scopeOver(
+    { ruleValues, fields: undefined },
+    undefined,
+    (section) => working.get(section) ?? [],
     context,
+  );
+  const entryScope = (entry: WorkingEntry) =>
+    scopeOver(entry, scope, (section) => working.get(section) ?? [], context);
+
+  /** Works out one field against one set of answers. */
+  const settle = (
+    field: Field,
+    within: Scope,
+    stored: Answers,
+    into: { values: Map<ElementId, unknown>; ruleValues: Map<ElementId, RuleValue> },
+  ) => {
+    const value = isCalculated(field) ? calculate(field, within) : answerOf(field, stored);
+    if (value === undefined) {
+      return;
+    }
+    const ruleValue = toRuleValue(field, value);
+    if (ruleValue !== undefined) {
+      into.values.set(field.id, value);
+      into.ruleValues.set(field.id, ruleValue);
+    } else if (hasAnswerShape(field, value) && isAnswered(field, value)) {
+      // Well-formed but unreadable by rules — a decimal typed as "1.2.3". It is
+      // still the person's answer, and validation will say what is wrong with it.
+      into.values.set(field.id, value);
+    }
   };
 
   for (const id of form.evaluationOrder) {
     const element = form.elements.get(id);
     /* v8 ignore next 3 -- the evaluation order is built from these elements */
     if (element === undefined) {
+      continue;
+    }
+
+    if (element.entries !== undefined) {
+      // A field of a repeatable section: once per entry, each in its own scope.
+      const sectionShown = visible.get(element.entries) === true;
+      for (const entry of working.get(element.entries) ?? []) {
+        const within = entryScope(entry);
+        const shown =
+          sectionShown &&
+          (element.visibleWhen === undefined ||
+            truth(evaluateExpression(element.visibleWhen, within)) === true);
+        entry.visible.set(id, shown);
+        if (shown && element.field !== undefined) {
+          settle(element.field, within, entry.answers, entry);
+        }
+      }
       continue;
     }
 
@@ -321,28 +524,110 @@ export function evaluateForm(
         truth(evaluateExpression(element.visibleWhen, scope)) === true);
     visible.set(id, shown);
 
+    if (element.repeat !== undefined) {
+      // Hidden means absent: a hidden section has no entries for anything to read.
+      const fields = fieldsBySection.get(id) ?? new Set<ElementId>();
+      working.set(
+        id,
+        shown
+          ? storedEntries(answers, id).map((entry) => ({
+              id: entry.id,
+              answers: entry.values,
+              visible: new Map(),
+              values: new Map(),
+              ruleValues: new Map(),
+              fields,
+            }))
+          : [],
+      );
+      continue;
+    }
+
     const field = element.field;
     if (field === undefined || !shown) {
       continue;
     }
+    settle(field, scope, answers, { values, ruleValues });
+  }
 
-    const stored = isCalculated(field) ? calculate(field, scope) : answerOf(field, answers);
-    if (stored === undefined) {
+  const entries = new Map<ElementId, EntryEvaluation[]>();
+  for (const element of form.elements.values()) {
+    if (element.repeat === undefined) {
       continue;
     }
-
-    const ruleValue = toRuleValue(field, stored);
-    if (ruleValue !== undefined) {
-      values.set(id, stored);
-      ruleValues.set(id, ruleValue);
-    } else if (hasAnswerShape(field, stored) && isAnswered(field, stored)) {
-      // Well-formed but unreadable by rules — a decimal typed as "1.2.3". It is
-      // still the person's answer, and validation will say what is wrong with it.
-      values.set(id, stored);
+    const worked = working.get(element.id) ?? [];
+    entries.set(
+      element.id,
+      worked.map((entry) => ({ id: entry.id, visible: entry.visible, values: entry.values })),
+    );
+    if (worked.length > 0) {
+      const inSection = fieldsBySection.get(element.id);
+      const order = form.fields.filter((field) => inSection?.has(field.id) === true);
+      values.set(
+        element.id,
+        worked.map((entry) => ({
+          id: entry.id,
+          values: Object.fromEntries(
+            order.flatMap((field) =>
+              entry.values.has(field.id) ? [[field.id, entry.values.get(field.id)]] : [],
+            ),
+          ),
+        })),
+      );
     }
   }
 
-  return { visible, values };
+  return { visible, values, entries };
+}
+
+/**
+ * A scope over an evaluation already made: what validation and anyone else
+ * reading a finished evaluation use to evaluate a rule against it.
+ */
+export function evaluationScope(
+  form: CompiledForm,
+  evaluation: FormEvaluation,
+  context: EvaluationContext = {},
+): Scope {
+  const readable = (values: ReadonlyMap<ElementId, unknown>) => {
+    const ruleValues = new Map<ElementId, RuleValue>();
+    for (const [id, value] of values) {
+      const field = form.elements.get(id)?.field;
+      const ruleValue = field === undefined ? undefined : toRuleValue(field, value);
+      if (ruleValue !== undefined) {
+        ruleValues.set(id, ruleValue);
+      }
+    }
+    return ruleValues;
+  };
+  const fieldsBySection = sectionFields(form);
+  const frames = new Map<ElementId, Frame[]>();
+  for (const [section, entries] of evaluation.entries) {
+    const fields = fieldsBySection.get(section) ?? new Set<ElementId>();
+    frames.set(
+      section,
+      entries.map((entry) => ({ ruleValues: readable(entry.values), fields })),
+    );
+  }
+  return scopeOver(
+    { ruleValues: readable(evaluation.values), fields: undefined },
+    undefined,
+    (section) => frames.get(section) ?? [],
+    context,
+  );
+}
+
+/** The scope of one entry of an evaluation, over the form's own. */
+export function entryScopeOf(
+  form: CompiledForm,
+  evaluation: FormEvaluation,
+  section: ElementId,
+  entryId: string,
+  context: EvaluationContext = {},
+): Scope | undefined {
+  const top = evaluationScope(form, evaluation, context);
+  const index = evaluation.entries.get(section)?.findIndex((entry) => entry.id === entryId) ?? -1;
+  return index === -1 ? undefined : top.entries(section)[index];
 }
 
 /**

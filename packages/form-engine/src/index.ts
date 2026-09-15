@@ -16,6 +16,9 @@
  *   const view = viewForm(result.form, state, { today: '2026-09-13' });
  *
  *   validateSubmission(result.form, body, context);   // on the server, for truth
+ *
+ * A repeatable section's answers are its entries: `add_entry` with an id the
+ * caller makes, then `answer` with that `entry` (P13b).
  */
 
 export { canonicalJson, CanonicalJsonError, compareCodeUnits } from './canonical.js';
@@ -50,22 +53,33 @@ export {
 
 export {
   DEFINITION_SCHEMA_VERSION,
+  entriesSchema,
+  ENTRY_ID,
+  entryIdSchema,
+  entrySchema,
   formDefinitionSchema,
   LIMITS,
   pageSchema,
+  repeatSchema,
   sectionSchema,
+  type Entry,
   type FormDefinition,
   type Page,
+  type Repeat,
   type Section,
 } from './definition.js';
 
 export {
+  entryScopeOf,
   evaluateExpression,
   evaluateForm,
+  evaluationScope,
   ownAnswer,
+  storedEntries,
   toRuleValue,
   truth,
   type Answers,
+  type EntryEvaluation,
   type EvaluationContext,
   type FormEvaluation,
   type RuleValue,
@@ -73,12 +87,15 @@ export {
 } from './evaluate.js';
 
 export {
+  AGGREGATE_OPERATORS,
   ARITHMETIC_OPERATORS,
   COMPARISON_OPERATORS,
   expressionSchema,
   measure,
   referencedFields,
+  referencedSections,
   visit,
+  type AggregateOperator,
   type ArithmeticOperator,
   type ComparisonOperator,
   type Expression,
@@ -135,9 +152,11 @@ export {
 export {
   createFormState,
   toSubmission,
+  touchKey,
   transition,
   viewForm,
   type FormEvent,
+  type FormStateOptions,
   type FormProgress,
   type FormState,
   type FormStatus,
@@ -184,6 +203,7 @@ export {
   canCompareWithField,
   clauseProblem,
   CONDITION_OPERATORS,
+  ENTRY_COUNT_OPERATORS,
   fromExpression,
   operatorsFor,
   takesValue,
@@ -235,6 +255,7 @@ export {
   generateId,
   newField,
   newPage,
+  newRepeatableSection,
   newSection,
   text as localized,
 } from './authoring/scaffold.js';

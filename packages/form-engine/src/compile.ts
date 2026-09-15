@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import { parseDecimal } from './decimal.js';
-import { type FormDefinition, formDefinitionSchema, LIMITS } from './definition.js';
-import { type Expression, measure, referencedFields } from './expression.js';
+import { type FormDefinition, formDefinitionSchema, LIMITS, type Repeat } from './definition.js';
+import { type Expression, measure, referencedFields, referencedSections } from './expression.js';
 import {
   choiceValues,
   describeFieldType,
@@ -26,6 +26,8 @@ import { parseDate, parseDatetime, parseTime } from './temporal.js';
  * - every rule refers to a field that exists, with a value of the right type
  * - no field, section or page depends on itself, however indirectly
  * - each field's own configuration is coherent
+ * - a repeatable section's limits make sense, and a rule reads an entry's
+ *   answers only from inside that entry, or across entries (P13b)
  *
  * A compiled form also fixes the order evaluation happens in, so no runtime
  * ever has to discover it — or discover it differently.
@@ -44,6 +46,10 @@ export interface ElementInfo {
   /** Where it sits, e.g. `pages[0].sections[1].fields[2]`. */
   path: string;
   field: Field | undefined;
+  /** For a repeatable section: how it repeats. */
+  repeat: Repeat | undefined;
+  /** For a field of a repeatable section: that section. Its answers live in entries. */
+  entries: ElementId | undefined;
 }
 
 export interface CompiledForm {
@@ -67,6 +73,10 @@ export const DEFINITION_ISSUE_CODES = [
   'unknown_option',
   'expression_too_complex',
   'circular_dependency',
+  'invalid_repeat',
+  'not_repeatable',
+  'inside_repeat',
+  'not_in_section',
 ] as const;
 
 export type DefinitionIssueCode = (typeof DEFINITION_ISSUE_CODES)[number];
@@ -186,6 +196,8 @@ function collectElements(
         parent: undefined,
         visibleWhen: page.visibleWhen,
         field: undefined,
+        repeat: undefined,
+        entries: undefined,
       },
       pagePath,
     );
@@ -199,6 +211,8 @@ function collectElements(
           parent: page.id,
           visibleWhen: section.visibleWhen,
           field: undefined,
+          repeat: section.repeat,
+          entries: undefined,
         },
         sectionPath,
       );
@@ -211,6 +225,8 @@ function collectElements(
             parent: section.id,
             visibleWhen: field.visibleWhen,
             field,
+            repeat: undefined,
+            entries: section.repeat === undefined ? undefined : section.id,
           },
           `${sectionPath}.fields[${String(fieldIndex)}]`,
         );
@@ -227,6 +243,13 @@ function checkElement(
   issues: DefinitionIssue[],
 ): void {
   const path = element.path;
+  // A field of a repeatable section is worked out once per entry, and reads that
+  // entry's answers. A repeatable section's own condition is outside its entries.
+  const scopes = element.entries === undefined ? [] : [element.entries];
+
+  if (element.repeat !== undefined) {
+    checkRepeat(element, element.repeat, elements, issues);
+  }
 
   if (element.visibleWhen !== undefined) {
     checkExpression(
@@ -236,6 +259,7 @@ function checkElement(
       element.id,
       elements,
       issues,
+      scopes,
     );
   }
 
@@ -258,7 +282,15 @@ function checkElement(
     (field.type === 'number' || field.type === 'decimal') &&
     field.calculation !== undefined
   ) {
-    checkExpression(field.calculation, 'number', `${path}.calculation`, field.id, elements, issues);
+    checkExpression(
+      field.calculation,
+      'number',
+      `${path}.calculation`,
+      field.id,
+      elements,
+      issues,
+      scopes,
+    );
   }
 
   (field.rules ?? []).forEach((rule, ruleIndex) => {
@@ -269,8 +301,57 @@ function checkElement(
       field.id,
       elements,
       issues,
+      scopes,
     );
   });
+}
+
+/** Question types whose answer can name an entry in a list. */
+const TITLE_VALUE_TYPES: ReadonlySet<ValueType> = new Set([
+  'text',
+  'number',
+  'date',
+  'time',
+  'datetime',
+]);
+
+function checkRepeat(
+  section: ElementInfo,
+  repeat: Repeat,
+  elements: ReadonlyMap<ElementId, ElementInfo>,
+  issues: DefinitionIssue[],
+): void {
+  const report = (property: string | undefined, message: string) => {
+    issues.push({
+      code: 'invalid_repeat',
+      message: `Repeatable section "${section.id}": ${message}`,
+      path: `${section.path}.repeat${property === undefined ? '' : `.${property}`}`,
+      elements: [section.id],
+    });
+  };
+  if (![...elements.values()].some((element) => element.entries === section.id)) {
+    report(undefined, 'it has no questions to repeat');
+  }
+  if (repeat.minEntries !== undefined && repeat.minEntries > repeat.maxEntries) {
+    report(
+      'minEntries',
+      `it needs at least ${String(repeat.minEntries)} entries but allows at most ${String(repeat.maxEntries)}`,
+    );
+  }
+  if (repeat.titleField !== undefined) {
+    const titled = elements.get(repeat.titleField);
+    if (titled?.field === undefined || titled.entries !== section.id) {
+      report(
+        'titleField',
+        `"${repeat.titleField}", which names each entry, is not one of its questions`,
+      );
+    } else if (!TITLE_VALUE_TYPES.has(describeFieldType(titled.field.type).valueType)) {
+      report(
+        'titleField',
+        `"${repeat.titleField}" is a ${titled.field.type} question, which cannot name an entry`,
+      );
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -284,6 +365,7 @@ function checkExpression(
   owner: ElementId,
   elements: ReadonlyMap<ElementId, ElementInfo>,
   issues: DefinitionIssue[],
+  scopes: readonly ElementId[],
 ): void {
   const size = measure(expression);
   if (size.nodes > LIMITS.expressionNodes || size.depth > LIMITS.expressionDepth) {
@@ -296,7 +378,7 @@ function checkExpression(
     return;
   }
 
-  const found = typeOf(expression, path, elements, issues);
+  const found = typeOf(expression, path, elements, issues, scopes);
   if (found !== undefined && found !== expected) {
     issues.push({
       code: 'type_mismatch',
@@ -331,6 +413,7 @@ function typeOf(
   path: string,
   elements: ReadonlyMap<ElementId, ElementInfo>,
   issues: DefinitionIssue[],
+  scopes: readonly ElementId[],
 ): RuleType | undefined {
   const report = (code: DefinitionIssueCode, message: string, ids: ElementId[] = []) => {
     issues.push({ code, message, path, elements: ids });
@@ -349,8 +432,38 @@ function typeOf(
       ]);
       return undefined;
     }
+    if (element.entries !== undefined && !scopes.includes(element.entries)) {
+      report(
+        'inside_repeat',
+        `A rule refers to "${id}", which is asked once per entry of "${element.entries}". Outside its entries, read it across them: how many there are, a total, or whether any or every entry matches.`,
+        [id, element.entries],
+      );
+      return undefined;
+    }
     return element.field;
   };
+
+  const repeatableFor = (id: ElementId): ElementInfo | undefined => {
+    const element = elements.get(id);
+    if (element === undefined) {
+      report('unknown_field', `A rule refers to "${id}", which is not in this form`, [id]);
+      return undefined;
+    }
+    if (element.repeat === undefined) {
+      report(
+        'not_repeatable',
+        element.kind === 'section'
+          ? `A rule reads across the entries of "${id}", which is a section that does not repeat`
+          : `A rule reads across the entries of "${id}", which is a ${element.kind}, not a repeatable section`,
+        [id],
+      );
+      return undefined;
+    }
+    return element;
+  };
+
+  const inner = (operand: Expression, within: readonly ElementId[] = scopes) =>
+    typeOf(operand, path, elements, issues, within);
 
   switch (expression.kind) {
     case 'text':
@@ -400,8 +513,46 @@ function typeOf(
       }
       return 'boolean';
     }
+    case 'count':
+      return repeatableFor(expression.section) === undefined ? undefined : 'number';
+    case 'aggregate': {
+      const section = repeatableFor(expression.section);
+      if (section === undefined) {
+        return undefined;
+      }
+      const element = elements.get(expression.field);
+      if (element?.field === undefined || element.entries !== section.id) {
+        return report(
+          'not_in_section',
+          `A rule works out the ${expression.operator} of "${expression.field}" across the entries of "${section.id}", but it is not one of that section's questions`,
+          [expression.field, section.id],
+        );
+      }
+      return describeFieldType(element.field.type).valueType === 'number'
+        ? 'number'
+        : report(
+            'type_mismatch',
+            `"${expression.operator}" needs a number question; "${element.id}" is ${element.field.type}`,
+            [element.id],
+          );
+    }
+    case 'some':
+    case 'every': {
+      const section = repeatableFor(expression.section);
+      if (section === undefined) {
+        return undefined;
+      }
+      const condition = inner(expression.condition, [...scopes, section.id]);
+      if (condition !== undefined && condition !== 'boolean') {
+        return report(
+          'type_mismatch',
+          `The condition "${expression.kind}" tests on each entry must be true or false, not a ${condition} value`,
+        );
+      }
+      return condition === undefined ? undefined : 'boolean';
+    }
     case 'not': {
-      const operand = typeOf(expression.operand, path, elements, issues);
+      const operand = inner(expression.operand);
       if (operand !== undefined && operand !== 'boolean') {
         return report('type_mismatch', `"not" needs a true-or-false value, not a ${operand} value`);
       }
@@ -411,7 +562,7 @@ function typeOf(
     case 'any': {
       let broken = false;
       for (const operand of expression.operands) {
-        const type = typeOf(operand, path, elements, issues);
+        const type = inner(operand);
         if (type === undefined) {
           broken = true;
         } else if (type !== 'boolean') {
@@ -425,10 +576,10 @@ function typeOf(
       return broken ? undefined : 'boolean';
     }
     case 'compare':
-      return compareType(expression, path, elements, issues, report);
+      return compareType(expression, path, elements, issues, report, scopes);
     case 'arithmetic': {
-      const left = typeOf(expression.left, path, elements, issues);
-      const right = typeOf(expression.right, path, elements, issues);
+      const left = inner(expression.left);
+      const right = inner(expression.right);
       if (left === undefined || right === undefined) {
         return undefined;
       }
@@ -449,9 +600,10 @@ function compareType(
   elements: ReadonlyMap<ElementId, ElementInfo>,
   issues: DefinitionIssue[],
   report: (code: DefinitionIssueCode, message: string, ids?: ElementId[]) => undefined,
+  scopes: readonly ElementId[],
 ): RuleType | undefined {
-  const left = typeOf(expression.left, path, elements, issues);
-  const right = typeOf(expression.right, path, elements, issues);
+  const left = typeOf(expression.left, path, elements, issues, scopes);
+  const right = typeOf(expression.right, path, elements, issues, scopes);
   if (left === undefined || right === undefined) {
     return undefined;
   }
@@ -514,6 +666,11 @@ interface Dependency {
  * that field is hidden — so reading a field transitively depends on that
  * field's own visibility too, and the graph captures it without special cases.
  *
+ * Reading across entries needs the section (whether it is shown, and so whether
+ * it has entries) and every field read inside it. The graph is over elements,
+ * not entries: an entry's field is worked out for every entry at the field's
+ * place in the order, so one pass still suffices.
+ *
  * Custom validation rules are deliberately absent. They run once every value
  * is known and change none of them, so they cannot take part in a cycle.
  */
@@ -529,7 +686,10 @@ function dependenciesOf(element: ElementInfo): Dependency[] {
     push(element.parent, 'inside');
   }
   if (element.visibleWhen !== undefined) {
-    for (const id of referencedFields(element.visibleWhen)) {
+    for (const id of [
+      ...referencedFields(element.visibleWhen),
+      ...referencedSections(element.visibleWhen),
+    ]) {
       push(id, 'shown_when');
     }
   }
@@ -539,7 +699,10 @@ function dependenciesOf(element: ElementInfo): Dependency[] {
     (field.type === 'number' || field.type === 'decimal') &&
     field.calculation !== undefined
   ) {
-    for (const id of referencedFields(field.calculation)) {
+    for (const id of [
+      ...referencedFields(field.calculation),
+      ...referencedSections(field.calculation),
+    ]) {
       push(id, 'calculated_from');
     }
   }

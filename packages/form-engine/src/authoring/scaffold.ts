@@ -97,6 +97,18 @@ export function newSection(id: ElementId, fields: Field[] = []): Section {
   return { id, fields };
 }
 
+/**
+ * A repeatable section, asked once per thing found on site (P13b). It needs a
+ * question before it compiles, so it starts with one.
+ */
+export function newRepeatableSection(
+  id: ElementId,
+  entryLabel: LocalizedText,
+  firstField: Field,
+): Section {
+  return { id, repeat: { maxEntries: 20, entryLabel }, fields: [firstField] };
+}
+
 export function newPage(id: ElementId, sections: Section[]): Page {
   return { id, sections };
 }

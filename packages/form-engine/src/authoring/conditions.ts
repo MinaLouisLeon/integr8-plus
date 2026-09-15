@@ -17,6 +17,13 @@ import { parseDate, parseDatetime, parseTime } from '../temporal.js';
  * can build here can be read back into clauses. Anything else — an expression
  * written by P30's AI generation, or by hand — comes back `undefined`, and the
  * builder shows it as a read-only rule rather than guessing at a sentence.
+ *
+ * ## Entries (P13b)
+ *
+ * A question asked once per entry is read from outside its section with a
+ * quantifier — "when *any* radiator's result is fail", "when *every*
+ * radiator's result is pass" — and a repeatable section itself can be counted:
+ * "when the number of radiators is at least 2".
  */
 
 export const CONDITION_OPERATORS = [
@@ -51,6 +58,16 @@ export interface ConditionClause {
    * must give the same kind of value.
    */
   valueField?: ElementId;
+  /**
+   * For a question asked once per entry, read from outside its entries: whether
+   * the clause must hold for any entry or for every one.
+   */
+  entries?: { section: ElementId; quantifier: 'some' | 'every' };
+  /**
+   * Instead of a question, the number of entries in `field`, a repeatable
+   * section — compared with a whole number.
+   */
+  subject?: 'entry_count';
 }
 
 /** Operators that can compare one answer with another. */
@@ -73,6 +90,16 @@ export interface ConditionModel {
   match: 'all' | 'any';
   clauses: ConditionClause[];
 }
+
+/** How the number of entries can be compared. */
+export const ENTRY_COUNT_OPERATORS: readonly ConditionOperator[] = [
+  'is',
+  'is_not',
+  'is_greater_than',
+  'is_less_than',
+  'is_at_least',
+  'is_at_most',
+];
 
 /** Operators that take no value. */
 const UNARY: ReadonlySet<ConditionOperator> = new Set([
@@ -210,13 +237,48 @@ function clauseExpression(clause: ConditionClause, field: Field): Expression {
  * `fields` resolves a clause's field so its value becomes the right kind of
  * literal: "5" next to a number field is a number, next to a text field text.
  */
+function entryCountExpression(clause: ConditionClause): Expression | undefined {
+  const operator = {
+    is: 'eq',
+    is_not: 'ne',
+    is_greater_than: 'gt',
+    is_less_than: 'lt',
+    is_at_least: 'ge',
+    is_at_most: 'le',
+  }[clause.operator as string] as 'eq' | 'ne' | 'gt' | 'lt' | 'ge' | 'le' | undefined;
+  return operator === undefined
+    ? undefined
+    : {
+        kind: 'compare',
+        operator,
+        left: { kind: 'count', section: clause.field },
+        right: { kind: 'number', value: clause.value ?? '' },
+      };
+}
+
 export function toExpression(
   model: ConditionModel,
   field: (id: ElementId) => Field | undefined,
 ): Expression | undefined {
-  const operands = model.clauses.flatMap((clause) => {
+  const operands = model.clauses.flatMap((clause): Expression[] => {
+    if (clause.subject === 'entry_count') {
+      const counted = entryCountExpression(clause);
+      return counted === undefined ? [] : [counted];
+    }
     const target = field(clause.field);
-    return target === undefined ? [] : [clauseExpression(clause, target)];
+    if (target === undefined) {
+      return [];
+    }
+    const expression = clauseExpression(clause, target);
+    return [
+      clause.entries === undefined
+        ? expression
+        : {
+            kind: clause.entries.quantifier,
+            section: clause.entries.section,
+            condition: expression,
+          },
+    ];
   });
 
   if (operands.length === 0) {
@@ -246,6 +308,13 @@ function readClause(
   field: (id: ElementId) => Field | undefined,
 ): ConditionClause | undefined {
   switch (expression.kind) {
+    case 'some':
+    case 'every': {
+      const inner = readClause(expression.condition, field);
+      return inner === undefined || inner.entries !== undefined || inner.subject !== undefined
+        ? undefined
+        : { ...inner, entries: { section: expression.section, quantifier: expression.kind } };
+    }
     case 'answered':
       return { field: expression.field, operator: 'is_answered' };
     case 'includes':
@@ -279,6 +348,17 @@ function readClause(
       return undefined;
     }
     case 'compare': {
+      if (expression.left.kind === 'count') {
+        const operator = COMPARISONS[expression.operator];
+        return operator !== undefined && expression.right.kind === 'number'
+          ? {
+              field: expression.left.section,
+              operator,
+              value: expression.right.value,
+              subject: 'entry_count',
+            }
+          : undefined;
+      }
       if (expression.left.kind !== 'answer') {
         return undefined;
       }
@@ -399,6 +479,15 @@ export function clauseProblem(
   clause: ConditionClause,
   field: (id: ElementId) => Field | undefined,
 ): ClauseProblem | undefined {
+  if (clause.subject === 'entry_count') {
+    if (!ENTRY_COUNT_OPERATORS.includes(clause.operator)) {
+      return 'operator_not_allowed';
+    }
+    if ((clause.value ?? '') === '') {
+      return 'value_required';
+    }
+    return /^(?:0|[1-9][0-9]{0,2})$/u.test(clause.value ?? '') ? undefined : 'value_invalid';
+  }
   const target = field(clause.field);
   if (target === undefined) {
     return 'unknown_field';

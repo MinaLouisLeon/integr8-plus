@@ -341,6 +341,94 @@ describe('a submission crafted by hand that breaks the form’s rules is refused
   });
 });
 
+describe('a submission with entries of a repeatable section (P13b)', () => {
+  const radiators = {
+    schemaVersion: 1,
+    title: { en: 'Radiators' },
+    pages: [
+      {
+        id: 'page_1',
+        sections: [
+          {
+            id: 'radiators',
+            repeat: { minEntries: 1, maxEntries: 3, entryLabel: { en: 'Radiator' } },
+            fields: [
+              { id: 'room', type: 'text', label: { en: 'Room' }, required: true },
+              { id: 'watts', type: 'number', label: { en: 'Output' }, max: 5000 },
+              { id: 'snapshot', type: 'photo', label: { en: 'Photo' } },
+            ],
+          },
+          {
+            id: 'summary',
+            fields: [
+              {
+                id: 'total',
+                type: 'number',
+                label: { en: 'Total' },
+                calculation: {
+                  kind: 'aggregate',
+                  operator: 'sum',
+                  section: 'radiators',
+                  field: 'watts',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it('is revalidated entry by entry, naming where in the body each problem is', async () => {
+    const form = await newForm('Radiators', radiators);
+    const draft = await start(tokens.engineer, form);
+    const refused = json<ErrorBody>(
+      await submit(tokens.engineer, draft, {
+        answers: {
+          room: 'Hall',
+          radiators: [
+            { id: 'r1', values: { room: 'Hall', watts: 9000, colour: 'white' } },
+            { id: 'r2', values: { watts: 'lots' } },
+            { id: 'r2', values: { room: 'Twin' } },
+          ],
+        },
+      }),
+    );
+    expect(refused.error.details?.map((detail) => [detail.field, detail.code])).toEqual([
+      ['body.answers.radiators[r1].colour', 'unknown_field'],
+      ['body.answers.radiators', 'duplicate_entry'],
+      ['body.answers.room', 'unknown_field'],
+      ['body.answers.radiators[r1].watts', 'above_maximum'],
+      ['body.answers.radiators[r2].room', 'required'],
+      ['body.answers.radiators[r2].watts', 'invalid'],
+    ]);
+  });
+
+  it('checks the files inside entries, and stores the entries with the server’s own total', async () => {
+    const form = await newForm('Radiators again', radiators);
+    const photo = await upload(tokens.engineer, Buffer.from('a radiator'));
+    const lied = await submit(tokens.engineer, await start(tokens.engineer, form), {
+      answers: {
+        radiators: [{ id: 'r1', values: { room: 'Hall', snapshot: [{ ...photo, byteSize: 1 }] } }],
+      },
+    });
+    expect(json<ErrorBody>(lied).error.details?.[0]).toMatchObject({
+      field: 'body.answers.radiators[r1].snapshot',
+      code: 'media_mismatch',
+    });
+
+    const entries = [
+      { id: 'r1', values: { room: 'Hall', watts: 800, snapshot: [photo] } },
+      { id: 'r2', values: { room: 'Loft', watts: 1200 } },
+    ];
+    const done = await submit(tokens.engineer, await start(tokens.engineer, form), {
+      answers: { radiators: entries },
+    });
+    expect(done.statusCode, done.body).toBe(200);
+    expect(json<Detail>(done).submission.answers).toEqual({ radiators: entries, total: 2000 });
+  });
+});
+
 describe('drafts', () => {
   it('autosave on the revision last seen, and refuse a stale device', async () => {
     const draft = await start();

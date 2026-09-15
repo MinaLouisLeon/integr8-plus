@@ -1,5 +1,5 @@
 import type { FormDefinition, Page, Section } from '../definition.js';
-import { type Expression, referencedFields } from '../expression.js';
+import { type Expression, referencedFields, referencedSections } from '../expression.js';
 import type { Field } from '../field-types.js';
 import type { ElementId } from '../ids.js';
 import { generateId } from './scaffold.js';
@@ -263,9 +263,9 @@ export function movePage(definition: FormDefinition, id: ElementId, index: numbe
 // ---------------------------------------------------------------------------
 
 /**
- * Rewrites every field reference in an expression through `map`. References to
- * anything not in the map are left alone, so a copied field still depends on
- * the same original fields outside the copy.
+ * Rewrites every field and section reference in an expression through `map`.
+ * References to anything not in the map are left alone, so a copied field still
+ * depends on the same original fields outside the copy.
  */
 export function remapExpression(
   expression: Expression,
@@ -293,9 +293,40 @@ export function remapExpression(
         left: remapExpression(expression.left, map),
         right: remapExpression(expression.right, map),
       };
+    case 'count':
+      return { ...expression, section: id(expression.section) };
+    case 'aggregate':
+      return { ...expression, section: id(expression.section), field: id(expression.field) };
+    case 'some':
+    case 'every':
+      return {
+        ...expression,
+        section: id(expression.section),
+        condition: remapExpression(expression.condition, map),
+      };
     default:
       return expression;
   }
+}
+
+function remapSection(section: Section, map: ReadonlyMap<ElementId, ElementId>): Section {
+  const titleField = section.repeat?.titleField;
+  return {
+    ...section,
+    id: map.get(section.id) ?? section.id,
+    ...(section.visibleWhen === undefined
+      ? {}
+      : { visibleWhen: remapExpression(section.visibleWhen, map) }),
+    ...(section.repeat === undefined
+      ? {}
+      : {
+          repeat: {
+            ...section.repeat,
+            ...(titleField === undefined ? {} : { titleField: map.get(titleField) ?? titleField }),
+          },
+        }),
+    fields: section.fields.map((field) => remapField(field, map)),
+  };
 }
 
 function remapField(field: Field, map: ReadonlyMap<ElementId, ElementId>): Field {
@@ -356,14 +387,7 @@ export function duplicate(definition: FormDefinition, id: ElementId): DuplicateR
   if (at.kind === 'section') {
     const section = page.sections[at.section!]!;
     const map = freshIds([section.id, ...section.fields.map((field) => field.id)], taken);
-    const copy: Section = {
-      ...section,
-      id: map.get(section.id)!,
-      ...(section.visibleWhen === undefined
-        ? {}
-        : { visibleWhen: remapExpression(section.visibleWhen, map) }),
-      fields: section.fields.map((field) => remapField(field, map)),
-    };
+    const copy = remapSection(section, map);
     const result = addSection(definition, page.id, copy, at.section! + 1);
     return isEditError(result) ? result : { definition: result, copyId: copy.id };
   }
@@ -384,14 +408,7 @@ export function duplicate(definition: FormDefinition, id: ElementId): DuplicateR
     ...(page.visibleWhen === undefined
       ? {}
       : { visibleWhen: remapExpression(page.visibleWhen, map) }),
-    sections: page.sections.map((section) => ({
-      ...section,
-      id: map.get(section.id)!,
-      ...(section.visibleWhen === undefined
-        ? {}
-        : { visibleWhen: remapExpression(section.visibleWhen, map) }),
-      fields: section.fields.map((field) => remapField(field, map)),
-    })),
+    sections: page.sections.map((section) => remapSection(section, map)),
   };
   return { definition: addPage(definition, copy, at.page + 1), copyId: copy.id };
 }
@@ -406,12 +423,13 @@ export interface Reference {
   where: 'visibleWhen' | 'calculation' | 'rule';
   /** The rule id, when `where` is `rule`. */
   rule?: ElementId;
-  /** The field being read. */
+  /** The field being read, or the repeatable section read across. */
   to: ElementId;
 }
 
 /**
- * Every rule, anywhere in the form, that reads one of `ids`.
+ * Every rule, anywhere in the form, that reads one of `ids` — a field, or a
+ * repeatable section it counts, adds up or tests the entries of.
  *
  * The builder shows this before a delete: "Reason is shown depending on
  * Result. Delete Result anyway?" Deleting is still allowed — the compiler will
@@ -429,7 +447,7 @@ export function referencesTo(definition: FormDefinition, ids: readonly ElementId
     if (expression === undefined) {
       return;
     }
-    for (const to of referencedFields(expression)) {
+    for (const to of [...referencedFields(expression), ...referencedSections(expression)]) {
       if (targets.has(to) && !targets.has(from)) {
         found.push({ from, where, to, ...(rule === undefined ? {} : { rule }) });
       }

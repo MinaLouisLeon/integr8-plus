@@ -48,7 +48,9 @@ export function FormVersionRoute() {
     );
   }
 
-  const current = state ?? createFormState(compiled.form);
+  // A repeatable section that needs entries opens with that many (P13b).
+  const current =
+    state ?? createFormState(compiled.form, {}, { newEntryId: () => crypto.randomUUID() });
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8 text-start">
       <nav className="text-sm">

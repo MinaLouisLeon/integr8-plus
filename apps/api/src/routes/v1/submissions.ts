@@ -355,23 +355,45 @@ export function resolveToday(claimed: string | undefined, reference: Date = new 
   return claimed;
 }
 
+/**
+ * Where an answer is in the body: `body.answers.make`, or inside an entry of a
+ * repeatable section (P13b), `body.answers.appliances[0192f3a4-…].make`.
+ */
+function answerPath(field: string, entry?: { section: string; id: string }): string {
+  return entry === undefined
+    ? `body.answers.${field}`
+    : `body.answers.${entry.section}[${entry.id}].${field}`;
+}
+
 function issueDetail(issue: SubmissionIssue): ErrorDetail {
-  const field = issue.field === undefined ? 'body.answers' : `body.answers.${issue.field}`;
+  const at =
+    issue.entry !== undefined && issue.section !== undefined
+      ? { section: issue.section, id: issue.entry }
+      : undefined;
+  const field = issue.field === undefined ? 'body.answers' : answerPath(issue.field, at);
   const messages: Record<SubmissionIssue['code'], string> = {
     not_an_object: 'The answers must be an object keyed by question.',
-    unknown_field: `This form has no question "${issue.field ?? ''}".`,
+    unknown_field:
+      at === undefined
+        ? `This form has no question "${issue.field ?? ''}".`
+        : `The entries of "${at.section}" have no question "${issue.field ?? ''}".`,
     answer_to_hidden_field: `"${issue.field ?? ''}" is hidden by the form's rules and cannot be answered.`,
     answer_to_calculated_field: `"${issue.field ?? ''}" is worked out by the form and cannot be answered.`,
+    duplicate_entry: `Two entries of "${issue.field ?? ''}" have the id "${issue.entry ?? ''}".`,
   };
   return { field, code: issue.code, message: messages[issue.code] };
 }
 
-function errorDetail(error: FieldError): ErrorDetail {
+function errorDetail(compiled: CompiledForm, error: FieldError): ErrorDetail {
   const params = Object.entries(error.params)
     .map(([name, value]) => `${name} ${value}`)
     .join(', ');
+  const section = compiled.elements.get(error.field)?.entries;
   return {
-    field: `body.answers.${error.field}`,
+    field: answerPath(
+      error.field,
+      error.entry === undefined || section === undefined ? undefined : { section, id: error.entry },
+    ),
     code: error.code,
     message: `"${error.field}" failed ${error.code}${params === '' ? '' : ` (${params})`}.`,
     params: { ...error.params },
@@ -389,7 +411,10 @@ export async function revalidate(
   today: string,
 ): Promise<Record<string, unknown>> {
   const check = validateSubmission(compiled, answers, { today });
-  const details = [...check.issues.map(issueDetail), ...check.errors.map(errorDetail)];
+  const details = [
+    ...check.issues.map(issueDetail),
+    ...check.errors.map((error) => errorDetail(compiled, error)),
+  ];
 
   if (details.length === 0) {
     const references = mediaReferences(compiled.definition, check.answers);
@@ -398,17 +423,22 @@ export async function revalidate(
         (file) => [file.id, file],
       ),
     );
-    for (const { field, media } of references) {
+    for (const { field, media, entry } of references) {
       const found = stored.get(media.mediaId);
+      const section = compiled.elements.get(field)?.entries;
+      const at = answerPath(
+        field,
+        entry === undefined || section === undefined ? undefined : { section, id: entry },
+      );
       if (found?.deletedAt !== null) {
         details.push({
-          field: `body.answers.${field}`,
+          field: at,
           code: 'media_not_found',
           message: `"${field}" refers to a file that was not uploaded.`,
         });
       } else if (found.contentType !== media.contentType || found.byteSize !== media.byteSize) {
         details.push({
-          field: `body.answers.${field}`,
+          field: at,
           code: 'media_mismatch',
           message: `"${field}" describes its file differently from what was uploaded.`,
         });
@@ -703,7 +733,7 @@ export const exportSubmissionsRoute = defineRoute({
   operationId: 'exportSubmissions',
   summary: 'Export submissions of one form as CSV',
   description:
-    'The same filters as the list, for one form. One row per submission, one column per question any published version asked, headed by its answer key. Up to 50,000 rows.',
+    "The same filters as the list, for one form. One row per submission, one column per question any published version asked, headed by its answer key. A repeatable section's questions get numbered columns, one set per entry up to the most entries any exported submission has: `appliances[1].make`, `appliances[2].make`. Up to 50,000 rows.",
   tags: TAGS,
   security: 'authenticated',
   permission: 'form.read',
@@ -727,7 +757,22 @@ export const exportSubmissionsRoute = defineRoute({
       }
       const built = await buildQuery(tx, principal, { ...query, limit: 200 });
       const [versions, known] = await Promise.all([tx.forms.listVersions(form.id), lookups(tx)]);
-      const columns = exportColumns(versions);
+
+      const submissions: Submission[] = [];
+      let after = built.after;
+      while (submissions.length < EXPORT_ROW_LIMIT) {
+        const page = await tx.submissions.list({
+          ...built,
+          limit: 500,
+          ...(after === undefined ? {} : { after }),
+        });
+        submissions.push(...page.items);
+        if (page.next === undefined) {
+          break;
+        }
+        after = page.next;
+      }
+      const columns = exportColumns(versions, submissions);
 
       const rows: string[] = [
         [
@@ -737,39 +782,25 @@ export const exportSubmissionsRoute = defineRoute({
           'submitted_by',
           'submitted_at',
           'amended_at',
-          ...columns,
+          ...columns.map((column) => column.header),
         ]
           .map(csvCell)
           .join(','),
       ];
-      let after = built.after;
-      let count = 0;
-      while (count < EXPORT_ROW_LIMIT) {
-        const page = await tx.submissions.list({
-          ...built,
-          limit: 500,
-          ...(after === undefined ? {} : { after }),
-        });
-        for (const submission of page.items) {
-          rows.push(
-            [
-              submission.id,
-              submission.status,
-              String(known.versions.get(submission.formVersionId) ?? ''),
-              known.people.get(submission.submittedBy) ?? submission.submittedBy,
-              isoOrNull(submission.submittedAt) ?? '',
-              isoOrNull(submission.amendedAt) ?? '',
-              ...columns.map((column) => exportValue(submission.answers[column])),
-            ]
-              .map(csvCell)
-              .join(','),
-          );
-        }
-        count += page.items.length;
-        if (page.next === undefined) {
-          break;
-        }
-        after = page.next;
+      for (const submission of submissions) {
+        rows.push(
+          [
+            submission.id,
+            submission.status,
+            String(known.versions.get(submission.formVersionId) ?? ''),
+            known.people.get(submission.submittedBy) ?? submission.submittedBy,
+            isoOrNull(submission.submittedAt) ?? '',
+            isoOrNull(submission.amendedAt) ?? '',
+            ...columns.map((column) => exportValue(column.read(submission.answers))),
+          ]
+            .map(csvCell)
+            .join(','),
+        );
       }
       // A byte-order mark, so a spreadsheet opens Arabic answers as UTF-8.
       return { csv: `${BYTE_ORDER_MARK}${rows.join('\r\n')}\r\n`, title: form.title };
@@ -787,20 +818,79 @@ export const exportSubmissionsRoute = defineRoute({
   },
 });
 
-/** Every question any published version asked, newest version's order first. */
-function exportColumns(versions: readonly FormVersion[]): string[] {
-  const seen = new Set<string>();
-  const columns: string[] = [];
+interface ExportColumn {
+  header: string;
+  read: (answers: Record<string, unknown>) => unknown;
+}
+
+/**
+ * Every question any published version asked, newest version's order first.
+ *
+ * A repeatable section's questions (P13b) are numbered, entry by entry, up to
+ * the most entries any submission in the export has — so a submission with two
+ * appliances fills `appliances[1].make` and `appliances[2].make`, and leaves the
+ * third set empty. A question that was a plain question in one version and asked
+ * per entry in another has columns of both kinds.
+ */
+function exportColumns(
+  versions: readonly FormVersion[],
+  submissions: readonly Submission[],
+): ExportColumn[] {
+  const plain: string[] = [];
+  const sections = new Map<string, string[]>();
+  const add = (list: string[], id: string) => {
+    if (!list.includes(id)) {
+      list.push(id);
+    }
+  };
   for (const version of versions.filter((candidate) => candidate.status === 'published')) {
     const definition = version.definition as unknown as FormDefinition;
     for (const page of definition.pages) {
       for (const section of page.sections) {
-        for (const field of section.fields) {
-          if (!seen.has(field.id)) {
-            seen.add(field.id);
-            columns.push(field.id);
-          }
+        if (section.repeat === undefined) {
+          section.fields.forEach((field) => add(plain, field.id));
+          continue;
         }
+        const fields = sections.get(section.id) ?? [];
+        section.fields.forEach((field) => add(fields, field.id));
+        sections.set(section.id, fields);
+        if (!plain.includes(section.id)) {
+          plain.push(section.id);
+        }
+      }
+    }
+  }
+
+  const columns: ExportColumn[] = [];
+  for (const id of plain) {
+    const fields = sections.get(id);
+    if (fields === undefined) {
+      columns.push({ header: id, read: (answers) => answers[id] });
+      continue;
+    }
+    const most = Math.max(
+      0,
+      ...submissions.map((submission) => {
+        const entries = submission.answers[id];
+        return Array.isArray(entries) ? entries.length : 0;
+      }),
+    );
+    for (let index = 0; index < most; index += 1) {
+      for (const field of fields) {
+        columns.push({
+          header: `${id}[${String(index + 1)}].${field}`,
+          read: (answers) => {
+            const entries = answers[id];
+            const entry: unknown = Array.isArray(entries) ? entries[index] : undefined;
+            const values =
+              typeof entry === 'object' && entry !== null
+                ? (entry as { values?: unknown }).values
+                : undefined;
+            return typeof values === 'object' && values !== null
+              ? (values as Record<string, unknown>)[field]
+              : undefined;
+          },
+        });
       }
     }
   }

@@ -19,6 +19,8 @@ import type { EvaluationContext } from '../evaluate.js';
  * - three-valued logic and cascading visibility
  * - key order in objects built along different paths
  * - the exact wording of every publish-time error
+ * - entries of a repeatable section: rules inside one entry and across all of
+ *   them, adding, removing and reordering, and what the server refuses (P13b)
  *
  * Plain object literals only: this file is bundled into the Hermes run.
  */
@@ -58,6 +60,155 @@ const math = (operator: string, left: unknown, right: unknown) => ({
   right,
 });
 const set = (field: string, value: unknown): FormEvent => ({ type: 'answer', field, value });
+const setIn = (entry: string, field: string, value: unknown): FormEvent => ({
+  type: 'answer',
+  field,
+  value,
+  entry,
+});
+const addEntry = (section: string, entry: string, index?: number): FormEvent =>
+  index === undefined
+    ? { type: 'add_entry', section, entry }
+    : { type: 'add_entry', section, entry, index };
+const count = (section: string) => ({ kind: 'count', section });
+const total = (operator: string, section: string, field: string) => ({
+  kind: 'aggregate',
+  operator,
+  section,
+  field,
+});
+const some = (section: string, condition: unknown) => ({ kind: 'some', section, condition });
+const every = (section: string, condition: unknown) => ({ kind: 'every', section, condition });
+const appliances = (extra: Record<string, unknown> = {}) => ({
+  id: 'appliances',
+  title: l('Appliances'),
+  repeat: {
+    minEntries: 1,
+    maxEntries: 3,
+    entryLabel: l('Appliance', 'جهاز'),
+    titleField: 'make',
+  },
+  fields: [
+    { id: 'make', type: 'text', label: l('Make'), required: true },
+    { id: 'kind', type: 'radio', label: l('Kind'), options: opts('gas', 'electric') },
+    {
+      id: 'flue_ok',
+      type: 'yes_no',
+      label: l('Flue safe'),
+      required: true,
+      visibleWhen: cmp('eq', answer('kind'), text('gas')),
+    },
+    {
+      id: 'landlord_ref',
+      type: 'text',
+      label: l('Landlord reference'),
+      visibleWhen: cmp('eq', answer('property'), text('rental')),
+    },
+    {
+      id: 'rating_kw',
+      type: 'decimal',
+      label: l('Rating'),
+      decimalPlaces: 1,
+      rules: [
+        {
+          id: 'domestic',
+          assert: cmp('le', answer('rating_kw'), num('70')),
+          message: l('Too big'),
+        },
+      ],
+    },
+    {
+      id: 'share',
+      type: 'decimal',
+      label: l('Share of the total'),
+      decimalPlaces: 2,
+      calculation: math('divide', answer('rating_kw'), answer('total_kw')),
+    },
+    {
+      id: 'result',
+      type: 'radio',
+      label: l('Result'),
+      required: true,
+      options: opts('pass', 'fail'),
+    },
+    {
+      id: 'defect',
+      type: 'long_text',
+      label: l('Defect'),
+      required: true,
+      minLength: 5,
+      visibleWhen: cmp('eq', answer('result'), text('fail')),
+    },
+  ],
+  ...extra,
+});
+const withAppliances = {
+  schemaVersion: 1,
+  title: l('Landlord gas safety record'),
+  pages: [
+    {
+      id: 'property_page',
+      sections: [
+        {
+          id: 'property_section',
+          fields: [
+            {
+              id: 'property',
+              type: 'radio',
+              label: l('Property'),
+              options: opts('owned', 'rental'),
+            },
+            {
+              id: 'total_kw',
+              type: 'decimal',
+              label: l('Total rating'),
+              decimalPlaces: 1,
+              calculation: total('sum', 'appliances', 'rating_kw'),
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'appliance_page',
+      sections: [
+        appliances(),
+        {
+          id: 'summary',
+          fields: [
+            {
+              id: 'appliance_count',
+              type: 'number',
+              label: l('Appliances'),
+              calculation: count('appliances'),
+            },
+            {
+              id: 'largest_kw',
+              type: 'decimal',
+              label: l('Largest'),
+              decimalPlaces: 1,
+              calculation: total('max', 'appliances', 'rating_kw'),
+            },
+            {
+              id: 'remedial',
+              type: 'long_text',
+              label: l('Remedial works'),
+              required: true,
+              visibleWhen: some('appliances', cmp('eq', answer('result'), text('fail'))),
+            },
+            {
+              id: 'all_passed',
+              type: 'checkbox',
+              label: l('Certify every appliance passed'),
+              required: true,
+              visibleWhen: every('appliances', cmp('eq', answer('result'), text('pass'))),
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
 
 export const CASES: ConformanceCase[] = [
   {
@@ -505,5 +656,255 @@ export const CASES: ConformanceCase[] = [
       { id: 'result', type: 'radio', label: l('Result'), options: opts('pass', 'fail') },
       { id: 'contact', type: 'text', label: l('Contact') },
     ]),
+  },
+  {
+    name: 'appliances one by one, with rules inside each entry and across them',
+    definition: withAppliances,
+    steps: [
+      { type: 'submit' },
+      set('property', 'rental'),
+      addEntry('appliances', 'e1'),
+      set('make', 'Worcester'),
+      setIn('e0', 'make', 'Worcester'),
+      setIn('e1', 'make', 'Worcester'),
+      setIn('e1', 'kind', 'gas'),
+      setIn('e1', 'rating_kw', '24.0'),
+      setIn('e1', 'result', 'pass'),
+      { type: 'touch', field: 'flue_ok', entry: 'e1' },
+      addEntry('appliances', 'e2', 0),
+      setIn('e2', 'make', 'Baxi'),
+      setIn('e2', 'kind', 'electric'),
+      setIn('e2', 'rating_kw', '80.5'),
+      setIn('e2', 'result', 'fail'),
+      setIn('e2', 'defect', 'Leak'),
+      setIn('e2', 'share', '1.00'),
+      addEntry('appliances', 'e2'),
+      addEntry('appliances', 'bad id'),
+      addEntry('appliances', 'e3'),
+      addEntry('appliances', 'e4'),
+      { type: 'move_entry', section: 'appliances', entry: 'e3', index: 0 },
+      { type: 'remove_entry', section: 'appliances', entry: 'e3' },
+      { type: 'remove_entry', section: 'appliances', entry: 'e3' },
+      { type: 'add_entry', section: 'summary', entry: 'e5' },
+      setIn('e1', 'flue_ok', 'yes'),
+      { type: 'submit' },
+      setIn('e2', 'defect', 'Casing cracked'),
+      setIn('e2', 'rating_kw', '30.0'),
+      set('remedial', 'Replace the casing'),
+      { type: 'submit' },
+      { type: 'reopen' },
+      setIn('e2', 'result', 'pass'),
+      { type: 'remove_entry', section: 'appliances', entry: 'e2' },
+      { type: 'submit' },
+      set('all_passed', true),
+      { type: 'submit' },
+    ],
+    submission: {
+      property: 'owned',
+      make: 'Stray',
+      appliance_count: 2,
+      appliances: [
+        {
+          id: 'e1',
+          values: {
+            make: 'Worcester',
+            kind: 'electric',
+            flue_ok: 'yes',
+            landlord_ref: 'L-1',
+            rating_kw: 24,
+            share: '1.00',
+            result: 'pass',
+            colour: 'red',
+          },
+        },
+        { id: 'e1', values: { make: 'Twin' } },
+      ],
+      all_passed: true,
+    },
+  },
+  {
+    name: 'entries that are not entries, as a server receives them',
+    definition: withAppliances,
+    submission: { property: 'owned', appliances: { id: 'e1' } },
+  },
+  {
+    name: 'publish-time errors for repeatable sections, worded exactly',
+    definition: {
+      schemaVersion: 1,
+      title: l('Entries'),
+      pages: [
+        {
+          id: 'page_1',
+          sections: [
+            {
+              id: 'plain',
+              fields: [
+                {
+                  id: 'outside',
+                  type: 'text',
+                  label: l('Outside'),
+                  visibleWhen: cmp('eq', answer('reading'), num('1')),
+                },
+                {
+                  id: 'counted',
+                  type: 'number',
+                  label: l('Counted'),
+                  calculation: count('plain'),
+                },
+                {
+                  id: 'summed',
+                  type: 'number',
+                  label: l('Summed'),
+                  calculation: total('sum', 'readings', 'outside'),
+                },
+                {
+                  id: 'texts',
+                  type: 'number',
+                  label: l('Texts'),
+                  calculation: total('max', 'readings', 'label_text'),
+                },
+                {
+                  id: 'tested',
+                  type: 'text',
+                  label: l('Tested'),
+                  visibleWhen: some('readings', answer('reading')),
+                },
+              ],
+            },
+            {
+              id: 'readings',
+              repeat: {
+                minEntries: 4,
+                maxEntries: 2,
+                entryLabel: l('Reading'),
+                titleField: 'photo',
+              },
+              fields: [
+                { id: 'reading', type: 'number', label: l('Reading') },
+                { id: 'label_text', type: 'text', label: l('Label') },
+                { id: 'photo', type: 'photo', label: l('Photo') },
+                {
+                  id: 'elsewhere',
+                  type: 'text',
+                  label: l('Elsewhere'),
+                  visibleWhen: answered('other_value'),
+                },
+              ],
+            },
+            {
+              id: 'empty_repeat',
+              repeat: { maxEntries: 5, entryLabel: l('Nothing'), titleField: 'outside' },
+              fields: [],
+            },
+            {
+              id: 'others',
+              repeat: { maxEntries: 5, entryLabel: l('Other') },
+              fields: [{ id: 'other_value', type: 'text', label: l('Other value') }],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    name: 'a circular rule through entries',
+    definition: form(
+      [
+        {
+          id: 'running',
+          type: 'number',
+          label: l('Running total'),
+          calculation: total('sum', 'section_1', 'running'),
+        },
+      ],
+      { repeat: { maxEntries: 5, entryLabel: l('Row') } },
+    ),
+  },
+  {
+    name: 'migrating entries to a changed version',
+    definition: {
+      schemaVersion: 1,
+      title: l('Before'),
+      pages: [
+        {
+          id: 'page_1',
+          sections: [
+            appliances(),
+            {
+              id: 'radiators',
+              repeat: { maxEntries: 10, entryLabel: l('Radiator') },
+              fields: [{ id: 'room', type: 'text', label: l('Room') }],
+            },
+            {
+              id: 'property_section',
+              fields: [
+                {
+                  id: 'property',
+                  type: 'radio',
+                  label: l('Property'),
+                  options: opts('owned', 'rental'),
+                },
+                {
+                  id: 'total_kw',
+                  type: 'decimal',
+                  label: l('Total'),
+                  decimalPlaces: 1,
+                  calculation: total('sum', 'appliances', 'rating_kw'),
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    steps: [
+      set('property', 'rental'),
+      addEntry('appliances', 'a1'),
+      setIn('a1', 'make', 'Worcester'),
+      setIn('a1', 'kind', 'gas'),
+      setIn('a1', 'landlord_ref', 'L-9'),
+      setIn('a1', 'result', 'fail'),
+      addEntry('appliances', 'a2'),
+      setIn('a2', 'make', 'Baxi'),
+      setIn('a2', 'kind', 'electric'),
+      addEntry('radiators', 'r1'),
+      setIn('r1', 'room', 'Kitchen'),
+    ],
+    migrateTo: {
+      schemaVersion: 1,
+      title: l('After'),
+      pages: [
+        {
+          id: 'page_1',
+          sections: [
+            {
+              id: 'appliances',
+              repeat: { maxEntries: 1, entryLabel: l('Appliance') },
+              fields: [
+                { id: 'make', type: 'text', label: l('Make'), maxLength: 5 },
+                { id: 'kind', type: 'radio', label: l('Kind'), options: opts('gas') },
+                { id: 'result', type: 'radio', label: l('Result'), options: opts('pass', 'fail') },
+              ],
+            },
+            {
+              id: 'radiators',
+              fields: [{ id: 'room', type: 'text', label: l('Room') }],
+            },
+            {
+              id: 'property_section',
+              fields: [
+                {
+                  id: 'property',
+                  type: 'radio',
+                  label: l('Property'),
+                  options: opts('owned', 'rental'),
+                },
+                { id: 'landlord_ref', type: 'text', label: l('Landlord reference') },
+              ],
+            },
+          ],
+        },
+      ],
+    },
   },
 ];

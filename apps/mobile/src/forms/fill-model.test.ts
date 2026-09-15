@@ -22,6 +22,11 @@ import { FillModel } from './fill-model';
  */
 
 const label = (en: string) => ({ en });
+/** Entry ids in order, as a phone makes them, but predictable. */
+const entryIds = () => {
+  let count = 0;
+  return () => `entry-${String((count += 1))}`;
+};
 const options = (...values: string[]) => values.map((value) => ({ value, label: label(value) }));
 
 /** Twenty questions over three pages, every kind an engineer meets, one shown only on a fail. */
@@ -126,11 +131,11 @@ function compiled(definition: unknown): CompiledForm {
   return result.form;
 }
 
-async function phone() {
+async function phone(definition: unknown = TWENTY) {
   const { db } = await openTestDatabase();
   const customer = customerDetail();
   const form = formDetail();
-  const live = { ...form, live: { ...form.live!, definition: TWENTY as never } };
+  const live = { ...form, live: { ...form.live!, definition: definition as never } };
   const job = workOrderDetail(customer, { formIds: [form.form.id] });
   await db.write(['work_orders'], (sql) =>
     applySnapshot(
@@ -152,10 +157,16 @@ async function phone() {
   return { db, context, submissionId, jobId: job.workOrder.id };
 }
 
-function open(context: ChangeContext, submissionId: string, answers: Record<string, unknown>) {
+function open(
+  context: ChangeContext,
+  submissionId: string,
+  answers: Record<string, unknown>,
+  definition: unknown = TWENTY,
+) {
   let saves = 0;
   const model = new FillModel({
-    form: compiled(TWENTY),
+    newEntryId: entryIds(),
+    form: compiled(definition),
     answers,
     context: { today: '2026-09-15' },
     save: async (latest) => {
@@ -278,6 +289,7 @@ describe('a twenty-question form on the phone, offline', () => {
     let fail = true;
     const saved: Record<string, unknown>[] = [];
     const model = new FillModel({
+      newEntryId: entryIds(),
       form: compiled(TWENTY),
       answers: {},
       context: { today: '2026-09-15' },
@@ -301,6 +313,7 @@ describe('a twenty-question form on the phone, offline', () => {
   it('refuses what the engine refuses, and never saves it', async () => {
     const saved: unknown[] = [];
     const model = new FillModel({
+      newEntryId: entryIds(),
       form: compiled(TWENTY),
       answers: {},
       context: {},
@@ -313,5 +326,126 @@ describe('a twenty-question form on the phone, offline', () => {
     expect(model.answer('nope', 'x')).toMatchObject({ accepted: false });
     await model.flush();
     expect(saved).toEqual([]);
+  });
+});
+
+describe('entries of a repeatable section on the phone (P13b)', () => {
+  /** A radiator survey: at least one radiator, each with a room, an output and a photo. */
+  const SURVEY = {
+    schemaVersion: 1,
+    title: label('Radiator survey'),
+    pages: [
+      {
+        id: 'survey',
+        sections: [
+          {
+            id: 'radiators',
+            title: label('Radiators'),
+            repeat: {
+              minEntries: 1,
+              maxEntries: 3,
+              entryLabel: label('Radiator'),
+              titleField: 'room',
+            },
+            fields: [
+              { id: 'room', type: 'text', label: label('Room'), required: true },
+              { id: 'watts', type: 'number', label: label('Output') },
+              { id: 'snap', type: 'photo', label: label('Photo') },
+            ],
+          },
+          {
+            id: 'summary',
+            fields: [
+              {
+                id: 'total',
+                type: 'number',
+                label: label('Total'),
+                calculation: {
+                  kind: 'aggregate',
+                  operator: 'sum',
+                  section: 'radiators',
+                  field: 'watts',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it('opens with the entry it needs, fills one at a time, and submits waiting for the photo inside an entry', async () => {
+    const { db, context, submissionId, jobId } = await phone(SURVEY);
+    const first = open(context, submissionId, {}, SURVEY);
+    const { model } = first;
+
+    // A section that needs one radiator opens with one; adding opens the new one on its own.
+    expect(
+      model
+        .snapshot()
+        .view.entries.get('radiators')
+        ?.map((entry) => entry.id),
+    ).toEqual(['entry-1']);
+    model.answer('room', 'Hall', 'entry-1');
+    model.answer('watts', 800, 'entry-1');
+    expect(model.addEntry('radiators').accepted).toBe(true);
+    expect(model.snapshot().openEntry).toEqual({ section: 'radiators', entry: 'entry-2' });
+    model.answer('watts', 1200, 'entry-2');
+    const mediaId = await queueUpload(context, {
+      localPath: 'captures/radiator.jpg',
+      contentType: 'image/jpeg',
+      byteSize: 640_000,
+      workOrderId: jobId,
+    });
+    model.answer('snap', [photo(mediaId)], 'entry-2');
+    model.moveEntry('radiators', 'entry-2', 0);
+    model.openEntry(undefined);
+    expect(model.snapshot().view.values.get('total')).toBe(2000);
+
+    // Reviewing with the room of the new radiator missing opens that radiator.
+    expect(model.review()).toEqual({ ok: false, firstField: 'room' });
+    expect(model.snapshot().openEntry).toEqual({ section: 'radiators', entry: 'entry-2' });
+    expect(model.snapshot().problems).toEqual([
+      { field: 'room', code: 'required', params: {}, entry: 'entry-2' },
+    ]);
+
+    // A third radiator is added by mistake and removed; the app is killed.
+    model.addEntry('radiators');
+    model.removeEntry('radiators', 'entry-3');
+    expect(model.snapshot().openEntry).toBeUndefined();
+    await model.flush();
+
+    const session = await db.read((sql) => fillSession(sql, submissionId));
+    expect(session?.submission.answers).toEqual({
+      radiators: [
+        { id: 'entry-2', values: { watts: 1200, snap: [photo(mediaId)] } },
+        { id: 'entry-1', values: { room: 'Hall', watts: 800 } },
+      ],
+    });
+
+    const again = open(context, submissionId, session!.submission.answers, SURVEY);
+    again.model.answer('room', 'Loft', 'entry-2');
+    expect(again.model.review()).toEqual({ ok: true });
+    await again.model.flush();
+    const answers = again.model.submission();
+    expect(answers).toEqual({
+      radiators: [
+        { id: 'entry-2', values: { room: 'Loft', watts: 1200, snap: [photo(mediaId)] } },
+        { id: 'entry-1', values: { room: 'Hall', watts: 800 } },
+      ],
+    });
+
+    await recordSubmit(context, {
+      submissionId,
+      answers,
+      filledOn: '2026-09-15',
+      location: { status: 'denied' },
+    });
+    const submit = await db.read((sql) =>
+      sql.get<{ waits_for: string }>(
+        `select waits_for from outbox where kind = 'submission.submit' and state = 'pending'`,
+      ),
+    );
+    expect((JSON.parse(submit!.waits_for) as { media: string[] }).media).toEqual([mediaId]);
   });
 });

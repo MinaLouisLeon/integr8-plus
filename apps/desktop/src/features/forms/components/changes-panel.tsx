@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Button, ErrorState, LoadingState } from '~/components/ui';
 import { checkDraft, type DraftCheck, formKeys, publishDraft, type VersionSummary } from '../api';
-import { issueElement } from '../model/issues';
+import { breakingText, issueElement, issueText } from '../model/issues';
 import { nameOf } from './canvas';
 import { Dialog } from './dialog';
 
@@ -178,7 +178,7 @@ export function IssueList({
                 })}
               </span>
             )}
-            <span>{issue.message}</span>
+            <span>{issueText(issue, (id) => nameOf(definition, id, locale, t), t)}</span>
           </span>
           {onShow === undefined || issueElement(definition, issue) === undefined ? null : (
             <Button variant="ghost" onClick={() => onShow(issueElement(definition, issue)!)}>
@@ -219,9 +219,7 @@ function BreakingList({
                 {t(`forms.changes.affects.${entry.affects}`)}
               </span>
             </div>
-            <span>
-              {t(`forms.changes.breaking.${entry.reason}`, { detail: entry.detail.join(', ') })}
-            </span>
+            <span>{breakingText(entry, t)}</span>
           </li>
         ))}
       </ul>

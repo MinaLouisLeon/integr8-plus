@@ -1,6 +1,7 @@
 import type { CompiledForm } from './compile.js';
 import { compileDefinition, type CompileResult } from './compile.js';
-import { type Answers, ownAnswer } from './evaluate.js';
+import type { Entry } from './definition.js';
+import { type Answers, ownAnswer, storedEntries } from './evaluate.js';
 import {
   choiceValues,
   type Field,
@@ -51,21 +52,31 @@ export type DroppedReason =
   /** The new version calculates this field; a typed value would be ignored anyway. */
   | 'now_calculated'
   /** A choice that the new version no longer offers. */
-  | 'option_removed';
+  | 'option_removed'
+  /**
+   * The field moved into a repeatable section or out of one, or its section
+   * started or stopped repeating: one answer and a list of entries do not map
+   * onto each other.
+   */
+  | 'entries_changed';
 
 export interface AnswerMigration {
   /** Answers that carry over, ready to resume against the new version. */
   readonly answers: Record<ElementId, unknown>;
-  /** Carried over unchanged, in the new version's field order. */
+  /**
+   * Carried over, in the new version's field order: each field once, however
+   * many entries it was carried in.
+   */
   readonly carried: readonly ElementId[];
-  /** Not carried over, and why. */
-  readonly dropped: readonly { field: ElementId; reason: DroppedReason }[];
+  /** Not carried over, and why. `entry` names the entry an answer was in. */
+  readonly dropped: readonly { field: ElementId; reason: DroppedReason; entry?: string }[];
   /** Carried, but with some options removed from a multi-select. */
-  readonly trimmed: readonly { field: ElementId; removed: readonly string[] }[];
+  readonly trimmed: readonly { field: ElementId; removed: readonly string[]; entry?: string }[];
   /**
    * Carried, but the new version's rules reject them — a new maximum, a longer
-   * minimum. Kept, so the person sees their value and the reason, rather than a
-   * blank field and no explanation.
+   * minimum, or more entries than a section now allows. Kept, so the person
+   * sees their value and the reason, rather than a blank field and no
+   * explanation.
    */
   readonly nowInvalid: readonly ElementId[];
 }
@@ -92,22 +103,34 @@ export function migrateAnswers(
 ): AnswerMigration {
   const migrated: Record<ElementId, unknown> = {};
   const carried: ElementId[] = [];
-  const dropped: { field: ElementId; reason: DroppedReason }[] = [];
-  const trimmed: { field: ElementId; removed: string[] }[] = [];
+  const dropped: { field: ElementId; reason: DroppedReason; entry?: string }[] = [];
+  const trimmed: { field: ElementId; removed: string[]; entry?: string }[] = [];
   const nowInvalid: ElementId[] = [];
-
-  // Walk the old version, so that a field removed in the new one is noticed.
-  for (const previous of from.fields) {
-    const value = ownAnswer(answers, previous.id);
-    if (!isAnswered(previous, value)) {
-      continue;
+  const once = (list: ElementId[], id: ElementId) => {
+    if (!list.includes(id)) {
+      list.push(id);
     }
+  };
 
-    const next = to.elements.get(previous.id)?.field;
+  /** One answer, from a field of the old version to its successor, in or out of an entry. */
+  const carry = (
+    previous: Field,
+    value: unknown,
+    into: Record<ElementId, unknown>,
+    entry: string | undefined,
+  ) => {
+    const at = entry === undefined ? {} : { entry };
+    const nextElement = to.elements.get(previous.id);
+    const next = nextElement?.field;
+    const section = from.elements.get(previous.id)?.entries;
+    if (next !== undefined && nextElement?.entries !== section) {
+      dropped.push({ field: previous.id, reason: 'entries_changed', ...at });
+      return;
+    }
     const reason = incompatibility(previous, next, value);
     if (reason !== undefined || next === undefined) {
-      dropped.push({ field: previous.id, reason: reason ?? 'field_removed' });
-      continue;
+      dropped.push({ field: previous.id, reason: reason ?? 'field_removed', ...at });
+      return;
     }
 
     let carriedValue = value;
@@ -116,20 +139,73 @@ export function migrateAnswers(
       const kept = (value as string[]).filter((option) => offered.includes(option));
       const removed = (value as string[]).filter((option) => !offered.includes(option));
       if (kept.length === 0) {
-        dropped.push({ field: previous.id, reason: 'option_removed' });
-        continue;
+        dropped.push({ field: previous.id, reason: 'option_removed', ...at });
+        return;
       }
       if (removed.length > 0) {
-        trimmed.push({ field: previous.id, removed });
+        trimmed.push({ field: previous.id, removed, ...at });
         carriedValue = kept;
       }
     }
 
-    migrated[previous.id] = carriedValue;
-    carried.push(previous.id);
+    into[previous.id] = carriedValue;
+    once(carried, previous.id);
     if (validateAnswer(next, carriedValue).length > 0) {
-      nowInvalid.push(previous.id);
+      once(nowInvalid, previous.id);
     }
+  };
+
+  // Walk the old version, so that a field removed in the new one is noticed.
+  const elements = [...from.elements.values()].sort((a, b) => a.index - b.index);
+  for (const element of elements) {
+    if (element.repeat !== undefined) {
+      const entries = storedEntries(answers, element.id);
+      if (entries.length === 0) {
+        continue;
+      }
+      const fields = from.fields.filter(
+        (field) => from.elements.get(field.id)?.entries === element.id,
+      );
+      const repeats = to.elements.get(element.id)?.repeat !== undefined;
+      const next: Entry[] = [];
+      for (const entry of entries) {
+        const values: Record<ElementId, unknown> = {};
+        for (const field of fields) {
+          const value = ownAnswer(entry.values, field.id);
+          if (!isAnswered(field, value)) {
+            continue;
+          }
+          if (!repeats) {
+            dropped.push({
+              field: field.id,
+              reason: to.elements.get(field.id) === undefined ? 'field_removed' : 'entries_changed',
+              entry: entry.id,
+            });
+            continue;
+          }
+          carry(field, value, values, entry.id);
+        }
+        next.push({ id: entry.id, values });
+      }
+      if (repeats) {
+        migrated[element.id] = next;
+        const maxEntries = to.elements.get(element.id)?.repeat?.maxEntries ?? next.length;
+        if (next.length > maxEntries) {
+          once(nowInvalid, element.id);
+        }
+      }
+      continue;
+    }
+
+    const previous = element.field;
+    if (previous === undefined || element.entries !== undefined) {
+      continue;
+    }
+    const value = ownAnswer(answers, previous.id);
+    if (!isAnswered(previous, value)) {
+      continue;
+    }
+    carry(previous, value, migrated, undefined);
   }
 
   // Report in the new version's reading order, which is the order the person
