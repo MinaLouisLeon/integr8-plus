@@ -120,6 +120,9 @@ export function workOrderDetail(
     cancelledAt?: string | null;
     formIds?: string[];
     site?: SiteBody;
+    beforePhotos?: number;
+    afterPhotos?: number;
+    signatureRequired?: boolean;
   } = {},
 ): WorkOrderDetail {
   counter += 1;
@@ -186,6 +189,18 @@ export function workOrderDetail(
     comments: [],
     events: [],
     attachments: [],
+    execution: {
+      beforePhotos: overrides.beforePhotos ?? 0,
+      afterPhotos: overrides.afterPhotos ?? 0,
+      signatureRequired: overrides.signatureRequired ?? false,
+      signoff: null,
+      missing: {
+        forms: [],
+        beforePhotos: overrides.beforePhotos ?? 0,
+        afterPhotos: overrides.afterPhotos ?? 0,
+        signoff: overrides.signatureRequired ?? false,
+      },
+    },
     previousAtSite: [],
     can: { edit: false, assign: false, work: true, comment: true, transitions: [] },
   };

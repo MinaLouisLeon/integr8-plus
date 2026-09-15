@@ -10,6 +10,7 @@
 export type * from './api-types.js';
 export * from './database.js';
 export * from './eviction.js';
+export * from './execution.js';
 export * from './forms.js';
 export * from './migrations.js';
 export * from './queries.js';
@@ -20,6 +21,7 @@ export * from './watch.js';
 export * from './wipe.js';
 export * from './unsent.js';
 export * from './sync/clock.js';
+export * from './sync/downloads.js';
 export * from './sync/engine.js';
 export * from './sync/ids.js';
 export * from './sync/outbox.js';

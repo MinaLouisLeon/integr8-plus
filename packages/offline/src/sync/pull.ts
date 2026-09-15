@@ -44,6 +44,7 @@ export interface PullOutcome {
 
 const PULL_TABLES = [
   'meta',
+  'shifts',
   'customers',
   'sites',
   'work_orders',
@@ -67,7 +68,8 @@ async function withPendingChanges(
   const pending = await sql.all<{ kind: string; payload: string; recorded_at: string }>(
     `select kind, payload, recorded_at from outbox
      where state = 'pending'
-       and kind in ('work_order.transition', 'work_order.checklist', 'work_order.comment', 'site.access')
+       and kind in ('work_order.transition', 'work_order.checklist', 'work_order.comment', 'site.access',
+                    'work_order.photo', 'work_order.photo_remove', 'work_order.signoff')
        and (work_order_id = ? or (kind = 'site.access' and entity_id = ?))
      order by seq`,
     [detail.workOrder.id, detail.site.id],
@@ -142,6 +144,24 @@ async function applyPage(
   }
   for (const submission of page.submissions) {
     await writeSubmission(sql, submission, at);
+  }
+  // The engineer's shifts (P14), unless the phone has one of its own still to send.
+  for (const shift of page.shifts) {
+    await sql.run(
+      `insert into shifts (id, started_at, ended_at, start_location, end_location, updated_at)
+       values (?, ?, ?, ?, ?, ?)
+       on conflict (id) do update set
+         ended_at = excluded.ended_at, end_location = excluded.end_location, updated_at = excluded.updated_at
+       where not exists (select 1 from outbox where entity_key = 'shift:' || shifts.id and state <> 'done')`,
+      [
+        shift.id,
+        shift.startedAt,
+        shift.endedAt,
+        shift.startLocation === null ? null : JSON.stringify(shift.startLocation),
+        shift.endLocation === null ? null : JSON.stringify(shift.endLocation),
+        at,
+      ],
+    );
   }
 
   let removed = 0;

@@ -18,7 +18,25 @@ export type LocalChange =
       kind: 'work_order.comment';
       payload: { commentId: string; body: string; visibility: 'internal' | 'customer' };
     }
-  | { kind: 'site.access'; payload: { changes: AccessValues } };
+  | { kind: 'site.access'; payload: { changes: AccessValues } }
+  | {
+      kind: 'work_order.photo';
+      payload: {
+        attachmentId: string;
+        mediaId: string;
+        stage: 'before' | 'after';
+        title: string;
+        contentType: string;
+        byteSize: number;
+      };
+    }
+  | { kind: 'work_order.photo_remove'; payload: { attachmentId: string } }
+  | {
+      kind: 'work_order.signoff';
+      payload:
+        | { mediaId: string; name: string; role: string | null; signedAt: string }
+        | { unavailableReason: string; signedAt: string };
+    };
 
 export interface Actor {
   id: string;
@@ -46,6 +64,24 @@ export function applyToJob(
           completedAt: to === 'complete' ? at : detail.workOrder.completedAt,
           cancelledAt: to === 'cancelled' ? at : detail.workOrder.cancelledAt,
         },
+        // In the history too, so time on the job counts from the phone's own record (P14).
+        events:
+          detail.workOrder.state === to
+            ? detail.events
+            : [
+                ...detail.events,
+                {
+                  kind: 'transitioned',
+                  fromState: detail.workOrder.state,
+                  toState: to,
+                  person: null,
+                  actor,
+                  reason: change.payload.reason ?? null,
+                  details: {},
+                  occurredAt: at,
+                  recordedAt: at,
+                },
+              ],
       };
     }
     case 'work_order.checklist':
@@ -86,6 +122,62 @@ export function applyToJob(
           access: { ...detail.site.access, ...definedOnly(change.payload.changes) },
         },
       };
+    case 'work_order.photo': {
+      const { attachmentId, mediaId, stage, title, contentType, byteSize } = change.payload;
+      return detail.attachments.some((attachment) => attachment.id === attachmentId)
+        ? detail
+        : {
+            ...detail,
+            attachments: [
+              {
+                id: attachmentId,
+                fileId: mediaId,
+                title,
+                kind: 'photo',
+                stage,
+                contentType,
+                byteSize,
+                addedBy: actor,
+                createdAt: at,
+              },
+              ...detail.attachments,
+            ],
+          };
+    }
+    case 'work_order.photo_remove':
+      return {
+        ...detail,
+        attachments: detail.attachments.filter(
+          (attachment) => attachment.id !== change.payload.attachmentId,
+        ),
+      };
+    case 'work_order.signoff': {
+      const { payload } = change;
+      return {
+        ...detail,
+        execution: {
+          ...detail.execution,
+          signoff:
+            'mediaId' in payload
+              ? {
+                  signedAt: payload.signedAt,
+                  signedBy: actor,
+                  fileId: payload.mediaId,
+                  name: payload.name,
+                  role: payload.role,
+                  unavailableReason: null,
+                }
+              : {
+                  signedAt: payload.signedAt,
+                  signedBy: actor,
+                  fileId: null,
+                  name: null,
+                  role: null,
+                  unavailableReason: payload.unavailableReason,
+                },
+        },
+      };
+    }
   }
 }
 

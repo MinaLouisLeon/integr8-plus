@@ -33,6 +33,8 @@ export interface SyncApi {
   partLinks(mediaId: string, partNumbers: readonly number[]): Promise<PartLinks>;
   arrivedParts(mediaId: string): Promise<ArrivedParts>;
   completeUpload(mediaId: string): Promise<void>;
+  /** A short-lived link to a stored file; undefined when it is gone or not this person's to see. */
+  mediaLink(fileId: string): Promise<{ url: string } | undefined>;
 }
 
 /** Reads a stored file a piece at a time, so a 25 MB video is never all in memory. */
@@ -48,6 +50,8 @@ export interface ByteTransport {
     headers: Readonly<Record<string, string>>,
     body: Uint8Array,
   ): Promise<{ status: number }>;
+  /** Saves a link's bytes at a path relative to the files directory (P14). */
+  download(url: string, path: string): Promise<{ status: number }>;
 }
 
 export function syncApiFor(client: Integr8Client): SyncApi {
@@ -87,6 +91,13 @@ export function syncApiFor(client: Integr8Client): SyncApi {
     completeUpload: async (mediaId) => {
       await client.POST('/v1/media/{mediaId}/complete', { params: { path: { mediaId } } });
     },
+    mediaLink: (fileId) =>
+      unlessGone(async () => {
+        const data = (
+          await client.GET('/v1/media/{mediaId}', { params: { path: { mediaId: fileId } } })
+        ).data;
+        return data === undefined ? undefined : { url: data.url };
+      }),
   };
 }
 
