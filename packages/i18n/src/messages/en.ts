@@ -141,6 +141,9 @@ export const en = {
       // published form always carries. The fallback exists so a screen never
       // renders a raw key.
       rule_failed: 'This answer does not meet a rule on this form.',
+      // On a repeatable section itself (P13b); the renderer shows the section's name beside it.
+      too_few_entries: 'Add at least {{minimum}}.',
+      too_many_entries: 'Remove entries until there are no more than {{maximum}}.',
     },
   },
 
@@ -279,6 +282,9 @@ export const en = {
       page: 'Page {{number}}',
       section: 'Section',
       addSection: 'Add a section',
+      addRepeatableSection: 'Add a repeatable section',
+      defaultEntryLabel: 'Item',
+      repeats: 'Repeats · up to {{maximum}}',
       addPage: 'Add a page',
       emptySection: 'Drag a question here',
       drag: 'Drag to move {{name}}',
@@ -314,6 +320,22 @@ export const en = {
         answer: 'Answer',
         visibility: 'When to show',
         checks: 'Checks',
+        repeat: 'Repeating',
+      },
+      repeat: {
+        toggle: 'Repeat this section',
+        hint: 'Ask these questions once for each thing found on site, such as every appliance.',
+        entryLabel: 'What one entry is called',
+        entryLabelHint: 'For example Appliance, shown as Appliance 1, Appliance 2.',
+        minEntries: 'Fewest entries',
+        minHint: 'Leave empty if none are needed.',
+        maxEntries: 'Most entries',
+        minInvalid: 'Enter a whole number from 0 to 100.',
+        maxInvalid: 'Enter a whole number from 1 to 100.',
+        minAboveMax: 'The fewest cannot be more than the most.',
+        titleField: 'Name each entry by',
+        titleFieldHint: 'The answer shown beside each entry’s number, such as the make.',
+        titleFieldNone: 'Just its number',
       },
       label: 'Question',
       title: 'Title',
@@ -382,6 +404,12 @@ export const en = {
         multiply: 'times',
         divide: 'divided by',
       },
+      count: 'Number of entries in {{section}}',
+      aggregate: {
+        sum: 'Total of {{question}} across {{section}}',
+        min: 'Smallest {{question}} across {{section}}',
+        max: 'Largest {{question}} across {{section}}',
+      },
       advanced:
         'This calculation was written outside the builder. It still works, but it can only be removed here.',
       broken:
@@ -407,6 +435,13 @@ export const en = {
       aValue: 'a value',
       anotherAnswer: 'another answer',
       thisAnswer: 'This answer',
+      entryCount: 'Number of {{section}}',
+      inSection: '{{question}} ({{section}})',
+      entries: 'Which entries',
+      quantifier: {
+        some: 'in any entry',
+        every: 'in every entry',
+      },
       incomplete: 'Unfinished conditions take effect once they are complete.',
       advanced:
         'This rule was written outside the builder. It still works, but it can only be removed here.',
@@ -439,6 +474,8 @@ export const en = {
         unknown_option: 'Choose one of the options.',
         compared_field_unknown: 'Choose the other question.',
         compared_field_mismatch: 'Those two questions hold different kinds of answer.',
+        quantifier_required: 'Choose whether any entry or every entry must match.',
+        count_invalid: 'Enter a whole number.',
       },
     },
 
@@ -482,7 +519,22 @@ export const en = {
         answer_to_hidden_field: 'An answer was sent for “{{field}}”, which is hidden.',
         answer_to_calculated_field:
           'An answer was typed for “{{field}}”, which is worked out automatically.',
+        duplicate_entry: 'Two entries of “{{field}}” were sent with the same id.',
       },
+    },
+
+    // Problems the engine finds when checking a whole form, for codes the builder words itself.
+    issues: {
+      noQuestions: '“{{section}}” repeats but has no questions to repeat. Add a question to it.',
+      entryLimits:
+        '“{{section}}” needs more entries than it allows. Make the fewest entries no more than the most.',
+      titleField:
+        'Each entry of “{{section}}” must be named by one of its own short answer, number, date or time questions.',
+      not_repeatable: 'A rule reads across the entries of “{{section}}”, but that does not repeat.',
+      inside_repeat:
+        'A rule reads “{{question}}”, which is asked once for each entry of “{{section}}”. Choose whether any entry or every entry must match.',
+      not_in_section:
+        'A calculation works across the entries of “{{section}}” using “{{question}}”, which is not one of its questions.',
     },
 
     changes: {
@@ -520,6 +572,14 @@ export const en = {
         now_required: 'Now required. Unfinished drafts must answer it before they can be sent.',
         constraint_tightened:
           'Stricter limits: {{detail}}. Some unfinished drafts may need correcting.',
+        entries_changed:
+          'Moved into or out of a repeating section, or its section started or stopped repeating. Answers before and after are kept differently, so reports cannot put them in one column.',
+        entryLimits:
+          'Stricter limits on entries: {{detail}}. Some unfinished drafts may need correcting.',
+      },
+      limit: {
+        minEntries: 'fewest entries',
+        maxEntries: 'most entries',
       },
       affects: {
         reporting: 'Affects reports',
@@ -608,6 +668,27 @@ export const en = {
       title_one: 'There is {{count}} problem to fix',
       title_other: 'There are {{count}} problems to fix',
       goTo: 'Go to “{{question}}”',
+      goToInEntry: 'Go to “{{question}}” in {{entry}}',
+    },
+    // Repeatable sections (P13b): the same questions asked once per appliance, radiator or defect.
+    entries: {
+      named: '{{label}} · {{name}}',
+      add: 'Add {{entry}}',
+      none: 'None added yet.',
+      noneAdded: 'None added',
+      limit: 'No more than {{maximum}} can be added.',
+      minimum: 'At least {{minimum}} needed.',
+      moveUp: 'Move {{entry}} up',
+      moveDown: 'Move {{entry}} down',
+      remove: 'Remove',
+      removeEntry: 'Remove {{entry}}',
+      removeQuestion: 'Remove {{entry}}? The answers in it will be lost.',
+      confirmRemove: 'Yes, remove it',
+      keep: 'Keep it',
+      added: '{{entry}} added.',
+      removed: '{{entry}} removed.',
+      moved: '{{entry}} moved to position {{position}} of {{total}}.',
+      sectionProblem: '{{section}}: {{problem}}',
     },
     review: {
       title: 'Check your answers',
@@ -749,6 +830,8 @@ export const en = {
       showAnswers: 'Show the answers at this point',
       hideAnswers: 'Hide',
       changed: 'Changed',
+      entriesRemoved_one: '{{count}} entry removed',
+      entriesRemoved_other: '{{count}} entries removed',
       reopen: 'Reopen to correct',
       reopenTitle: 'Reopen this submission',
       reopenBody:
@@ -1387,6 +1470,25 @@ export const en = {
       call: 'Call {{number}}',
     },
     fill: {
+      // A repeatable section, one entry at a time (P13b). {{entry}} is the admin's
+      // own name for one entry: "Appliance", "Radiator".
+      entries: {
+        none: 'None added yet.',
+        add: 'Add {{entry}}',
+        full: 'This form allows {{count}}, and all have been added.',
+        openHint: 'Opens this entry on its own',
+        back: 'Back to {{section}}',
+        position: '{{number}} of {{total}}',
+        previous: 'Previous',
+        next: 'Next',
+        done: 'Done',
+        moveUp: 'Move up',
+        moveDown: 'Move down',
+        remove: 'Remove',
+        removeTitle: 'Remove {{entry}}?',
+        removeBody: 'Its answers, photos and signatures on this form will be deleted.',
+        problem: '{{question}} in {{entry}}',
+      },
       notOnPhone: 'This form is not on this phone yet. Sync with signal, then open it again.',
       cannotOpen: 'This form cannot be shown on this phone. Tell the office it needs checking.',
       noLiveVersion: 'This form has not been published yet, so it cannot be filled.',
@@ -1599,6 +1701,8 @@ export const en = {
       theirs: 'Theirs',
       mine: 'Mine',
       before: 'Before: {{value}}',
+      entries_one: '{{count}} entry',
+      entries_other: '{{count}} entries',
       empty: '(empty)',
       keepTheirs: 'Keep theirs',
       useChoices: 'Send my choices',

@@ -57,17 +57,27 @@ export const keys = {
   submission: (id: string) => ['submissions', id] as const,
 };
 
-/** The server's field-level reasons, keyed by answer where the detail names one. */
-export function problemsOf(error: unknown): { field: string | undefined; message: string }[] {
+/**
+ * The server's field-level reasons, keyed by answer where the detail names one:
+ * `body.answers.make`, or inside an entry of a repeatable section (P13b)
+ * `body.answers.appliances[<entry id>].make`, which names the entry too.
+ */
+export function problemsOf(
+  error: unknown,
+): { field: string | undefined; entry?: string; message: string }[] {
   if (!(error instanceof ApiRequestError)) {
     return [];
   }
-  return error.details.map((detail) => ({
-    field: detail.field.startsWith('body.answers.')
-      ? detail.field.slice('body.answers.'.length)
-      : undefined,
-    message: detail.message,
-  }));
+  return error.details.map((detail) => {
+    if (!detail.field.startsWith('body.answers.')) {
+      return { field: undefined, message: detail.message };
+    }
+    const path = detail.field.slice('body.answers.'.length);
+    const inEntry = /^[a-z][a-z0-9_]*\[([A-Za-z0-9_-]+)\]\.([a-z][a-z0-9_]*)$/u.exec(path);
+    return inEntry === null
+      ? { field: path, message: detail.message }
+      : { field: inEntry[2], entry: inEntry[1]!, message: detail.message };
+  });
 }
 
 /**

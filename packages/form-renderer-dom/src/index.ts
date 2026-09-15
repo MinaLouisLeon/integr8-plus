@@ -12,6 +12,14 @@
  */
 
 export { AnswerView, type AnswerViewProps } from './answer-view.js';
+export {
+  EntryList,
+  entryName,
+  SectionProblem,
+  sectionName,
+  type EntryFieldContext,
+  type EntryListProps,
+} from './entries.js';
 export { ErrorText } from './field.js';
 export { FormFiller, type FormFillerProps, type SubmitOutcome } from './form-filler.js';
 export type { MediaAdapter } from './media.js';

@@ -7,9 +7,12 @@ import {
   isAnswered,
   mediaReferenceSchema,
   ownAnswer,
+  type Section,
+  storedEntries,
 } from '@integr8/form-engine';
 import { formatDate, formatDateTime, formatList, useTranslation } from '@integr8/i18n';
 import type { ReactNode } from 'react';
+import { entryName, sectionName } from './entries.js';
 import type { MediaAdapter } from './media.js';
 import { formatBytes, say } from './text.js';
 import { MediaImage, useMediaUrl } from './widgets/media-image.js';
@@ -46,8 +49,85 @@ export function AnswerView({
   onChangePage,
 }: AnswerViewProps) {
   const { t } = useTranslation();
-  const { visible, values } = evaluateForm(form, answers, today === undefined ? {} : { today });
+  const { visible, values, entries } = evaluateForm(
+    form,
+    answers,
+    today === undefined ? {} : { today },
+  );
   const pages = form.definition.pages.filter((page) => visible.get(page.id) === true);
+
+  const row = (field: Field, value: unknown, changed: boolean) => (
+    <div
+      key={field.id}
+      className="grid gap-1 px-4 py-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-4"
+    >
+      <dt className="text-sm text-content-muted">
+        {say(field.label, locale) || field.id}
+        {changed ? (
+          <span className="ms-2 rounded-full bg-warning-subtle px-2 py-0.5 text-xs text-content">
+            {t('submissions.detail.changed')}
+          </span>
+        ) : null}
+      </dt>
+      <dd className="min-w-0 text-sm text-content">
+        <AnswerValue field={field} value={value} locale={locale} media={media} />
+      </dd>
+    </div>
+  );
+
+  const differs = (before: unknown, after: unknown) =>
+    JSON.stringify(before ?? null) !== JSON.stringify(after ?? null);
+
+  /** A repeatable section: its entries as a titled list, each with its own answers. */
+  const entryList = (section: Section) => {
+    const worked = entries.get(section.id) ?? [];
+    const stored = storedEntries(answers, section.id);
+    const before = previous === undefined ? undefined : storedEntries(previous, section.id);
+    const removed =
+      before === undefined
+        ? 0
+        : before.filter((entry) => !stored.some((candidate) => candidate.id === entry.id)).length;
+    return (
+      <>
+        {worked.length === 0 ? (
+          <p className="rounded-lg border border-border-subtle bg-surface px-4 py-3 text-sm text-content-muted">
+            {t('fill.entries.noneAdded')}
+          </p>
+        ) : (
+          <ol className="flex flex-col gap-3">
+            {worked.map((entry, index) => {
+              const own = stored.find((candidate) => candidate.id === entry.id)?.values ?? {};
+              const earlier = before?.find((candidate) => candidate.id === entry.id)?.values ?? {};
+              return (
+                <li key={entry.id} className="flex flex-col gap-1.5">
+                  <h5 className="text-sm font-medium text-content">
+                    {entryName(section, entry, index, locale, t)}
+                  </h5>
+                  <dl className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface">
+                    {section.fields
+                      .filter((field) => entry.visible.get(field.id) === true)
+                      .map((field) =>
+                        row(
+                          field,
+                          entry.values.get(field.id),
+                          before !== undefined &&
+                            differs(ownAnswer(earlier, field.id), ownAnswer(own, field.id)),
+                        ),
+                      )}
+                  </dl>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+        {removed === 0 ? null : (
+          <p className="text-xs text-content-muted">
+            {t('submissions.detail.entriesRemoved', { count: removed })}
+          </p>
+        )}
+      </>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6 text-start">
@@ -77,45 +157,29 @@ export function AnswerView({
             .filter((section) => visible.get(section.id) === true)
             .map((section) => (
               <div key={section.id} className="flex flex-col gap-2">
-                {section.title === undefined ? null : (
+                {section.title === undefined && section.repeat === undefined ? null : (
                   <h4 className="text-sm font-semibold text-content-muted">
-                    {say(section.title, locale)}
+                    {section.repeat === undefined
+                      ? say(section.title, locale)
+                      : sectionName(section, locale)}
                   </h4>
                 )}
-                <dl className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface">
-                  {section.fields
-                    .filter((field) => visible.get(field.id) === true)
-                    .map((field) => {
-                      const value = values.get(field.id);
-                      const changed =
-                        previous !== undefined &&
-                        JSON.stringify(ownAnswer(previous, field.id) ?? null) !==
-                          JSON.stringify(ownAnswer(answers, field.id) ?? null);
-                      return (
-                        <div
-                          key={field.id}
-                          className="grid gap-1 px-4 py-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-4"
-                        >
-                          <dt className="text-sm text-content-muted">
-                            {say(field.label, locale) || field.id}
-                            {changed ? (
-                              <span className="ms-2 rounded-full bg-warning-subtle px-2 py-0.5 text-xs text-content">
-                                {t('submissions.detail.changed')}
-                              </span>
-                            ) : null}
-                          </dt>
-                          <dd className="min-w-0 text-sm text-content">
-                            <AnswerValue
-                              field={field}
-                              value={value}
-                              locale={locale}
-                              media={media}
-                            />
-                          </dd>
-                        </div>
-                      );
-                    })}
-                </dl>
+                {section.repeat === undefined ? (
+                  <dl className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface">
+                    {section.fields
+                      .filter((field) => visible.get(field.id) === true)
+                      .map((field) =>
+                        row(
+                          field,
+                          values.get(field.id),
+                          previous !== undefined &&
+                            differs(ownAnswer(previous, field.id), ownAnswer(answers, field.id)),
+                        ),
+                      )}
+                  </dl>
+                ) : (
+                  entryList(section)
+                )}
               </div>
             ))}
         </section>
