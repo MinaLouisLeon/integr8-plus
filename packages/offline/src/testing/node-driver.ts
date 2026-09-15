@@ -1,9 +1,7 @@
-// Test-only: the app itself never runs on Node, so its tsconfig does not include Node's types.
-/// <reference types="node" />
 import { DatabaseSync } from 'node:sqlite';
-import { LocalDatabase } from '../database';
-import { migrate, type Migration, MIGRATIONS } from '../migrations';
-import type { SqlDriver, SqlValue } from '../sql';
+import { LocalDatabase } from '../database.js';
+import { migrate, type Migration, MIGRATIONS } from '../migrations.js';
+import type { SqlDriver, SqlValue } from '../sql.js';
 
 /**
  * The local database on Node's built-in SQLite, for tests.

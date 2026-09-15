@@ -1,6 +1,7 @@
 import { CLOSED_WORK_ORDER_STATES } from '@integr8/core';
-import type { CustomerDetail, FormDetail, Me, SiteBody, WorkOrderDetail } from './api-types';
-import type { SqlConnection } from './sql';
+import type { CustomerDetail, FormDetail, Me, SiteBody, WorkOrderDetail } from './api-types.js';
+import type { SqlConnection } from './sql.js';
+import { UNSENT_WORK_ORDER_IDS } from './unsent.js';
 
 /**
  * Writing what the server said into the phone's tables.
@@ -88,15 +89,14 @@ export async function applySnapshot(
   const removed = await sql.run(
     `delete from work_orders
      where id not in (select value from json_each(?))
-       and id not in (select work_order_id from drafts where work_order_id is not null)
-       and id not in (select owner_id from files where owner_kind = 'work_order' and state = 'pending_upload')`,
+       and id not in (${UNSENT_WORK_ORDER_IDS})`,
     [kept],
   );
 
   return { removedWorkOrders: removed.changes };
 }
 
-async function upsertCustomer(sql: SqlConnection, detail: CustomerDetail, at: string) {
+export async function upsertCustomer(sql: SqlConnection, detail: CustomerDetail, at: string) {
   const { customer } = detail;
   await sql.run(
     `insert into customers (id, name, account_number, status, phone, email, address_text, data, downloaded_at)
@@ -119,7 +119,7 @@ async function upsertCustomer(sql: SqlConnection, detail: CustomerDetail, at: st
   );
 }
 
-async function upsertSite(sql: SqlConnection, site: SiteBody, at: string) {
+export async function upsertSite(sql: SqlConnection, site: SiteBody, at: string) {
   await sql.run(
     `insert into sites (id, customer_id, name, address_text, latitude, longitude,
                         gate_code, parking, ask_for, hazards, access_notes, data, downloaded_at)
@@ -147,7 +147,7 @@ async function upsertSite(sql: SqlConnection, site: SiteBody, at: string) {
   );
 }
 
-async function upsertWorkOrder(sql: SqlConnection, detail: WorkOrderDetail, at: string) {
+export async function upsertWorkOrder(sql: SqlConnection, detail: WorkOrderDetail, at: string) {
   const { workOrder, site, customer, jobType } = detail;
   await sql.run(
     `insert into work_orders (id, reference, reference_label, title, state, priority,
@@ -183,7 +183,7 @@ async function upsertWorkOrder(sql: SqlConnection, detail: WorkOrderDetail, at: 
   );
 }
 
-async function upsertForm(sql: SqlConnection, detail: FormDetail, at: string) {
+export async function upsertForm(sql: SqlConnection, detail: FormDetail, at: string) {
   const { form, live } = detail;
   await sql.run(
     `insert into forms (id, title, live_version_id, downloaded_at) values (?, ?, ?, ?)

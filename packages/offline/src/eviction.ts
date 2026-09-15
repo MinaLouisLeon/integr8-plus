@@ -1,4 +1,5 @@
-import type { SqlConnection } from './sql';
+import type { SqlConnection } from './sql.js';
+import { UNSENT_FORM_VERSION_IDS, UNSENT_SITE_IDS, UNSENT_WORK_ORDER_IDS } from './unsent.js';
 
 /**
  * What the phone keeps, and what goes first when it keeps too much.
@@ -53,8 +54,7 @@ export async function evict(
   const workOrders = await sql.run(
     `delete from work_orders
      where closed_at is not null and closed_at < ?
-       and id not in (select work_order_id from drafts where work_order_id is not null)
-       and id not in (select owner_id from files where owner_kind = 'work_order' and state = 'pending_upload')`,
+       and id not in (${UNSENT_WORK_ORDER_IDS})`,
     [cutoff],
   );
 
@@ -62,11 +62,7 @@ export async function evict(
     `delete from customers
      where id not in (select customer_id from work_orders)
        and id not in (select owner_id from files where owner_kind = 'customer' and state = 'pending_upload')
-       and id not in (
-         select sites.customer_id from sites
-         join files on files.owner_kind = 'site' and files.owner_id = sites.id
-         where files.state = 'pending_upload'
-       )`,
+       and id not in (select customer_id from sites where id in (${UNSENT_SITE_IDS}))`,
   );
 
   const sites = await sql.run(
@@ -75,7 +71,7 @@ export async function evict(
 
   const formVersions = await sql.run(
     `delete from form_versions
-     where id not in (select form_version_id from drafts)
+     where id not in (${UNSENT_FORM_VERSION_IDS})
        and id not in (
          select live_version_id from forms
          where live_version_id is not null and id in (${FORMS_OF_KEPT_JOBS})

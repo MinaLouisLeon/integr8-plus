@@ -1,5 +1,6 @@
-import type { CustomerDetail, SiteBody, WorkOrderDetail } from './api-types';
-import type { SqlConnection } from './sql';
+import type { CustomerDetail, SiteBody, WorkOrderDetail } from './api-types.js';
+import type { SqlConnection } from './sql.js';
+import { UNSENT_WORK_COUNT } from './unsent.js';
 
 /**
  * Everything a screen reads. Nothing here touches the network.
@@ -227,7 +228,8 @@ export interface StorageSummary {
   closedJobs: number;
   customers: number;
   forms: number;
-  unsentDrafts: number;
+  /** Changes, files and forms the server has not received. */
+  unsentWork: number;
   pendingUploads: number;
   downloadedFileBytes: number;
 }
@@ -238,7 +240,7 @@ export async function storageSummary(sql: SqlConnection): Promise<StorageSummary
     closed_jobs: number;
     customers: number;
     forms: number;
-    unsent_drafts: number;
+    unsent_work: number;
     pending_uploads: number;
     downloaded_file_bytes: number;
   }>(
@@ -247,8 +249,8 @@ export async function storageSummary(sql: SqlConnection): Promise<StorageSummary
        (select count(*) from work_orders where closed_at is not null) as closed_jobs,
        (select count(*) from customers) as customers,
        (select count(*) from forms) as forms,
-       (select count(*) from drafts) as unsent_drafts,
-       (select count(*) from files where state = 'pending_upload') as pending_uploads,
+       ${UNSENT_WORK_COUNT} as unsent_work,
+       (select count(*) from uploads where state <> 'confirmed') as pending_uploads,
        (select coalesce(sum(byte_size), 0) from files where state = 'downloaded') as downloaded_file_bytes`,
   );
   return {
@@ -256,7 +258,7 @@ export async function storageSummary(sql: SqlConnection): Promise<StorageSummary
     closedJobs: row?.closed_jobs ?? 0,
     customers: row?.customers ?? 0,
     forms: row?.forms ?? 0,
-    unsentDrafts: row?.unsent_drafts ?? 0,
+    unsentWork: row?.unsent_work ?? 0,
     pendingUploads: row?.pending_uploads ?? 0,
     downloadedFileBytes: row?.downloaded_file_bytes ?? 0,
   };
@@ -264,6 +266,5 @@ export async function storageSummary(sql: SqlConnection): Promise<StorageSummary
 
 /** Work on the phone that has not reached the server: signing out would delete it. */
 export async function unsentWorkCount(sql: SqlConnection): Promise<number> {
-  const summary = await storageSummary(sql);
-  return summary.unsentDrafts + summary.pendingUploads;
+  return (await storageSummary(sql)).unsentWork;
 }

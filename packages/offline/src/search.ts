@@ -1,5 +1,5 @@
-import type { JobListItem } from './queries';
-import type { SqlConnection } from './sql';
+import type { JobListItem } from './queries.js';
+import type { SqlConnection } from './sql.js';
 
 /**
  * Finding a job or a customer on the phone, with no signal.

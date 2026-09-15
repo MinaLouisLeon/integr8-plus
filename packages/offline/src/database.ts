@@ -1,8 +1,19 @@
-import type { SqlConnection, SqlDriver } from './sql';
+import type { SqlConnection, SqlDriver } from './sql.js';
 
 /** The tables a write can change; a screen names the ones it reads to hear about changes. */
 export type LocalTable =
-  'meta' | 'customers' | 'sites' | 'work_orders' | 'forms' | 'form_versions' | 'drafts' | 'files';
+  | 'meta'
+  | 'customers'
+  | 'sites'
+  | 'work_orders'
+  | 'forms'
+  | 'form_versions'
+  | 'drafts'
+  | 'files'
+  | 'outbox'
+  | 'uploads'
+  | 'submissions'
+  | 'sync_runs';
 
 export class LocalDatabaseClosedError extends Error {
   constructor() {

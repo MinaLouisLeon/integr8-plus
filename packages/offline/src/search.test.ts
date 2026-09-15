@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { matchExpression, searchLocal } from './search';
-import { applySnapshot } from './snapshot';
-import { customerDetail, me, siteBody, workOrderDetail } from './testing/fixtures';
-import { openTestDatabase } from './testing/node-driver';
+import { matchExpression, searchLocal } from './search.js';
+import { applySnapshot } from './snapshot.js';
+import { customerDetail, me, siteBody, workOrderDetail } from './testing/fixtures.js';
+import { openTestDatabase } from './testing/node-driver.js';
 
 const NOW = new Date('2026-09-14T12:00:00.000Z');
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { JobListItem } from './queries';
-import { sectionJobs } from './queries';
-import { wipeLocalData } from './wipe';
+import type { JobListItem } from './queries.js';
+import { sectionJobs } from './queries.js';
+import { wipeLocalData } from './wipe.js';
 
 describe('wiping the phone', () => {
   it('closes the database, forgets the key, then deletes the database and the files', async () => {

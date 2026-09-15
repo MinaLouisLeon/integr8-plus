@@ -1,5 +1,5 @@
-import type { LocalDatabase, LocalTable } from './database';
-import type { SqlConnection } from './sql';
+import type { LocalDatabase, LocalTable } from './database.js';
+import type { SqlConnection } from './sql.js';
 
 export type QueryState<T> =
   { status: 'pending' } | { status: 'ready'; data: T } | { status: 'error'; error: unknown };

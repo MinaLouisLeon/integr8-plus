@@ -6,8 +6,8 @@ import type {
   SiteBody,
   WorkOrderDetail,
   WorkOrderSummary,
-} from '../api-types';
-import type { SqlConnection } from '../sql';
+} from '../api-types.js';
+import type { SqlConnection } from '../sql.js';
 
 /**
  * The server's answers, built to the generated contract, and a fake API that

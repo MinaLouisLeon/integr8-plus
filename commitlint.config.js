@@ -14,6 +14,7 @@ export default {
         'form-engine',
         'form-renderer',
         'operations',
+        'offline',
         'db',
         'auth',
         'config',

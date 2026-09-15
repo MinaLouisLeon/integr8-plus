@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { LocalDatabase } from './database';
-import { evict } from './eviction';
+import { LocalDatabase } from './database.js';
+import { evict } from './eviction.js';
 import {
   LATEST_VERSION,
   LocalDatabaseTooNewError,
@@ -9,11 +9,11 @@ import {
   MigrationFailedError,
   MIGRATIONS,
   schemaVersion,
-} from './migrations';
-import { job, openJobs, storageSummary } from './queries';
-import { searchLocal } from './search';
-import type { SqlDriver } from './sql';
-import { NodeSqlDriver } from './testing/node-driver';
+} from './migrations.js';
+import { job, openJobs, storageSummary } from './queries.js';
+import { searchLocal } from './search.js';
+import type { SqlDriver } from './sql.js';
+import { NodeSqlDriver } from './testing/node-driver.js';
 
 /**
  * "Upgrading the app across two local schema versions preserves all unsent
@@ -64,6 +64,11 @@ const UNSENT_WORK_AT: Record<number, (driver: SqlDriver) => Promise<void>> = {
   },
   // Version 2 added search and changed none of these tables.
   2: (driver) => UNSENT_WORK_AT[1]!(driver),
+  // Version 3 added files.last_opened_at, which a build at version 3 filled in.
+  3: async (driver) => {
+    await UNSENT_WORK_AT[1]!(driver);
+    await driver.run(`update files set last_opened_at = created_at`);
+  },
 };
 
 async function databaseAt(version: number): Promise<NodeSqlDriver> {
@@ -108,7 +113,25 @@ describe('upgrading with unsent work on the phone', () => {
       ]);
 
       // Today's queries read it, and search finds what was downloaded before search existed.
-      expect(await db.read(storageSummary)).toMatchObject({ unsentDrafts: 1, pendingUploads: 1 });
+      // Since version 4, the draft is a form the server has not seen and the photo is
+      // in the upload queue — both still unsent, and both still pointing at the job.
+      expect(await db.read(storageSummary)).toMatchObject({ unsentWork: 2, pendingUploads: 1 });
+      expect(
+        await driver.all(
+          'select id, status, answers, server_revision, work_order_id from submissions',
+        ),
+      ).toEqual([
+        {
+          id: DRAFT,
+          status: 'draft',
+          answers: '{"note":"Flue cracked"}',
+          server_revision: null,
+          work_order_id: JOB,
+        },
+      ]);
+      expect(await driver.all('select media_id, state, work_order_id from uploads')).toEqual([
+        { media_id: PENDING_PHOTO, state: 'queued', work_order_id: JOB },
+      ]);
       expect(await db.read((sql) => job(sql, JOB))).toBeDefined();
       expect((await db.read((sql) => searchLocal(sql, 'WO-000042'))).workOrders).toHaveLength(1);
       expect((await db.read((sql) => searchLocal(sql, 'riverside'))).customers).toHaveLength(1);

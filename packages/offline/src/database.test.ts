@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { LocalDatabaseClosedError } from './database';
-import { openTestDatabase } from './testing/node-driver';
-import { watchQuery, type QueryState } from './watch';
+import { LocalDatabaseClosedError } from './database.js';
+import { openTestDatabase } from './testing/node-driver.js';
+import { watchQuery, type QueryState } from './watch.js';
 
 const countDrafts = async (sql: { get<T>(q: string): Promise<T | undefined> }) =>
   (await sql.get<{ n: number }>('select count(*) as n from drafts'))?.n ?? 0;

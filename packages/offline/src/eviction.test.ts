@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { evict, RETENTION } from './eviction';
-import { applySnapshot } from './snapshot';
+import { evict, RETENTION } from './eviction.js';
+import { applySnapshot } from './snapshot.js';
 import {
   customerDetail,
   formDetail,
@@ -8,8 +8,8 @@ import {
   insertFile,
   me,
   workOrderDetail,
-} from './testing/fixtures';
-import { openTestDatabase } from './testing/node-driver';
+} from './testing/fixtures.js';
+import { openTestDatabase } from './testing/node-driver.js';
 
 const NOW = new Date('2026-09-14T12:00:00.000Z');
 const MB = 1024 * 1024;

@@ -1,4 +1,4 @@
-import type { SqlDriver } from './sql';
+import type { SqlDriver } from './sql.js';
 
 /**
  * The local schema, one version at a time.
@@ -229,6 +229,111 @@ export const MIGRATIONS: readonly Migration[] = [
       `update files set last_opened_at = created_at`,
       `create index files_by_state_and_opened on files (state, last_opened_at)`,
       `create index drafts_by_work_order on drafts (work_order_id)`,
+    ],
+  },
+  {
+    version: 4,
+    name: 'sync',
+    statements: [
+      // Every change made on the phone, in the order it was made, until the
+      // server has applied it (P12). `id` is the server's dedupe key.
+      `create table outbox (
+        seq integer primary key autoincrement,
+        id text not null unique,
+        kind text not null,
+        entity_key text not null,
+        entity_id text not null,
+        work_order_id text,
+        payload text not null,
+        base text,
+        waits_for text not null default '[]',
+        recorded_at text not null,
+        state text not null check (state in ('pending', 'conflict', 'failed', 'done')),
+        attempts integer not null default 0,
+        next_attempt_at text,
+        last_error text,
+        conflict text,
+        created_at text not null,
+        done_at text
+      ) strict`,
+      `create index outbox_by_state on outbox (state, seq)`,
+      `create index outbox_by_entity on outbox (entity_key, state, seq)`,
+      `create index outbox_by_work_order on outbox (work_order_id, state)`,
+
+      // Files on their way to the server, kept apart from changes so a large
+      // video never holds up a completed job.
+      `create table uploads (
+        media_id text primary key,
+        local_path text not null,
+        content_type text not null,
+        byte_size integer not null check (byte_size > 0),
+        work_order_id text,
+        state text not null check (state in ('queued', 'confirmed', 'failed')),
+        kind text check (kind in ('single', 'multipart')),
+        part_size integer,
+        part_count integer,
+        parts_done text not null default '[]',
+        bytes_sent integer not null default 0,
+        attempts integer not null default 0,
+        next_attempt_at text,
+        last_error text,
+        created_at text not null,
+        confirmed_at text
+      ) strict`,
+      `create index uploads_by_state on uploads (state, created_at)`,
+      `create index uploads_by_work_order on uploads (work_order_id, state)`,
+
+      // Forms as the server holds them, and as the engineer is filling them.
+      // server_revision and server_answers are what the next change is merged
+      // against; null until the server has the form.
+      `create table submissions (
+        id text primary key,
+        form_id text not null,
+        form_version_id text not null,
+        work_order_id text,
+        status text not null check (status in ('draft', 'submitted', 'reopened')),
+        answers text not null,
+        server_revision integer,
+        server_answers text,
+        submitted_by text,
+        submitted_at text,
+        updated_at text not null
+      ) strict`,
+      `create index submissions_by_work_order on submissions (work_order_id)`,
+
+      // Each sync run, until it has been reported to the server.
+      `create table sync_runs (
+        id text primary key,
+        started_at text not null,
+        duration_ms integer not null,
+        trigger text not null,
+        outcome text not null,
+        pushed integer not null,
+        conflicts integer not null,
+        rejected integer not null,
+        retried integer not null,
+        pulled integer not null,
+        uploads_completed integer not null,
+        uploads_failed integer not null,
+        uploaded_bytes integer not null,
+        queue_depth integer not null,
+        pending_uploads integer not null,
+        network_type text,
+        clock_offset_ms integer,
+        reported integer not null default 0
+      ) strict`,
+
+      // Drafts from before sync become forms the server has not seen yet; the
+      // engine queues them on its first run. Files that were waiting to upload
+      // join the upload queue. Nothing is dropped.
+      `insert into submissions (id, form_id, form_version_id, work_order_id, status, answers, updated_at)
+       select id, form_id, form_version_id, work_order_id, 'draft', answers, updated_at from drafts`,
+      `insert into uploads (media_id, local_path, content_type, byte_size, work_order_id, state, created_at)
+       select id, local_path, content_type, byte_size,
+              case when owner_kind = 'work_order' then owner_id
+                   when owner_kind = 'draft' then (select work_order_id from drafts where drafts.id = files.owner_id)
+              end, 'queued', created_at
+       from files where state = 'pending_upload' and byte_size > 0`,
     ],
   },
 ];
