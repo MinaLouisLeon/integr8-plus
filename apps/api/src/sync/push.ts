@@ -21,6 +21,7 @@ import {
   mayFill,
   resolveToday,
   revalidate,
+  submitLocationSchema,
 } from '../routes/v1/submissions.js';
 import { audit as auditWorkOrder } from '../routes/v1/work-orders.js';
 import { mergeRecords, sameValue } from './merge.js';
@@ -114,6 +115,8 @@ export const mutationSchema = z.discriminatedUnion('kind', [
       /** The day the form was filled, in the engineer's calendar. */
       filledOn: dateSchema,
       reason: z.string().trim().min(1).max(2000).optional(),
+      /** Where the phone was when the engineer submitted (P13). */
+      location: submitLocationSchema.optional(),
     }),
     base: z.object({ revision: z.number().int().min(1), answers: answersSchema }),
   }),
@@ -260,6 +263,8 @@ export interface PushContext {
   context: RequestContext;
   /** The server's estimate of when the phone recorded each change. */
   recordedAt: (mutation: Mutation) => Date;
+  /** Any other time the phone wrote by its own clock, on the server's. */
+  phoneTime: (at: string) => Date;
 }
 
 export async function applyMutations(
@@ -835,7 +840,7 @@ async function saveAnswers(
 async function submit(
   tx: TenantTransaction,
   mutation: Extract<Mutation, { kind: 'submission.submit' }>,
-  { context, recordedAt }: PushContext,
+  { context, recordedAt, phoneTime }: PushContext,
 ): Promise<Outcome> {
   const { principal } = context;
   const submission = await ownSubmission(tx, principal, mutation.entityId);
@@ -888,12 +893,18 @@ async function submit(
     throw error;
   }
 
+  const { location } = mutation.payload;
   const result = await tx.submissions.submit(
     submission.id,
     answers,
     submission.revision,
     principal.userId,
     submission.status === 'reopened' ? mutation.payload.reason : undefined,
+    location === undefined
+      ? null
+      : location.status === 'captured'
+        ? { ...location, capturedAt: phoneTime(location.capturedAt).toISOString() }
+        : location,
   );
   if (result.outcome === 'written') {
     return applied(result.submission.revision, false, result.submission.answers);

@@ -4582,6 +4582,18 @@ export interface operations {
                             answers: {
                                 [key: string]: unknown;
                             };
+                            submitLocation: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
                         };
                         version: {
                             /** Format: uuid */
@@ -4604,6 +4616,18 @@ export interface operations {
                                 name: string;
                             };
                             reason: string | null;
+                            location: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
                             occurredAt: string;
                         }[];
                         can: {
@@ -4823,6 +4847,18 @@ export interface operations {
                             answers: {
                                 [key: string]: unknown;
                             };
+                            submitLocation: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
                         };
                         version: {
                             /** Format: uuid */
@@ -4845,6 +4881,18 @@ export interface operations {
                                 name: string;
                             };
                             reason: string | null;
+                            location: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
                             occurredAt: string;
                         }[];
                         can: {
@@ -5104,6 +5152,18 @@ export interface operations {
                             answers: {
                                 [key: string]: unknown;
                             };
+                            submitLocation: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
                         };
                         version: {
                             /** Format: uuid */
@@ -5126,6 +5186,18 @@ export interface operations {
                                 name: string;
                             };
                             reason: string | null;
+                            location: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
                             occurredAt: string;
                         }[];
                         can: {
@@ -5259,6 +5331,18 @@ export interface operations {
                             answers: {
                                 [key: string]: unknown;
                             };
+                            submitLocation: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
                         };
                         version: {
                             /** Format: uuid */
@@ -5281,6 +5365,18 @@ export interface operations {
                                 name: string;
                             };
                             reason: string | null;
+                            location: ({
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            }) | null;
                             occurredAt: string;
                         }[];
                         can: {
@@ -13719,6 +13815,18 @@ export interface operations {
                             /** Format: date */
                             filledOn: string;
                             reason?: string;
+                            location?: {
+                                /** @enum {string} */
+                                status: "captured";
+                                latitude: string;
+                                longitude: string;
+                                accuracyMeters?: string;
+                                /** Format: date-time */
+                                capturedAt: string;
+                            } | {
+                                /** @enum {string} */
+                                status: "denied" | "unavailable";
+                            };
                         };
                         base: {
                             revision: number;

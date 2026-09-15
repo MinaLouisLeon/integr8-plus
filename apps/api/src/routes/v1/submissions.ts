@@ -68,6 +68,32 @@ export const answersSchema = z.record(z.string(), z.unknown());
 
 const personSchema = z.object({ id: z.uuid(), name: z.string() });
 
+/** Decimal text for a coordinate within `limit` degrees either side of zero. */
+const coordinateSchema = (limit: number) =>
+  z
+    .string()
+    .regex(/^-?d{1,3}(.d{1,9})?$/u, 'Decimal text, like 53.800712')
+    .refine((value) => Math.abs(Number(value)) <= limit, `Within ${String(limit)} degrees`);
+
+/**
+ * Where the phone was when a form was submitted, or why it does not know: the
+ * person refused location access, or no fix came in time.
+ */
+export const submitLocationSchema = z.discriminatedUnion('status', [
+  z.strictObject({
+    status: z.literal('captured'),
+    latitude: coordinateSchema(90),
+    longitude: coordinateSchema(180),
+    accuracyMeters: z
+      .string()
+      .regex(/^d{1,7}(.d{1,3})?$/u, 'Decimal text, like 7.3')
+      .optional(),
+    /** When the fix was taken, by the phone's clock. Stored on the server's. */
+    capturedAt: z.iso.datetime({ offset: true }),
+  }),
+  z.strictObject({ status: z.enum(['denied', 'unavailable']) }),
+]);
+
 const submissionSummarySchema = z.object({
   id: z.uuid(),
   /** The job this form was filled for, if any. */
@@ -87,7 +113,11 @@ const submissionSummarySchema = z.object({
   updatedAt: z.string(),
 });
 
-const submissionSchema = submissionSummarySchema.extend({ answers: answersSchema });
+const submissionSchema = submissionSummarySchema.extend({
+  answers: answersSchema,
+  /** Where the device was when this was last submitted; null when it recorded nothing (web, desktop). */
+  submitLocation: submitLocationSchema.nullable(),
+});
 
 const eventSchema = z.object({
   sequence: z.number().int(),
@@ -95,6 +125,8 @@ const eventSchema = z.object({
   answers: answersSchema.nullable(),
   actor: personSchema,
   reason: z.string().nullable(),
+  /** For a submit or an amendment made on a phone: where it was. */
+  location: submitLocationSchema.nullable(),
   occurredAt: z.string(),
 });
 
@@ -264,7 +296,11 @@ export async function detailBody(
   }
   const editable = mayEdit(principal, submission, form);
   return {
-    submission: { ...summaryBody(submission, known), answers: submission.answers },
+    submission: {
+      ...summaryBody(submission, known),
+      answers: submission.answers,
+      submitLocation: submission.submitLocation,
+    },
     version: {
       id: version.id,
       versionNumber: version.versionNumber,
@@ -276,6 +312,7 @@ export async function detailBody(
       answers: event.answers,
       actor: person(event.actorId, known),
       reason: event.reason,
+      location: event.location,
       occurredAt: iso(event.occurredAt),
     })),
     can: {
