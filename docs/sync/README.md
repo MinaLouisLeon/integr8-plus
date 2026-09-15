@@ -39,7 +39,9 @@ SQLite transaction. The screen shows it at once; it cannot be lost between the t
 | Photo, signature, file | the upload queue                           | — (the file's id is chosen on the phone) |
 
 Every change has a **UUIDv7** id made on the phone. Autosaves of a form that have not been sent
-are folded into one; a submit replaces an unsent autosave. Completing a job waits for its forms'
+are folded into one — never into a change the engine has already handed to the network, which it
+marks (`sent_at`) in the same transaction that chooses the batch, since the server may have
+applied that id already (P13); a submit replaces an unsent autosave. Completing a job waits for its forms'
 changes; submitting a form waits for the files it names.
 
 ## Sending: once, in order
@@ -106,6 +108,8 @@ live versions and the person's submissions, plus jobs they were taken off.
 
 Kept apart from changes, so a large video never holds up a completed job.
 
+- Files are kept by a path relative to the files directory: iOS moves the app's container when
+  the app is updated.
 - `PUT /v1/media/:mediaId` with an id chosen on the phone starts the upload, or says where it
   stands: a fresh link, `stored`, or which way it goes. Repeating it is harmless.
 - Up to 8 MiB: one signed PUT. Larger: 8 MiB **parts** (`POST …/parts` for links,
@@ -121,8 +125,9 @@ The phone's clock is used for how long ago something happened and when to try ag
 for order. Pull and push answers carry `serverTime`; the phone measures the offset at the
 middle of the request, keeps it, and uses corrected time for the retention window and "last
 synced". A change carries `recordedAt` and the batch `sentAt`, both by the phone's clock; the
-server takes their difference from when it received the batch, so "the day this form was filled" is judged against when it was filled, even days
-later and whatever the phone's clock says.
+server takes their difference from when it received the batch, so "the day this form was filled"
+is judged against when it was filled, even days later and whatever the phone's clock says. A
+submit location's `capturedAt` is corrected the same way.
 
 ## When it runs
 

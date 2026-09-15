@@ -113,6 +113,15 @@ Types a browser would execute when a link is opened — HTML, SVG, XML, JavaScri
 refused whatever a form's question says. Everything else is checked against the question's
 own limits by the widget before sending and by the engine at submit.
 
+## Where it was submitted from
+
+A phone records its location as it submits (P13) — captured with accuracy and time, or
+`denied` or `unavailable` — on `submissions.submit_location` and on the history event
+(migration 0012). It is evidence about the visit, not an answer: a form needs no GPS question
+for it, and a submission from the web or desktop has none. The database lets it be written
+only by submitting, and the history shows it with a map link. See
+[forms on the phone](../mobile/forms.md#submitting).
+
 ## The renderer
 
 `@integr8/form-renderer-dom` is shared by the web and desktop apps. P01 keeps widgets out
