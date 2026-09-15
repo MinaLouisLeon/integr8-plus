@@ -1,4 +1,5 @@
-import { say } from '@integr8/form-input';
+import { touchKey } from '@integr8/form-engine';
+import { entriesOf, entryTitle, say } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
 import { useRef, useState, useSyncExternalStore } from 'react';
@@ -16,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '~/components/ui';
 import { AnswerList } from './answer-list';
+import { EntryList, EntryView } from './entries';
 import { FieldBlock } from './field-block';
 import type { FillModel } from './fill-model';
 import { FormMediaProvider } from './media';
@@ -28,6 +30,7 @@ import { ActionButton, Muted, Problem, TextBox } from './widgets/kit';
  * in a single column — with what a small screen needs on top of that: a
  * progress bar, contents to jump to any page or section, a list of every
  * problem that jumps to each question, and a review of exactly what will be sent.
+ * A repeatable section is a list of its entries, filled one entry at a time (P13b).
  *
  * Nothing here knows about any particular form; `FillModel` asks the engine.
  */
@@ -94,9 +97,9 @@ export function FormFiller(props: FormFillerProps) {
     }, 50);
   };
 
-  const goToField = (fieldId: string) => {
-    model.goToField(fieldId);
-    reveal(fieldId);
+  const goToField = (fieldId: string, entry?: string) => {
+    model.goToField(fieldId, entry);
+    reveal(touchKey(fieldId, entry));
   };
 
   const review = () => {
@@ -231,14 +234,30 @@ export function FormFiller(props: FormFillerProps) {
                   {t('fill.summary.title', { count: problems.length })}
                 </Text>
                 {problems.map((problem) => {
-                  const field = model.form.elements.get(problem.field)?.field;
+                  const element = model.form.elements.get(problem.field);
+                  const field = element?.field;
+                  const named =
+                    field === undefined
+                      ? say(model.definitionSection(problem.field)?.title, locale) || problem.field
+                      : say(field.label, locale) || field.id;
+                  const section =
+                    element?.entries === undefined
+                      ? undefined
+                      : model.definitionSection(element.entries);
+                  const entries = section === undefined ? [] : entriesOf(view, section.id);
+                  const at = entries.findIndex((entry) => entry.id === problem.entry);
                   const question =
-                    field === undefined ? problem.field : say(field.label, locale) || field.id;
+                    section === undefined || at === -1
+                      ? named
+                      : t('mobile.fill.entries.problem', {
+                          question: named,
+                          entry: entryTitle(section, entries[at]!, at, locale).label,
+                        });
                   return (
                     <Pressable
-                      key={problem.field}
+                      key={touchKey(problem.field, problem.entry)}
                       accessibilityRole="link"
-                      onPress={() => goToField(problem.field)}
+                      onPress={() => goToField(problem.field, problem.entry)}
                       style={styles.problemLink}
                     >
                       <Text style={[styles.problemText, { color: theme.danger }]}>
@@ -324,8 +343,24 @@ export function FormFiller(props: FormFillerProps) {
                   ) : null}
                 </View>
 
+                {snapshot.openEntry !== undefined ? (
+                  <EntryView
+                    key={snapshot.openEntry.entry}
+                    model={model}
+                    snapshot={snapshot}
+                    section={model.definitionSection(snapshot.openEntry.section)!}
+                    entryId={snapshot.openEntry.entry}
+                    locale={locale}
+                    register={register}
+                    onMoved={top}
+                  />
+                ) : null}
+
                 {page.sections
-                  .filter((section) => view.visible.get(section.id) === true)
+                  .filter(
+                    (section) =>
+                      snapshot.openEntry === undefined && view.visible.get(section.id) === true,
+                  )
                   .map((section) => (
                     <View
                       key={section.id}
@@ -344,8 +379,19 @@ export function FormFiller(props: FormFillerProps) {
                           {say(section.title, locale)}
                         </Text>
                       )}
+                      {section.repeat !== undefined ? (
+                        <EntryList
+                          model={model}
+                          snapshot={snapshot}
+                          section={section}
+                          locale={locale}
+                        />
+                      ) : null}
                       {section.fields
-                        .filter((field) => view.visible.get(field.id) === true)
+                        .filter(
+                          (field) =>
+                            section.repeat === undefined && view.visible.get(field.id) === true,
+                        )
                         .map((field) => (
                           <FieldBlock
                             key={field.id}
@@ -363,7 +409,9 @@ export function FormFiller(props: FormFillerProps) {
                     </View>
                   ))}
 
-                <View style={styles.actions}>
+                <View
+                  style={[styles.actions, snapshot.openEntry === undefined ? null : styles.hidden]}
+                >
                   <ActionButton
                     label={t('fill.actions.back')}
                     disabled={pageIndex === 0}
@@ -518,6 +566,7 @@ const styles = StyleSheet.create({
   label: { fontSize: fontSize.lg, fontWeight: '600', textAlign: 'auto' },
   reason: { gap: spacing[2] },
   actions: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing[3] },
+  hidden: { display: 'none' },
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15, 23, 42, 0.5)' },
   sheet: {
     maxHeight: '85%',

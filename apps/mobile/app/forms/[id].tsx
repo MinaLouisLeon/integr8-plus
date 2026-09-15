@@ -1,5 +1,6 @@
 import { fillSession, type FillSession, recordAnswers } from '@integr8/offline';
 import { useTranslation } from '@integr8/i18n';
+import * as Crypto from 'expo-crypto';
 import { spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
@@ -79,7 +80,7 @@ function Session({ session, notice }: { session: FillSession; notice: string | u
       ? undefined
       : t('mobile.fill.jobLine', { job: session.job.referenceLabel, title: session.job.title });
 
-  const { page } = useLocalSearchParams<{ page?: string }>();
+  const { page, entry } = useLocalSearchParams<{ page?: string; entry?: string }>();
   const [model] = useState(() => {
     if (form === undefined) {
       return undefined;
@@ -88,6 +89,7 @@ function Session({ session, notice }: { session: FillSession; notice: string | u
       form,
       answers: session.submission.answers,
       context: { today },
+      newEntryId: () => Crypto.randomUUID(),
       save: async (answers) => {
         const context = localData.changeContext();
         if (context === undefined) {
@@ -101,18 +103,29 @@ function Session({ session, notice }: { session: FillSession; notice: string | u
     if (Number.isInteger(resumed) && resumed > 0) {
       opened.goToPage(Math.min(resumed, opened.snapshot().pages.length - 1));
     }
+    // And the entry of a repeatable section that was open (P13b): "section/entry".
+    const [section, entryId] = (entry ?? '').split('/');
+    if (section !== undefined && entryId !== undefined && section !== '') {
+      opened.openEntry({ section, entry: entryId });
+    }
     return opened;
   });
-  // The page in the route, so the screen remembered for a force close includes it.
+  // The page and open entry in the route, so the screen remembered for a force
+  // close includes them.
   useEffect(
     () =>
       model?.subscribe(() => {
-        const index = String(model.snapshot().pageIndex);
-        if (index !== page) {
-          router.setParams({ page: index });
+        const snapshot = model.snapshot();
+        const index = String(snapshot.pageIndex);
+        const open =
+          snapshot.openEntry === undefined
+            ? ''
+            : `${snapshot.openEntry.section}/${snapshot.openEntry.entry}`;
+        if (index !== page || open !== (entry ?? '')) {
+          router.setParams({ page: index, entry: open });
         }
       }),
-    [model, page],
+    [model, page, entry],
   );
 
   if (form === undefined || model === undefined) {
