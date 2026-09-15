@@ -47,7 +47,7 @@ export interface ApiHarness {
 }
 
 export async function startApi(
-  options: { mediaStorage?: 'local' | 'r2' } = {},
+  options: { mediaStorage?: 'local' | 'r2'; env?: Record<string, string> } = {},
 ): Promise<ApiHarness> {
   if (process.env.APP_ENV !== 'test' || process.env.INTEGR8_TEST_DATABASE !== ACKNOWLEDGEMENT) {
     throw new Error(
@@ -70,6 +70,7 @@ export async function startApi(
     MEDIA_STORAGE: options.mediaStorage ?? 'local',
     API_MIN_SUPPORTED_CLIENT: '1.0.0',
     API_UPDATE_URL: 'https://integr8.example/download',
+    ...options.env,
   });
 
   const identity = new FakeIdentityProvider();
@@ -78,7 +79,15 @@ export async function startApi(
     config,
     services,
     routes: allRoutes(config),
-    logger: createLogger({ level: 'error', write: () => undefined }),
+    logger: createLogger({
+      level: 'error',
+      // Silent, unless a run sets DEBUG_API=1 to see why a request answered 500.
+      write: (line: string) => {
+        if (process.env.DEBUG_API === '1') {
+          process.stdout.write(`${line}\n`);
+        }
+      },
+    }),
   });
   await app.ready();
 
