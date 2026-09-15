@@ -1,6 +1,6 @@
 import { canonicalJson, compareCodeUnits } from '../canonical.js';
 import { compareDecimal, parseDecimal } from '../decimal.js';
-import type { FormDefinition } from '../definition.js';
+import type { FormDefinition, Section } from '../definition.js';
 import { choiceValues, type Field } from '../field-types.js';
 import type { ElementId } from '../ids.js';
 import { parseDate, parseDatetime, parseTime } from '../temporal.js';
@@ -44,9 +44,16 @@ export type BreakingReason =
   /** Drafts that left it blank will not submit. */
   | 'now_required'
   /** Drafts holding a value that was fine may no longer be. */
-  | 'constraint_tightened';
+  | 'constraint_tightened'
+  /**
+   * The field moved into a repeatable section or out of one, or its section
+   * started or stopped repeating (P13b): answers before and after are shaped
+   * differently, one answer against a list of entries.
+   */
+  | 'entries_changed';
 
 export interface BreakingChange {
+  /** The field — or, for a change to how a section repeats, the section. */
   field: ElementId;
   reason: BreakingReason;
   /** Who feels it: past submissions in reports, or drafts still being filled. */
@@ -67,6 +74,9 @@ interface Placed {
   index: number;
   own: Record<string, unknown>;
   field: Field | undefined;
+  /** For a field: whether its section repeats. For a section: its repeat. */
+  repeats: boolean;
+  repeat: Section['repeat'];
 }
 
 /** Every element with its position and its own properties, children excluded. */
@@ -80,6 +90,8 @@ function index(definition: FormDefinition): Map<ElementId, Placed> {
       index: pageIndex,
       own: ownPage,
       field: undefined,
+      repeats: false,
+      repeat: undefined,
     });
     sections.forEach((section, sectionIndex) => {
       const { fields, ...ownSection } = section;
@@ -89,6 +101,8 @@ function index(definition: FormDefinition): Map<ElementId, Placed> {
         index: sectionIndex,
         own: ownSection,
         field: undefined,
+        repeats: section.repeat !== undefined,
+        repeat: section.repeat,
       });
       fields.forEach((field, fieldIndex) => {
         placed.set(field.id, {
@@ -97,6 +111,8 @@ function index(definition: FormDefinition): Map<ElementId, Placed> {
           index: fieldIndex,
           own: { ...field },
           field,
+          repeats: section.repeat !== undefined,
+          repeat: undefined,
         });
       });
     });
@@ -145,7 +161,27 @@ export function diffDefinitions(
     }
 
     if (previous.field !== undefined && next.field !== undefined) {
-      breaking.push(...breakingBetween(previous.field, next.field));
+      if (previous.repeats !== next.repeats) {
+        breaking.push({ field: id, reason: 'entries_changed', affects: 'reporting', detail: [] });
+      } else {
+        breaking.push(...breakingBetween(previous.field, next.field));
+      }
+    }
+    if (next.kind === 'section' && previous.repeat !== undefined && next.repeat !== undefined) {
+      const tightened = [
+        ...((next.repeat.minEntries ?? 0) > (previous.repeat.minEntries ?? 0)
+          ? ['minEntries']
+          : []),
+        ...(next.repeat.maxEntries < previous.repeat.maxEntries ? ['maxEntries'] : []),
+      ];
+      if (tightened.length > 0) {
+        breaking.push({
+          field: id,
+          reason: 'constraint_tightened',
+          affects: 'drafts',
+          detail: tightened,
+        });
+      }
     }
   }
 

@@ -397,6 +397,9 @@ export const FIELD_ERROR_CODES = [
   'out_of_range',
   'accuracy_too_low',
   'rule_failed',
+  // A repeatable section (P13b), on the section itself.
+  'too_few_entries',
+  'too_many_entries',
 ] as const;
 
 export type FieldErrorCode = (typeof FIELD_ERROR_CODES)[number];
@@ -414,6 +417,8 @@ export interface FieldError {
   field: ElementId;
   code: FieldErrorCode;
   params: Readonly<Record<string, string>>;
+  /** For a field of a repeatable section: the entry whose answer it is. */
+  entry?: string;
 }
 
 type Emit = (code: FieldErrorCode, params?: Record<string, string>) => void;
