@@ -25,6 +25,8 @@ import { AttachmentsRepository } from './repositories/attachments.js';
 import { CustomersRepository } from './repositories/customers.js';
 import { FilesRepository } from './repositories/files.js';
 import { ImportsRepository } from './repositories/imports.js';
+import { PushDevicesRepository } from './repositories/push-devices.js';
+import { ShiftsRepository } from './repositories/shifts.js';
 import { SyncRepository } from './repositories/sync.js';
 import { JobTypesRepository } from './repositories/job-types.js';
 import { SavedViewsRepository } from './repositories/saved-views.js';
@@ -89,6 +91,8 @@ export interface TenantTransaction {
   readonly savedViews: SavedViewsRepository;
   readonly imports: ImportsRepository;
   readonly sync: SyncRepository;
+  readonly shifts: ShiftsRepository;
+  readonly pushDevices: PushDevicesRepository;
   /** The global template library. Read-only: the runtime role holds select and nothing else. */
   readonly formTemplates: FormTemplatesReader;
 }
@@ -295,6 +299,8 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     savedViews: new SavedViewsRepository(scope),
     imports: new ImportsRepository(scope),
     sync: new SyncRepository(scope),
+    shifts: new ShiftsRepository(scope),
+    pushDevices: new PushDevicesRepository(scope),
     formTemplates: new FormTemplatesReader(scope.trx),
   };
 }

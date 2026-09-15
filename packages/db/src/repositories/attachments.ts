@@ -1,6 +1,6 @@
 import { type UserId, toUserId } from '@integr8/core';
 import { type Selectable, sql } from 'kysely';
-import type { AttachmentKind, AttachmentsTable } from '../schema.js';
+import type { AttachmentKind, AttachmentsTable, PhotoStage } from '../schema.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
 export type AttachmentOwner = { customerId: string } | { siteId: string } | { workOrderId: string };
@@ -11,6 +11,8 @@ export interface Attachment {
   owner: AttachmentOwner;
   title: string;
   kind: AttachmentKind;
+  /** For a job photo: taken before or after the work (P14). */
+  stage: PhotoStage | null;
   addedBy: UserId;
   createdAt: Date;
 }
@@ -37,13 +39,22 @@ export class AttachmentsRepository extends TenantScopedRepository {
 
   async add(
     owner: AttachmentOwner,
-    input: { fileId: string; title: string; kind?: AttachmentKind },
+    input: {
+      /** Chosen by a phone that took the photo offline, so a resend finds it. */
+      id?: string;
+      fileId: string;
+      title: string;
+      kind?: AttachmentKind;
+      stage?: PhotoStage;
+    },
     addedBy: UserId | string,
   ): Promise<Attachment> {
     const { column, id } = ownerColumn(owner);
     const row = await this.db
       .insertInto('attachments')
       .values({
+        ...(input.id === undefined ? {} : { id: input.id }),
+        ...(input.stage === undefined ? {} : { stage: input.stage }),
         tenant_id: this.tenantId,
         file_id: input.fileId,
         [column]: id,
@@ -81,6 +92,19 @@ export class AttachmentsRepository extends TenantScopedRepository {
     return row === undefined ? undefined : toAttachment(row);
   }
 
+  /** Found whether or not it has been removed: what a resent change needs to know. */
+  async findAny(attachmentId: string): Promise<(Attachment & { removed: boolean }) | undefined> {
+    const row = await this.db
+      .selectFrom('attachments')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', attachmentId)
+      .executeTakeFirst();
+    return row === undefined
+      ? undefined
+      : { ...toAttachment(row), removed: row.removed_at !== null };
+  }
+
   async remove(attachmentId: string, by: UserId | string): Promise<boolean> {
     const result = await this.db
       .updateTable('attachments')
@@ -106,6 +130,7 @@ function toAttachment(row: Selectable<AttachmentsTable>): Attachment {
     owner,
     title: row.title,
     kind: row.kind,
+    stage: row.stage,
     addedBy: toUserId(row.added_by),
     createdAt: row.created_at,
   };

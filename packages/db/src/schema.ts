@@ -535,6 +535,16 @@ export type GeocodeStatus = (typeof GEOCODE_STATUSES)[number];
 export const ATTACHMENT_KINDS = ['site_plan', 'manual', 'report', 'photo', 'other'] as const;
 export type AttachmentKind = (typeof ATTACHMENT_KINDS)[number];
 
+/** When a job photo was taken (0013). */
+export const PHOTO_STAGES = ['before', 'after'] as const;
+export type PhotoStage = (typeof PHOTO_STAGES)[number];
+
+export const PUSH_PLATFORMS = ['ios', 'android'] as const;
+export type PushPlatform = (typeof PUSH_PLATFORMS)[number];
+
+export const PUSH_DISABLED_REASONS = ['signed_out', 'not_registered', 'replaced'] as const;
+export type PushDisabledReason = (typeof PUSH_DISABLED_REASONS)[number];
+
 export const COMMENT_VISIBILITIES = ['internal', 'customer'] as const;
 export type CommentVisibility = (typeof COMMENT_VISIBILITIES)[number];
 
@@ -552,6 +562,7 @@ export const WORK_ORDER_EVENT_KINDS = [
   'assigned',
   'unassigned',
   'lead_changed',
+  'signed_off',
 ] as const;
 export type WorkOrderEventKind = (typeof WORK_ORDER_EVENT_KINDS)[number];
 
@@ -644,6 +655,10 @@ export interface JobTypesTable {
   default_priority: Generated<WorkOrderPriority>;
   instructions: string | null;
   checklist: Jsonb<ChecklistTemplateItem[]>;
+  /** Photos to take before and after the work; copied to each new job (0013). */
+  before_photos: Generated<number>;
+  after_photos: Generated<number>;
+  signature_required: Generated<boolean>;
   archived_at: Date | null;
   created_by: string;
   created_at: CreatedAt;
@@ -693,6 +708,16 @@ export interface WorkOrdersTable {
   created_at: CreatedAt;
   updated_at: UpdatedAt;
   search: ColumnType<string, never, never>;
+  before_photos: Generated<number>;
+  after_photos: Generated<number>;
+  signature_required: Generated<boolean>;
+  /** The customer's sign-off, or why nobody could sign (0013). */
+  signed_off_at: Date | null;
+  signed_off_by: string | null;
+  signoff_file_id: string | null;
+  signoff_name: string | null;
+  signoff_role: string | null;
+  signoff_unavailable_reason: string | null;
 }
 
 export interface WorkOrderFormsTable {
@@ -752,7 +777,10 @@ export interface WorkOrderEventsTable {
   actor_id: ColumnType<string, never, never>;
   reason: ColumnType<string | null, never, never>;
   details: ColumnType<Record<string, unknown>, never, never>;
+  /** When it happened: for a change made offline, when the phone recorded it. */
   occurred_at: ColumnType<Date, never, never>;
+  /** When the server wrote it. */
+  recorded_at: ColumnType<Date, never, never>;
 }
 
 export interface AttachmentsTable {
@@ -764,10 +792,59 @@ export interface AttachmentsTable {
   work_order_id: string | null;
   title: string;
   kind: Generated<AttachmentKind>;
+  /** For a job photo: taken before or after the work (0013). */
+  stage: PhotoStage | null;
   added_by: string;
   created_at: CreatedAt;
   removed_at: Date | null;
   removed_by: string | null;
+}
+
+/** Where a device was: captured, or why not. The shape of a submit location (0012). */
+export type DeviceLocation =
+  | {
+      status: 'captured';
+      latitude: string;
+      longitude: string;
+      accuracyMeters?: string | undefined;
+      capturedAt: string;
+    }
+  | { status: 'denied' | 'unavailable' };
+
+/** An engineer's working day (0013). */
+export interface ShiftsTable {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  started_at: Date;
+  ended_at: Date | null;
+  start_location: ColumnType<
+    DeviceLocation | null,
+    DeviceLocation | null | undefined,
+    DeviceLocation | null
+  >;
+  end_location: ColumnType<
+    DeviceLocation | null,
+    DeviceLocation | null | undefined,
+    DeviceLocation | null
+  >;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+/** Where to send a person push notifications (0013). */
+export interface PushDevicesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  user_id: string;
+  session_id: string;
+  token: string;
+  platform: PushPlatform;
+  device_label: string | null;
+  created_at: CreatedAt;
+  last_registered_at: Generated<Date>;
+  disabled_at: Date | null;
+  disabled_reason: PushDisabledReason | null;
 }
 
 export interface SavedViewsTable {
@@ -902,6 +979,8 @@ export interface Database {
   sync_touches: SyncTouchesTable;
   sync_log_marks: SyncLogMarksTable;
   sync_reports: SyncReportsTable;
+  shifts: ShiftsTable;
+  push_devices: PushDevicesTable;
   form_templates: FormTemplatesTable;
   rate_limit_buckets: RateLimitBucketsTable;
   schema_migrations: SchemaMigrationsTable;
@@ -1032,6 +1111,8 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   sync_touches: true,
   sync_log_marks: true,
   sync_reports: true,
+  shifts: true,
+  push_devices: true,
 };
 
 export const TENANT_SCOPED_TABLES: readonly TenantScopedTable[] = Object.freeze(
