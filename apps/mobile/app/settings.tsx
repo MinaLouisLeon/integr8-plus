@@ -1,3 +1,4 @@
+import { checkConformance, type ConformanceCheck } from '@integr8/form-engine/conformance';
 import { useTranslation } from '@integr8/i18n';
 import { identity, RETENTION, storageSummary, unsentWorkCount } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
@@ -29,7 +30,7 @@ function Settings() {
   const me = useLocalQuery('identity', ['meta'], identity);
   const storage = useLocalQuery(
     'storage',
-    ['work_orders', 'customers', 'forms', 'drafts', 'files'],
+    ['work_orders', 'customers', 'forms', 'submissions', 'outbox', 'uploads', 'files'],
     storageSummary,
   );
 
@@ -114,28 +115,7 @@ function Settings() {
         </Section>
       )}
 
-      {__DEV__ ? (
-        // Development builds only: unsent work to test upgrades and sign-out
-        // with, until P13 writes forms. A form the server has never seen: the next
-        // sync sends it and the server refuses it, which also exercises "needs
-        // your attention". Not translated; never shipped.
-        <Button
-          label="Add a test draft (development)"
-          variant="secondary"
-          onPress={() => {
-            const current = localData.status();
-            if (current.phase === 'open') {
-              void current.db.write(['submissions'], (sql) =>
-                sql.run(
-                  `insert into submissions (id, form_id, form_version_id, work_order_id, status, answers, updated_at)
-                   values (?, 'probe-form', 'probe-version', null, 'draft', '{}', ?)`,
-                  [`probe-${String(Date.now())}`, new Date().toISOString()],
-                ),
-              );
-            }
-          }}
-        />
-      ) : null}
+      <EngineCheck />
 
       <View style={{ gap: spacing[2] }}>
         <Body muted>{t('mobile.settings.signOutExplained')}</Body>
@@ -147,5 +127,40 @@ function Settings() {
         />
       </View>
     </ScrollScreen>
+  );
+}
+
+/**
+ * Runs the form engine's conformance corpus on this phone and compares every
+ * decision with the server's golden file (P13). CI runs the same corpus in a
+ * Hermes that is not quite the one in the app; this is the app's own engine and
+ * bytecode, release builds included, so support can ask for it on any phone.
+ */
+function EngineCheck() {
+  const { t } = useTranslation();
+  const [result, setResult] = useState<ConformanceCheck | 'running' | undefined>(undefined);
+  return (
+    <Section title={t('mobile.engineCheck.title')}>
+      {result === undefined || result === 'running' ? null : (
+        <Body>
+          {result.ok
+            ? t('mobile.engineCheck.passed', { count: result.cases })
+            : t('mobile.engineCheck.failed', {
+                count: result.mismatches.length,
+                cases: result.mismatches.join(', '),
+              })}
+        </Body>
+      )}
+      <Button
+        label={result === 'running' ? t('mobile.engineCheck.running') : t('mobile.engineCheck.run')}
+        variant="secondary"
+        busy={result === 'running'}
+        onPress={() => {
+          setResult('running');
+          // Let the button show that it is working before the corpus holds the thread.
+          setTimeout(() => setResult(checkConformance()), 50);
+        }}
+      />
+    </Section>
   );
 }

@@ -3,6 +3,7 @@ import { fetch as expoFetch } from 'expo/fetch';
 import * as Battery from 'expo-battery';
 import * as Crypto from 'expo-crypto';
 import { File } from 'expo-file-system';
+import { filesDirectory } from './device';
 import * as Network from 'expo-network';
 
 /**
@@ -14,11 +15,19 @@ import * as Network from 'expo-network';
 
 export const random: RandomBytes = (length) => Crypto.getRandomBytes(length);
 
+/**
+ * A file the phone stored, from its path relative to the files directory. Never
+ * an absolute path: iOS moves the app's container when the app is updated.
+ */
+export function localFile(path: string): File {
+  return new File(filesDirectory(), path);
+}
+
 /** Reads a stored file a part at a time, so a large video is never all in memory. */
 export const deviceFiles: FileSource = {
-  exists: (path) => Promise.resolve(new File(path).exists),
+  exists: (path) => Promise.resolve(localFile(path).exists),
   read: (path, offset, length) => {
-    const handle = new File(path).open();
+    const handle = localFile(path).open();
     try {
       handle.offset = offset;
       return Promise.resolve(handle.readBytes(length));

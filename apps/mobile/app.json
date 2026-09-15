@@ -26,7 +26,32 @@
           "enableFTS": true
         }
       ],
-      "expo-background-task"
+      "expo-background-task",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Integr8 Plus uses the camera to photograph work and to scan barcodes into forms.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Integr8 Plus lets you add photos from this phone to a form.",
+          "cameraPermission": "Integr8 Plus uses the camera to photograph work for a form.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Integr8 Plus records where a form was submitted, and fills location questions.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
