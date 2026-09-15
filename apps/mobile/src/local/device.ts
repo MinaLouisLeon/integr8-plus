@@ -1,13 +1,16 @@
+import {
+  evict,
+  LocalDatabase,
+  migrate,
+  type SqlDriver,
+  type SqlValue,
+  type WipeSteps,
+} from '@integr8/offline';
 import * as Crypto from 'expo-crypto';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
 import { deleteDatabaseAsync, openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 import { APP_ENV } from '~/lib/env';
-import { LocalDatabase } from './database';
-import { evict } from './eviction';
-import { migrate } from './migrations';
-import type { SqlDriver, SqlValue } from './sql';
-import type { WipeSteps } from './wipe';
 
 /**
  * The local database on the phone: SQLCipher, with its key in the keychain.

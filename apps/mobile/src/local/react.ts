@@ -1,15 +1,29 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import type { LocalTable } from './database';
-import { localData, type DownloadStatus, type LocalStatus } from './local-data';
-import type { SqlConnection } from './sql';
-import { type QueryState, watchQuery } from './watch';
+import {
+  type LocalTable,
+  type QueryState,
+  type SqlConnection,
+  type SyncActivity,
+  watchQuery,
+} from '@integr8/offline';
+import { localData, type LocalStatus, type SyncState } from './local-data';
 
 export function useLocalStatus(): LocalStatus {
   return useSyncExternalStore(localData.subscribe, localData.status);
 }
 
-export function useDownloadStatus(): DownloadStatus {
-  return useSyncExternalStore(localData.subscribe, localData.downloadStatus);
+export function useSyncState(): SyncState {
+  return useSyncExternalStore(localData.subscribe, localData.syncState);
+}
+
+const IDLE: SyncActivity = { phase: 'idle' };
+
+/** What the sync engine is doing this moment. */
+export function useSyncActivity(): SyncActivity {
+  return useSyncExternalStore(localData.subscribe, () => {
+    const status = localData.status();
+    return status.phase === 'open' ? status.engine.activity() : IDLE;
+  });
 }
 
 /**

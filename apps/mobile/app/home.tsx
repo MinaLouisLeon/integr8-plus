@@ -1,4 +1,5 @@
 import { useTranslation } from '@integr8/i18n';
+import { identity, openJobs, recentlyClosedJobs, searchLocal, sectionJobs } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -16,9 +17,7 @@ import {
   ScrollScreen,
   Section,
 } from '~/components/ui';
-import { identity, openJobs, recentlyClosedJobs, sectionJobs } from '~/local/queries';
 import { useLocalQuery } from '~/local/react';
-import { searchLocal } from '~/local/search';
 
 const SECTION_ORDER = ['overdue', 'today', 'upcoming', 'unscheduled'] as const;
 
@@ -68,7 +67,7 @@ function Jobs() {
         />
       </View>
 
-      <SyncBanner lastDownloadAt={person?.lastDownloadAt ?? null} />
+      <SyncBanner />
 
       <Field
         label={t('mobile.jobs.searchLabel')}

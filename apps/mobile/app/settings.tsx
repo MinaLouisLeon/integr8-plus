@@ -1,4 +1,5 @@
 import { useTranslation } from '@integr8/i18n';
+import { identity, RETENTION, storageSummary, unsentWorkCount } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -8,9 +9,7 @@ import { SyncBanner } from '~/components/sync-banner';
 import { Body, Button, Detail, Heading, ScrollScreen, Section } from '~/components/ui';
 import { formatBytes, formatWhen } from '~/lib/format';
 import { session } from '~/lib/session';
-import { RETENTION } from '~/local/eviction';
 import { localData } from '~/local/local-data';
-import { identity, storageSummary, unsentWorkCount } from '~/local/queries';
 import { useLocalQuery, useLocalStatus } from '~/local/react';
 
 /** Who is signed in, what the phone holds, and signing out — which empties it. */
@@ -86,7 +85,7 @@ function Settings() {
         </Section>
       )}
 
-      <SyncBanner lastDownloadAt={person?.lastDownloadAt ?? null} />
+      <SyncBanner />
 
       {storage.status !== 'ready' ? null : (
         <Section title={t('mobile.settings.onThisPhone')}>
@@ -94,9 +93,7 @@ function Settings() {
           <Detail label={t('mobile.settings.closedJobs')}>{String(storage.data.closedJobs)}</Detail>
           <Detail label={t('mobile.settings.customers')}>{String(storage.data.customers)}</Detail>
           <Detail label={t('mobile.settings.forms')}>{String(storage.data.forms)}</Detail>
-          <Detail label={t('mobile.settings.unsent')}>
-            {String(storage.data.unsentDrafts + storage.data.pendingUploads)}
-          </Detail>
+          <Detail label={t('mobile.settings.unsent')}>{String(storage.data.unsentWork)}</Detail>
           <Detail label={t('mobile.settings.files')}>
             {t('mobile.settings.filesUsage', {
               used: formatBytes(storage.data.downloadedFileBytes, i18n.language),
@@ -119,22 +116,20 @@ function Settings() {
 
       {__DEV__ ? (
         // Development builds only: unsent work to test upgrades and sign-out
-        // with, until P13 writes drafts from a form. Not translated; never shipped.
+        // with, until P13 writes forms. A form the server has never seen: the next
+        // sync sends it and the server refuses it, which also exercises "needs
+        // your attention". Not translated; never shipped.
         <Button
           label="Add a test draft (development)"
           variant="secondary"
           onPress={() => {
             const current = localData.status();
             if (current.phase === 'open') {
-              void current.db.write(['drafts'], (sql) =>
+              void current.db.write(['submissions'], (sql) =>
                 sql.run(
-                  `insert into drafts (id, form_id, form_version_id, work_order_id, answers, created_at, updated_at)
-                   values (?, 'probe-form', 'probe-version', null, '{}', ?, ?)`,
-                  [
-                    `probe-${String(Date.now())}`,
-                    new Date().toISOString(),
-                    new Date().toISOString(),
-                  ],
+                  `insert into submissions (id, form_id, form_version_id, work_order_id, status, answers, updated_at)
+                   values (?, 'probe-form', 'probe-version', null, 'draft', '{}', ?)`,
+                  [`probe-${String(Date.now())}`, new Date().toISOString()],
                 ),
               );
             }

@@ -1,8 +1,8 @@
 import { useTranslation } from '@integr8/i18n';
 import { router } from 'expo-router';
-import type { JobListItem } from '~/local/queries';
 import { formatWhen } from '~/lib/format';
 import { Row } from './ui';
+import type { JobListItem } from '@integr8/offline';
 
 export function JobRow({ job }: { job: JobListItem }) {
   const { t, i18n } = useTranslation();

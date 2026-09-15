@@ -6,8 +6,8 @@ export default [
   {
     // P11: screens read the phone's database and nothing else. Reaching for the
     // API from a screen is how a spinner ends up in front of data that was
-    // already on the phone. The download lives in `src/local`, and screens ask
-    // it to run through `localData`, never by calling the client themselves.
+    // already on the phone. Sync lives in `src/local`, and screens ask it to run
+    // through `localData`, never by calling the client or the engine themselves.
     files: ['app/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
@@ -19,8 +19,9 @@ export default [
               message: 'Screens read the local database with useLocalQuery.',
             },
             {
-              name: '~/local/download',
-              message: 'Ask localData.download() to run instead.',
+              name: '@integr8/offline',
+              importNames: ['SyncEngine', 'syncApiFor', 'pullChanges', 'uploadOne'],
+              message: 'Screens record changes locally; ask localData.sync() to send them.',
             },
           ],
         },

@@ -30,7 +30,7 @@ export default function SignInScreen() {
         // Another person's work on this phone is wiped before anything is shown.
         await localData.prepareFor(signedIn);
         router.replace('/home');
-        void localData.download();
+        void localData.sync('launch');
       } catch (failure) {
         setError(messageFor(failure, t));
       } finally {

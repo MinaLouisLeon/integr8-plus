@@ -1,8 +1,10 @@
 import { useTranslation } from '@integr8/i18n';
+import { addressText, job } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { AccessNotes } from '~/components/access-notes';
+import { JobSyncBadge, JobSyncCard } from '~/components/job-sync';
 import { LocalGate } from '~/components/local-gate';
 import {
   Badge,
@@ -17,8 +19,6 @@ import {
   useTheme,
 } from '~/components/ui';
 import { formatWhen } from '~/lib/format';
-import { addressText } from '~/local/snapshot';
-import { job } from '~/local/queries';
 import { useLocalQuery } from '~/local/react';
 
 /**
@@ -58,11 +58,14 @@ function Job() {
 
   return (
     <ScrollScreen>
-      <View style={{ alignItems: 'flex-start' }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Button label={t('mobile.back')} variant="secondary" onPress={() => router.back()} />
+        <JobSyncBadge workOrderId={workOrder.id} />
       </View>
 
       <AccessNotes access={site.access} />
+
+      <JobSyncCard workOrderId={workOrder.id} />
 
       <View style={{ gap: spacing[2] }}>
         <Body muted>{workOrder.referenceLabel}</Body>

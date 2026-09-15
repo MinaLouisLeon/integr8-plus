@@ -19,7 +19,14 @@
       "expo-router",
       "expo-secure-store",
       "expo-localization",
-      ["expo-sqlite", { "useSQLCipher": true, "enableFTS": true }]
+      [
+        "expo-sqlite",
+        {
+          "useSQLCipher": true,
+          "enableFTS": true
+        }
+      ],
+      "expo-background-task"
     ],
     "experiments": {
       "typedRoutes": true

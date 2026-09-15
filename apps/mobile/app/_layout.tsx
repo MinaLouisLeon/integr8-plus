@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { APP_ENV, SENTRY_DSN } from '~/lib/env';
 import { deviceLocale } from '~/lib/preferences';
 import { APP_VERSION, whenSignedOut } from '~/lib/session';
+import { registerBackgroundSync, unregisterBackgroundSync } from '~/local/background';
 import { localData } from '~/local/local-data';
 
 /**
@@ -56,6 +57,7 @@ I18nManager.forceRTL(isRtl(locale));
 whenSignedOut((reason) => {
   if (reason !== 'expired') {
     void localData.wipe();
+    void unregisterBackgroundSync();
   }
   router.replace('/sign-in');
 });
@@ -63,19 +65,20 @@ whenSignedOut((reason) => {
 function RootLayout() {
   const [i18n] = useState(() => createI18n({ locale }));
 
-  // Keep the phone current whenever it could be: on launch, back in the
-  // foreground, and when a connection returns. Each attempt checks it is signed
-  // in and online first, and none of them holds up a screen.
+  // Sync whenever it could help: on launch, back in the foreground, when a
+  // connection returns, and in the background while the app is closed. Each run
+  // checks it is signed in and online first, and none of them holds up a screen.
   useEffect(() => {
-    void localData.download();
+    void localData.sync('launch');
+    void registerBackgroundSync();
     const foreground = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void localData.download();
+        void localData.sync('foreground');
       }
     });
     const network = Network.addNetworkStateListener((state) => {
       if (state.isInternetReachable === true) {
-        void localData.download();
+        void localData.sync('reconnect');
       }
     });
     return () => {

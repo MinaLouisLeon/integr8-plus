@@ -1,4 +1,5 @@
 import { useTranslation } from '@integr8/i18n';
+import { addressText, site } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
@@ -6,8 +7,6 @@ import { AccessNotes } from '~/components/access-notes';
 import { JobRow } from '~/components/job-row';
 import { LocalGate } from '~/components/local-gate';
 import { Body, Button, EmptyState, Heading, Row, ScrollScreen, Section } from '~/components/ui';
-import { addressText } from '~/local/snapshot';
-import { site } from '~/local/queries';
 import { useLocalQuery } from '~/local/react';
 
 /** A site, from the phone. Access notes first, as on a job. */

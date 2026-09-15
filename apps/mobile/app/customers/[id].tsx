@@ -1,12 +1,11 @@
 import { useTranslation } from '@integr8/i18n';
+import { addressText, customer } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
 import { JobRow } from '~/components/job-row';
 import { LocalGate } from '~/components/local-gate';
 import { Body, Button, EmptyState, Heading, Row, ScrollScreen, Section } from '~/components/ui';
-import { addressText } from '~/local/snapshot';
-import { customer } from '~/local/queries';
 import { useLocalQuery } from '~/local/react';
 
 /** A customer, as far as this phone knows them: contacts, sites, and the jobs downloaded for them. */
