@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeRecords, sameValue } from './merge.js';
+import { mergeAnswers, mergeRecords, sameValue } from './merge.js';
 
 describe('three-way merge', () => {
   it('takes my change where only I changed a key, and keeps theirs where only they did', () => {
@@ -61,5 +61,81 @@ describe('three-way merge', () => {
         { photos: [{ mediaId: 'a' }] },
       ),
     ).toMatchObject({ outcome: 'merged', value: { photos: [{ mediaId: 'a' }, { mediaId: 'b' }] } });
+  });
+});
+
+describe('merging entries of a repeatable section (P13b)', () => {
+  const entry = (id: string, values: Record<string, unknown>) => ({ id, values });
+  const base = {
+    site: 'Mill Lane',
+    appliances: [entry('boiler', { make: 'Worcester' }), entry('fire', { make: 'Baxi' })],
+  };
+
+  it('keeps an appliance added on each phone, and answers changed in different entries', () => {
+    const mine = {
+      ...base,
+      appliances: [
+        entry('boiler', { make: 'Worcester', flue: 'yes' }),
+        entry('cooker', { make: 'Belling' }),
+        entry('fire', { make: 'Baxi' }),
+      ],
+    };
+    const theirs = {
+      ...base,
+      appliances: [
+        entry('boiler', { make: 'Worcester' }),
+        entry('fire', { make: 'Baxi', flue: 'no' }),
+        entry('hob', { make: 'Neff' }),
+      ],
+    };
+    expect(mergeAnswers(base, mine, theirs)).toEqual({
+      outcome: 'merged',
+      changed: true,
+      value: {
+        site: 'Mill Lane',
+        appliances: [
+          entry('boiler', { make: 'Worcester', flue: 'yes' }),
+          entry('cooker', { make: 'Belling' }),
+          entry('fire', { make: 'Baxi', flue: 'no' }),
+          entry('hob', { make: 'Neff' }),
+        ],
+      },
+    });
+  });
+
+  it('removes an entry removed on one side, unless the other side changed it, which is for a person to decide', () => {
+    const removed = { ...base, appliances: [entry('boiler', { make: 'Worcester' })] };
+    expect(mergeAnswers(base, removed, base)).toMatchObject({
+      outcome: 'merged',
+      value: { appliances: [entry('boiler', { make: 'Worcester' })] },
+    });
+    const edited = {
+      ...base,
+      appliances: [entry('boiler', { make: 'Worcester' }), entry('fire', { make: 'Valor' })],
+    };
+    expect(mergeAnswers(base, removed, edited)).toMatchObject({
+      outcome: 'conflict',
+      conflicts: [{ key: 'appliances' }],
+    });
+  });
+
+  it('conflicts on the section when one entry’s answer changed both ways, and still merges plain answers', () => {
+    const mine = {
+      site: 'Mill Lane, rear',
+      appliances: [entry('boiler', { make: 'Ideal' }), entry('fire', { make: 'Baxi' })],
+    };
+    const theirs = {
+      ...base,
+      appliances: [entry('boiler', { make: 'Vaillant' }), entry('fire', { make: 'Baxi' })],
+    };
+    expect(mergeAnswers(base, mine, theirs)).toMatchObject({
+      outcome: 'conflict',
+      conflicts: [{ key: 'appliances', mine: mine.appliances, theirs: theirs.appliances }],
+    });
+    expect(mergeAnswers(base, { ...base, site: 'Rear' }, { ...base, appliances: [] })).toEqual({
+      outcome: 'merged',
+      changed: true,
+      value: { site: 'Rear' },
+    });
   });
 });

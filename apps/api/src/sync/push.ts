@@ -24,7 +24,7 @@ import {
   submitLocationSchema,
 } from '../routes/v1/submissions.js';
 import { audit as auditWorkOrder, completionBlockedMessage } from '../routes/v1/work-orders.js';
-import { mergeRecords, sameValue } from './merge.js';
+import { mergeAnswers, sameValue } from './merge.js';
 
 /**
  * Applying what a phone did offline (P12).
@@ -1026,7 +1026,7 @@ function answersToWrite(
   if (submission.revision === base.revision) {
     return { answers: mine, changed: !sameValue(mine, submission.answers) };
   }
-  const merged = mergeRecords(base.answers, mine, submission.answers);
+  const merged = mergeAnswers(base.answers, mine, submission.answers);
   if (merged.outcome === 'conflict') {
     return {
       outcome: 'conflict',

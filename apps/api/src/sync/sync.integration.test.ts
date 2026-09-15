@@ -2,6 +2,7 @@ import { getPlatformDataSource, withTenant } from '@integr8/db';
 import {
   compileDefinition,
   createFormState,
+  type FormEvent,
   type MediaReference,
   toSubmission,
   transition,
@@ -206,6 +207,23 @@ beforeAll(async () => {
                   type: 'signature',
                   label: { en: 'Customer' },
                   required: true,
+                },
+              ],
+            },
+            {
+              // P13b: defects found, one entry each.
+              id: 'defects',
+              repeat: { maxEntries: 10, entryLabel: { en: 'Defect' } },
+              fields: [
+                { id: 'defect', type: 'text', label: { en: 'Defect' } },
+                {
+                  id: 'severity',
+                  type: 'radio',
+                  label: { en: 'Severity' },
+                  options: [
+                    { value: 'minor', label: { en: 'Minor' } },
+                    { value: 'major', label: { en: 'Major' } },
+                  ],
                 },
               ],
             },
@@ -582,6 +600,74 @@ describe('the same job changed on two devices offline', () => {
   });
 });
 
+describe('entries changed on two devices offline (P13b)', () => {
+  it('keeps a defect added on each device, and answers changed in different defects, without asking', async () => {
+    const job = await newJob([engineer]);
+    const phone = await openPhone(api, engineer);
+    const tablet = await openPhone(api, engineer);
+    await phone.sync();
+    const { submissionId } = await recordFormStarted(phone.context, {
+      formId,
+      formVersionId: await liveVersion(phone),
+      workOrderId: job.workOrder.id,
+    });
+    const flue = { id: 'defect-flue', values: { defect: 'Flue terminal loose' } };
+    await recordAnswers(phone.context, {
+      submissionId,
+      answers: { note: 'Started', defects: [flue] },
+    });
+    await phone.sync();
+    await tablet.sync();
+
+    phone.network.online = false;
+    tablet.network.online = false;
+    await recordAnswers(phone.context, {
+      submissionId,
+      answers: {
+        note: 'Started',
+        defects: [
+          { id: 'defect-flue', values: { defect: 'Flue terminal loose', severity: 'major' } },
+          { id: 'defect-valve', values: { defect: 'Valve weeping' } },
+        ],
+      },
+    });
+    await recordAnswers(tablet.context, {
+      submissionId,
+      answers: {
+        note: 'Started',
+        defects: [
+          { id: 'defect-flue', values: { defect: 'Flue terminal loose and cracked' } },
+          { id: 'defect-vent', values: { defect: 'Vent blocked', severity: 'minor' } },
+        ],
+      },
+    });
+
+    phone.network.online = true;
+    await phone.sync();
+    tablet.network.online = true;
+    expect((await tablet.sync()).outcome).toBe('complete');
+    expect(await tablet.db.read(changesNeedingAttention)).toEqual([]);
+
+    const stored = await call<{ submission: { answers: Record<string, unknown> } }>(
+      await api.signIn(engineer),
+      'GET',
+      `/v1/submissions/${submissionId}`,
+    );
+    expect(stored.submission.answers).toEqual({
+      note: 'Started',
+      defects: [
+        {
+          id: 'defect-flue',
+          values: { defect: 'Flue terminal loose and cracked', severity: 'major' },
+        },
+        // The tablet's defect keeps its place: after the one it followed on the tablet.
+        { id: 'defect-vent', values: { defect: 'Vent blocked', severity: 'minor' } },
+        { id: 'defect-valve', values: { defect: 'Valve weeping' } },
+      ],
+    });
+  });
+});
+
 describe('replaying the outbox', () => {
   it('sends every change again, twice, and the server ends exactly as it was', async () => {
     const job = await newJob([engineer]);
@@ -747,6 +833,33 @@ describe('the same form on the phone and on the desktop (P13)', () => {
               { id: 'where', type: 'gps', label: { en: 'Where' } },
             ],
           },
+          {
+            // P13b: the same questions once per radiator, and a total across them.
+            id: 'radiators',
+            repeat: { maxEntries: 5, entryLabel: { en: 'Radiator' }, titleField: 'radiator_room' },
+            fields: [
+              { id: 'radiator_room', type: 'text', label: { en: 'Room' }, required: true },
+              { id: 'watts', type: 'number', label: { en: 'Output' } },
+              { id: 'bled', type: 'checkbox', label: { en: 'Bled' } },
+              { id: 'radiator_photo', type: 'photo', label: { en: 'Photo' } },
+            ],
+          },
+          {
+            id: 'totals',
+            fields: [
+              {
+                id: 'total_watts',
+                type: 'number',
+                label: { en: 'Total output' },
+                calculation: {
+                  kind: 'aggregate',
+                  operator: 'sum',
+                  section: 'radiators',
+                  field: 'watts',
+                },
+              },
+            ],
+          },
         ],
       },
     ],
@@ -760,6 +873,7 @@ describe('the same form on the phone and on the desktop (P13)', () => {
     signature: MediaReference;
     photos: MediaReference[];
     certificate: MediaReference;
+    radiatorPhoto: MediaReference;
   }) {
     const compiled = compileDefinition(everyType);
     if (!compiled.ok) {
@@ -787,9 +901,24 @@ describe('the same form on the phone and on the desktop (P13)', () => {
       where: geoPointFrom({ latitude: 53.80071234, longitude: -1.5491, accuracy: 6.04 }),
     };
     let state = createFormState(form);
-    for (const [field, value] of Object.entries(raw)) {
-      const step = transition(form, state, { type: 'answer', field, value });
-      expect(step.accepted, field).toBe(true);
+    const events: FormEvent[] = [
+      ...Object.entries(raw).map(([field, value]): FormEvent => ({ type: 'answer', field, value })),
+      // Entries: added, filled out of order, one moved above the other. The ids
+      // are the ones each client chose; here both chose the same, so the stored
+      // answers can be compared whole.
+      { type: 'add_entry', section: 'radiators', entry: 'rad-hall' },
+      { type: 'add_entry', section: 'radiators', entry: 'rad-loft' },
+      { type: 'answer', field: 'radiator_room', value: 'Loft', entry: 'rad-loft' },
+      { type: 'answer', field: 'watts', value: readInteger('١٢٠٠').answer, entry: 'rad-loft' },
+      { type: 'answer', field: 'radiator_photo', value: [media.radiatorPhoto], entry: 'rad-loft' },
+      { type: 'answer', field: 'radiator_room', value: 'Hall', entry: 'rad-hall' },
+      { type: 'answer', field: 'watts', value: 800, entry: 'rad-hall' },
+      { type: 'answer', field: 'bled', value: true, entry: 'rad-hall' },
+      { type: 'move_entry', section: 'radiators', entry: 'rad-loft', index: 0 },
+    ];
+    for (const event of events) {
+      const step = transition(form, state, event);
+      expect(step.accepted, JSON.stringify(event)).toBe(true);
       state = step.state;
     }
     return toSubmission(form, state, { today: '2026-09-15' });
@@ -866,7 +995,8 @@ describe('the same form on the phone and on the desktop (P13)', () => {
       await photo(phone, onPhone.workOrder.id),
     ];
     const certificate = await photo(phone, onPhone.workOrder.id, 'application/pdf', 30_000);
-    const phoneAnswers = filled({ signature, photos, certificate });
+    const radiatorPhoto = await photo(phone, onPhone.workOrder.id);
+    const phoneAnswers = filled({ signature, photos, certificate, radiatorPhoto });
     await recordSubmit(phone.context, {
       submissionId: phoneSubmission,
       answers: phoneAnswers,
@@ -905,6 +1035,7 @@ describe('the same form on the phone and on the desktop (P13)', () => {
       signature: await uploadRest(8_000, 'image/png'),
       photos: [await uploadRest(150_000, 'image/jpeg'), await uploadRest(150_000, 'image/jpeg')],
       certificate: await uploadRest(30_000, 'application/pdf'),
+      radiatorPhoto: await uploadRest(150_000, 'image/jpeg'),
     });
     await call(engineerToken, 'POST', `/v1/submissions/${started.submission.id}/submit`, {
       answers: desktopAnswers,
@@ -943,7 +1074,40 @@ describe('the same form on the phone and on the desktop (P13)', () => {
       finished: '2026-09-15T10:45:00+03:00',
       checked: ['flue', 'fan'],
       where: { latitude: '53.800712', longitude: '-1.549100', accuracyMeters: '6.0' },
+      radiators: [
+        {
+          id: 'rad-loft',
+          values: {
+            radiator_room: 'Loft',
+            watts: 1200,
+            radiator_photo: [{ mediaId: '…', contentType: 'image/jpeg', byteSize: 150_000 }],
+          },
+        },
+        { id: 'rad-hall', values: { radiator_room: 'Hall', watts: 800, bled: true } },
+      ],
+      total_watts: 2000,
     });
+
+    // Reported per entry: a filter on a radiator's room finds both, and the
+    // export numbers each radiator's columns.
+    const byRoom = await call<{ items: { id: string }[] }>(
+      officeToken,
+      'GET',
+      `/v1/submissions?formId=${formId}&filter=radiator_room:eq:Hall`,
+    );
+    expect(byRoom.items.map((item) => item.id).sort()).toEqual(
+      [phoneSubmission, started.submission.id].sort(),
+    );
+    const exported = await api.call(officeToken, {
+      method: 'GET',
+      url: `/v1/submissions/export?formId=${formId}`,
+    });
+    const [header, ...rows] = exported.body.slice(1).trim().split('\r\n');
+    expect(header).toContain(
+      'radiators[1].radiator_room,radiators[1].watts,radiators[1].bled,radiators[1].radiator_photo,radiators[2].radiator_room,radiators[2].watts,radiators[2].bled,radiators[2].radiator_photo,total_watts',
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toContain(',Loft,1200,,');
   });
 });
 
