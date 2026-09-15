@@ -22,6 +22,8 @@ export interface UploadIntent {
   createdBy: UserId;
   createdAt: Date;
   expiresAt: Date;
+  /** Set when the bytes arrive in parts (P12). */
+  multipart: { uploadId: string; partSize: number } | null;
 }
 
 export interface CreateUploadIntentInput {
@@ -34,6 +36,7 @@ export interface CreateUploadIntentInput {
   category: MediaCategory;
   createdBy: UserId | string;
   expiresAt: Date;
+  multipart?: { uploadId: string; partSize: number };
 }
 
 /** What storage reported when the object was read back. The only source of a ledger row's facts. */
@@ -125,10 +128,25 @@ export class FilesRepository extends TenantScopedRepository {
         category: input.category,
         created_by: toUserId(input.createdBy),
         expires_at: input.expiresAt,
+        multipart_upload_id: input.multipart?.uploadId ?? null,
+        part_size: input.multipart?.partSize ?? null,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
     return toIntent(row);
+  }
+
+  /** Keeps an unconfirmed upload alive for longer: a phone resuming it days later. */
+  async renewIntent(intentId: string, expiresAt: Date): Promise<UploadIntent | undefined> {
+    const row = await this.db
+      .updateTable('upload_intents')
+      .set({ expires_at: expiresAt })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', intentId)
+      .where('expires_at', '<', expiresAt)
+      .returningAll()
+      .executeTakeFirst();
+    return row === undefined ? this.findIntent(intentId) : toIntent(row);
   }
 
   async findIntent(intentId: string): Promise<UploadIntent | undefined> {
@@ -367,6 +385,10 @@ function toIntent(row: Selectable<UploadIntentsTable>): UploadIntent {
     createdBy: toUserId(row.created_by),
     createdAt: row.created_at,
     expiresAt: row.expires_at,
+    multipart:
+      row.multipart_upload_id === null || row.part_size === null
+        ? null
+        : { uploadId: row.multipart_upload_id, partSize: row.part_size },
   };
 }
 

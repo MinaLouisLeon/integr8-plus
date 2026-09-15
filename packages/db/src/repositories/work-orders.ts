@@ -860,14 +860,33 @@ export class WorkOrdersRepository extends TenantScopedRepository {
     return true;
   }
 
+  /** A comment by id, on any job in the company. */
+  async findComment(
+    commentId: string,
+  ): Promise<(WorkOrderComment & { workOrderId: string }) | undefined> {
+    const row = await this.db
+      .selectFrom('work_order_comments')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', commentId)
+      .executeTakeFirst();
+    return row === undefined ? undefined : { ...toComment(row), workOrderId: row.work_order_id };
+  }
+
   async addComment(
     workOrderId: string,
-    input: { body: string; visibility: CommentVisibility },
+    input: {
+      body: string;
+      visibility: CommentVisibility;
+      /** Chosen by a phone that wrote the comment offline (P12), so a resend finds it. */
+      id?: string;
+    },
     author: UserId | string,
   ): Promise<WorkOrderComment> {
     const row = await this.db
       .insertInto('work_order_comments')
       .values({
+        ...(input.id === undefined ? {} : { id: input.id }),
         tenant_id: this.tenantId,
         work_order_id: workOrderId,
         author_id: toUserId(author),
