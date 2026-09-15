@@ -7,7 +7,9 @@ import {
 } from '@integr8/form-engine';
 import { describe, expect, it } from 'vitest';
 import {
+  canAddEntry,
   checkChosenFiles,
+  entryTitle,
   editGeoPoint,
   errorMessage,
   firstPerField,
@@ -313,5 +315,129 @@ describe('signatures', () => {
         [],
       ]),
     ).toBe('M10 20 L30.3 40 M5 5 l0.1 0');
+  });
+});
+
+describe('entries', () => {
+  const rooms = () =>
+    compiled({
+      schemaVersion: 1,
+      title: label('Radiators'),
+      pages: [
+        {
+          id: 'page_1',
+          sections: [
+            {
+              id: 'radiators',
+              repeat: {
+                maxEntries: 2,
+                entryLabel: { en: 'Radiator', ar: 'مشع' },
+                titleField: 'room',
+              },
+              fields: [
+                { id: 'room', type: 'text', label: label('Room'), required: true },
+                { id: 'photo', type: 'photo', label: label('Photo') },
+                { id: 'bleed', type: 'checkbox', label: label('Bled'), required: true },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+  it('names each entry by its place and its title answer, and counts a problem per question per entry', () => {
+    const form = rooms();
+    let state = createFormState(form);
+    for (const event of [
+      { type: 'add_entry', section: 'radiators', entry: 'r1' },
+      { type: 'add_entry', section: 'radiators', entry: 'r2' },
+      { type: 'answer', field: 'room', value: ' Kitchen ', entry: 'r2' },
+      { type: 'submit' },
+    ] as const) {
+      state = transition(form, state, event).state;
+    }
+    const view = viewForm(form, state);
+    const section = form.definition.pages[0]!.sections[0]!;
+    const [first, second] = view.entries.get('radiators')!;
+    expect(entryTitle(section, first!, 0, 'en')).toEqual({ label: 'Radiator 1', name: undefined });
+    expect(entryTitle(section, second!, 1, 'ar')).toEqual({
+      label: `مشع ${new Intl.NumberFormat('ar').format(2)}`,
+      name: 'Kitchen',
+    });
+    expect(canAddEntry(section, view)).toBe(false);
+    expect(
+      firstPerField(view.shownErrors).map((error) => `${error.entry ?? ''}/${error.field}`),
+    ).toEqual(['r1/room', 'r1/bleed', 'r2/bleed']);
+    expect(pageIndexOfField(visiblePages(form, view), 'radiators')).toBe(0);
+  });
+
+  it('names an entry by the words a choice picked, and a date as the language writes it', () => {
+    const form = compiled({
+      schemaVersion: 1,
+      title: label('Appliances'),
+      pages: [
+        {
+          id: 'page_1',
+          sections: [
+            {
+              id: 'appliances',
+              repeat: { maxEntries: 2, entryLabel: label('Appliance'), titleField: 'kind' },
+              fields: [
+                {
+                  id: 'kind',
+                  type: 'radio',
+                  label: label('Kind'),
+                  options: [{ value: 'combi_boiler', label: { en: 'Combi boiler' } }],
+                },
+                { id: 'fitted', type: 'date', label: label('Fitted') },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    let state = createFormState(form);
+    for (const event of [
+      { type: 'add_entry', section: 'appliances', entry: 'a1' },
+      { type: 'answer', field: 'kind', value: 'combi_boiler', entry: 'a1' },
+      { type: 'answer', field: 'fitted', value: '2019-03-02', entry: 'a1' },
+    ] as const) {
+      state = transition(form, state, event).state;
+    }
+    const section = form.definition.pages[0]!.sections[0]!;
+    const [entry] = viewForm(form, state).entries.get('appliances')!;
+    expect(entryTitle(section, entry!, 0, 'en').name).toBe('Combi boiler');
+    expect(
+      entryTitle(
+        { ...section, repeat: { ...section.repeat!, titleField: 'fitted' } },
+        entry!,
+        0,
+        'en',
+      ).name,
+    ).toBe(
+      new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone: 'UTC' }).format(
+        new Date('2019-03-02T12:00:00Z'),
+      ),
+    );
+  });
+
+  it('prefills entries with what describes each one, keeping their ids, and drops an entry with nothing left', () => {
+    const form = rooms();
+    const photo = {
+      mediaId: '0192f2b4-0000-7000-8000-000000000003',
+      contentType: 'image/jpeg',
+      byteSize: 1,
+    };
+    expect(
+      prefillAnswers(form, form, {
+        radiators: [
+          { id: 'r1', values: { room: 'Hall', photo: [photo], bleed: true } },
+          { id: 'r2', values: { photo: [photo] } },
+        ],
+      }),
+    ).toEqual({
+      answers: { radiators: [{ id: 'r1', values: { room: 'Hall', bleed: true } }] },
+      filled: ['room', 'bleed'],
+    });
   });
 });

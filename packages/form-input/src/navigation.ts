@@ -1,4 +1,10 @@
-import type { CompiledForm, FieldError, FormView, Page } from '@integr8/form-engine';
+import {
+  type CompiledForm,
+  type FieldError,
+  type FormView,
+  type Page,
+  touchKey,
+} from '@integr8/form-engine';
 
 /**
  * Where things are in a long form: which pages show, which page a question is
@@ -11,21 +17,24 @@ export function visiblePages(form: CompiledForm, view: FormView): Page[] {
   return form.definition.pages.filter((page) => view.visible.get(page.id) === true);
 }
 
-/** The index in `pages` of the page a field is on, or -1. */
+/** The index in `pages` of the page a field — or a repeatable section, for its own errors — is on, or -1. */
 export function pageIndexOfField(pages: readonly Page[], fieldId: string): number {
   return pages.findIndex((page) =>
-    page.sections.some((section) => section.fields.some((field) => field.id === fieldId)),
+    page.sections.some(
+      (section) => section.id === fieldId || section.fields.some((field) => field.id === fieldId),
+    ),
   );
 }
 
-/** One entry per question, in reading order: its first problem. */
+/** One entry per question — per question in each entry of a repeatable section — in reading order: its first problem. */
 export function firstPerField(errors: readonly FieldError[]): FieldError[] {
   const seen = new Set<string>();
   return errors.filter((error) => {
-    if (seen.has(error.field)) {
+    const key = touchKey(error.field, error.entry);
+    if (seen.has(key)) {
       return false;
     }
-    seen.add(error.field);
+    seen.add(key);
     return true;
   });
 }
