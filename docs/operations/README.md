@@ -69,7 +69,8 @@ coordinates or device location.
 ## Job types
 
 A job type carries onto every new work order of its type: forms (each required or optional),
-a checklist, instructions, a default priority and an expected duration. The work order gets
+a checklist, instructions, a default priority, an expected duration, and how many before and
+after photos a job needs and whether the customer signs off (P14). The work order gets
 a **copy**, so changing a type changes jobs created afterwards and none already out. Codes are
 upper case and unique (`BOILER-SERVICE`); imports name types by code or name.
 
@@ -111,8 +112,10 @@ against both. The database refuses, for every client and role:
 
 - a transition not in the table, or without a reason where one is needed;
 - dispatching with nobody assigned;
-- **completing while a required form has no submitted submission for this job** — the error
-  names the forms;
+- **completing while anything the job needs is missing** (P14): a required form with no submitted
+  submission for this job, fewer before or after photos than the job asks for, or no customer
+  sign-off where one is required. The API answers 409 `completion_blocked`, with one detail per
+  missing thing;
 - editing a completed, reviewed or cancelled job's details.
 
 A write names the revision it read; a stale one is refused `work_order_changed`.
@@ -136,6 +139,9 @@ unassigns them rather than deleting the row. Engineers see only the jobs they ar
 - `work_order_events` is written by trigger for creation, every transition, reschedule, edit
   and crew change, and nobody can change or delete it.
 - The job screen lists earlier jobs at the same site: the previous reports.
+- Before and after photos, the sign-off and the time on the job are in the job screen's
+  Completion section. Time and the Timesheets screen are explained in
+  [the working day](../mobile/job-execution.md#time).
 
 ### Lists, saved views, bulk changes
 
