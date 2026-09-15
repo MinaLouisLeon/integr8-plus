@@ -37,4 +37,8 @@ export type SyncReport = JsonBody<paths['/v1/sync/reports']['post']>['reports'][
 export type PreparedUpload = Ok<paths['/v1/media/{mediaId}']['put']>;
 export type PartLinks = Ok<paths['/v1/media/{mediaId}/parts']['post']>;
 export type ArrivedParts = Ok<paths['/v1/media/{mediaId}/parts']['get']>;
+/** Where the phone was when a form was submitted, or why it does not know (P13). */
+export type SubmitLocation = NonNullable<
+  Extract<PushMutation, { kind: 'submission.submit' }>['payload']['location']
+>;
 export type AccessValues = Extract<PushMutation, { kind: 'site.access' }>['payload']['changes'];

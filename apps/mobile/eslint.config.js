@@ -8,7 +8,7 @@ export default [
     // API from a screen is how a spinner ends up in front of data that was
     // already on the phone. Sync lives in `src/local`, and screens ask it to run
     // through `localData`, never by calling the client or the engine themselves.
-    files: ['app/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}'],
+    files: ['app/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}', 'src/forms/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',

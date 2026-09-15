@@ -11,13 +11,13 @@ compileDefinition(json)  ──▶  CompiledForm  ──▶  createFormState / t
    publish-time checks        validateSubmission  (on the server, for truth)
 ```
 
-| Where it runs       | What it uses it for                                                                                                      |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| P07 builder         | `compileDefinition` to refuse an invalid publish, naming the fields; the authoring layer — see [the builder](builder.md) |
-| P08 web and desktop | `@integr8/form-renderer-dom` — see [submissions](submissions.md)                                                         |
-| P13 mobile          | `createFormState`, `transition`, `viewForm`, `toSubmission`                                                              |
-| API (P08)           | `validateSubmission` — the client validates for speed, the server for truth                                              |
-| Drafts (P12)        | `migrateAnswers` when a newer version is published under a draft                                                         |
+| Where it runs       | What it uses it for                                                                                                               |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| P07 builder         | `compileDefinition` to refuse an invalid publish, naming the fields; the authoring layer — see [the builder](builder.md)          |
+| P08 web and desktop | `@integr8/form-renderer-dom` — see [submissions](submissions.md)                                                                  |
+| P13 mobile          | `createFormState`, `transition`, `viewForm`, `toSubmission`, the conformance check — see [forms on the phone](../mobile/forms.md) |
+| API (P08)           | `validateSubmission` — the client validates for speed, the server for truth                                                       |
+| Drafts (P12)        | `migrateAnswers` when a newer version is published under a draft                                                                  |
 
 ---
 
@@ -264,8 +264,10 @@ download pinned by SHA-256.
 `v0.13.0` release, whose binary reports `0.12.0`. React Native 0.86 ships Hermes V1, which
 is newer. So the CI run is a genuine second engine — different regular expressions,
 number printing, BigInt and string library from V8 — reproducing Node's output byte for
-byte. It is not the exact engine in the phone. That last step belongs to P13: the same
-corpus, run inside the app on a device.
+byte. It is not the exact engine in the phone. P13 closes that gap: `@integr8/form-engine/conformance`
+exports the corpus and the golden file as a module, and the mobile app's **Settings → Check the
+form engine** runs it in the app's own Hermes, release builds included. The conformance test
+fails if the module and `golden.jsonl` differ; `conformance:golden` writes both.
 
 Local Hermes: download `hermes-cli-windows.tar.gz` or `hermes-cli-darwin.tar.gz` from the
 same release and point `HERMES_BIN` at the `hermes` binary.

@@ -13,6 +13,7 @@ export default {
         'core',
         'form-engine',
         'form-renderer',
+        'form-input',
         'operations',
         'offline',
         'db',

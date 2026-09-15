@@ -10,6 +10,8 @@ import { UNSENT_FORM_VERSION_IDS, UNSENT_SITE_IDS, UNSENT_WORK_ORDER_IDS } from 
  *   history does not fill the phone.
  * - **Customers, sites and forms while a kept job needs them.**
  * - **Downloaded files up to 500 MB,** least recently opened out first.
+ * - **Photos and files the phone uploaded, while their job is kept,** so a
+ *   submitted form still shows its photos on the phone; they go with the job.
  * - **Unsent work, never.** A draft, a file waiting to upload, and anything they
  *   point at stay however old they are. Evicting them would be losing work, not
  *   saving space.
@@ -58,6 +60,30 @@ export async function evict(
     [cutoff],
   );
 
+  // Forms the server has, for jobs no longer kept: nothing on the phone points
+  // at them any more, and prefilling looks only at forms from kept jobs.
+  await sql.run(
+    `delete from submissions
+     where server_revision is not null and status = 'submitted'
+       and (work_order_id is null or work_order_id not in (select id from work_orders))
+       and id not in (select entity_id from outbox where state <> 'done')`,
+  );
+
+  const uploaded = await sql.all<{
+    media_id: string;
+    local_path: string;
+    thumbnail_path: string | null;
+  }>(
+    `select media_id, local_path, thumbnail_path from uploads
+     where state = 'confirmed'
+       and (work_order_id is null or work_order_id not in (select id from work_orders))`,
+  );
+  if (uploaded.length > 0) {
+    await sql.run(`delete from uploads where media_id in (select value from json_each(?))`, [
+      JSON.stringify(uploaded.map((upload) => upload.media_id)),
+    ]);
+  }
+
   const customers = await sql.run(
     `delete from customers
      where id not in (select customer_id from work_orders)
@@ -75,7 +101,8 @@ export async function evict(
        and id not in (
          select live_version_id from forms
          where live_version_id is not null and id in (${FORMS_OF_KEPT_JOBS})
-       )`,
+       )
+       and id not in (select form_version_id from submissions)`,
   );
 
   const forms = await sql.run(
@@ -132,6 +159,13 @@ export async function evict(
     sites: sites.changes,
     forms: forms.changes,
     formVersions: formVersions.changes,
-    filePaths: evictedFiles.map((file) => file.local_path),
+    filePaths: [
+      ...evictedFiles.map((file) => file.local_path),
+      ...uploaded.flatMap((upload) =>
+        upload.thumbnail_path === null
+          ? [upload.local_path]
+          : [upload.local_path, upload.thumbnail_path],
+      ),
+    ],
   };
 }

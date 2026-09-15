@@ -1,8 +1,9 @@
 import { useTranslation } from '@integr8/i18n';
-import { addressText, job } from '@integr8/offline';
+import { addressText, job, type JobForm, jobForms } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Linking, Pressable, Text, View } from 'react-native';
 import { AccessNotes } from '~/components/access-notes';
 import { JobSyncBadge, JobSyncCard } from '~/components/job-sync';
 import { LocalGate } from '~/components/local-gate';
@@ -18,7 +19,9 @@ import {
   Section,
   useTheme,
 } from '~/components/ui';
+import { type EarlierOffer, earlierOffer, startForm } from '~/forms/session';
 import { formatWhen } from '~/lib/format';
+import { localData } from '~/local/local-data';
 import { useLocalQuery } from '~/local/react';
 
 /**
@@ -144,20 +147,7 @@ function Job() {
         </Section>
       )}
 
-      {detail.forms.length === 0 ? null : (
-        <Section title={t('mobile.job.forms')}>
-          {detail.forms.map((form) => (
-            <Row
-              key={form.formId}
-              title={form.title}
-              lines={[
-                form.required ? t('mobile.job.required') : '',
-                t(`mobile.job.formStatus.${form.submission?.status ?? 'none'}`),
-              ]}
-            />
-          ))}
-        </Section>
-      )}
+      <JobForms workOrderId={workOrder.id} siteId={site.id} />
 
       {detail.checklist.length === 0 ? null : (
         <Section title={t('mobile.job.checklist')}>
@@ -205,6 +195,89 @@ function Job() {
 
       <Body muted>{t('mobile.job.downloadedAt', { when: when(downloadedAt) })}</Body>
     </ScrollScreen>
+  );
+}
+
+/**
+ * The forms this job needs, as the phone has them. Tapping one opens it; a form
+ * not started yet is started on the phone, from the answers last given at this
+ * site if the engineer wants them.
+ */
+function JobForms({ workOrderId, siteId }: { workOrderId: string; siteId: string }) {
+  const { t, i18n } = useTranslation();
+  const forms = useLocalQuery(
+    `job-forms:${workOrderId}`,
+    ['work_orders', 'submissions', 'forms', 'outbox'],
+    (sql) => jobForms(sql, workOrderId),
+  );
+  const [opening, setOpening] = useState<string | undefined>(undefined);
+
+  if (forms.status !== 'ready' || forms.data.length === 0) {
+    return null;
+  }
+
+  const open = async (form: JobForm) => {
+    if (form.submission !== null) {
+      router.push({ pathname: '/forms/[id]', params: { id: form.submission.id } });
+      return;
+    }
+    const context = localData.changeContext();
+    if (form.liveVersionId === null || context === undefined) {
+      Alert.alert(form.title, t('mobile.fill.noLiveVersion'));
+      return;
+    }
+    setOpening(form.formId);
+    try {
+      const offer = await earlierOffer(context, { form, siteId });
+      const start = async (startFrom: EarlierOffer | undefined) => {
+        const id = await startForm(context, { form, workOrderId, startFrom });
+        router.push({
+          pathname: '/forms/[id]',
+          params:
+            startFrom === undefined
+              ? { id }
+              : { id, prefilled: String(startFrom.filled), from: startFrom.job },
+        });
+      };
+      if (offer === undefined) {
+        await start(undefined);
+        return;
+      }
+      Alert.alert(
+        t('mobile.fill.start.title'),
+        t('mobile.fill.start.body', {
+          job: offer.job,
+          when: offer.submittedAt === null ? '' : formatWhen(offer.submittedAt, i18n.language),
+        }),
+        [
+          { text: t('mobile.fill.start.empty'), onPress: () => void start(undefined) },
+          { text: t('mobile.fill.start.useEarlier'), onPress: () => void start(offer) },
+        ],
+      );
+    } finally {
+      setOpening(undefined);
+    }
+  };
+
+  return (
+    <Section title={t('mobile.job.forms')}>
+      {forms.data.map((form) => (
+        <Row
+          key={form.formId}
+          title={form.title}
+          lines={[
+            form.required ? t('mobile.job.required') : '',
+            opening === form.formId
+              ? t('common.loading')
+              : t(`mobile.job.formStatus.${form.submission?.status ?? 'none'}`),
+          ]}
+          {...(form.submission !== null && !form.submission.sent
+            ? { tag: { label: t('mobile.jobSync.notYet'), tone: 'muted' as const } }
+            : {})}
+          onPress={() => void open(form)}
+        />
+      ))}
+    </Section>
   );
 }
 

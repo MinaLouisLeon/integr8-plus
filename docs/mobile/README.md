@@ -17,7 +17,8 @@ src/local/sync-device   files, fetch, network and battery for the engine
 
 The data layer and the sync engine live in `packages/offline`, with no React Native in them, so
 the API's integration suite can run the phone's own engine against the real server. How
-changes reach the server: [offline sync](../sync/README.md).
+changes reach the server: [offline sync](../sync/README.md). How forms are filled:
+[forms on the phone](forms.md).
 
 ---
 
@@ -38,19 +39,19 @@ changes reach the server: [offline sync](../sync/README.md).
 
 Shaped for the phone's reads, not copied from the server (`packages/offline/src/migrations.ts`):
 
-| Table                    | Holds                                                                                                                         |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `work_orders`            | One row per job, carrying its customer's and site's names and address so the job list is one query. `data` is the API detail. |
-| `customers`, `sites`     | As downloaded. A site's access notes are columns: they are the first thing on the job screen.                                 |
-| `forms`, `form_versions` | Each form's live version, and any version a draft was started on.                                                             |
-| `submissions`            | Forms as the server holds them and as the engineer is filling them. One the server has not seen is **unsent work**.           |
-| `outbox`                 | **Unsent work**: every change not yet applied by the server, in order ([offline sync](../sync/README.md)).                    |
-| `uploads`                | **Unsent work**: files not yet confirmed by the server, and how far each has got.                                             |
-| `sync_runs`              | Each sync run, until it has been reported.                                                                                    |
-| `files`                  | Downloaded files. (P11's files waiting to upload moved to `uploads`.)                                                         |
-| `drafts`                 | P11's drafts, kept after they moved to `submissions` in version 4; nothing writes here now.                                   |
-| `search`                 | FTS5 over jobs and customers, kept by triggers.                                                                               |
-| `meta`                   | Who the phone's data belongs to, and when it was last downloaded.                                                             |
+| Table                    | Holds                                                                                                                                                     |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `work_orders`            | One row per job, carrying its customer's and site's names and address so the job list is one query. `data` is the API detail.                             |
+| `customers`, `sites`     | As downloaded. A site's access notes are columns: they are the first thing on the job screen.                                                             |
+| `forms`, `form_versions` | Each form's live version, and any version a draft was started on.                                                                                         |
+| `submissions`            | Forms as the server holds them and as the engineer is filling them. One the server has not seen is **unsent work**.                                       |
+| `outbox`                 | **Unsent work**: every change not yet applied by the server, in order ([offline sync](../sync/README.md)).                                                |
+| `uploads`                | **Unsent work**: files not yet confirmed by the server, and how far each has got. Photos taken on the phone and their thumbnails, until their job leaves. |
+| `sync_runs`              | Each sync run, until it has been reported.                                                                                                                |
+| `files`                  | Downloaded files. (P11's files waiting to upload moved to `uploads`.)                                                                                     |
+| `drafts`                 | P11's drafts, kept after they moved to `submissions` in version 4; nothing writes here now.                                                               |
+| `search`                 | FTS5 over jobs and customers, kept by triggers.                                                                                                           |
+| `meta`                   | Who the phone's data belongs to, and when it was last downloaded.                                                                                         |
 
 Timestamps are UTC ISO 8601 text, so comparing the text compares the instants.
 

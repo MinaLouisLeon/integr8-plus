@@ -13,6 +13,7 @@ import {
   adoptUnqueuedForms,
   applyPushResults,
   markBatchUnanswered,
+  markSent,
   type PushCounts,
   selectBatch,
 } from './outbox.js';
@@ -208,7 +209,14 @@ export class SyncEngine {
     // so a single change it refuses to parse cannot hold up every other one.
     let batchSize = 50;
     for (let round = 0; round < 100; round += 1) {
-      const { rows, mutations } = await db.read((sql) => selectBatch(sql, clock.now(), batchSize));
+      // Chosen and marked as sent in one write, so an autosave made while this
+      // batch is on the wire becomes a change of its own instead of being folded
+      // into one the server may already have applied.
+      const { rows, mutations } = await db.write(['outbox'], async (sql) => {
+        const batch = await selectBatch(sql, clock.now(), batchSize);
+        await markSent(sql, batch.rows, clock.now());
+        return batch;
+      });
       if (mutations.length === 0) {
         return;
       }

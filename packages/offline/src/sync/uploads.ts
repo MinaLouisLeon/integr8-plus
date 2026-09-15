@@ -234,6 +234,30 @@ export async function retryUpload(db: LocalDatabase, mediaId: string): Promise<v
   );
 }
 
+/**
+ * A captured file the engineer took back out of a form before it went anywhere:
+ * its upload is dropped, and its paths returned for the caller to delete from
+ * disk. Nothing happens to a file that has started uploading, or that any form
+ * or unsent change on the phone still names — removing a photo from one question
+ * must not lose it from another.
+ */
+export async function discardUnusedUpload(db: LocalDatabase, mediaId: string): Promise<string[]> {
+  return db.write(['uploads'], async (sql) => {
+    const row = await sql.get<{ local_path: string; thumbnail_path: string | null }>(
+      `select local_path, thumbnail_path from uploads
+       where media_id = ? and state <> 'confirmed' and bytes_sent = 0 and kind is null
+         and not exists (select 1 from submissions where instr(answers, ?) > 0)
+         and not exists (select 1 from outbox where state <> 'done' and instr(payload, ?) > 0)`,
+      [mediaId, mediaId, mediaId],
+    );
+    if (row === undefined) {
+      return [];
+    }
+    await sql.run('delete from uploads where media_id = ?', [mediaId]);
+    return row.thumbnail_path === null ? [row.local_path] : [row.local_path, row.thumbnail_path];
+  });
+}
+
 export interface UploadProgress {
   mediaId: string;
   workOrderId: string | null;

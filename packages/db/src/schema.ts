@@ -371,6 +371,20 @@ export interface FormTemplatesTable {
 export const SUBMISSION_STATUSES = ['draft', 'submitted', 'reopened'] as const;
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
 
+/**
+ * Where a device was when a form was submitted (migration 0012). Coordinates are
+ * decimal text, as GPS answers are; `capturedAt` is on the server's clock.
+ */
+export type SubmitLocation =
+  | {
+      status: 'captured';
+      latitude: string;
+      longitude: string;
+      accuracyMeters?: string | undefined;
+      capturedAt: string;
+    }
+  | { status: 'denied' | 'unavailable' };
+
 export interface SubmissionsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -391,6 +405,12 @@ export interface SubmissionsTable {
   search: ColumnType<string, never, never>;
   /** The job this form was filled for. Set at insert; the database refuses a change. */
   work_order_id: ColumnType<string | null, string | null | undefined, never>;
+  /** Written only by submitting; see {@link SubmitLocation}. */
+  submit_location: ColumnType<
+    SubmitLocation | null,
+    SubmitLocation | null | undefined,
+    SubmitLocation | null
+  >;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
@@ -408,6 +428,7 @@ export interface SubmissionEventsTable {
   answers: ColumnType<Record<string, unknown> | null, never, never>;
   actor_id: ColumnType<string, never, never>;
   reason: ColumnType<string | null, never, never>;
+  location: ColumnType<SubmitLocation | null, never, never>;
   occurred_at: ColumnType<Date, never, never>;
 }
 

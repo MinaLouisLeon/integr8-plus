@@ -4,6 +4,7 @@ import type {
   MutationKind,
   PushMutation,
   PushResult,
+  SubmitLocation,
   SyncConflict,
   WorkOrderDetail,
 } from '../api-types.js';
@@ -477,6 +478,7 @@ export async function recordAnswers(
     const unsent = await sql.get<{ seq: number; id: string }>(
       `select seq, id from outbox
        where entity_key = ? and kind = 'submission.answers' and state = 'pending' and attempts = 0
+         and sent_at is null
          and seq = (select max(seq) from outbox where entity_key = ? and state <> 'done')`,
       [`submission:${input.submissionId}`, `submission:${input.submissionId}`],
     );
@@ -524,6 +526,8 @@ export async function recordSubmit(
     /** The day it was filled, `YYYY-MM-DD`, in the engineer's calendar. */
     filledOn: string;
     reason?: string;
+    /** Where the phone was, taken as the engineer submitted (P13). */
+    location?: SubmitLocation;
   },
 ): Promise<string> {
   const { db, clock, random } = context;
@@ -536,8 +540,10 @@ export async function recordSubmit(
       [JSON.stringify(input.answers), at, at, input.submissionId],
     );
     // A submit carries the final answers; an autosave that never left is superseded.
+    // One that may have left stays, so the server's base moves with it.
     await sql.run(
-      `delete from outbox where entity_key = ? and kind = 'submission.answers' and state = 'pending' and attempts = 0`,
+      `delete from outbox where entity_key = ? and kind = 'submission.answers' and state = 'pending' and attempts = 0
+       and sent_at is null`,
       [`submission:${input.submissionId}`],
     );
     const id = uuidv7(now.getTime(), random);
@@ -551,6 +557,7 @@ export async function recordSubmit(
         answers: input.answers,
         filledOn: input.filledOn,
         ...(input.reason === undefined ? {} : { reason: input.reason }),
+        ...(input.location === undefined ? {} : { location: input.location }),
       },
       base: null,
       waitsFor: { media: [...new Set(mediaIdsIn(input.answers))], mutations: [] },
@@ -571,6 +578,8 @@ export async function queueUpload(
     contentType: string;
     byteSize: number;
     workOrderId: string | null;
+    /** A small copy to show while it waits, made on the phone (P13). */
+    thumbnailPath?: string;
   },
 ): Promise<string> {
   const { db, clock, random } = context;
@@ -578,11 +587,12 @@ export async function queueUpload(
     const now = clock.now();
     const mediaId = uuidv7(now.getTime(), random);
     await sql.run(
-      `insert into uploads (media_id, local_path, content_type, byte_size, work_order_id, state, created_at)
-       values (?, ?, ?, ?, ?, 'queued', ?)`,
+      `insert into uploads (media_id, local_path, thumbnail_path, content_type, byte_size, work_order_id, state, created_at)
+       values (?, ?, ?, ?, ?, ?, 'queued', ?)`,
       [
         mediaId,
         input.localPath,
+        input.thumbnailPath ?? null,
         input.contentType,
         input.byteSize,
         input.workOrderId,
@@ -841,6 +851,21 @@ export async function applyPushResults(
     }
   }
   return counts;
+}
+
+/** Marks changes as handed to the network, which ends folding later autosaves into them. */
+export async function markSent(
+  sql: SqlConnection,
+  rows: readonly OutboxRow[],
+  deviceNow: Date,
+): Promise<void> {
+  if (rows.length === 0) {
+    return;
+  }
+  await sql.run(`update outbox set sent_at = ? where seq in (select value from json_each(?))`, [
+    deviceNow.toISOString(),
+    JSON.stringify(rows.map((row) => row.seq)),
+  ]);
 }
 
 /**

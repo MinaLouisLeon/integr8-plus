@@ -336,6 +336,21 @@ export const MIGRATIONS: readonly Migration[] = [
        from files where state = 'pending_upload' and byte_size > 0`,
     ],
   },
+  {
+    version: 5,
+    name: 'forms on the phone',
+    statements: [
+      // When a change was handed to the network. An autosave is folded into an
+      // earlier unsent one, but never into one the server may already have
+      // applied under its id (P13).
+      `alter table outbox add column sent_at text`,
+      // A small copy of a photo, made on the phone, shown while the original
+      // waits to upload and after. Relative to the files directory, like
+      // local_path.
+      `alter table uploads add column thumbnail_path text`,
+      `create index submissions_by_form on submissions (form_id, status)`,
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.at(-1)?.version ?? 0;

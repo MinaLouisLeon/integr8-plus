@@ -330,6 +330,7 @@ export {
   type ReportableFieldSpec,
   type ReportableValueType,
   type SubmissionEventKind,
+  type SubmitLocation,
   type SubmissionStatus,
 } from './schema.js';
 

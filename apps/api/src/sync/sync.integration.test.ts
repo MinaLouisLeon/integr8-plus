@@ -1,5 +1,19 @@
 import { getPlatformDataSource, withTenant } from '@integr8/db';
 import {
+  compileDefinition,
+  createFormState,
+  type MediaReference,
+  toSubmission,
+  transition,
+} from '@integr8/form-engine';
+import {
+  geoPointFrom,
+  readDecimal,
+  readInteger,
+  toggleOption,
+  withOffset,
+} from '@integr8/form-input';
+import {
   changesNeedingAttention,
   discardChange,
   job as localJob,
@@ -45,6 +59,7 @@ let office: Member;
 let engineer: Member;
 let crewmate: Member;
 let officeToken: string;
+let ownerToken: string;
 let formId: string;
 let jobTypeId: string;
 let customerId: string;
@@ -229,6 +244,7 @@ beforeAll(async () => {
       201,
     )
   ).id;
+  ownerToken = officeToken;
   officeToken = dispatcherToken;
 });
 
@@ -668,6 +684,260 @@ describe('replaying the outbox', () => {
       `/v1/work-orders/${second.workOrder.id}`,
     );
     expect(detail.checklist[0]?.done).toBe(true);
+  });
+});
+
+describe('the same form on the phone and on the desktop (P13)', () => {
+  const opt = (...values: string[]) => values.map((value) => ({ value, label: { en: value } }));
+  /** Every field type in the registry, and one worked out from another. */
+  const everyType = {
+    schemaVersion: 1,
+    title: { en: 'Every question' },
+    pages: [
+      {
+        id: 'page_1',
+        sections: [
+          {
+            id: 'section_1',
+            fields: [
+              { id: 'make', type: 'text', label: { en: 'Make' } },
+              { id: 'notes', type: 'long_text', label: { en: 'Notes' } },
+              { id: 'serial', type: 'barcode', label: { en: 'Serial' } },
+              { id: 'visits', type: 'number', label: { en: 'Visits' } },
+              {
+                id: 'visits_doubled',
+                type: 'number',
+                label: { en: 'Doubled' },
+                calculation: {
+                  kind: 'arithmetic',
+                  operator: 'multiply',
+                  left: { kind: 'answer', field: 'visits' },
+                  right: { kind: 'number', value: '2' },
+                },
+              },
+              { id: 'pressure', type: 'decimal', decimalPlaces: 2, label: { en: 'Pressure' } },
+              { id: 'condition', type: 'rating', scale: 5, label: { en: 'Condition' } },
+              { id: 'installed', type: 'date', label: { en: 'Installed' } },
+              { id: 'arrived', type: 'time', label: { en: 'Arrived' } },
+              { id: 'finished', type: 'datetime', label: { en: 'Finished' } },
+              { id: 'fuel', type: 'dropdown', options: opt('gas', 'oil'), label: { en: 'Fuel' } },
+              { id: 'room', type: 'radio', options: opt('kitchen', 'loft'), label: { en: 'Room' } },
+              {
+                id: 'checked',
+                type: 'multi_select',
+                options: opt('flue', 'seals', 'fan'),
+                label: { en: 'Checked' },
+              },
+              { id: 'isolated', type: 'checkbox', label: { en: 'Isolated' } },
+              { id: 'safe', type: 'yes_no', allowNotApplicable: true, label: { en: 'Safe' } },
+              { id: 'signed', type: 'signature', label: { en: 'Signed' } },
+              { id: 'photos', type: 'photo', label: { en: 'Photos' } },
+              {
+                id: 'certificate',
+                type: 'file',
+                acceptedTypes: ['application/pdf'],
+                label: { en: 'Certificate' },
+              },
+              { id: 'where', type: 'gps', label: { en: 'Where' } },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  /**
+   * What the controls give, the way both renderers turn touches into answers —
+   * through `@integr8/form-input` — then what the engine says to submit.
+   */
+  function filled(media: {
+    signature: MediaReference;
+    photos: MediaReference[];
+    certificate: MediaReference;
+  }) {
+    const compiled = compileDefinition(everyType);
+    if (!compiled.ok) {
+      throw new Error(JSON.stringify(compiled.issues));
+    }
+    const form = compiled.form;
+    const raw: Record<string, unknown> = {
+      make: 'Worcester',
+      notes: 'Flue terminal clear\nSeals replaced',
+      serial: 'GC-47-406-12',
+      visits: readInteger('٣').answer,
+      pressure: readDecimal('١٫٥٠'),
+      condition: 4,
+      installed: '2019-03-02',
+      arrived: '08:30',
+      finished: withOffset('2026-09-15T10:45', 180),
+      fuel: 'gas',
+      room: 'loft',
+      checked: toggleOption(opt('flue', 'seals', 'fan'), ['fan'], 'flue', true),
+      isolated: true,
+      safe: 'not_applicable',
+      signed: media.signature,
+      photos: media.photos,
+      certificate: [media.certificate],
+      where: geoPointFrom({ latitude: 53.80071234, longitude: -1.5491, accuracy: 6.04 }),
+    };
+    let state = createFormState(form);
+    for (const [field, value] of Object.entries(raw)) {
+      const step = transition(form, state, { type: 'answer', field, value });
+      expect(step.accepted, field).toBe(true);
+      state = step.state;
+    }
+    return toSubmission(form, state, { today: '2026-09-15' });
+  }
+
+  it('stores identical answers, whichever filled it', async () => {
+    const formId = (
+      await call<{ form: { id: string } }>(
+        ownerToken,
+        'POST',
+        '/v1/forms',
+        { title: 'Every question' },
+        201,
+      )
+    ).form.id;
+    const draft = await call<{ draft: { revision: number } }>(
+      ownerToken,
+      'GET',
+      `/v1/forms/${formId}`,
+    );
+    const saved = await call<{ revision: number }>(ownerToken, 'PUT', `/v1/forms/${formId}/draft`, {
+      expectedRevision: draft.draft.revision,
+      definition: everyType,
+    });
+    await call(ownerToken, 'POST', `/v1/forms/${formId}/draft/publish`, {
+      expectedRevision: saved.revision,
+    });
+    const typeId = (
+      await call<{ id: string }>(
+        ownerToken,
+        'POST',
+        '/v1/job-types',
+        { name: 'Every question', code: 'every-question', forms: [{ formId, required: false }] },
+        201,
+      )
+    ).id;
+    const jobOn = async () => {
+      const created = await call<Detail>(
+        officeToken,
+        'POST',
+        '/v1/work-orders',
+        { customerId, siteId, jobTypeId: typeId, crew: [{ userId: engineer.userId, lead: true }] },
+        201,
+      );
+      return call<Detail>(
+        officeToken,
+        'POST',
+        `/v1/work-orders/${created.workOrder.id}/transitions`,
+        {
+          to: 'dispatched',
+          expectedRevision: created.workOrder.revision,
+        },
+      );
+    };
+    const onPhone = await jobOn();
+    const onDesktop = await jobOn();
+
+    // The phone: offline, through the outbox.
+    const phone = await openPhone(api, engineer);
+    await phone.sync();
+    const version = await phone.db.read((sql) =>
+      sql.get<{ live_version_id: string }>('select live_version_id from forms where id = ?', [
+        formId,
+      ]),
+    );
+    const { submissionId: phoneSubmission } = await recordFormStarted(phone.context, {
+      formId,
+      formVersionId: version!.live_version_id,
+      workOrderId: onPhone.workOrder.id,
+    });
+    const signature = await photo(phone, onPhone.workOrder.id, 'image/png', 8_000);
+    const photos = [
+      await photo(phone, onPhone.workOrder.id),
+      await photo(phone, onPhone.workOrder.id),
+    ];
+    const certificate = await photo(phone, onPhone.workOrder.id, 'application/pdf', 30_000);
+    const phoneAnswers = filled({ signature, photos, certificate });
+    await recordSubmit(phone.context, {
+      submissionId: phoneSubmission,
+      answers: phoneAnswers,
+      filledOn: '2026-09-15',
+      location: { status: 'denied' },
+    });
+    expect((await phone.sync()).outcome).toBe('complete');
+
+    // The desktop: online, through the REST API the web and desktop apps use.
+    const engineerToken = await api.signIn(engineer);
+    const started = await call<{ submission: { id: string; revision: number } }>(
+      engineerToken,
+      'POST',
+      '/v1/submissions',
+      { formId, workOrderId: onDesktop.workOrder.id },
+      201,
+    );
+    const uploadRest = async (bytes: number, contentType: string): Promise<MediaReference> => {
+      const created = await call<{
+        media: { id: string };
+        upload: { url: string; headers: Record<string, string> };
+      }>(engineerToken, 'POST', '/v1/media', { contentType, byteSize: bytes }, 201);
+      const target = new URL(created.upload.url);
+      const put = await api.app.inject({
+        remoteAddress: api.remoteAddress,
+        method: 'PUT',
+        url: target.pathname + target.search,
+        headers: created.upload.headers,
+        payload: randomBytes(bytes),
+      });
+      expect(put.statusCode, put.body).toBe(200);
+      await call(engineerToken, 'POST', `/v1/media/${created.media.id}/complete`);
+      return { mediaId: created.media.id, contentType, byteSize: bytes };
+    };
+    const desktopAnswers = filled({
+      signature: await uploadRest(8_000, 'image/png'),
+      photos: [await uploadRest(150_000, 'image/jpeg'), await uploadRest(150_000, 'image/jpeg')],
+      certificate: await uploadRest(30_000, 'application/pdf'),
+    });
+    await call(engineerToken, 'POST', `/v1/submissions/${started.submission.id}/submit`, {
+      answers: desktopAnswers,
+      expectedRevision: started.submission.revision,
+      today: '2026-09-15',
+    });
+
+    const stored = async (id: string) => {
+      const detail = await call<{
+        submission: { status: string; answers: Record<string, unknown>; submitLocation: unknown };
+        events: { location: unknown }[];
+      }>(officeToken, 'GET', `/v1/submissions/${id}`);
+      locations.set(id, [
+        detail.submission.submitLocation,
+        detail.events.map((event) => event.location),
+      ]);
+      // Two files are never the same file: compare what the answers say about them.
+      const withoutIds = JSON.parse(
+        JSON.stringify(detail.submission.answers).replace(
+          /"mediaId":"[0-9a-f-]{36}"/gu,
+          '"mediaId":"…"',
+        ),
+      ) as Record<string, unknown>;
+      return { status: detail.submission.status, answers: withoutIds };
+    };
+    const locations = new Map<string, unknown>();
+    const fromPhone = await stored(phoneSubmission);
+    expect(fromPhone).toEqual(await stored(started.submission.id));
+    // Only the phone says where it was.
+    expect(locations.get(phoneSubmission)).toEqual([{ status: 'denied' }, [{ status: 'denied' }]]);
+    expect(locations.get(started.submission.id)).toEqual([null, [null]]);
+    expect(fromPhone.answers).toMatchObject({
+      visits: 3,
+      visits_doubled: 6,
+      pressure: '1.50',
+      finished: '2026-09-15T10:45:00+03:00',
+      checked: ['flue', 'fan'],
+      where: { latitude: '53.800712', longitude: '-1.549100', accuracyMeters: '6.0' },
+    });
   });
 });
 

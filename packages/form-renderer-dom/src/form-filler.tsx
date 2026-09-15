@@ -2,13 +2,13 @@ import {
   type Answers,
   type CompiledForm,
   createFormState,
-  type FieldError,
   type FormEvent,
   type FormState,
   toSubmission,
   transition,
   viewForm,
 } from '@integr8/form-engine';
+import { firstPerField } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { useId, useMemo, useRef, useState } from 'react';
 import { AnswerView } from './answer-view.js';
@@ -483,15 +483,4 @@ function Progress({ answered, total }: { answered: number; total: number }) {
       <p className="text-xs text-content-muted">{label}</p>
     </div>
   );
-}
-
-function firstPerField(errors: readonly FieldError[]): FieldError[] {
-  const seen = new Set<string>();
-  return errors.filter((error) => {
-    if (seen.has(error.field)) {
-      return false;
-    }
-    seen.add(error.field);
-    return true;
-  });
 }

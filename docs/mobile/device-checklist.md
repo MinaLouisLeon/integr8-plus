@@ -1,7 +1,7 @@
 # The mobile app on a phone
 
-The parts of P11 and P12 that only a phone can prove. Everything else is covered by
-`packages/offline/src/**/*.test.ts` against real SQLite and by
+The parts of P11, P12 and P13 that only a phone can prove. Everything else is covered by
+`packages/offline/src/**/*.test.ts` and `apps/mobile/src/**/*.test.ts` against real SQLite, and by
 `apps/api/src/sync/sync.integration.test.ts` against the real API. Record the result of each step
 in the phase's plan file under `plan/v0.3-field-loop/`.
 
@@ -59,12 +59,11 @@ With the jobs downloaded, turn on aeroplane mode, force-quit the app and open it
 
 ### 4. An upgrade across two schema versions keeps unsent work
 
-Needs a build of the app at local schema version 1. Until P13 writes forms, development builds
-have an **Add a test draft (development)** button in Settings. (From P12 it adds a form the
-server has never seen; the next sync sends it and the server refuses it, which is expected.)
+Needs a development build of P11 as it was committed (`git checkout 625ba9a`): local schema
+version 3, with an **Add a test draft (development)** button in Settings. The current build is at
+version 5, two versions later, and has no such button — its unsent work is a form started on a job.
 
-- [ ] Install a build whose `MIGRATIONS` list stops at version 1 (check out `migrations.ts`
-      with versions 2 to 4 removed), sign in and download.
+- [ ] Install the P11 build, sign in and download.
 - [ ] Settings → Add a test draft: Not yet sent shows **1**.
 - [ ] Install the current build over it **without uninstalling**. Open it offline.
 - [ ] Settings → Not yet sent shows **1**, search works, and Settings still shows encrypted.
@@ -145,3 +144,75 @@ them on a phone once P14 lands.
 - [ ] Hand the phone to someone who has not seen the app, on a job with one unsent note. Ask
       _"can the engineer leave?"_ They answer _no_ from the job screen within five seconds.
 - [ ] Same job after syncing: they answer _yes_.
+
+## P13
+
+A job whose type needs a published form with every field type (text, long text, barcode,
+number, decimal with a unit, rating, date, time, date-time, dropdown, radio, multi-select,
+checkbox, yes/no, signature, photos with a limit of ten, a PDF file, GPS), a question shown only
+for one answer, a calculated number, and at least twenty questions over three pages. The same
+form open in the desktop builder's phone preview.
+
+### 1. It looks like the phone preview
+
+- [ ] Open the form on the phone and in the builder's phone preview side by side: the same
+      pages in the same order, the same sections and questions, one page at a time.
+- [ ] Answer the question that shows another: it appears at once; change the answer back: it
+      goes, and its typed value is not on the review screen.
+- [ ] The calculated number updates as its inputs change and cannot be edited.
+- [ ] Switch the phone to Arabic: labels, rows and buttons mirror.
+
+### 2. Every widget, with gloves on
+
+Wear work gloves (or a touchscreen glove) for this section.
+
+- [ ] Every tick box, option row, yes/no and rating button can be hit first time.
+- [ ] Number and decimal fields open a numeric keyboard; an Arabic keyboard's digits are kept.
+- [ ] Date, time and date-time open the phone's pickers; the review shows what was picked.
+- [ ] Dropdown opens a sheet of rows.
+- [ ] **Scan** reads a QR code and a Code 128 barcode from an appliance plate into the field.
+- [ ] Text question: tap the keyboard's microphone and dictate a sentence, with signal and in
+      aeroplane mode. Record which phones dictate offline.
+- [ ] Signature: sign with a finger and with a stylus; the page does not scroll while signing.
+      **Undo** removes the last stroke. **Type my name instead** works with a screen reader on.
+- [ ] GPS: **Use my current location** fills coordinates with accuracy; deny permission and the
+      coordinates can be typed.
+
+### 3. Photos are made smaller before they wait
+
+- [ ] Take a photo with the camera. In Sync → Uploads it waits at under 1 MB (a straight camera
+      photo is 3–6 MB); the thumbnail shows in the question at once.
+- [ ] The photo is the right way up in portrait and in landscape.
+- [ ] Choose three photos from the library at once; with a limit of ten and eight already
+      taken, the phone says only two fit.
+- [ ] Remove a photo before syncing: it leaves Sync → Uploads.
+
+### 4. Twenty questions in aeroplane mode, killed half-way
+
+- [ ] Aeroplane mode on. Start the form, answer page one and half of page two.
+- [ ] Force-quit the app mid-way through typing an answer. Reopen, open the form: everything
+      except at most the last few characters typed is there.
+- [ ] Let the battery run to zero (or hold power to force a shutdown) with the form open after
+      answering another question. Charge, reopen: that answer is there.
+- [ ] Finish the form with ten photos and two signatures. **Review answers** with one required
+      question empty: the list names it and tapping it opens its page, scrolled to it.
+- [ ] Answer it, review, **Submit**. The phone asks for location (allow), shows _Recording where
+      you are…_, then returns to the job, which says the form is submitted but not sent.
+- [ ] Aeroplane mode off: the uploads go, then the form. On the web, the submission has every
+      answer, ten photos, two signatures, and its history shows where it was submitted from.
+- [ ] Repeat in a room with no GPS fix, tapping **Submit without it**: the web says it was
+      submitted without a location.
+
+### 5. Phone and desktop store the same answers
+
+- [ ] Fill the same form on the desktop with the same answers (same date, time, choices, digits).
+      Export both submissions as CSV from the web: every column except the files and the
+      submitted time matches.
+
+### 6. Earlier answers, and the engine on the phone
+
+- [ ] On a second job at the same site, start the form: the phone offers the earlier answers.
+      Accept: text and choices are filled, photos, signatures and location are not, and the form
+      says how many answers came from which job.
+- [ ] Settings → **Check the form engine** on a release build: _All … cases give the same results
+      as the server._

@@ -69,6 +69,21 @@ const UNSENT_WORK_AT: Record<number, (driver: SqlDriver) => Promise<void>> = {
     await UNSENT_WORK_AT[1]!(driver);
     await driver.run(`update files set last_opened_at = created_at`);
   },
+  // Version 4 kept unsent forms in submissions and pending files in uploads, as
+  // a version 3 phone was moved to; its outbox had no sent_at yet.
+  4: async (driver) => {
+    await UNSENT_WORK_AT[3]!(driver);
+    await driver.run(
+      `insert into submissions (id, form_id, form_version_id, work_order_id, status, answers, updated_at)
+       values (?, 'form-1', ?, ?, 'draft', '{"note":"Flue cracked"}', '2026-06-01T08:30:00.000Z')`,
+      [DRAFT, FORM_VERSION, JOB],
+    );
+    await driver.run(
+      `insert into uploads (media_id, local_path, content_type, byte_size, work_order_id, state, created_at)
+       values (?, 'files/flue.jpg', 'image/jpeg', 2400000, ?, 'queued', '2026-06-01T08:10:00.000Z')`,
+      [PENDING_PHOTO, JOB],
+    );
+  },
 };
 
 async function databaseAt(version: number): Promise<NodeSqlDriver> {

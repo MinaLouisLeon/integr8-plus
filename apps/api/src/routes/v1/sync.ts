@@ -108,15 +108,17 @@ export const pushRoute = defineRoute({
   handler: async ({ body }, context) => {
     const received = Date.now();
     const sentAt = Date.parse(body.sentAt);
+    // The phone's clock may be hours out, but it measures elapsed time well
+    // enough: how long before sending something happened, subtracted from when
+    // the server received it. Never in the future, and never before a month ago.
+    const phoneTime = (at: string) => {
+      const age = Math.max(0, sentAt - Date.parse(at));
+      return new Date(received - Math.min(age, 31 * 24 * 60 * 60 * 1000));
+    };
     const results = await applyMutations(body.mutations, {
       context,
-      // The phone's clock may be hours out, but it measures elapsed time well
-      // enough: how long before sending a change was made, subtracted from when
-      // the server received it. Never in the future, and never before a month ago.
-      recordedAt: (mutation) => {
-        const age = Math.max(0, sentAt - Date.parse(mutation.recordedAt));
-        return new Date(received - Math.min(age, 31 * 24 * 60 * 60 * 1000));
-      },
+      recordedAt: (mutation) => phoneTime(mutation.recordedAt),
+      phoneTime,
     });
     return { status: 200, body: { serverTime: new Date().toISOString(), results } };
   },

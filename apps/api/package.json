@@ -32,6 +32,7 @@
   "devDependencies": {
     "@integr8/api-client": "workspace:*",
     "@integr8/eslint-config": "workspace:*",
+    "@integr8/form-input": "workspace:*",
     "@integr8/offline": "workspace:*",
     "@integr8/typescript-config": "workspace:*",
     "@types/node": "22.20.2",

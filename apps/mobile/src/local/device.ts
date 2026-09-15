@@ -124,13 +124,26 @@ export async function openDeviceDatabase(): Promise<OpenedDatabase> {
 
   const driver = new ExpoSqlDriver(opened.database);
   await driver.exec('PRAGMA journal_mode = WAL');
+  // Every committed write reaches the disk before the commit returns, so an
+  // answer saved a moment before the battery dies is still there (P13). WAL keeps
+  // that cheap: one sync of the log per transaction.
+  await driver.exec('PRAGMA synchronous = FULL');
   // A failed migration leaves the database as it was and is reported; it is
   // never a reason to delete unsent work.
   await migrate(driver);
 
   const db = new LocalDatabase(driver);
   const evicted = await db.write(
-    ['work_orders', 'customers', 'sites', 'forms', 'form_versions', 'files'],
+    [
+      'work_orders',
+      'customers',
+      'sites',
+      'forms',
+      'form_versions',
+      'files',
+      'submissions',
+      'uploads',
+    ],
     (sql) => evict(sql, new Date()),
   );
   deleteLocalFiles(evicted.filePaths);

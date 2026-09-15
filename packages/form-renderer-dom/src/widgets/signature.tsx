@@ -2,6 +2,13 @@ import type { MediaReference } from '@integr8/form-engine';
 import { mediaReferenceSchema } from '@integr8/form-engine';
 import { useTranslation } from '@integr8/i18n';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  SIGNATURE_HEIGHT as HEIGHT,
+  SIGNATURE_INK,
+  SIGNATURE_PAPER,
+  SIGNATURE_STROKE,
+  SIGNATURE_WIDTH as WIDTH,
+} from '@integr8/form-input';
 import { MediaImage } from './media-image.js';
 import { buttonClass, inputClass, type WidgetProps } from './types.js';
 
@@ -20,9 +27,6 @@ import { buttonClass, inputClass, type WidgetProps } from './types.js';
  */
 
 type Point = [number, number];
-
-const WIDTH = 480;
-const HEIGHT = 160;
 
 export function SignatureWidget(props: WidgetProps<'signature'>) {
   const { value, id, label, describedBy, disabled, media, onAnswer, onClear, onBlur } = props;
@@ -106,11 +110,11 @@ function SignaturePad({
     element.width = WIDTH * ratio;
     element.height = HEIGHT * ratio;
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    context.fillStyle = '#ffffff';
+    context.fillStyle = SIGNATURE_PAPER;
     context.fillRect(0, 0, WIDTH, HEIGHT);
-    context.strokeStyle = '#111827';
-    context.fillStyle = '#111827';
-    context.lineWidth = 2.5;
+    context.strokeStyle = SIGNATURE_INK;
+    context.fillStyle = SIGNATURE_INK;
+    context.lineWidth = SIGNATURE_STROKE;
     context.lineCap = 'round';
     context.lineJoin = 'round';
 
