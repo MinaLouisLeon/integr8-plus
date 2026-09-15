@@ -404,6 +404,66 @@ describe('reopening and amending', () => {
     );
   });
 
+  it('records where each submit was made, and lets nobody write it any other way (0012)', async () => {
+    const started = await draft();
+    const here = {
+      status: 'captured' as const,
+      latitude: '53.800712',
+      longitude: '-1.549100',
+      accuracyMeters: '7.3',
+      capturedAt: '2026-09-15T10:04:31.000Z',
+    };
+    const first = await withTenant(northwind.id, (tx) =>
+      tx.submissions.submit(
+        started.id,
+        started.answers,
+        started.revision,
+        ENGINEER,
+        undefined,
+        here,
+      ),
+    );
+    expect(first).toMatchObject({ outcome: 'written', submission: { submitLocation: here } });
+    const done = (first as { submission: Submission }).submission;
+
+    // Not afterwards, not on a draft, not in another shape — as the owner or the runtime role.
+    await expect(
+      owner.query(`update submissions set submit_location = $2 where id = $1`, [
+        done.id,
+        { status: 'denied' },
+      ]),
+    ).rejects.toThrow(/written only by submitting/u);
+    const other = await draft();
+    await expect(
+      asTenant(app, northwind.id, () =>
+        app.query(`update submissions set submit_location = $2, last_actor = $3 where id = $1`, [
+          other.id,
+          { status: 'denied' },
+          ENGINEER,
+        ]),
+      ),
+    ).rejects.toThrow(/written only by submitting/u);
+    await expect(
+      withTenant(northwind.id, (tx) =>
+        tx.submissions.submit(other.id, other.answers, other.revision, ENGINEER, undefined, {
+          status: 'somewhere',
+        } as never),
+      ),
+    ).rejects.toThrow(/submissions_submit_location_shape/u);
+
+    // A correction from a desktop records none, and the history keeps both.
+    const reopened = await withTenant(northwind.id, (tx) =>
+      tx.submissions.reopen(done.id, done.revision, ADMIN, 'Wrong unit'),
+    );
+    const current = (reopened as { submission: Submission }).submission;
+    const amended = await withTenant(northwind.id, (tx) =>
+      tx.submissions.submit(done.id, answers, current.revision, ENGINEER, 'Fixed the unit'),
+    );
+    expect(amended).toMatchObject({ outcome: 'written', submission: { submitLocation: null } });
+    const events = await withTenant(northwind.id, (tx) => tx.submissions.listEvents(done.id));
+    expect(events.map((event) => event.location)).toEqual([here, null, null]);
+  });
+
   it('cannot reopen a draft', async () => {
     const started = await draft();
     const result = await withTenant(northwind.id, (tx) =>

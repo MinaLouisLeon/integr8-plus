@@ -7,6 +7,7 @@ import type {
   SubmissionEventsTable,
   SubmissionStatus,
   SubmissionsTable,
+  SubmitLocation,
 } from '../schema.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
@@ -25,6 +26,8 @@ export interface Submission {
   revision: number;
   /** The job this form was filled for, if any. */
   workOrderId: string | null;
+  /** Where the device was when it was last submitted, if it recorded that (P13). */
+  submitLocation: SubmitLocation | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,6 +38,7 @@ export interface SubmissionEvent {
   answers: Record<string, unknown> | null;
   actorId: UserId;
   reason: string | null;
+  location: SubmitLocation | null;
   occurredAt: Date;
 }
 
@@ -204,12 +208,15 @@ export class SubmissionsRepository extends TenantScopedRepository {
     expectedRevision: number,
     actor: UserId | string,
     reason?: string,
+    /** Where the device was. A submit that says nothing clears an earlier one's. */
+    location: SubmitLocation | null = null,
   ): Promise<WriteResult> {
     return this.#write(submissionId, expectedRevision, ['draft', 'reopened'], {
       answers,
       status: 'submitted',
       last_actor: toUserId(actor),
       last_reason: reason ?? null,
+      submit_location: location,
     });
   }
 
@@ -235,6 +242,7 @@ export class SubmissionsRepository extends TenantScopedRepository {
       status?: SubmissionStatus;
       last_actor: string;
       last_reason?: string | null;
+      submit_location?: SubmitLocation | null;
     },
   ): Promise<WriteResult> {
     const row = await this.db
@@ -446,6 +454,7 @@ function toDomain(row: Selectable<SubmissionsTable>): Submission {
     amendedAt: row.amended_at,
     revision: row.revision,
     workOrderId: row.work_order_id,
+    submitLocation: row.submit_location,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -458,6 +467,7 @@ function toEvent(row: Selectable<SubmissionEventsTable>): SubmissionEvent {
     answers: row.answers,
     actorId: toUserId(row.actor_id),
     reason: row.reason,
+    location: row.location,
     occurredAt: row.occurred_at,
   };
 }
