@@ -342,6 +342,8 @@ export interface ReportableFieldSpec {
   field: string;
   type: ReportableValueType;
   multiple: boolean;
+  /** For a field of a repeatable section (P13b): that section. Each entry reports its own rows. */
+  section?: string;
 }
 
 export const REPORTABLE_VALUE_TYPES = [
@@ -439,6 +441,10 @@ export interface SubmissionValuesTable {
   form_id: ColumnType<string, never, never>;
   form_version_id: ColumnType<string, never, never>;
   field_id: ColumnType<string, never, never>;
+  /** For a field of a repeatable section: the entry's id. Null otherwise (0014). */
+  entry_id: ColumnType<string | null, never, never>;
+  /** For a field of a repeatable section: the entry's position when submitted. 0 otherwise. */
+  entry_index: ColumnType<number, never, never>;
   ordinal: ColumnType<number, never, never>;
   value_type: ColumnType<ReportableValueType, never, never>;
   value_text: ColumnType<string | null, never, never>;
