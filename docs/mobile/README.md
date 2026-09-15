@@ -7,14 +7,17 @@ the screens follow.
 ```
 app/ (screens)          useLocalQuery → SQLite. No API calls: a lint rule refuses them.
         │
-src/local/local-data    open · download · wipe — one instance, outside React
+src/local/local-data    open · sync · wipe — one instance, outside React
         │
-src/local/*             migrations, snapshot, queries, search, eviction, wipe
+@integr8/offline        migrations, queries, search, eviction, wipe, and the sync engine
         │
-device.ts               expo-sqlite + SQLCipher, key in SecureStore
+src/local/device.ts     expo-sqlite + SQLCipher, key in SecureStore
+src/local/sync-device   files, fetch, network and battery for the engine
 ```
 
-Sync (P12) replaces the one-way download. Everything else here stays.
+The data layer and the sync engine live in `packages/offline`, with no React Native in them, so
+the API's integration suite can run the phone's own engine against the real server. How
+changes reach the server: [offline sync](../sync/README.md).
 
 ---
 
@@ -24,22 +27,28 @@ Sync (P12) replaces the one-way download. Everything else here stays.
   committed write to `tables`. While the first answer is on its way — milliseconds — the
   screen shows nothing rather than a spinner, because nothing is being fetched.
 - `app/**` and `src/components/**` may not use `session().client`, `@tanstack/react-query` or
-  the download module (`apps/mobile/eslint.config.js`). A screen that wants fresher data asks
-  `localData.download()` to run and keeps showing what it has.
-- The sync banner says how current the phone is — updating, updated at, offline since, or
-  that sign-in is needed — and never covers the work underneath.
+  the engine's network side (`SyncEngine`, `syncApiFor`, `pullChanges`, `uploadOne`;
+  `apps/mobile/eslint.config.js`). A screen changes things through the `record*` functions,
+  which write the phone's copy and the outbox together, and asks `localData.sync()` for
+  fresher data while it keeps showing what it has.
+- The sync banner says whether the phone and the office agree — sending, uploading, all sent,
+  waiting, needs attention, sign-in needed — and never covers the work underneath.
 
 ## The local schema
 
-Shaped for the phone's reads, not copied from the server (`src/local/migrations.ts`):
+Shaped for the phone's reads, not copied from the server (`packages/offline/src/migrations.ts`):
 
 | Table                    | Holds                                                                                                                         |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | `work_orders`            | One row per job, carrying its customer's and site's names and address so the job list is one query. `data` is the API detail. |
 | `customers`, `sites`     | As downloaded. A site's access notes are columns: they are the first thing on the job screen.                                 |
 | `forms`, `form_versions` | Each form's live version, and any version a draft was started on.                                                             |
-| `drafts`                 | **Unsent work.** Written by P13.                                                                                              |
-| `files`                  | Downloaded files, and files waiting to upload (**unsent work**).                                                              |
+| `submissions`            | Forms as the server holds them and as the engineer is filling them. One the server has not seen is **unsent work**.           |
+| `outbox`                 | **Unsent work**: every change not yet applied by the server, in order ([offline sync](../sync/README.md)).                    |
+| `uploads`                | **Unsent work**: files not yet confirmed by the server, and how far each has got.                                             |
+| `sync_runs`              | Each sync run, until it has been reported.                                                                                    |
+| `files`                  | Downloaded files. (P11's files waiting to upload moved to `uploads`.)                                                         |
+| `drafts`                 | P11's drafts, kept after they moved to `submissions` in version 4; nothing writes here now.                                   |
 | `search`                 | FTS5 over jobs and customers, kept by triggers.                                                                               |
 | `meta`                   | Who the phone's data belongs to, and when it was last downloaded.                                                             |
 
@@ -54,8 +63,8 @@ database newer than the app (a rolled-back release) is not opened.
 
 **Every migration is tested against unsent work written at each earlier version**
 (`migrations.test.ts`). Adding migration _n_ means adding `UNSENT_WORK_AT[n - 1]`: the test
-refuses a migration list without it. Downloaded tables may be reshaped or rebuilt; `drafts`
-and pending files are only ever added to.
+refuses a migration list without it. Downloaded tables may be reshaped or rebuilt; unsent work
+is only ever added to or moved, never dropped.
 
 ## Encryption at rest
 
@@ -75,29 +84,27 @@ and pending files are only ever added to.
   which iOS Data Protection and Android's app sandbox protect, and a wipe deletes them. P14,
   which downloads attachments, revisits this.
 
-## Keeping it current (until P12)
+## Keeping it current
 
-`downloadWork` (`src/local/download.ts`) fetches the person's open jobs (every state but
-complete, reviewed and cancelled) and the jobs they closed in the retention window
-(`GET /v1/work-orders?closedSince=`), each job's detail, its customers and its forms' live
-versions, and writes them **in one transaction**. It runs on launch, on returning to the
-foreground and when the connection comes back, and only when the phone is online and holds a
-refresh token that has not expired — a phone open on its offline grant alone does not try,
-because the attempt would end the session.
+The sync engine (`@integr8/offline`, [offline sync](../sync/README.md)) sends what the engineer
+did, uploads their files and pulls what changed on their jobs. It runs on launch, on returning to
+the foreground, when the connection comes back, from **Sync now** and in the background, and
+only when the phone is online and holds a refresh token that has not expired — a phone open on
+its offline grant alone does not try, because the attempt would end the session.
 
-A job the server no longer lists is removed, unless unsent work points at it.
+A job the engineer is taken off is removed, unless unsent work points at it.
 
 ## What the phone keeps
 
-| Kept                            | For                                               |
-| ------------------------------- | ------------------------------------------------- |
-| Open jobs                       | Always                                            |
-| Closed jobs                     | 30 days after they close                          |
-| Customers, sites, forms         | While a kept job needs them                       |
-| Downloaded files                | Up to 500 MB, least recently opened removed first |
-| Drafts, files waiting to upload | **Always**, and anything they point at            |
+| Kept                           | For                                               |
+| ------------------------------ | ------------------------------------------------- |
+| Open jobs                      | Always                                            |
+| Closed jobs                    | 30 days after they close                          |
+| Customers, sites, forms        | While a kept job needs them                       |
+| Downloaded files               | Up to 500 MB, least recently opened removed first |
+| Unsent changes, forms, uploads | **Always**, and anything they point at            |
 
-Eviction (`src/local/eviction.ts`) runs inside each download and when the app opens. It deletes
+Eviction (`packages/offline/src/eviction.ts`) runs after each pull and when the app opens. It deletes
 rows first and files from disk after the commit.
 
 ## Search
@@ -133,7 +140,8 @@ and the session — and the phone's work — is kept (`packages/api-client/src/s
 
 ## Testing it
 
-The data layer runs on Node's built-in SQLite in `vitest` (`src/local/testing/node-driver.ts`):
-real SQLite, with FTS5 and JSON functions, running the phone's migrations and queries.
+The data layer runs on Node's built-in SQLite in `vitest` (`packages/offline/src/testing/node-driver.ts`):
+real SQLite, with FTS5 and JSON functions, running the phone's migrations and queries. The
+API's sync suite runs the same engine against the real server.
 SQLCipher, SecureStore, the file system and aeroplane mode need a phone:
 [device checklist](device-checklist.md).

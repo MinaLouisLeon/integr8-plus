@@ -79,7 +79,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 
 - [~] **P10** — Customers, sites and work orders
 - [~] **P11** — Mobile shell and local database
-- [ ] **P12** — Offline sync engine
+- [~] **P12** — Offline sync engine
 - [ ] **P13** — Mobile form renderer
 - [ ] **P14** — Job execution on mobile
 
