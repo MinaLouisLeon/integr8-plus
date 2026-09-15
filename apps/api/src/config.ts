@@ -42,6 +42,19 @@ export const apiConfigSchema = z.object({
   /** How long an idempotency key is remembered, and a replay still answered. */
   API_IDEMPOTENCY_TTL_SECONDS: positiveInt(24 * 60 * 60),
 
+  /**
+   * How long a phone's synced change is remembered, so resending it changes
+   * nothing (P12). Far longer than a request's idempotency window: a phone can be
+   * offline for a week, signed out for another, and still have the change queued.
+   */
+  SYNC_REPLAY_DAYS: positiveInt(90),
+
+  /**
+   * How long the sync change log keeps its entries. A phone that has not pulled
+   * for longer downloads everything again, which is slower but misses nothing.
+   */
+  SYNC_LOG_RETENTION_DAYS: positiveInt(45),
+
   /** Largest request body accepted, in bytes. */
   API_MAX_BODY_BYTES: positiveInt(1_048_576),
 

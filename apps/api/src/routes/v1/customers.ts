@@ -1,5 +1,11 @@
-import { can } from '@integr8/core';
-import { type AttachmentOwner, type TenantTransaction, withTenant } from '@integr8/db';
+import { can, type Principal } from '@integr8/core';
+import {
+  type AttachmentOwner,
+  type Customer,
+  type Site,
+  type TenantTransaction,
+  withTenant,
+} from '@integr8/db';
 import { z } from 'zod';
 import { conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
@@ -198,7 +204,7 @@ export const createCustomerRoute = defineRoute({
   },
 });
 
-const customerDetailSchema = z.object({
+export const customerDetailSchema = z.object({
   customer: customerSchema,
   contacts: z.array(contactSchema),
   sites: z.array(siteSchema),
@@ -230,34 +236,43 @@ export const getCustomerRoute = defineRoute({
       if (customer === undefined) {
         throw notFound('This customer does not exist.');
       }
-      const includeArchived = query.includeArchived === 'true';
-      const [contacts, sites, attachments, jobs, people] = await Promise.all([
-        tx.customers.listContacts(customer.id, { includeArchived }),
-        tx.sites.list({ customerId: customer.id, includeArchived, limit: 500 }),
-        tx.attachments.list({ customerId: customer.id }),
-        tx.workOrders.list({
-          customerId: customer.id,
-          order: 'created',
-          limit: 20,
-          ...(can(principal.role, 'work_order.read_all') ? {} : { assigneeId: principal.userId }),
-        }),
-        peopleOf(tx),
-      ]);
-      return {
-        customer: customerBody(customer),
-        contacts: contacts.map(contactBody),
-        sites: sites.items.map((site) => siteBody(site, people)),
-        attachments: await attachmentBodies(tx, attachments, people),
-        recentWorkOrders: await workOrderSummaries(tx, jobs.items, people),
-        can: {
-          edit: can(principal.role, 'customer.manage'),
-          createWorkOrder: can(principal.role, 'work_order.manage') && customer.status !== 'closed',
-        },
-      };
+      return customerDetailBody(tx, principal, customer, query.includeArchived === 'true');
     });
     return { status: 200, body };
   },
 });
+
+/** A customer as the detail route and a phone's sync (P12) both show it. */
+export async function customerDetailBody(
+  tx: TenantTransaction,
+  principal: Principal,
+  customer: Customer,
+  includeArchived = false,
+) {
+  const [contacts, sites, attachments, jobs, people] = await Promise.all([
+    tx.customers.listContacts(customer.id, { includeArchived }),
+    tx.sites.list({ customerId: customer.id, includeArchived, limit: 500 }),
+    tx.attachments.list({ customerId: customer.id }),
+    tx.workOrders.list({
+      customerId: customer.id,
+      order: 'created',
+      limit: 20,
+      ...(can(principal.role, 'work_order.read_all') ? {} : { assigneeId: principal.userId }),
+    }),
+    peopleOf(tx),
+  ]);
+  return {
+    customer: customerBody(customer),
+    contacts: contacts.map(contactBody),
+    sites: sites.items.map((site) => siteBody(site, people)),
+    attachments: await attachmentBodies(tx, attachments, people),
+    recentWorkOrders: await workOrderSummaries(tx, jobs.items, people),
+    can: {
+      edit: can(principal.role, 'customer.manage'),
+      createWorkOrder: can(principal.role, 'work_order.manage') && customer.status !== 'closed',
+    },
+  };
+}
 
 export const updateCustomerRoute = defineRoute({
   method: 'patch',
@@ -635,30 +650,41 @@ export const updateSiteAccessRoute = defineRoute({
       if (current === undefined) {
         throw notFound('This site does not exist.');
       }
-      if (!can(principal.role, 'customer.manage')) {
-        const working =
-          can(principal.role, 'work_order.progress') &&
-          (await tx.workOrders.list({ siteId: current.id, assigneeId: principal.userId, limit: 1 }))
-            .items.length > 0;
-        if (!working) {
-          throw forbidden(
-            'Only the office, or someone working a job at this site, can change its access notes.',
-          );
-        }
-      }
-      const site = await tx.sites.update(
-        current.id,
-        { access: stripUndefined(body) },
-        principal.userId,
-      );
-      await audit(tx, context, 'site.access_updated', 'site', current.id, {
-        fields: Object.keys(stripUndefined(body)),
-      });
-      return { site: site!, people: await peopleOf(tx) };
+      const site = await updateAccessNotes(tx, context, current, stripUndefined(body));
+      return { site, people: await peopleOf(tx) };
     });
     return { status: 200, body: siteBody(result.site, result.people) };
   },
 });
+
+/**
+ * Corrects a site's access notes, if this person may: the office, or anyone
+ * working a job at the site. Shared with a phone's sync (P12).
+ */
+export async function updateAccessNotes(
+  tx: TenantTransaction,
+  context: RequestContext,
+  current: Site,
+  access: Partial<Record<'gateCode' | 'parking' | 'askFor' | 'hazards' | 'notes', string | null>>,
+): Promise<Site> {
+  const { principal } = context;
+  if (!can(principal.role, 'customer.manage')) {
+    const working =
+      can(principal.role, 'work_order.progress') &&
+      (await tx.workOrders.list({ siteId: current.id, assigneeId: principal.userId, limit: 1 }))
+        .items.length > 0;
+    if (!working) {
+      throw forbidden(
+        'Only the office, or someone working a job at this site, can change its access notes.',
+      );
+    }
+  }
+  const site = await tx.sites.update(current.id, { access }, principal.userId);
+  await audit(tx, context, 'site.access_updated', 'site', current.id, {
+    fields: Object.keys(access),
+  });
+  return site!;
+}
 
 async function requireOwnContact(
   tx: TenantTransaction,

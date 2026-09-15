@@ -15,8 +15,16 @@ import { provisionTenantStorage } from './tenant-storage.js';
  *   - purge      deleted files past their restore window: objects, then mark.
  */
 
-/** A multipart upload older than this cannot belong to a live upload link. */
-export const INCOMPLETE_UPLOAD_MAX_AGE_MS = 60 * 60 * 1000;
+/**
+ * A multipart upload older than this cannot belong to a live upload. A phone
+ * resumes its uploads for up to {@link RESUMABLE_UPLOAD_DAYS} days (P12); an
+ * upload that belonged to an intent is aborted when the intent is swept, so this
+ * is only the backstop for parts nothing points at.
+ */
+export const INCOMPLETE_UPLOAD_MAX_AGE_MS = 8 * 24 * 60 * 60 * 1000;
+
+/** How long a phone's upload may stay unconfirmed while it waits for signal. */
+export const RESUMABLE_UPLOAD_DAYS = 7;
 
 export interface MaintenanceReport {
   provisioned: string[];
@@ -80,6 +88,12 @@ export async function runMediaMaintenance(options: {
       for (const intent of expired) {
         // Confirmation refuses an expired intent, so nothing can claim this one
         // between deleting its object and deleting it.
+        if (intent.multipart !== null) {
+          await store.abortMultipartUpload({
+            key: intent.storageKey,
+            uploadId: intent.multipart.uploadId,
+          });
+        }
         await store.delete([intent.storageKey]);
         if (await withTenant(tenantId, (tx) => tx.files.deleteIntent(intent.id))) {
           report.intentsSwept += 1;

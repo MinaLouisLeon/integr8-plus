@@ -78,7 +78,7 @@ const eventSchema = z.object({
   occurredAt: z.string(),
 });
 
-const detailSchema = z.object({
+export const detailSchema = z.object({
   workOrder: workOrderSummarySchema.extend({
     description: z.string().nullable(),
     instructions: z.string().nullable(),
@@ -156,7 +156,7 @@ const detailSchema = z.object({
   }),
 });
 
-async function detailBody(tx: TenantTransaction, principal: Principal, job: WorkOrder) {
+export async function detailBody(tx: TenantTransaction, principal: Principal, job: WorkOrder) {
   const readAll = can(principal.role, 'work_order.read_all');
   const [
     site,
@@ -282,7 +282,10 @@ async function detailBody(tx: TenantTransaction, principal: Principal, job: Work
 }
 
 /** A repository refusal, as the API says it. */
-function refusal(result: Exclude<WorkOrderWrite, { outcome: 'written' }>, to?: string): never {
+export function refusal(
+  result: Exclude<WorkOrderWrite, { outcome: 'written' }>,
+  to?: string,
+): never {
   switch (result.outcome) {
     case 'not_found':
       throw notFound('This work order does not exist.');
@@ -322,7 +325,7 @@ function refusal(result: Exclude<WorkOrderWrite, { outcome: 'written' }>, to?: s
   }
 }
 
-async function audit(
+export async function audit(
   tx: TenantTransaction,
   context: RequestContext,
   action: string,

@@ -647,6 +647,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/media/{mediaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A link to read a stored file
+         * @description Anyone in the company may read a file they have the id of: ids are unguessable and are only handed out inside submissions the reader can already see. Links expire in five minutes; `thumbnailUrl` is set once a thumbnail has been made.
+         */
+        get: operations["getMedia"];
+        /**
+         * Start or resume uploading a file, by an id the client chose
+         * @description For a phone that names a file in its answers before it has signal (P12). The first call records the upload; every later call with the same id and the same type and size answers again — with a fresh link, or `stored` once it has been confirmed — so it can be repeated after any interruption. Files larger than 8 MiB arrive in parts (`multipart`), which can be sent over several connections and resumed. An unconfirmed upload is kept for seven days.
+         */
+        put: operations["prepareMediaUpload"];
+        post?: never;
+        /**
+         * Delete a file
+         * @description Deletes a file no submission names. It can be restored until `purgeAfter`; after that its bytes are removed from storage. A file a submission or its history names cannot be deleted.
+         */
+        delete: operations["deleteMedia"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/media/{mediaId}/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The parts of a file that have arrived
+         * @description For resuming: after an interruption, a phone asks which parts storage already holds and sends only the rest.
+         */
+        get: operations["listMediaParts"];
+        put?: never;
+        /**
+         * Links to send parts of a file to
+         * @description Each link is signed for its part’s exact size and lasts fifteen minutes. Ask again for any part whose link expired.
+         */
+        post: operations["createMediaPartLinks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/media/{mediaId}/complete": {
         parameters: {
             query?: never;
@@ -662,30 +714,6 @@ export interface paths {
          */
         post: operations["completeMediaUpload"];
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/media/{mediaId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * A link to read a stored file
-         * @description Anyone in the company may read a file they have the id of: ids are unguessable and are only handed out inside submissions the reader can already see. Links expire in five minutes; `thumbnailUrl` is set once a thumbnail has been made.
-         */
-        get: operations["getMedia"];
-        put?: never;
-        post?: never;
-        /**
-         * Delete a file
-         * @description Deletes a file no submission names. It can be restored until `purgeAfter`; after that its bytes are removed from storage. A file a submission or its history names cannot be deleted.
-         */
-        delete: operations["deleteMedia"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1302,6 +1330,66 @@ export interface paths {
         get: operations["getImport"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sync/pull": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What changed for me since my last pull
+         * @description Only the caller’s own work: jobs they are on, open or closed within `retentionDays`, with their customers, forms and the caller’s submissions. Pass the last `cursor`; follow `page` until it is null, then keep the final `cursor`. `reset` means this is everything in scope, so anything not included should be removed; otherwise `removedWorkOrderIds` lists jobs the caller was taken off.
+         */
+        get: operations["syncPull"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sync/push": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply changes made offline
+         * @description Each change has an id chosen by the phone and is applied at most once: sending it again returns the stored result. Changes are applied in order; when one is not applied, later changes to the same record in this batch come back as `retry`. `conflict` carries both versions for the engineer to decide; `rejected` will not succeed if sent again.
+         */
+        post: operations["syncPush"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sync/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report how sync went on this phone
+         * @description Duration, what moved, what is still waiting, the network and the measured clock offset, one entry per sync run. Each report has an id, so resending one stores it once.
+         */
+        post: operations["syncReports"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5383,106 +5471,6 @@ export interface operations {
             };
         };
     };
-    completeMediaUpload: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                mediaId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The recorded file. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        id: string;
-                        contentType: string;
-                        byteSize: number;
-                        /** @enum {string} */
-                        status: "pending" | "stored" | "deleted";
-                        /** @enum {string} */
-                        thumbnail: "none" | "pending" | "ready" | "failed";
-                        createdAt: string;
-                        deletedAt: string | null;
-                        purgeAfter: string | null;
-                    };
-                };
-            };
-            /** @description Authentication is required. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description The caller lacks the required permission. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description No such upload. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Nothing has arrived yet (`upload_incomplete`), something other than what was declared arrived and was discarded (`upload_mismatch`), or the upload window closed (`upload_expired`). */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The request failed validation. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rate limit exceeded. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Something went wrong on our side. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description The company's storage is not available. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     getMedia: {
         parameters: {
             query?: never;
@@ -5578,6 +5566,119 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+        };
+    };
+    prepareMediaUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    contentType: string;
+                    byteSize: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Where the upload stands, and how to send what is missing. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        media: {
+                            /** Format: uuid */
+                            id: string;
+                            contentType: string;
+                            byteSize: number;
+                            /** @enum {string} */
+                            status: "pending" | "stored";
+                        };
+                        upload: ({
+                            /** @enum {string} */
+                            kind: "single";
+                            url: string;
+                            /** @enum {string} */
+                            method: "PUT";
+                            headers: {
+                                [key: string]: string;
+                            };
+                            linkExpiresAt: string;
+                        } | {
+                            /** @enum {string} */
+                            kind: "multipart";
+                            partSize: number;
+                            partCount: number;
+                        }) | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The id belongs to a different file (`media_id_taken`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The company's storage is still being set up. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5680,6 +5781,309 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+        };
+    };
+    listMediaParts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The parts that arrived, and how many there are in all. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        partCount: number;
+                        partSize: number;
+                        arrived: {
+                            number: number;
+                            byteSize: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such upload by this person. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This upload is not in parts (`upload_not_multipart`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createMediaPartLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    partNumbers: number[];
+                };
+            };
+        };
+        responses: {
+            /** @description A link for each part asked for. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        parts: {
+                            number: number;
+                            byteSize: number;
+                            url: string;
+                            /** @enum {string} */
+                            method: "PUT";
+                            headers: {
+                                [key: string]: string;
+                            };
+                            expiresAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such upload by this person. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This upload is not in parts (`upload_not_multipart`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A part number beyond the file. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    completeMediaUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The recorded file. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        contentType: string;
+                        byteSize: number;
+                        /** @enum {string} */
+                        status: "pending" | "stored" | "deleted";
+                        /** @enum {string} */
+                        thumbnail: "none" | "pending" | "ready" | "failed";
+                        createdAt: string;
+                        deletedAt: string | null;
+                        purgeAfter: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such upload. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nothing has arrived yet (`upload_incomplete`), something other than what was declared arrived and was discarded (`upload_mismatch`), or the upload window closed (`upload_expired`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The company's storage is not available. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -12592,6 +12996,998 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    syncPull: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                page?: string;
+                retentionDays?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of changes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        reset: boolean;
+                        cursor: string | null;
+                        page: string | null;
+                        serverTime: string;
+                        workOrders: {
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: number;
+                                referenceLabel: string;
+                                title: string;
+                                /** @enum {string} */
+                                state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                /** @enum {string} */
+                                priority: "low" | "normal" | "high" | "urgent";
+                                dueFrom: string | null;
+                                dueBy: string | null;
+                                customer: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                site: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    city: string | null;
+                                };
+                                jobType: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    code: string;
+                                };
+                                crew: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    lead: boolean;
+                                }[];
+                                revision: number;
+                                stateChangedAt: string;
+                                createdAt: string;
+                                updatedAt: string;
+                                description: string | null;
+                                instructions: string | null;
+                                lastReason: string | null;
+                                completedAt: string | null;
+                                reviewedAt: string | null;
+                                cancelledAt: string | null;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                address: {
+                                    line1: string;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                                location: {
+                                    latitude: number;
+                                    longitude: number;
+                                } | null;
+                                /** @enum {string} */
+                                geocodeStatus: "pending" | "found" | "not_found" | "failed" | "manual";
+                                access: {
+                                    gateCode: string | null;
+                                    parking: string | null;
+                                    askFor: string | null;
+                                    hazards: string | null;
+                                    notes: string | null;
+                                    updatedAt: string | null;
+                                    updatedBy: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    } | null;
+                                };
+                            };
+                            siteContact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                jobTitle: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                isPrimary: boolean;
+                                notes: string | null;
+                                archived: boolean;
+                            } | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                accountNumber: string | null;
+                                /** @enum {string} */
+                                status: "active" | "on_hold" | "closed";
+                                phone: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                                expectedDurationMinutes: number | null;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                                assignedAt: string;
+                            }[];
+                            forms: {
+                                /** Format: uuid */
+                                formId: string;
+                                title: string;
+                                required: boolean;
+                                submission: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    submittedAt: string | null;
+                                } | null;
+                            }[];
+                            checklist: {
+                                /** Format: uuid */
+                                id: string;
+                                label: string;
+                                done: boolean;
+                                doneBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                doneAt: string | null;
+                            }[];
+                            comments: {
+                                /** Format: uuid */
+                                id: string;
+                                author: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** @enum {string} */
+                                visibility: "internal" | "customer";
+                                body: string;
+                                createdAt: string;
+                            }[];
+                            events: {
+                                /** @enum {string} */
+                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed";
+                                /** @enum {string|null} */
+                                fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                                /** @enum {string|null} */
+                                toState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                                person: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                actor: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                reason: string | null;
+                                details: {
+                                    [key: string]: unknown;
+                                };
+                                occurredAt: string;
+                            }[];
+                            attachments: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                fileId: string;
+                                title: string;
+                                /** @enum {string} */
+                                kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                                contentType: string;
+                                byteSize: number;
+                                addedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                createdAt: string;
+                            }[];
+                            previousAtSite: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: number;
+                                referenceLabel: string;
+                                title: string;
+                                /** @enum {string} */
+                                state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                /** @enum {string} */
+                                priority: "low" | "normal" | "high" | "urgent";
+                                dueFrom: string | null;
+                                dueBy: string | null;
+                                customer: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                site: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    city: string | null;
+                                };
+                                jobType: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    code: string;
+                                };
+                                crew: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    lead: boolean;
+                                }[];
+                                revision: number;
+                                stateChangedAt: string;
+                                createdAt: string;
+                                updatedAt: string;
+                            }[];
+                            can: {
+                                edit: boolean;
+                                assign: boolean;
+                                work: boolean;
+                                comment: boolean;
+                                transitions: {
+                                    /** @enum {string} */
+                                    to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                    requiresReason: boolean;
+                                }[];
+                            };
+                        }[];
+                        removedWorkOrderIds: string[];
+                        customers: {
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                accountNumber: string | null;
+                                /** @enum {string} */
+                                status: "active" | "on_hold" | "closed";
+                                email: string | null;
+                                phone: string | null;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                                tags: string[];
+                                notes: string | null;
+                                createdAt: string;
+                                updatedAt: string;
+                            };
+                            contacts: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                jobTitle: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                isPrimary: boolean;
+                                notes: string | null;
+                                archived: boolean;
+                            }[];
+                            sites: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                customerId: string;
+                                name: string;
+                                address: {
+                                    line1: string;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                                location: {
+                                    latitude: number;
+                                    longitude: number;
+                                } | null;
+                                /** @enum {string} */
+                                geocodeStatus: "pending" | "found" | "not_found" | "failed" | "manual";
+                                geocodeAccuracy: string | null;
+                                /** Format: uuid */
+                                contactId: string | null;
+                                access: {
+                                    gateCode: string | null;
+                                    parking: string | null;
+                                    askFor: string | null;
+                                    hazards: string | null;
+                                    notes: string | null;
+                                    updatedAt: string | null;
+                                    updatedBy: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    } | null;
+                                };
+                                archived: boolean;
+                                createdAt: string;
+                                updatedAt: string;
+                            }[];
+                            attachments: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                fileId: string;
+                                title: string;
+                                /** @enum {string} */
+                                kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                                contentType: string;
+                                byteSize: number;
+                                addedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                createdAt: string;
+                            }[];
+                            recentWorkOrders: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: number;
+                                referenceLabel: string;
+                                title: string;
+                                /** @enum {string} */
+                                state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                /** @enum {string} */
+                                priority: "low" | "normal" | "high" | "urgent";
+                                dueFrom: string | null;
+                                dueBy: string | null;
+                                customer: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                site: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    city: string | null;
+                                };
+                                jobType: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    code: string;
+                                };
+                                crew: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    lead: boolean;
+                                }[];
+                                revision: number;
+                                stateChangedAt: string;
+                                createdAt: string;
+                                updatedAt: string;
+                            }[];
+                            can: {
+                                edit: boolean;
+                                createWorkOrder: boolean;
+                            };
+                        }[];
+                        forms: {
+                            form: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                                fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                                signatureRequired: boolean;
+                                requiredByJobTypeIds: string[];
+                                /** Format: uuid */
+                                clonedFromFormId: string | null;
+                                sourceTemplateKey: string | null;
+                                createdAt: string;
+                                updatedAt: string;
+                            };
+                            draft: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                formId: string;
+                                /** @enum {string} */
+                                status: "draft" | "published";
+                                versionNumber: number | null;
+                                revision: number;
+                                changeNote: string | null;
+                                changes: {
+                                    [key: string]: unknown;
+                                } | null;
+                                createdAt: string;
+                                updatedAt: string;
+                                publishedAt: string | null;
+                                /** Format: uuid */
+                                publishedBy: string | null;
+                                definition: {
+                                    [key: string]: unknown;
+                                };
+                            } | null;
+                            live: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                formId: string;
+                                /** @enum {string} */
+                                status: "draft" | "published";
+                                versionNumber: number | null;
+                                revision: number;
+                                changeNote: string | null;
+                                changes: {
+                                    [key: string]: unknown;
+                                } | null;
+                                createdAt: string;
+                                updatedAt: string;
+                                publishedAt: string | null;
+                                /** Format: uuid */
+                                publishedBy: string | null;
+                                definition: {
+                                    [key: string]: unknown;
+                                };
+                            } | null;
+                        }[];
+                        submissions: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** Format: uuid */
+                            formVersionId: string;
+                            /** Format: uuid */
+                            workOrderId: string | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "reopened";
+                            revision: number;
+                            answers: {
+                                [key: string]: unknown;
+                            };
+                            submittedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            submittedAt: string | null;
+                            updatedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A cursor or page token the server did not issue. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    syncPush: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date-time */
+                    sentAt: string;
+                    mutations: ({
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "work_order.transition";
+                        payload: {
+                            /** @enum {string} */
+                            to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            reason?: string;
+                        };
+                        base: {
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            revision: number;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "work_order.checklist";
+                        payload: {
+                            /** Format: uuid */
+                            itemId: string;
+                            done: boolean;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "work_order.comment";
+                        payload: {
+                            /** Format: uuid */
+                            commentId: string;
+                            body: string;
+                            /** @enum {string} */
+                            visibility: "internal" | "customer";
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "site.access";
+                        payload: {
+                            changes: {
+                                gateCode?: string | null;
+                                parking?: string | null;
+                                askFor?: string | null;
+                                hazards?: string | null;
+                                notes?: string | null;
+                            };
+                        };
+                        base: {
+                            access: {
+                                gateCode?: string | null;
+                                parking?: string | null;
+                                askFor?: string | null;
+                                hazards?: string | null;
+                                notes?: string | null;
+                            };
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "submission.start";
+                        payload: {
+                            /** Format: uuid */
+                            formId: string;
+                            /** Format: uuid */
+                            formVersionId: string;
+                            /** Format: uuid */
+                            workOrderId: string | null;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "submission.answers";
+                        payload: {
+                            answers: {
+                                [key: string]: unknown;
+                            };
+                        };
+                        base: {
+                            revision: number;
+                            answers: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "submission.submit";
+                        payload: {
+                            answers: {
+                                [key: string]: unknown;
+                            };
+                            /** Format: date */
+                            filledOn: string;
+                            reason?: string;
+                        };
+                        base: {
+                            revision: number;
+                            answers: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    })[];
+                };
+            };
+        };
+        responses: {
+            /** @description What happened to each change, in the order sent. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        serverTime: string;
+                        results: ({
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            outcome: "applied";
+                            replayed: boolean;
+                            alreadyApplied: boolean;
+                            revision: number | null;
+                            answers: {
+                                [key: string]: unknown;
+                            } | null;
+                        } | {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            outcome: "conflict";
+                            replayed: boolean;
+                            code: string;
+                            message: string;
+                            conflict: {
+                                /** @enum {string} */
+                                kind: "state_changed";
+                                current: {
+                                    /** @enum {string} */
+                                    state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                    revision: number;
+                                    changedAt: string;
+                                    changedBy: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    } | null;
+                                    reason: string | null;
+                                };
+                                canReapply: boolean;
+                            } | {
+                                /** @enum {string} */
+                                kind: "forms_missing";
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                kind: "access_changed";
+                                fields: {
+                                    /** @enum {string} */
+                                    field: "gateCode" | "parking" | "askFor" | "hazards" | "notes";
+                                    base: string | null;
+                                    mine: string | null;
+                                    theirs: string | null;
+                                }[];
+                                current: {
+                                    gateCode?: string | null;
+                                    parking?: string | null;
+                                    askFor?: string | null;
+                                    hazards?: string | null;
+                                    notes?: string | null;
+                                    updatedAt: string | null;
+                                    updatedBy: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    } | null;
+                                };
+                            } | {
+                                /** @enum {string} */
+                                kind: "answers_changed";
+                                questions: {
+                                    id: string;
+                                    base: unknown;
+                                    mine: unknown;
+                                    theirs: unknown;
+                                }[];
+                                current: {
+                                    revision: number;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    answers: {
+                                        [key: string]: unknown;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                kind: "already_submitted";
+                                current: {
+                                    revision: number;
+                                    /** @enum {string} */
+                                    status: "draft" | "submitted" | "reopened";
+                                    submittedAt: string | null;
+                                    submittedBy: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                    answers: {
+                                        [key: string]: unknown;
+                                    };
+                                };
+                            };
+                        } | {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            outcome: "rejected";
+                            replayed: boolean;
+                            code: string;
+                            message: string;
+                            details: {
+                                field: string;
+                                code: string;
+                                message: string;
+                            }[];
+                        } | {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            outcome: "retry";
+                            code: string;
+                            message: string;
+                            retryAfterSeconds: number;
+                        })[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    syncReports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reports: {
+                        /** Format: uuid */
+                        reportId: string;
+                        /** Format: date-time */
+                        startedAt: string;
+                        durationMs: number;
+                        /** @enum {string} */
+                        trigger: "launch" | "foreground" | "reconnect" | "background" | "manual" | "change";
+                        /** @enum {string} */
+                        outcome: "complete" | "partial" | "offline" | "failed";
+                        pushed: number;
+                        conflicts: number;
+                        rejected: number;
+                        retried: number;
+                        pulled: number;
+                        uploadsCompleted: number;
+                        uploadsFailed: number;
+                        uploadedBytes: number;
+                        queueDepth: number;
+                        pendingUploads: number;
+                        networkType: string | null;
+                        clockOffsetMs: number | null;
+                        appVersion: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description How many were new. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        recorded: number;
+                        duplicates: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description The request failed validation. */
             422: {

@@ -97,7 +97,7 @@ const formListItemSchema = formSchema.extend({
   canFill: z.boolean(),
 });
 
-const formDetailSchema = z.object({
+export const formDetailSchema = z.object({
   form: formSchema,
   /** Present only for people who may build forms. */
   draft: versionSchema.nullable(),
@@ -369,31 +369,36 @@ export const getFormRoute = defineRoute({
     404: { description: 'No such form, or nothing published that this person may see.' },
   },
   handler: async ({ params }, context) => {
-    const manage = mayManage(context);
-    const detail = await withTenant(context.principal.tenantId, async (tx) => {
-      const form = await requireForm(tx, params.formId);
-      const live = await tx.forms.findLatestPublished(form.id);
-      const draft = manage ? await tx.forms.findDraft(form.id) : undefined;
-      const requiring = (await tx.jobTypes.listForForm(form.id))
-        .filter((link) => link.required)
-        .map((link) => link.jobTypeId);
-      return { form, live, draft, requiring };
-    });
-
-    if (!manage && detail.live === undefined) {
+    const detail = await withTenant(context.principal.tenantId, async (tx) =>
+      formDetailBody(tx, mayManage(context), await requireForm(tx, params.formId)),
+    );
+    if (detail === undefined) {
       throw notFound('This form does not exist.');
     }
-
-    return {
-      status: 200,
-      body: {
-        form: formBody(detail.form, detail.requiring),
-        draft: detail.draft === undefined ? null : versionBody(detail.draft),
-        live: detail.live === undefined ? null : versionBody(detail.live),
-      },
-    };
+    return { status: 200, body: detail };
   },
 });
+
+/**
+ * A form as its detail route and a phone's sync (P12) show it. Undefined when
+ * this person may not see it: someone who does not build forms sees only forms
+ * with something published.
+ */
+export async function formDetailBody(tx: TenantTransaction, manage: boolean, form: Form) {
+  const live = await tx.forms.findLatestPublished(form.id);
+  if (!manage && live === undefined) {
+    return undefined;
+  }
+  const draft = manage ? await tx.forms.findDraft(form.id) : undefined;
+  const requiring = (await tx.jobTypes.listForForm(form.id))
+    .filter((link) => link.required)
+    .map((link) => link.jobTypeId);
+  return {
+    form: formBody(form, requiring),
+    draft: draft === undefined ? null : versionBody(draft),
+    live: live === undefined ? null : versionBody(live),
+  };
+}
 
 export const updateFormRoute = defineRoute({
   method: 'patch',

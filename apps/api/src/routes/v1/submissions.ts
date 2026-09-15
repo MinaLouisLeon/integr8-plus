@@ -64,7 +64,7 @@ const BYTE_ORDER_MARK = String.fromCharCode(0xfeff);
 // ---------------------------------------------------------------------------
 
 const statusSchema = z.enum(['draft', 'submitted', 'reopened']);
-const answersSchema = z.record(z.string(), z.unknown());
+export const answersSchema = z.record(z.string(), z.unknown());
 
 const personSchema = z.object({ id: z.uuid(), name: z.string() });
 
@@ -113,7 +113,7 @@ const detailSchema = z.object({
 
 const submissionParams = z.object({ submissionId: z.uuid() });
 
-const dateSchema = z.iso.date();
+export const dateSchema = z.iso.date();
 
 const listQuery = z.object({
   formId: z.uuid().optional(),
@@ -146,19 +146,23 @@ const listQuery = z.object({
 // Access
 // ---------------------------------------------------------------------------
 
-function mayRead(principal: Principal, submission: Submission): boolean {
+export function mayRead(principal: Principal, submission: Submission): boolean {
   if (submission.submittedBy === principal.userId) {
     return true;
   }
   return submission.status !== 'draft' && can(principal.role, 'submission.read_all');
 }
 
-function mayFill(principal: Principal, form: Form): boolean {
+export function mayFill(principal: Principal, form: Form): boolean {
   return can(principal.role, 'submission.fill') && form.fillRoles.includes(principal.role);
 }
 
 /** Whether this caller may change the answers now: their own draft, or a reopened submission they may correct. */
-function mayEdit(principal: Principal, submission: Submission, form: Form | undefined): boolean {
+export function mayEdit(
+  principal: Principal,
+  submission: Submission,
+  form: Form | undefined,
+): boolean {
   if (submission.status === 'draft') {
     return (
       submission.submittedBy === principal.userId && form !== undefined && mayFill(principal, form)
@@ -170,7 +174,7 @@ function mayEdit(principal: Principal, submission: Submission, form: Form | unde
   return false;
 }
 
-async function readable(
+export async function readable(
   tx: TenantTransaction,
   principal: Principal,
   submissionId: string,
@@ -244,7 +248,11 @@ function summaryBody(submission: Submission, known: Lookups) {
   };
 }
 
-async function detailBody(tx: TenantTransaction, principal: Principal, submission: Submission) {
+export async function detailBody(
+  tx: TenantTransaction,
+  principal: Principal,
+  submission: Submission,
+) {
   const [known, version, form, events] = await Promise.all([
     lookups(tx, [submission]),
     tx.forms.findVersion(submission.formVersionId),
@@ -289,9 +297,13 @@ async function detailBody(tx: TenantTransaction, principal: Principal, submissio
  * server's — but only within a day of the server's, so a client cannot move
  * "today" to make an expired certificate pass.
  */
-function resolveToday(claimed: string | undefined): string {
-  const server = new Date();
-  const serverDay = server.toISOString().slice(0, 10);
+/**
+ * The day the form was filled. Within a day of `reference`: now, or for a form
+ * filled offline and synced later (P12), when the phone recorded it — measured
+ * on the server's clock, not the phone's.
+ */
+export function resolveToday(claimed: string | undefined, reference: Date = new Date()): string {
+  const serverDay = reference.toISOString().slice(0, 10);
   if (claimed === undefined) {
     return serverDay;
   }
@@ -333,7 +345,7 @@ function errorDetail(error: FieldError): ErrorDetail {
  * Everything the server checks before answers become a submission.
  * Returns the answers to store: the engine's, with calculated values its own.
  */
-async function revalidate(
+export async function revalidate(
   tx: TenantTransaction,
   compiled: CompiledForm,
   answers: Record<string, unknown>,
@@ -377,7 +389,7 @@ async function revalidate(
   return { ...check.answers };
 }
 
-function compiledVersion(version: FormVersion): CompiledForm {
+export function compiledVersion(version: FormVersion): CompiledForm {
   const compiled = compileDefinition(version.definition);
   // Every published version compiled when it was published.
   if (!compiled.ok) {
@@ -386,7 +398,7 @@ function compiledVersion(version: FormVersion): CompiledForm {
   return compiled.form;
 }
 
-function refusal(outcome: 'not_found' | 'conflict' | 'wrong_status'): never {
+export function refusal(outcome: 'not_found' | 'conflict' | 'wrong_status'): never {
   switch (outcome) {
     case 'not_found':
       throw notFound('This submission does not exist.');

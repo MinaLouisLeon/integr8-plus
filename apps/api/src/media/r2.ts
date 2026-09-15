@@ -1,6 +1,8 @@
 import {
   AbortMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
   CreateBucketCommand,
+  CreateMultipartUploadCommand,
   DeleteBucketCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
@@ -8,18 +10,22 @@ import {
   HeadObjectCommand,
   ListMultipartUploadsCommand,
   ListObjectsV2Command,
+  ListPartsCommand,
   PutBucketCorsCommand,
   PutBucketLifecycleConfigurationCommand,
   PutObjectCommand,
   S3Client,
   S3ServiceException,
+  UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import {
   BUCKET_PATTERN,
   type MediaStorage,
   type ObjectStore,
+  type PartUploadTarget,
   type StoredObject,
+  type StoredPart,
   type UploadTarget,
 } from './storage.js';
 
@@ -113,7 +119,7 @@ export class R2Storage implements MediaStorage {
               ID: 'abort-incomplete-uploads',
               Status: 'Enabled',
               Filter: { Prefix: '' },
-              AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 },
+              AbortIncompleteMultipartUpload: { DaysAfterInitiation: 8 },
             },
           ],
         },
@@ -192,6 +198,113 @@ class R2Bucket implements ObjectStore {
       headers: { 'content-type': input.contentType },
       expiresAt: new Date(Date.now() + input.expiresInSeconds * 1000),
     };
+  }
+
+  async createMultipartUpload(input: { key: string; contentType: string }) {
+    const created = await this.client.send(
+      new CreateMultipartUploadCommand({
+        Bucket: this.bucket,
+        Key: input.key,
+        ContentType: input.contentType,
+      }),
+    );
+    if (created.UploadId === undefined) {
+      throw new Error(`R2 started a multipart upload for ${input.key} without an upload id`);
+    }
+    return { uploadId: created.UploadId };
+  }
+
+  async createPartUploads(input: {
+    key: string;
+    uploadId: string;
+    parts: readonly { number: number; byteSize: number }[];
+    expiresInSeconds: number;
+  }): Promise<PartUploadTarget[]> {
+    const expiresAt = new Date(Date.now() + input.expiresInSeconds * 1000);
+    return Promise.all(
+      input.parts.map(async (part) => ({
+        number: part.number,
+        url: await getSignedUrl(
+          this.client,
+          new UploadPartCommand({
+            Bucket: this.bucket,
+            Key: input.key,
+            UploadId: input.uploadId,
+            PartNumber: part.number,
+            ContentLength: part.byteSize,
+          }),
+          // Signed, so R2 refuses a part of any other length.
+          { expiresIn: input.expiresInSeconds, signableHeaders: new Set(['content-length']) },
+        ),
+        method: 'PUT' as const,
+        headers: {},
+        expiresAt,
+      })),
+    );
+  }
+
+  async listParts(input: { key: string; uploadId: string }): Promise<StoredPart[]> {
+    const parts: StoredPart[] = [];
+    let marker: string | undefined;
+    try {
+      do {
+        const page = await this.client.send(
+          new ListPartsCommand({
+            Bucket: this.bucket,
+            Key: input.key,
+            UploadId: input.uploadId,
+            PartNumberMarker: marker,
+          }),
+        );
+        for (const part of page.Parts ?? []) {
+          if (part.PartNumber !== undefined && part.ETag !== undefined) {
+            parts.push({ number: part.PartNumber, byteSize: part.Size ?? 0, etag: part.ETag });
+          }
+        }
+        marker = page.IsTruncated === true ? page.NextPartNumberMarker : undefined;
+      } while (marker !== undefined);
+    } catch (error) {
+      if (isError(error, 'NoSuchUpload')) {
+        return [];
+      }
+      throw error;
+    }
+    return parts.sort((a, b) => a.number - b.number);
+  }
+
+  async completeMultipartUpload(input: {
+    key: string;
+    uploadId: string;
+    parts: readonly StoredPart[];
+  }): Promise<void> {
+    await this.client.send(
+      new CompleteMultipartUploadCommand({
+        Bucket: this.bucket,
+        Key: input.key,
+        UploadId: input.uploadId,
+        MultipartUpload: {
+          Parts: [...input.parts]
+            .sort((a, b) => a.number - b.number)
+            .map((part) => ({ PartNumber: part.number, ETag: part.etag })),
+        },
+      }),
+    );
+  }
+
+  async abortMultipartUpload(input: { key: string; uploadId: string }): Promise<void> {
+    try {
+      await this.client.send(
+        new AbortMultipartUploadCommand({
+          Bucket: this.bucket,
+          Key: input.key,
+          UploadId: input.uploadId,
+        }),
+      );
+    } catch (error) {
+      if (!isError(error, 'NoSuchUpload')) {
+        throw error;
+      }
+    }
   }
 
   async head(key: string): Promise<StoredObject | undefined> {
