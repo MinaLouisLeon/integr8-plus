@@ -13,7 +13,7 @@ import { Dialog } from '../components/dialog';
 import { HistoryPanel, SettingsPanel } from '../components/history-settings';
 import { PreviewPanel } from '../components/preview-panel';
 import { editorReducer, initialEditor } from '../model/editor';
-import { issueElement } from '../model/issues';
+import { issueElement, issueText } from '../model/issues';
 import {
   clearLocalCopy,
   type Recovery,
@@ -350,7 +350,9 @@ function Builder({
                         })}
                       </span>
                     )}
-                    <span>{issue.message}</span>
+                    <span>
+                      {issueText(issue, (id) => nameOf(editor.definition, id, locale, t), t)}
+                    </span>
                   </span>
                   {issueElement(editor.definition, issue) === undefined ? null : (
                     <Button

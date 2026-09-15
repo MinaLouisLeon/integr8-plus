@@ -1,10 +1,9 @@
 import {
+  AGGREGATE_OPERATORS,
   type ArithmeticOperator,
   type ConditionModel,
-  describeFieldType,
   type Expression,
   type Field,
-  fieldsOf,
   findField,
   type FormDefinition,
   fromExpression,
@@ -13,6 +12,7 @@ import {
   referencedFields,
   type LocalizedText,
   type Rule,
+  type Section,
   updateField,
   updatePage,
   updateSection,
@@ -20,16 +20,36 @@ import {
 import { useTranslation } from '@integr8/i18n';
 import { useId, useState, type ReactNode } from 'react';
 import { Button } from '~/components/ui';
-import { type Calculation, fromCalculation, type Term, toCalculation } from '../model/calculation';
+import {
+  type Calculation,
+  type CalculationSources,
+  calculationSources,
+  fromCalculation,
+  type Term,
+  termFromKey,
+  termKey,
+  toCalculation,
+} from '../model/calculation';
 import { editorFor, type PropertyEditor, specificProperties } from '../model/catalog';
 import type { EditorAction } from '../model/editor';
+import {
+  DEFAULT_MAX_ENTRIES,
+  limitProblem,
+  titleCandidates,
+  withEntryLabel,
+  withLimits,
+  withRepeat,
+  withTitleField,
+} from '../model/repeat';
 import { keyFromWording } from '../model/rename';
+import { subjectsFor } from '../model/subjects';
 import { say, withText } from '../model/text';
 import {
   completeExpression,
   ConditionBuilder,
   lookupIn,
   newClause,
+  sectionTitle,
   VisibilityEditor,
 } from './condition-builder';
 
@@ -132,6 +152,21 @@ export function ConfigPanel({
           }
         />
       </Group>
+      {at.kind === 'section' ? (
+        <Group title={t('forms.config.groups.repeat')}>
+          <RepeatEditor
+            key={container.id}
+            section={container as Section}
+            locale={locale}
+            onChange={(update) =>
+              dispatch({
+                type: 'edit',
+                apply: (current) => updateSection(current, container.id, update),
+              })
+            }
+          />
+        </Group>
+      ) : null}
       <Group title={t('forms.config.groups.visibility')}>
         <VisibilityEditor
           key={container.id}
@@ -264,6 +299,108 @@ function FieldPanel({
         />
       </Group>
     </fieldset>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Repeating — a section asked once per appliance, radiator or defect (P13b)
+// ---------------------------------------------------------------------------
+
+function RepeatEditor({
+  section,
+  locale,
+  onChange,
+}: {
+  section: Section;
+  locale: string;
+  onChange: (update: (section: Omit<Section, 'fields'>) => Omit<Section, 'fields'>) => void;
+}) {
+  const { t } = useTranslation();
+  const repeat = section.repeat;
+  const draftOf = (current: Section) => ({
+    minEntries: current.repeat?.minEntries === undefined ? '' : String(current.repeat.minEntries),
+    maxEntries: String(current.repeat?.maxEntries ?? DEFAULT_MAX_ENTRIES),
+  });
+  const [label, setLabel] = useState(() => say(repeat?.entryLabel, locale));
+  const [limits, setLimits] = useState(() => draftOf(section));
+  const problem = limitProblem(limits);
+
+  const setLimit = (name: 'minEntries' | 'maxEntries', value: string) => {
+    const next = { ...limits, [name]: value };
+    setLimits(next);
+    onChange((current) => withLimits(current, next));
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-0.5">
+        <Toggle
+          label={t('forms.config.repeat.toggle')}
+          checked={repeat !== undefined}
+          onChange={(checked) => {
+            const entryLabel = label.trim() === '' ? t('forms.canvas.defaultEntryLabel') : label;
+            setLabel(entryLabel);
+            setLimits({ minEntries: '', maxEntries: String(DEFAULT_MAX_ENTRIES) });
+            onChange((current) => withRepeat(current, checked, { [locale]: entryLabel }));
+          }}
+        />
+        <p className="text-xs text-content-muted">{t('forms.config.repeat.hint')}</p>
+      </div>
+      {repeat === undefined ? null : (
+        <>
+          <TextInput
+            label={t('forms.config.repeat.entryLabel')}
+            hint={t('forms.config.repeat.entryLabelHint')}
+            value={label}
+            onChange={(value) => {
+              setLabel(value);
+              const entryLabel = withText(repeat.entryLabel, locale, value.trim());
+              if (value.trim() !== '' && entryLabel !== undefined) {
+                onChange((current) => withEntryLabel(current, entryLabel));
+              }
+            }}
+          />
+          <TextInput
+            label={t('forms.config.repeat.minEntries')}
+            type="number"
+            hint={t('forms.config.repeat.minHint')}
+            value={limits.minEntries}
+            error={
+              problem === 'min_invalid'
+                ? t('forms.config.repeat.minInvalid')
+                : problem === 'min_above_max'
+                  ? t('forms.config.repeat.minAboveMax')
+                  : undefined
+            }
+            onChange={(value) => setLimit('minEntries', value)}
+          />
+          <TextInput
+            label={t('forms.config.repeat.maxEntries')}
+            type="number"
+            value={limits.maxEntries}
+            error={problem === 'max_invalid' ? t('forms.config.repeat.maxInvalid') : undefined}
+            onChange={(value) => setLimit('maxEntries', value)}
+          />
+          <div className="flex flex-col gap-0.5">
+            <SelectInput
+              label={t('forms.config.repeat.titleField')}
+              value={repeat.titleField ?? ''}
+              options={[
+                { value: '', label: t('forms.config.repeat.titleFieldNone') },
+                ...titleCandidates(section).map((field) => ({
+                  value: field.id,
+                  label: say(field.label, locale) || field.id,
+                })),
+              ]}
+              onChange={(value) =>
+                onChange((current) => withTitleField(current, value === '' ? undefined : value))
+              }
+            />
+            <p className="text-xs text-content-muted">{t('forms.config.repeat.titleFieldHint')}</p>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -636,10 +773,9 @@ function CalculationEditor({
 }) {
   const { t } = useTranslation();
   const [chain, setChain] = useState<Calculation | undefined>(() => toCalculation(expression));
-  const numeric = fieldsOf(definition).filter(
-    (candidate) =>
-      candidate.id !== field.id && describeFieldType(candidate.type).valueType === 'number',
-  );
+  // Only what this field can read where it sits: across a repeatable section, a total or a count.
+  const sources = calculationSources(definition, field.id);
+  const numeric = sources.fields;
 
   if (expression !== undefined && chain === undefined) {
     return (
@@ -680,7 +816,9 @@ function CalculationEditor({
   const commit = (next: Calculation) => {
     setChain(next);
     const terms = [next.first, ...next.rest.map((step) => step.term)];
-    if (terms.every((term) => term.kind === 'field' || /^-?[0-9]+(\.[0-9]+)?$/u.test(term.value))) {
+    if (
+      terms.every((term) => term.kind !== 'number' || /^-?[0-9]+(\.[0-9]+)?$/u.test(term.value))
+    ) {
       onChange(fromCalculation(next));
     }
   };
@@ -692,7 +830,7 @@ function CalculationEditor({
       </span>
       <TermInput
         term={chain.first}
-        numeric={numeric}
+        sources={sources}
         locale={locale}
         onChange={(first) => commit({ ...chain, first })}
       />
@@ -721,7 +859,7 @@ function CalculationEditor({
           </select>
           <TermInput
             term={step.term}
-            numeric={numeric}
+            sources={sources}
             locale={locale}
             onChange={(term) =>
               commit({
@@ -778,35 +916,48 @@ function CalculationEditor({
 
 function TermInput({
   term,
-  numeric,
+  sources,
   locale,
   onChange,
 }: {
   term: Term;
-  numeric: readonly Field[];
+  sources: CalculationSources;
   locale: string;
   onChange: (term: Term) => void;
 }) {
   const { t } = useTranslation();
+  const label = (candidate: Field) => say(candidate.label, locale) || candidate.id;
   return (
     <div className="flex flex-wrap items-center gap-1">
       <select
         aria-label={t('forms.calculation.term')}
-        value={term.kind === 'field' ? term.field : ''}
-        onChange={(event) =>
-          onChange(
-            event.target.value === ''
-              ? { kind: 'number', value: '0' }
-              : { kind: 'field', field: event.target.value },
-          )
-        }
+        value={termKey(term)}
+        onChange={(event) => onChange(termFromKey(event.target.value))}
         className="max-w-[12rem] rounded-md border border-border-subtle bg-surface px-2 py-1.5 text-sm"
       >
-        {numeric.map((candidate) => (
+        {sources.fields.map((candidate) => (
           <option key={candidate.id} value={candidate.id}>
-            {say(candidate.label, locale) || candidate.id}
+            {label(candidate)}
           </option>
         ))}
+        {sources.sections.flatMap(({ section, numbers }) => [
+          <option key={`#count:${section.id}`} value={`#count:${section.id}`}>
+            {t('forms.calculation.count', { section: sectionTitle(section, locale) })}
+          </option>,
+          ...numbers.flatMap((number) =>
+            AGGREGATE_OPERATORS.map((operator) => (
+              <option
+                key={`#${operator}:${section.id}:${number.id}`}
+                value={`#${operator}:${section.id}:${number.id}`}
+              >
+                {t(`forms.calculation.aggregate.${operator}`, {
+                  question: label(number),
+                  section: sectionTitle(section, locale),
+                })}
+              </option>
+            )),
+          ),
+        ])}
         <option value="">{t('forms.calculation.number')}</option>
       </select>
       {term.kind === 'number' ? (
@@ -855,10 +1006,10 @@ function ChecksEditor({
       original: rule,
     })),
   );
-  // The field itself first, as "This answer", then everything else in form order.
-  const candidates = [
-    field,
-    ...fieldsOf(definition).filter((candidate) => candidate.id !== field.id),
+  // The field itself first, as "This answer", then everything else it can read, in form order.
+  const subjects = [
+    { kind: 'field' as const, field, across: undefined },
+    ...subjectsFor(definition, field.id),
   ];
 
   const commit = (next: CheckDraft[]) => {
@@ -868,7 +1019,7 @@ function ChecksEditor({
         if (draft.model === undefined) {
           return draft.original === undefined ? [] : [draft.original];
         }
-        const assert = completeExpression(draft.model, lookup);
+        const assert = completeExpression(draft.model, lookup, subjects);
         return assert === undefined || draft.message === undefined
           ? []
           : [{ id: draft.id, assert, message: draft.message }];
@@ -891,7 +1042,7 @@ function ChecksEditor({
           ) : (
             <ConditionBuilder
               model={draft.model}
-              candidates={candidates}
+              subjects={subjects}
               lookup={lookup}
               locale={locale}
               selfId={field.id}

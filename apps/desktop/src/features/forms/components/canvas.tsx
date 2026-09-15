@@ -30,6 +30,7 @@ import {
   type FieldType,
   type FormDefinition,
   generateId,
+  type Section,
   isCalculated,
   isEditError,
   locate,
@@ -38,6 +39,7 @@ import {
   moveSection,
   newField,
   newPage,
+  newRepeatableSection,
   newSection,
   referencesTo,
   remove,
@@ -266,10 +268,42 @@ export function nameOf(
   }
   const section = page.sections[at.section!]!;
   if (at.kind === 'section') {
-    return say(section.title, locale) || t('forms.canvas.section');
+    return sectionLabel(section, locale, t);
   }
   const field = section.fields[at.field!]!;
   return say(field.label, locale) || field.id;
+}
+
+/**
+ * A new repeatable section, ready to publish: repeating up to 20 times, and
+ * starting with a short answer question, because a section with nothing to
+ * repeat does not compile.
+ */
+export function repeatableSectionFor(
+  definition: FormDefinition,
+  locale: string,
+  t: TFunction,
+  publishedIds: ReadonlySet<string> = new Set(),
+): Section {
+  const ids = allIds(definition);
+  const id = generateId('section', 'section', [...ids, ...publishedIds]);
+  const question = t('forms.fieldType.text');
+  const field = newField(
+    'text',
+    generateId(question, 'field', [...ids, ...publishedIds, id]),
+    { [locale]: question },
+    locale,
+  );
+  return newRepeatableSection(id, { [locale]: t('forms.canvas.defaultEntryLabel') }, field);
+}
+
+/** A section's title, or for an untitled repeatable section what one entry is called. */
+function sectionLabel(section: Section, locale: string, t: TFunction): string {
+  return (
+    say(section.title, locale) ||
+    say(section.repeat?.entryLabel, locale) ||
+    t('forms.canvas.section')
+  );
 }
 
 /** Where a clicked palette item goes. */
@@ -340,7 +374,14 @@ function PaletteItem({ type, onAdd }: { type: FieldType; onAdd: (type: FieldType
   );
 }
 
-function Canvas({ definition, selected, locale, readOnly, dispatch }: BuilderCanvasProps) {
+function Canvas({
+  definition,
+  selected,
+  locale,
+  readOnly,
+  dispatch,
+  publishedIds = new Set<string>(),
+}: BuilderCanvasProps & { publishedIds?: ReadonlySet<string> }) {
   const { t } = useTranslation();
   const [removing, setRemoving] = useState<string | undefined>(undefined);
 
@@ -419,11 +460,11 @@ function Canvas({ definition, selected, locale, readOnly, dispatch }: BuilderCan
                       selected === section.id ? 'border-accent' : 'border-border-subtle',
                     ].join(' ')}
                     handleLabel={t('forms.canvas.drag', {
-                      name: say(section.title, locale) || t('forms.canvas.section'),
+                      name: sectionLabel(section, locale, t),
                     })}
                     header={
                       <ItemHeader
-                        name={say(section.title, locale) || t('forms.canvas.section')}
+                        name={sectionLabel(section, locale, t)}
                         id={section.id}
                         actions={actions}
                         canMoveUp={sectionIndex > 0 || pageIndex > 0}
@@ -432,9 +473,18 @@ function Canvas({ definition, selected, locale, readOnly, dispatch }: BuilderCan
                           pageIndex < definition.pages.length - 1
                         }
                         heading="section"
-                        badges={
-                          section.visibleWhen === undefined ? [] : [t('forms.canvas.conditional')]
-                        }
+                        badges={[
+                          ...(section.repeat === undefined
+                            ? []
+                            : [
+                                t('forms.canvas.repeats', {
+                                  maximum: section.repeat.maxEntries,
+                                }),
+                              ]),
+                          ...(section.visibleWhen === undefined
+                            ? []
+                            : [t('forms.canvas.conditional')]),
+                        ]}
                       />
                     }
                   >
@@ -473,6 +523,19 @@ function Canvas({ definition, selected, locale, readOnly, dispatch }: BuilderCan
                     }}
                   >
                     {`+ ${t('forms.canvas.addSection')}`}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const section = repeatableSectionFor(definition, locale, t, publishedIds);
+                      dispatch({
+                        type: 'edit',
+                        apply: (current) => addSection(current, page.id, section),
+                        select: section.id,
+                      });
+                    }}
+                  >
+                    {`+ ${t('forms.canvas.addRepeatableSection')}`}
                   </Button>
                 </div>
               )}

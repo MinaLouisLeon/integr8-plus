@@ -375,7 +375,9 @@ function TemplatePreview({
 function TemplateForm({ template, locale }: { template: Template; locale: string }) {
   const compiled = useMemo(() => compileDefinition(template.definition), [template.definition]);
   const [state, setState] = useState<FormState | undefined>(() =>
-    compiled.ok ? createFormState(compiled.form) : undefined,
+    compiled.ok
+      ? createFormState(compiled.form, {}, { newEntryId: () => crypto.randomUUID() })
+      : undefined,
   );
   if (!compiled.ok || state === undefined) {
     return null;
