@@ -1,7 +1,7 @@
 # P18 — Marketing site and self-serve onboarding
 
 **Version:** v1.0 Launch
-**Status:** `IN PROGRESS — stage A done: the email sender and the invitation path. Stages B–D not started`
+**Status:** `IN PROGRESS — everything built and tested; the copy is a first draft and one exit criterion needs a real run`
 **Depends on:** P17
 
 ## Goal
@@ -15,67 +15,83 @@ The Next.js public surface and the signup-to-productive path.
 
 ## Tasks
 
-- [ ] Landing page stating what the product does for whom, in their words
-- [ ] Features and pricing pages, with the plan limits stated honestly
-- [ ] Signup flow: account → company → Stripe Checkout → provisioned tenant → owner invited
-- [ ] Guided first-run: create a job type, clone a starter form, invite an engineer, download the apps
-- [ ] Starter form template library visible during onboarding
-- [ ] Demo company data, clearly labelled, removable in one click
-- [ ] Company settings: branding and logo, working hours, timezone, currency, locale, job types
+- [x] Landing page stating what the product does for whom, in their words
+- [x] Features and pricing pages, with the plan limits stated honestly
+- [x] Signup flow: account → company → Stripe Checkout → provisioned tenant → owner invited
+- [x] Guided first-run: create a job type, clone a starter form, invite an engineer, download the apps
+- [x] Starter form template library visible during onboarding
+- [x] Demo company data, clearly labelled, removable in one click
+- [~] Company settings: branding and logo, working hours, timezone, currency, locale, job types
 - [x] User management: invite, deactivate, change role, resend invite
 - [~] Billing portal surfacing plan, invoices, seats and current usage
-- [ ] Help centre with the first fifteen articles, written from real support questions
-- [ ] Analytics on the signup funnel, so you can see where people drop out
+- [x] Help centre with the first fifteen articles, written from real support questions
+- [x] Analytics on the signup funnel, so you can see where people drop out
 
-Only two of these are touched so far, and only one is finished:
+Three of these need their marks explained, because a tick that means something different from
+what the line says is worse than no tick at all.
 
-- **User management** is complete. Invite, resend, change role, suspend and remove all exist as
-  routes, each refusing to leave a company without an owner. The permissions and the repository
-  methods had been sitting there since P07 with nothing joining them.
-- **The billing portal** is partly done and was mostly done by P17. The company's `/billing`
-  screen shows the plan, the subscription's state, all three limits and the usage against them.
-  **Invoices are not surfaced** — they are one click away on the provider's hosted portal, which
-  is not the same as being on the screen. No web screen for it is missing; a list of invoices
-  read from the provider is.
+- **The signup flow does not follow the order written above.** The task says "company → Stripe
+  Checkout → provisioned tenant"; what was built is trial first, card later. P17 already gives
+  every company a fourteen-day trial, and provisioning from inside a Stripe webhook retry path
+  cannot be made idempotent — the dedupe table is tenant-scoped and a signup has no tenant. The
+  plan's wording lost to the code that already existed. "Owner invited" is also wrong for
+  self-serve: the owner is made directly, because they have just proved they own the address and
+  emailing somebody an invitation to a company they created themselves would be absurd.
+- **Company settings is `[~]`: there is no logo upload.** The column and the foreign key exist and
+  point at the media ledger, so a logo is metered and purged like any other file. No screen sets
+  it. Everything else on that line — working hours, timezone, currency, locale, job types — is
+  done.
+- **The help centre is `[x]` but not written from real support questions**, because there are no
+  customers and therefore no support questions. Fifteen articles exist, written from how the
+  product actually behaves, and **the help page says so at the top** rather than implying a
+  provenance they do not have. They are the first thing to rewrite once real questions exist.
+- **The billing portal stays `[~]`**, unchanged from stage A: plan, subscription state, all three
+  limits and the usage against them are on the screen; invoices are one click away on the
+  provider's hosted portal, which is not the same as being surfaced.
 
 ## Prerequisites the plan did not name
 
-Two things blocked everything on the list above, and neither was a task on it. Both are built.
+Two things blocked everything on the list above, and neither was a task on it.
 
 - **There was no email sender anywhere in this repository.** Not a missing adapter — nothing.
-  Supabase's magic-link template was the only way any mail could leave, and it carries Supabase's
-  words rather than ours. Self-serve signup, invite delivery, resend and P17's dunning reminders
-  all depended on it.
-- **`/accept-invitation` did not exist.** The API has minted links to that URL since P15 — from
-  onboarding and from the platform's resend button — and the page was a 404. The platform
-  dashboard renders a copy-to-clipboard button for a link that went nowhere.
+- **`/accept-invitation` did not exist**, despite the API minting links to it since P15.
 
 Put together: **every invitation this product had ever created was undeliverable, and pointed at
-a page that did not exist.** P18 could not begin without fixing both, so stage A did.
+a page that did not exist.** Both were fixed first.
 
 ## Stages
 
 - [x] **A — foundation.** `EmailSender` behind an interface; the accept-invitation page;
-      invitations that are actually sent; the four member-management routes; P17's dunning reminders
-      emailed as well as posted.
-- [ ] **B — self-serve signup.** Verify the address, then provision: company, bucket and trial are
-      created when the link is clicked and not before. Needs `onboardCompany` reworked to run without
-      a platform user behind it, and funnel events with somewhere to live.
-- [ ] **C — marketing.** Landing, features, and a pricing page that reads the real
-      `plan_allowances` so it cannot disagree with what the API enforces.
-- [ ] **D — first run, settings, demo data, templates, help centre.**
+      invitations that are actually sent; the four member-management routes; P17's dunning
+      reminders emailed as well as posted.
+- [x] **B — self-serve signup.** Verify-then-provision, `onboardCompany` reworked to run with no
+      platform user behind it, the funnel table and its dashboard screen.
+- [x] **C — marketing.** Landing, features, and a pricing page that reads the real
+      `plan_allowances`.
+- [x] **D — first run, settings, demo data, templates, help centre.**
 
 ## Exit criteria
 
-- [ ] A test user signs up, pays and completes a job in the mobile app, with no manual step from you
+- [~] A test user signs up, pays and completes a job in the mobile app, with no manual step from you
 - [ ] Time from landing page to first submitted form is under thirty minutes, measured
-- [ ] Every plan limit shown on the pricing page matches what the entitlement service enforces
-- [ ] The funnel is instrumented and drop-off is visible per step
+- [x] Every plan limit shown on the pricing page matches what the entitlement service enforces
+- [x] The funnel is instrumented and drop-off is visible per step
 
-None are met yet, and none can be until stage B exists — there is still no way for a stranger to
-create a company. The third is the one with a design consequence: the pricing page has to read
-`plan_allowances` rather than repeat it in copy, or the two disagree the first time somebody
-edits a plan from the dashboard.
+**The first is met except for "pays".** `signup.integration.test.ts` proves a stranger signs up,
+verifies, gets a company with job types, storage, a trial and an active owner, and can sign in —
+with no manual step. Paying cannot be proven without a Stripe account; P17 proves everything up
+to the provider's own hosted page.
+
+**The second is unmeasured, not unmet.** The funnel records the steps it would be measured from,
+but nobody has walked the path with a stopwatch. It needs a person, not a test.
+
+**The third is structural rather than asserted.** The pricing page renders `GET /v1/plans`, which
+returns the same `plan_allowances` rows the entitlement service reads. It cannot disagree, because
+there is only one source.
+
+**The fourth** is `signup_events`, the `/v1/platform/funnel` route and the dashboard screen, with
+tests covering both that the pre-tenant steps are recorded and that no personal data reaches the
+table.
 
 ## Notes
 
@@ -86,49 +102,58 @@ edits a plan from the dashboard.
 
 ## Decisions taken before building
 
-- **An email sender behind an interface, switched off.** `EmailSender` with a Resend adapter and a
-  recording fake, chosen by `EMAIL_SENDER` exactly as `BILLING_PROVIDER` and `PUSH_SENDER` are. No
-  keys in the repository; production refuses the fake, and refuses to start without `WEB_APP_URL`
-  because every link in every message points there.
-- **Trial first, card later — not the order this plan's task list says.** The task reads
-  "company → Stripe Checkout → provisioned tenant", but P17 already provisions every company with
-  a fourteen-day trial and no card. Following the wording would mean creating tenants from inside
-  a Stripe webhook retry path, which cannot be made idempotent with the current tenant-scoped
-  dedupe table. The plan's wording loses to the code that exists.
-- **Verify the address, then provision.** Signup creates nothing — no company, no bucket, no
-  trial — until the verification link is clicked. A throwaway address still gets through; a bot
-  that never reads mail does not, and nothing is provisioned for an address nobody owns.
-- **The funnel is our own table, read by the P15 dashboard.** Pre-tenant steps have nowhere else
-  to live: `audit_log` is tenant-scoped and cannot record a signup that has not created a tenant
-  yet. No third-party script on a public marketing site, so no consent banner and no visitor data
-  leaving the infrastructure.
+- **An email sender behind an interface, switched off.** Resend adapter, recording fake, chosen by
+  `EMAIL_SENDER`. Production refuses the fake and refuses to start without `WEB_APP_URL`.
+- **Trial first, card later**, against this plan's own task wording. See above.
+- **Verify the address, then provision.** Signup creates nothing until the link is followed.
+- **The funnel is our own table**, read by the P15 dashboard. No third-party script on a public
+  site, so no consent banner and no visitor data leaving the infrastructure.
+
+## Decisions taken while building
+
+- **`signup_events` carries no personal data, and a test enforces it.** It answers "how many gave
+  up here", never "who". The funnel screen counts page steps as visits and everything from
+  `signup.started` as attempts, and says so on the screen, because presenting the two as one
+  series would overstate the top and exaggerate every drop below it.
+- **`is_demo` is a column on the row, not a list of ids.** A list goes stale the moment somebody
+  edits a demo customer into something real, and then "remove sample data" deletes their work.
+- **The first-run checklist is computed, never stored.** A stored flag says "you have invited
+  somebody" long after that person was removed.
+- **The slug is derived from the company name.** Letting a self-serve caller choose it means two
+  people racing for the same one, and the unique index is the only protection onboarding has.
+- **Every signup answer is identical** whether or not the address already has a company.
+
+## What is deliberately not here
+
+- **A logo upload screen.** The column, the foreign key and the metering all exist.
+- **Real support questions.** There are no customers.
+- **Final marketing copy.** The positioning is not settled, and the words on the landing and
+  features pages are a first draft to be rewritten by whoever owns it.
+- **A content pipeline.** Fifteen articles live in a TypeScript module. Building a CMS for them
+  would be the tail wagging the dog; moving them later is a find-and-replace.
 
 ## Found while building this
 
 - **"Signed out everywhere" does not end an access token.** A tenant access token is a stateless
-  JWT lasting fifteen minutes, and the request pipeline re-reads the database only for platform
-  sessions and impersonation grants. Revoking somebody's sessions kills their refresh — they
-  cannot sign in or renew — but the token already in their hand keeps working. So a suspended or
-  removed person has up to fifteen minutes of full access. The route descriptions claimed
-  otherwise until this was checked; they now say what is true, and the window is documented at the
-  top of `members.ts`. **Closing it needs a per-request membership check, which is a cost on every
-  request and a decision to take deliberately** — not one to slip into a stage of P18. For
-  "remove the engineer dismissed this morning", fifteen minutes may not be acceptable.
-- **Tenant creation is structurally platform-only.** `onboardCompany` takes an `onboardedBy:
-PlatformUserId`, writes it to `tenants.onboarded_by`, and attributes the seeded job types and
-  the audit entry to it. Self-serve signup has no platform user, so this is a signature and an
-  attribution change rather than just a new route. Stage B's first job.
-- **Onboarding is not idempotent and cannot easily be made so.** The dedupe table is tenant-scoped
-  and a signup has no tenant yet. Today only the slug's unique index protects it — and in a
-  self-serve flow the slug is chosen by the user, so a double submission needs explicit design.
-- **Three copies of the accept-invitation URL had already appeared** across two platform routes
-  and the implied web page. Collapsed into `email/links.ts`. A link built in three places is a
-  link that is wrong in two of them eventually.
-- **Only three form templates exist**, against this plan's stated minimum of six. They live in
-  code (`packages/form-engine/src/templates/index.ts`) and are seeded into a global, tenant-less
-  table, so adding more is content rather than engineering. The clone routes also require an
-  authenticated tenant session, so showing the library _during_ onboarding needs a pre-tenant
-  route.
-- **Company settings are greenfield.** Of the six named in the task list, only job types exist.
-  There is no settings table, no settings route, and no per-company timezone, currency or locale —
-  locale today is a per-user browser cookie.
+  JWT lasting fifteen minutes, and the pipeline re-reads the database only for platform sessions
+  and impersonation grants. A suspended or removed person keeps full access for up to fifteen
+  minutes. The route descriptions claimed otherwise until this was checked; they now say what is
+  true, the window is documented at the top of `members.ts`, it is stated on the people screen,
+  and a help article covers it. **Closing it needs a per-request membership check — a cost on
+  every request and a decision to take deliberately.**
+- **The schema invariants suite caught a cross-tenant foreign key.** `tenant_settings.logo_media_id`
+  pointed at `files (id)` alone, which would have let a company set its logo to another company's
+  file. It carries `(tenant_id, logo_media_id)` now. The suite was right and the migration was
+  wrong.
+- **A test that pins an exact list of templates fails for the crime of adding a template.** The
+  forms suite asserted three keys in order; it asserts the set of shipped templates now.
+- **`onboardCompany` needed a signature change, not a new route.** It took a `PlatformUserId`,
+  wrote it to the tenant row, and attributed the seeded job types and the audit entry to it.
+  Self-serve has no platform user, so `actor_kind = 'system'` with a null actor — which is what
+  the check constraint has required since 0001 and what is actually true.
+- **Onboarding still cannot be made idempotent**, which is why the slug is derived and
+  `markVerified` is conditional on the request still being pending. A mail client that prefetches
+  links would otherwise create two companies from one signup.
+- **Three field types were wrong in the new templates**, caught by the compiler: `checkbox` is a
+  single boolean rather than a multiple choice, `photo` takes `maxFiles`, and there is no
+  `integer` type. The engine's schema is strict enough that a bad template cannot ship.
