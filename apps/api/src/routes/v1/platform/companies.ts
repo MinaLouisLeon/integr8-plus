@@ -199,6 +199,9 @@ export const onboardCompanyRoute = defineRoute({
       ownerEmail: body.ownerEmail,
       ...(body.jobTypes === undefined ? {} : { jobTypes: body.jobTypes }),
       onboardedBy: toPlatformUserId(context.platform.platformUserId),
+      // The platform path always invites: whoever is onboarding this company is
+      // not the person who will own it.
+      ownerAccess: { kind: 'invitation' },
       invitationTtlSeconds: INVITATION_TTL_SECONDS,
       media: context.services.media,
       billing: {
@@ -231,13 +234,19 @@ export const onboardCompanyRoute = defineRoute({
       status: 201,
       body: {
         company: toSummary(summary ?? fallbackSummary(onboarded.tenant), new Map()),
+        // Never null on this path — `ownerAccess` is `invitation` above — but
+        // the type allows it because self-serve onboarding makes the owner
+        // directly and has nothing to send.
         ownerInvitation: {
-          id: onboarded.invitation.id,
-          email: onboarded.invitation.email,
-          expiresAt: iso(onboarded.invitation.expiresAt),
+          id: onboarded.invitation?.id ?? '',
+          email: onboarded.invitation?.email ?? onboarded.tenant.name,
+          expiresAt: iso(onboarded.invitation?.expiresAt ?? new Date()),
           // The token itself, once, so the dashboard can show a link to send by
           // hand. It is never logged and never stored in plaintext.
-          acceptUrl: acceptInvitationUrl(context.config.WEB_APP_URL, onboarded.invitation.token),
+          acceptUrl:
+            onboarded.invitation === null
+              ? null
+              : acceptInvitationUrl(context.config.WEB_APP_URL, onboarded.invitation.token),
         },
         storage: { bucket: onboarded.storage.bucket ?? '', created: onboarded.storage.created },
       },
