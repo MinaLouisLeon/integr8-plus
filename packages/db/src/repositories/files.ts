@@ -283,6 +283,48 @@ export class FilesRepository extends TenantScopedRepository {
     return row === undefined ? undefined : toFile(row);
   }
 
+  /**
+   * Soft-deletes everything uploaded before a date, for a plan's retention
+   * window (P16).
+   *
+   * The same door a person's delete uses, so retention adds no second way for
+   * bytes to leave: these land in the restore window and the existing sweep
+   * removes them at the end of it.
+   *
+   * `deleted_by` is null, which the column allows, because nobody deleted
+   * these — a policy did. A name in that column would be a lie told to whoever
+   * reads the row asking who to talk to.
+   *
+   * Returns how many it took, and takes at most `limit` in one pass so a
+   * company with a decade of history does not become one enormous statement.
+   */
+  async retireOlderThan(
+    before: Date,
+    options: { purgeAfter: Date; limit?: number },
+  ): Promise<number> {
+    const result = await this.db
+      .updateTable('files')
+      .set({ deleted_at: sql<Date>`now()`, purge_after: options.purgeAfter })
+      .where('tenant_id', '=', this.tenantId)
+      .where('deleted_at', 'is', null)
+      .where('purged_at', 'is', null)
+      .where('created_at', '<', before)
+      .where('id', 'in', (select) =>
+        select
+          .selectFrom('files')
+          .select('id')
+          .where('tenant_id', '=', this.tenantId)
+          .where('deleted_at', 'is', null)
+          .where('purged_at', 'is', null)
+          .where('created_at', '<', before)
+          .orderBy('created_at')
+          .limit(options.limit ?? 500),
+      )
+      .executeTakeFirst();
+
+    return Number(result.numUpdatedRows ?? 0n);
+  }
+
   /** Undoes a deletion inside its restore window. */
   async restore(fileId: string, now: Date): Promise<FileRecord | undefined> {
     const row = await this.db

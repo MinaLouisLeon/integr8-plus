@@ -71,10 +71,14 @@ export {
 export {
   ANNOUNCEMENT_SEVERITIES,
   PLATFORM_SESSION_REVOCATION_REASONS,
+  OVERAGE_POLICIES,
+  RECONCILIATION_STATUSES,
   TENANT_EXPORT_STATUSES,
   TENANT_PLANS,
   type AnnouncementSeverity,
   type PlatformSessionRevocationReason,
+  type OveragePolicy,
+  type ReconciliationStatus,
   type TenantExportStatus,
   type TenantPlan,
 } from './schema.js';
@@ -114,6 +118,15 @@ export type {
   RecentFailure,
   ReleaseInField,
 } from './repositories/platform-insights.js';
+
+export {
+  StorageMeteringRepository,
+  TenantStorageHistory,
+  type PlanAllowance,
+  type Reconciliation,
+  type SampleCategories,
+  type StorageSample,
+} from './repositories/storage-metering.js';
 
 export type { PlatformCredentials } from './repositories/platform-users.js';
 

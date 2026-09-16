@@ -47,6 +47,10 @@ import {
 } from './repositories/platform-settings.js';
 import { PlatformUsersRepository } from './repositories/platform-users.js';
 import { PlatformInsightsRepository } from './repositories/platform-insights.js';
+import {
+  StorageMeteringRepository,
+  TenantStorageHistory,
+} from './repositories/storage-metering.js';
 import { TenantDataExportRepository } from './repositories/tenant-data-export.js';
 import { TenantLifecycleRepository } from './repositories/tenant-lifecycle.js';
 import { TenantsRepository } from './repositories/tenants.js';
@@ -108,6 +112,8 @@ export interface TenantTransaction {
   readonly featureFlags: FeatureFlagsReader;
   /** Everything this company has, for an export or a data request (P15). */
   readonly dataExport: TenantDataExportRepository;
+  /** The company's own storage history, the same numbers the platform sees (P16). */
+  readonly storageHistory: TenantStorageHistory;
 }
 
 /**
@@ -173,6 +179,8 @@ export interface PlatformDataSource {
   readonly lifecycle: TenantLifecycleRepository;
   /** Cross-company questions: which app versions are in the field, what is failing (P15). */
   readonly insights: PlatformInsightsRepository;
+  /** Allowances, daily samples and the audit against Cloudflare (P16). */
+  readonly metering: StorageMeteringRepository;
 }
 
 /**
@@ -327,6 +335,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     formTemplates: new FormTemplatesReader(scope.trx),
     featureFlags: new FeatureFlagsReader(scope.trx, scope.tenantId),
     dataExport: new TenantDataExportRepository(scope),
+    storageHistory: new TenantStorageHistory(scope.trx, scope.tenantId),
   };
 }
 
@@ -392,6 +401,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     settings: new PlatformSettingsRepository(db),
     lifecycle: new TenantLifecycleRepository(db),
     insights: new PlatformInsightsRepository(db),
+    metering: new StorageMeteringRepository(db),
     jobs: {
       claim: (options) => claimJobs(db, options),
       complete: (jobId, at) => completeJob(db, jobId, at),
