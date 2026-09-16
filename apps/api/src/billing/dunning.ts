@@ -1,5 +1,10 @@
 import { getPlatformDataSource, type Subscription } from '@integr8/db';
 import type { ApiConfig } from '../config.js';
+import { withTenant } from '@integr8/db';
+import { deliver } from '../email/deliver.js';
+import { billingUrl } from '../email/links.js';
+import { dunningEmail } from '../email/messages.js';
+import type { EmailSender } from '../email/sender.js';
 import { forgetTenantStatus } from '../http/suspension.js';
 import type { Logger } from '../http/logger.js';
 
@@ -21,14 +26,15 @@ import type { Logger } from '../http/logger.js';
  * A trial that ends unpaid joins at step 1, because "your trial is over" and
  * "your payment failed" need the same fortnight and the same ending.
  *
- * **Where the reminders go, and who never sees them.** In-app only. There is no
- * email sender in this system — Supabase's magic links and Expo push are the
- * only person-facing channels, and neither is a billing channel — so a reminder
- * is an announcement banner, which means **a company whose owner never opens
- * the app is never told before their writes stop.** That is a real gap, chosen
- * knowingly rather than papered over: it is written here, on the billing screen
- * and in `docs/`, and the first release with an email sender should make the
- * same reminders leave the building.
+ * **Where the reminders go.** Two places, since P18: an announcement banner
+ * through the P15 channel, and an email to everybody who can do something about
+ * it — the owners and admins. P17 could only do the first, because no email
+ * sender existed, and said so in this comment. It exists now, so the gap this
+ * paragraph used to describe is closed.
+ *
+ * The email is sent on the same cadence as the banner and is allowed to fail:
+ * a reminder that bounced must not stop the account moving through dunning, and
+ * must not make a worker retry the whole run.
  *
  * Like the metering sweep, this is not a queued job and there is no cron: the
  * worker runs it on a timer and claims its turn in `scheduled_task_runs`.
@@ -62,6 +68,8 @@ export interface DunningReport {
 export interface DunningOptions {
   config: ApiConfig;
   logger: Logger;
+  /** Who carries the reminders (P18). Absent leaves them in-app only. */
+  email?: EmailSender;
   workerId: string;
   now?: Date;
   /** Skips the turn-claiming, for the CLI and for tests. */
@@ -241,11 +249,55 @@ async function stepOne(
     createdBy: null,
   });
 
+  await notifyByEmail(tenantId, tenant.name, expired, subscription.graceEndsAt, options);
+
   await platform.billing.update(tenantId, {
     remindersSent: Math.max(due, subscription.remindersSent + 1),
   });
 
   return { madeReadOnly, reminded: true };
+}
+
+/**
+ * Emails the people who can actually fix it.
+ *
+ * Owners and admins, because they are who holds `billing.read`; an engineer
+ * cannot update a card and telling them is noise. Failures are logged and
+ * swallowed — the account still moves through dunning whether or not the
+ * message arrived, and a bounced reminder must not stall the run for everybody
+ * else.
+ */
+async function notifyByEmail(
+  tenantId: string,
+  companyName: string,
+  readOnly: boolean,
+  graceEndsAt: Date | null,
+  options: DunningOptions,
+): Promise<void> {
+  const sender = options.email;
+  const url = billingUrl(options.config.WEB_APP_URL);
+  if (sender === undefined || url === null) {
+    return;
+  }
+
+  const recipients = (await withTenant(tenantId, (tx) => tx.tenantUsers.list())).filter(
+    (member) => member.status === 'active' && (member.role === 'owner' || member.role === 'admin'),
+  );
+
+  for (const person of recipients) {
+    await deliver(
+      sender,
+      options.logger,
+      dunningEmail({
+        to: person.email,
+        companyName,
+        billingUrl: url,
+        deadline: graceEndsAt,
+        readOnly,
+      }),
+      { kind: 'dunning', tenantId },
+    );
+  }
 }
 
 const READ_ONLY_REASON =

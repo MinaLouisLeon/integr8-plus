@@ -86,7 +86,12 @@ async function main(): Promise<void> {
 
       // Dunning (P17). Same timer, same turn-claiming. It only ever refuses
       // writes and posts banners — nothing in it deletes a customer's data.
-      const dunned = await runDunning({ config, logger, workerId: worker.id });
+      const dunned = await runDunning({
+        config,
+        logger,
+        workerId: worker.id,
+        email: services.email,
+      });
       if (
         dunned.trialsEnded > 0 ||
         dunned.remindersPosted > 0 ||

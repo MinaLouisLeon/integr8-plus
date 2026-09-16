@@ -6,6 +6,7 @@ import { forgetTenantStatus } from '../http/suspension.js';
 import { forgetAllowances } from '../media/quota.js';
 import { type ApiHarness, type Member, startApi } from '../testing/api-harness.js';
 import { runDunning } from './dunning.js';
+import type { RecordingEmailSender } from '../email/sender.js';
 
 /**
  * P17's exit criteria, as tests.
@@ -58,7 +59,12 @@ const SUBSCRIPTION = `sub_test_${RUN}`;
 beforeAll(async () => {
   // A return address, because a checkout has to send the browser back
   // somewhere. Without one the route answers 503 rather than inventing a URL.
-  api = await startApi({ env: { BILLING_RETURN_URL: 'https://app.test.integr8.example' } });
+  api = await startApi({
+    env: {
+      BILLING_RETURN_URL: 'https://app.test.integr8.example',
+      WEB_APP_URL: 'https://app.test.integr8.example',
+    },
+  });
   owner = await api.member('owner', 'billing-owner');
   token = await api.signIn(owner);
   original = await getPlatformDataSource().metering.allowances();
@@ -307,10 +313,17 @@ describe('a payment that fails', () => {
       logger: silent,
       workerId: 'test',
       force: true,
+      email: api.services.email,
       now: new Date(Date.now() + 4 * DAY_MS),
     });
     expect(reminded.remindersPosted).toBeGreaterThanOrEqual(1);
     expect(reminded.madeReadOnly).toBe(0);
+
+    // And now it leaves the building too (P18). P17 could only post a banner,
+    // because no email sender existed; the owner who never opens the app is
+    // told as well.
+    const posted = (api.services.email as RecordingEmailSender).lastTo(owner.email);
+    expect(posted?.subject).toContain('Payment failed');
 
     const banners = await platform.settings.announcementsFor(api.tenantId);
     expect(banners.some((banner) => (banner.message.en ?? '').includes('read-only'))).toBe(true);
