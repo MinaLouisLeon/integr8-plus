@@ -147,8 +147,28 @@ export async function claimJobs(
   db: Kysely<Database>,
   options: { workerId: string; limit?: number; leaseMs?: number; now?: Date },
 ): Promise<ClaimedJob[]> {
-  const now = options.now ?? new Date();
-  const leaseUntil = new Date(now.getTime() + (options.leaseMs ?? 60_000));
+  const leaseMs = options.leaseMs ?? 60_000;
+
+  // The database's clock, unless a test injects one.
+  //
+  // `available_at` is filled by Postgres — `now()` is its default, and every
+  // enqueue takes it — so comparing it against a `Date` from this process
+  // compares two clocks that are not the same clock. Measured against the test
+  // database, Postgres can read a millisecond ahead of Node *after* the round
+  // trip, which is enough that a job enqueued a moment ago is not yet
+  // claimable. That is how this surfaced: a push notification that
+  // intermittently never arrived, because the job to send it had been written
+  // into the future.
+  //
+  // Every timestamp in the statement comes from the same clock for the same
+  // reason. A lease written from one worker's clock and judged expired by
+  // another's is the same bug wearing a different hat, and with several workers
+  // it decides whether a job is stolen mid-flight or left stuck.
+  const now = options.now === undefined ? sql<Date>`now()` : sql<Date>`${options.now}::timestamptz`;
+  const leaseUntil =
+    options.now === undefined
+      ? sql<Date>`now() + make_interval(secs => ${leaseMs / 1000})`
+      : sql<Date>`${new Date(options.now.getTime() + leaseMs)}::timestamptz`;
 
   // A job whose lease ran out on its final attempt was never failed — its
   // worker died holding it — so it is dead-lettered here rather than claimed.
@@ -191,7 +211,22 @@ export async function claimJobs(
     returning jobs.*
   `.execute(db);
 
-  return result.rows.map((row) => ({ ...toDomain(row), lockedUntil: leaseUntil }));
+  return result.rows.map(toClaimed);
+}
+
+function toClaimed(row: Selectable<JobsTable>): ClaimedJob {
+  const job = toDomain(row);
+  if (job.lockedUntil === null) {
+    // Cannot happen: the statement above sets a lease on every row it returns.
+    // If it ever does, the statement has changed and this type is a lie, which
+    // is worth a loud failure rather than a worker holding a lease of `null`.
+    throw new Error(`Job ${job.id} was claimed without a lease`);
+  }
+
+  // Read back from the row rather than recomputed here, because the database
+  // worked it out. A worker that honoured its own idea of the lease would renew
+  // or abandon at a different moment from the one the row says.
+  return { ...job, lockedUntil: job.lockedUntil };
 }
 
 /** Marks a claimed job done. Runs on the owner connection, like the claim. */
