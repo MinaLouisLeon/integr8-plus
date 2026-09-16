@@ -68,6 +68,13 @@ interface Allowance {
   retentionDays: number | null;
   overage: 'block' | 'allow';
   warnAtPercent: number;
+  /** What the plan allows and costs (P17). */
+  seats: number | null;
+  submissionsPerMonth: number | null;
+  priceCents: number | null;
+  currency: string | null;
+  providerPriceMonthly: string | null;
+  providerPriceYearly: string | null;
 }
 
 function PlanRow({ plan }: { plan: Allowance }) {
@@ -84,6 +91,15 @@ function PlanRow({ plan }: { plan: Allowance }) {
   );
   const [overage, setOverage] = useState<'block' | 'allow'>(plan.overage);
   const [warnAtPercent, setWarnAtPercent] = useState(String(plan.warnAtPercent));
+  const [seats, setSeats] = useState(plan.seats === null ? '' : String(plan.seats));
+  const [submissions, setSubmissions] = useState(
+    plan.submissionsPerMonth === null ? '' : String(plan.submissionsPerMonth),
+  );
+  // Whole units in the form, minor units on the wire: nobody types 4900.
+  const [price, setPrice] = useState(plan.priceCents === null ? '' : String(plan.priceCents / 100));
+  const [currency, setCurrency] = useState(plan.currency ?? '');
+  const [priceMonthly, setPriceMonthly] = useState(plan.providerPriceMonthly ?? '');
+  const [priceYearly, setPriceYearly] = useState(plan.providerPriceYearly ?? '');
 
   const save = useMutation({
     mutationFn: async () => {
@@ -95,6 +111,15 @@ function PlanRow({ plan }: { plan: Allowance }) {
           retentionDays: retentionDays.trim() === '' ? null : Number(retentionDays),
           overage,
           warnAtPercent: Number(warnAtPercent),
+          seats: seats.trim() === '' ? null : Number(seats),
+          submissionsPerMonth: submissions.trim() === '' ? null : Number(submissions),
+          // The two travel together — the database refuses one without the
+          // other, because a price with no currency is a number nobody can
+          // render.
+          priceCents: price.trim() === '' ? null : Math.round(Number(price) * 100),
+          currency: price.trim() === '' ? null : currency.trim().toUpperCase(),
+          providerPriceMonthly: priceMonthly.trim() === '' ? null : priceMonthly.trim(),
+          providerPriceYearly: priceYearly.trim() === '' ? null : priceYearly.trim(),
         },
       });
     },
@@ -147,6 +172,35 @@ function PlanRow({ plan }: { plan: Allowance }) {
             </dd>
           </div>
           <Fact label={t('platform.plans.warnAt')} value={`${String(plan.warnAtPercent)}%`} />
+          <Fact
+            label={t('platform.plans.seats')}
+            value={plan.seats === null ? t('platform.plans.uncapped') : String(plan.seats)}
+          />
+          <Fact
+            label={t('platform.plans.submissions')}
+            value={
+              plan.submissionsPerMonth === null
+                ? t('platform.plans.uncapped')
+                : String(plan.submissionsPerMonth)
+            }
+          />
+          <Fact
+            label={t('platform.plans.price')}
+            value={
+              plan.priceCents === null
+                ? t('platform.plans.unpriced')
+                : `${String(plan.priceCents / 100)} ${plan.currency ?? ''}`
+            }
+          />
+          {/*
+            A plan with no provider price cannot be bought, and the checkout
+            says so rather than sending somebody to a page that fails. Shown
+            here so it is fixed before a customer finds it.
+          */}
+          <Fact
+            label={t('platform.plans.providerPriceMonthly')}
+            value={plan.providerPriceMonthly ?? t('platform.plans.unpriced')}
+          />
         </dl>
       </Panel>
     );
@@ -190,6 +244,48 @@ function PlanRow({ plan }: { plan: Allowance }) {
             max={100}
             value={warnAtPercent}
             onChange={(event) => setWarnAtPercent(event.target.value)}
+          />
+          <Field
+            label={t('platform.plans.seats')}
+            hint={t('platform.plans.uncappedHint')}
+            type="number"
+            min={1}
+            value={seats}
+            onChange={(event) => setSeats(event.target.value)}
+          />
+          <Field
+            label={t('platform.plans.submissions')}
+            hint={t('platform.plans.uncappedHint')}
+            type="number"
+            min={1}
+            value={submissions}
+            onChange={(event) => setSubmissions(event.target.value)}
+          />
+          <Field
+            label={t('platform.plans.price')}
+            hint={t('platform.plans.priceHint')}
+            type="number"
+            min={0}
+            step="0.01"
+            value={price}
+            onChange={(event) => setPrice(event.target.value)}
+          />
+          <Field
+            label={t('platform.plans.currency')}
+            maxLength={3}
+            value={currency}
+            onChange={(event) => setCurrency(event.target.value)}
+          />
+          <Field
+            label={t('platform.plans.providerPriceMonthly')}
+            hint={t('platform.plans.providerPriceHint')}
+            value={priceMonthly}
+            onChange={(event) => setPriceMonthly(event.target.value)}
+          />
+          <Field
+            label={t('platform.plans.providerPriceYearly')}
+            value={priceYearly}
+            onChange={(event) => setPriceYearly(event.target.value)}
             {...(save.isError ? { error: messageForError(save.error, t) } : {})}
           />
         </div>
