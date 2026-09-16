@@ -1,4 +1,4 @@
-import { getPlatformDataSource, type TenantStatus } from '@integr8/db';
+import { getPlatformDataSource, type TenantPlan, type TenantStatus } from '@integr8/db';
 import { ApiError } from './errors.js';
 
 /**
@@ -16,6 +16,11 @@ import { ApiError } from './errors.js';
  * exit criterion says "within one minute" rather than "immediately": the
  * alternative is a `tenants` read on every single request for a state that
  * changes a handful of times a year.
+ *
+ * The same cached row carries the company's plan (P16). The door-check already
+ * reads `tenants` on every authenticated request; the quota check needs the
+ * plan off that same row, and reading it twice would be two connections' work
+ * for one fact that changes about as often as the status does.
  */
 
 const CACHE_TTL_MS = 30_000;
@@ -23,6 +28,7 @@ const CACHE_TTL_MS = 30_000;
 interface CachedStatus {
   status: TenantStatus;
   reason: string | null;
+  plan: TenantPlan;
   readAt: number;
 }
 
@@ -59,6 +65,21 @@ export async function assertTenantServable(tenantId: string, now = Date.now()): 
  * clears this process's cache; other instances catch up within the TTL, which
  * is what the one-minute criterion allows for.
  */
+/**
+ * The company's plan, off the row the door-check already read.
+ *
+ * Falls back to `trial` for a company that has gone: the caller is about to be
+ * refused by the suspension check anyway, and the tightest plan is the safe
+ * thing to assume if it somehow is not.
+ */
+export async function planFor(tenantId: string, now = Date.now()): Promise<TenantPlan> {
+  const cached = cache.get(tenantId);
+  const fresh =
+    cached !== undefined && now - cached.readAt < CACHE_TTL_MS ? cached : await read(tenantId, now);
+
+  return fresh.plan;
+}
+
 export function forgetTenantStatus(tenantId?: string): void {
   if (tenantId === undefined) {
     cache.clear();
@@ -74,6 +95,7 @@ async function read(tenantId: string, now: number): Promise<CachedStatus> {
     // is the status that says so.
     status: tenant?.status ?? 'cancelled',
     reason: tenant?.suspendedReason ?? null,
+    plan: tenant?.plan ?? 'trial',
     readAt: now,
   };
   cache.set(tenantId, entry);

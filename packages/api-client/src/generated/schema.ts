@@ -748,7 +748,7 @@ export interface paths {
         };
         /**
          * The company's storage use
-         * @description Bytes and objects in the company’s bucket, by kind, as the ledger records them. Deleted files count until their bytes are removed; thumbnails are their own kind.
+         * @description Bytes and objects in the company’s bucket, by kind, as the ledger records them, with what the plan allows and the last ninety days of it. Deleted files count until their bytes are removed; thumbnails are their own kind. These are the same numbers the platform sees.
          */
         get: operations["getStorageUsage"];
         put?: never;
@@ -2048,6 +2048,83 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Platform-wide storage, and what it is likely to cost
+         * @description The latest sample for every company, the totals, and the projected monthly Cloudflare bill from them. Also the companies whose ledger last disagreed with Cloudflare, and when each nightly task last ran.
+         */
+        get: operations["getStorageOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/companies/{tenantId}/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What this company is using, and whether the number is true
+         * @description The live ledger with its breakdown, the last ninety days of daily samples, and the most recent reconciliations against Cloudflare.
+         */
+        get: operations["getCompanyStorage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What each plan allows */
+        get: operations["listPlanAllowances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/plans/{plan}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change what a plan allows
+         * @description Only what is sent is changed, so raising one number does not reset a retention window somebody agreed with a customer. Takes effect within a minute everywhere, and at once on the instance that served this request.
+         */
+        patch: operations["setPlanAllowance"];
         trace?: never;
     };
 }
@@ -6193,14 +6270,12 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            /** @description This upload would take the company past its storage allowance (`storage_quota_exceeded`). */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description The request failed validation. */
             422: {
@@ -6980,6 +7055,21 @@ export interface operations {
                         }[];
                         totalBytes: number;
                         totalObjects: number;
+                        quota: {
+                            allowanceBytes: number | null;
+                            percentUsed: number | null;
+                            /** @enum {string} */
+                            state: "ok" | "warning" | "over";
+                            warnAtPercent: number;
+                            /** @enum {string} */
+                            overage: "block" | "allow";
+                            overageBytes: number;
+                        };
+                        trend: {
+                            day: string;
+                            bytes: number;
+                            objects: number;
+                        }[];
                     };
                 };
             };
@@ -18984,6 +19074,395 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getStorageOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Platform-wide storage. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        totalBytes: number;
+                        totalObjects: number;
+                        companies: number;
+                        projectedMonthlyCost: {
+                            storage: number;
+                            classA: number;
+                            classB: number;
+                            total: number;
+                        };
+                        drifted: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            tenantId: string;
+                            /** Format: date-time */
+                            ranAt: string;
+                            ledgerBytes: number;
+                            ledgerObjects: number;
+                            cloudflareBytes: number | null;
+                            cloudflareObjects: number | null;
+                            /** Format: date-time */
+                            cloudflareSampledAt: string | null;
+                            driftBytes: number | null;
+                            /** @enum {string} */
+                            status: "matched" | "drifted" | "unavailable";
+                            note: string | null;
+                        }[];
+                        tasks: {
+                            task: string;
+                            /** Format: date-time */
+                            lastRunAt: string;
+                            /** Format: date-time */
+                            lastFinishedAt: string | null;
+                            lastError: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getCompanyStorage: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Storage for one company. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        usage: {
+                            categories: {
+                                category: string;
+                                bytes: number;
+                                objects: number;
+                            }[];
+                            totalBytes: number;
+                            totalObjects: number;
+                        };
+                        allowanceBytes: number | null;
+                        trend: {
+                            day: string;
+                            bytes: number;
+                            objects: number;
+                            byCategory: {
+                                [key: string]: number;
+                            };
+                            allowanceBytes: number | null;
+                            overageBytes: number | null;
+                            classAOperations: number | null;
+                            classBOperations: number | null;
+                        }[];
+                        reconciliations: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            tenantId: string;
+                            /** Format: date-time */
+                            ranAt: string;
+                            ledgerBytes: number;
+                            ledgerObjects: number;
+                            cloudflareBytes: number | null;
+                            cloudflareObjects: number | null;
+                            /** Format: date-time */
+                            cloudflareSampledAt: string | null;
+                            driftBytes: number | null;
+                            /** @enum {string} */
+                            status: "matched" | "drifted" | "unavailable";
+                            note: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listPlanAllowances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The plans. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** @enum {string} */
+                            plan: "trial" | "starter" | "standard" | "enterprise";
+                            storageBytes: number | null;
+                            retentionDays: number | null;
+                            /** @enum {string} */
+                            overage: "block" | "allow";
+                            warnAtPercent: number;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setPlanAllowance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan: "trial" | "starter" | "standard" | "enterprise";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    storageBytes?: number | null;
+                    retentionDays?: number | null;
+                    /** @enum {string} */
+                    overage?: "block" | "allow";
+                    warnAtPercent?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        plan: "trial" | "starter" | "standard" | "enterprise";
+                        storageBytes: number | null;
+                        retentionDays: number | null;
+                        /** @enum {string} */
+                        overage: "block" | "allow";
+                        warnAtPercent: number;
+                        /** Format: date-time */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such plan. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed validation. */
             422: {

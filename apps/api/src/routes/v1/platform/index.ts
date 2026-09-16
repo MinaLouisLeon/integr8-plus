@@ -5,6 +5,7 @@ import { platformCompanyRoutes } from './companies.js';
 import { platformImpersonationRoutes } from './impersonation.js';
 import { platformLifecycleRoutes } from './lifecycle.js';
 import { platformSettingsRoutes } from './settings.js';
+import { platformStorageRoutes } from './storage.js';
 import { platformSupportRoutes } from './support.js';
 import { platformTemplateRoutes } from './templates.js';
 
@@ -26,4 +27,5 @@ export const platformRoutes: AnyRoute[] = [
   ...platformSettingsRoutes,
   ...platformTemplateRoutes,
   ...platformSupportRoutes,
+  ...platformStorageRoutes,
 ];
