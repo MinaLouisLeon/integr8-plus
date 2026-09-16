@@ -72,6 +72,56 @@ describe('claiming jobs', () => {
     expect(dead?.deadLetteredAt).toEqual(later);
   });
 
+  /**
+   * The path a real worker takes: no injected clock.
+   *
+   * Every other test here hands `claim` a `now`, which is exactly why this bug
+   * lived so long — the injected path was covered and the production one was
+   * not. A job enqueued with no `availableAt` takes Postgres's `now()`, and the
+   * claim has to judge it against the same clock. When it used this process's
+   * instead, a job could be written a fraction into its own future and sit
+   * there until the two clocks agreed.
+   *
+   * This asserts the behaviour rather than reproducing the race: the skew is
+   * sub-millisecond and cannot be created on demand. What it does guarantee is
+   * that the production path is exercised at all, and that a job enqueued a
+   * moment ago is claimable now.
+   */
+  it('claims a job enqueued a moment ago, using the database’s clock and not this one', async () => {
+    const job = await withTenant(tenant.id, (tx) =>
+      // No `availableAt`: the column takes `now()` from Postgres, which is the
+      // whole point — the two sides of the comparison must be one clock.
+      tx.jobs.enqueue({ queue: 'audit.record', payload: { immediate: true } }),
+    );
+
+    const claimed = await queue().claim({ workerId: 'no-injected-clock' });
+
+    expect(claimed.map((row) => row.id)).toContain(job.id);
+    await queue().complete(job.id);
+  });
+
+  it('writes a lease from the database’s clock, and reports the one it wrote', async () => {
+    const job = await withTenant(tenant.id, (tx) =>
+      tx.jobs.enqueue({ queue: 'audit.record', payload: { lease: true } }),
+    );
+
+    const [claimed] = await queue().claim({ workerId: 'leases', leaseMs: MINUTE });
+    expect(claimed?.id).toBe(job.id);
+
+    // What the worker is told is what the row says. A worker honouring its own
+    // idea of the lease would renew or abandon at a different moment from the
+    // one another worker reads off the row when deciding whether to steal it.
+    const stored = await withTenant(tenant.id, (tx) => tx.jobs.findById(job.id));
+    expect(claimed?.lockedUntil).toEqual(stored?.lockedUntil);
+
+    // And it is a minute away from when the database claimed it, not from when
+    // this process asked.
+    const gap = (claimed?.lockedUntil.getTime() ?? 0) - (stored?.updatedAt.getTime() ?? 0);
+    expect(gap).toBe(MINUTE);
+
+    await queue().complete(job.id);
+  });
+
   it('still reclaims a job whose worker died with attempts to spare', async () => {
     const start = new Date(Date.now() + 60 * MINUTE);
     const job = await withTenant(tenant.id, (tx) =>
