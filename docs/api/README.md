@@ -19,10 +19,14 @@ request that was never going to be served.
 2. **Client version** — an unsupported build is told once, clearly.
 3. **Per-IP rate limit** — before any database work.
 4. **Validation** — zod, against the schema in the route definition.
-5. **Authentication** — verify the bearer token.
-6. **Permission** — the matrix in `@integr8/core`.
-7. **Per-tenant rate limit** — one noisy company must not starve another.
-8. **Idempotency** — claim the key, then run the handler.
+5. **Authentication** — verify the bearer token. A `platform` route takes a
+   super admin's token instead (P15), and re-reads its session from the
+   database, so signing a dashboard out takes effect at once rather than when
+   its token lapses.
+6. **Suspension** — a suspended company is refused here, reads included.
+7. **Permission** — the matrix in `@integr8/core`.
+8. **Per-tenant rate limit** — one noisy company must not starve another.
+9. **Idempotency** — claim the key, then run the handler.
 
 Validation runs _before_ authentication. That means an anonymous caller can
 learn that a body is malformed, which is not a secret; the reverse order would
@@ -142,9 +146,6 @@ pnpm test:integration                        # needs a disposable Postgres
 
 ## What is deliberately not here yet
 
-- **A super-admin surface.** P03 left platform sign-in unbuilt, so there is no
-  `/v1/platform` and impersonation has no HTTP entry point. Both belong with the
-  dashboard in **P15**.
 - **Product endpoints.** Customers, sites, work orders and forms are P06 and
   P10. What exists is the skeleton and one real surface — sessions, members and
   invitations — which is what makes the idempotency and error-model claims

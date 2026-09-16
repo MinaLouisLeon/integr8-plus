@@ -31,7 +31,8 @@ export async function POST(): Promise<NextResponse> {
   if (!upstream.ok) {
     // Revoked, reused, or expired. None is retriable, so the cookie goes.
     const failed = NextResponse.json(await upstream.json(), { status: upstream.status });
-    failed.cookies.delete(REFRESH_COOKIE);
+    // By name and path; see the sign-out route for why `delete` is not enough.
+    failed.cookies.set(REFRESH_COOKIE, '', refreshCookieOptions(0));
     return failed;
   }
 

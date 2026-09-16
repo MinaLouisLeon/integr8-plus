@@ -1,4 +1,4 @@
-import { FakeIdentityProvider, generateSigningKeyPair } from '@integr8/auth';
+import { FakeIdentityProvider, generateSigningKeyPair, totpCode } from '@integr8/auth';
 import type { Role } from '@integr8/core';
 import { closeDatabase, getPlatformDataSource, withTenant } from '@integr8/db';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
@@ -24,12 +24,22 @@ import { buildServer } from '../server.js';
 
 const ACKNOWLEDGEMENT = 'i-know-this-database-is-disposable';
 const PASSWORD = 'a perfectly good passphrase';
+const PLATFORM_PASSWORD = 'a different perfectly good passphrase';
 
 export interface Member {
   userId: string;
   email: string;
   password: string;
   role: Role;
+}
+
+/** A super admin, set up and signed in to the dashboard (P15). */
+export interface PlatformAdmin {
+  id: string;
+  email: string;
+  accessToken: string;
+  refreshToken: string;
+  sessionId: string;
 }
 
 export interface ApiHarness {
@@ -40,6 +50,8 @@ export interface ApiHarness {
   remoteAddress: string;
   tenantId: string;
   member(role: Role, label: string): Promise<Member>;
+  /** A signed-in super admin, for the platform routes (P15). */
+  platformAdmin(label?: string): Promise<PlatformAdmin>;
   signIn(member: Member): Promise<string>;
   /** `app.inject` with a bearer token and the client headers every request needs. */
   call(token: string, options: InjectOptions): Promise<LightMyRequestResponse>;
@@ -60,6 +72,7 @@ export async function startApi(
   process.env.AUTH_SIGNING_KEY = JSON.stringify(pair.privateJwk);
   process.env.AUTH_VERIFICATION_KEYS = JSON.stringify([pair.publicJwk]);
   process.env.AUTH_ISSUER = 'https://api.test.integr8';
+  process.env.PLATFORM_SECRET_KEY ??= Buffer.alloc(32).toString('base64');
 
   const config = loadApiConfig({
     ...process.env,
@@ -131,6 +144,49 @@ export async function startApi(
     return (JSON.parse(response.body) as { tokens: { accessToken: string } }).tokens.accessToken;
   };
 
+  /**
+   * Creates a super admin with a password and a second factor, and signs them
+   * in. Going through the real sign-in rather than minting a token keeps the
+   * suites honest about the flow the dashboard actually uses.
+   */
+  const platformAdmin = async (label = 'admin'): Promise<PlatformAdmin> => {
+    const email = `${label}.${randomUUID().slice(0, 8)}@platform.integr8.example`;
+    const account = await getPlatformDataSource().platformUsers.create({
+      email,
+      displayName: 'Test Super Admin',
+    });
+
+    await services.platform.setPassword(account.id, PLATFORM_PASSWORD);
+    const enrolment = await services.platform.beginTotpEnrolment(account.id);
+    await services.platform.confirmTotpEnrolment(account.id, totpCode(enrolment.secret));
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/platform/auth/sign-in',
+      remoteAddress,
+      headers: { 'x-client-version': '1.0.0', 'x-client-app': 'web' },
+      payload: {
+        email,
+        password: PLATFORM_PASSWORD,
+        code: totpCode(enrolment.secret),
+      },
+    });
+    if (response.statusCode !== 200) {
+      throw new Error(`platform sign-in failed: ${response.statusCode} ${response.body}`);
+    }
+
+    const body = JSON.parse(response.body) as {
+      tokens: { accessToken: string; refreshToken: string; sessionId: string };
+    };
+    return {
+      id: account.id,
+      email,
+      accessToken: body.tokens.accessToken,
+      refreshToken: body.tokens.refreshToken,
+      sessionId: body.tokens.sessionId,
+    };
+  };
+
   const call = (token: string, options: InjectOptions) =>
     app.inject({
       remoteAddress,
@@ -151,6 +207,7 @@ export async function startApi(
     tenantId: tenant.id,
     member,
     signIn,
+    platformAdmin,
     call,
     close: async () => {
       await app.close();

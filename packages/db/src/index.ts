@@ -69,6 +69,59 @@ export {
 } from './schema.js';
 
 export {
+  ANNOUNCEMENT_SEVERITIES,
+  PLATFORM_SESSION_REVOCATION_REASONS,
+  TENANT_EXPORT_STATUSES,
+  TENANT_PLANS,
+  type AnnouncementSeverity,
+  type PlatformSessionRevocationReason,
+  type TenantExportStatus,
+  type TenantPlan,
+} from './schema.js';
+
+export type {
+  AppendPlatformAuditInput,
+  PlatformAuditEntry,
+  PlatformAuditPage,
+  PlatformAuditQuery,
+  PlatformAuditRepository,
+} from './repositories/platform-audit.js';
+
+export type {
+  CreatePlatformSessionInput,
+  PlatformRefreshLookup,
+  PlatformSession,
+  PlatformSessionsRepository,
+} from './repositories/platform-sessions.js';
+
+export type {
+  Announcement,
+  CreateAnnouncementInput,
+  FeatureFlag,
+  FeatureFlagsReader,
+  PlatformSettingsRepository,
+  UpsertFeatureFlagInput,
+} from './repositories/platform-settings.js';
+
+export type {
+  TenantDeletion,
+  TenantExport,
+  TenantLifecycleRepository,
+} from './repositories/tenant-lifecycle.js';
+
+export type {
+  PlatformInsightsRepository,
+  RecentFailure,
+  ReleaseInField,
+} from './repositories/platform-insights.js';
+
+export type { PlatformCredentials } from './repositories/platform-users.js';
+
+export type { TenantActivityMonth, TenantSummary } from './repositories/tenants.js';
+
+export { EXPORTED_TABLES, type TenantDataExport } from './repositories/tenant-data-export.js';
+
+export {
   AUDIT_ACTOR_KINDS,
   auditActorKindSchema,
   MEMBERSHIP_STATUSES,

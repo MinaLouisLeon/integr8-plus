@@ -88,7 +88,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 
 > One paying company running production work through the product.
 
-- [ ] **P15** — Super admin dashboard
+- [~] **P15** — Super admin dashboard
 - [ ] **P16** — Storage metering and quotas
 - [ ] **P17** — Subscriptions and billing
 - [ ] **P18** — Marketing site and self-serve onboarding

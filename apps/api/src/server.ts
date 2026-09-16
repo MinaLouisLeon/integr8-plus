@@ -1,5 +1,10 @@
-import { assertCan, PermissionDeniedError, type Principal } from '@integr8/core';
-import { AuthError, InvalidTokenError } from '@integr8/auth';
+import {
+  assertCan,
+  PermissionDeniedError,
+  type PlatformPrincipal,
+  type Principal,
+} from '@integr8/core';
+import { AuthError, InvalidTokenError, SessionRevokedError } from '@integr8/auth';
 import { getAuthDataSource } from '@integr8/db';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
@@ -20,6 +25,7 @@ import {
 } from './http/errors.js';
 import { withIdempotency } from './http/idempotency.js';
 import { createLogger, type Logger, principalContext } from './http/logger.js';
+import { assertTenantServable } from './http/suspension.js';
 import type { AnyRoute, ClientApp, PublicRequestContext, RequestContext } from './http/routes.js';
 import { captureException } from './observability/sentry.js';
 
@@ -203,6 +209,19 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
         const body = parse(route.body, request.body ?? {}, 'body');
 
         // 5. Authentication.
+        if (route.security === 'platform') {
+          // A super admin, with no company. Nothing below this line runs: there
+          // is no role to check a permission against and no tenant to rate
+          // limit, and the per-IP limit above already applies. The session is
+          // re-read from the database on every request, so signing a dashboard
+          // out takes effect at once rather than when its token lapses.
+          context.platform = await authenticatePlatform(request, services);
+          context.logger = context.logger.child({
+            platformUserId: context.platform.platformUserId,
+            platformSessionId: context.platform.sessionId,
+          });
+        }
+
         if (route.security === 'authenticated') {
           const principal = await authenticate(request, services);
           context.principal = principal;
@@ -214,6 +233,10 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
           if (principal.impersonatedBy !== undefined) {
             await services.impersonation.assertStillPermitted(principal);
           }
+
+          // 5b. Is this company still being served? A suspension refuses reads
+          // as well as writes; see http/suspension.ts for why.
+          await assertTenantServable(principal.tenantId);
 
           // 6. Permission.
           if (route.permission !== undefined) {
@@ -367,6 +390,32 @@ async function authenticate(request: FastifyRequest, services: Services): Promis
     return await services.tokens.verifyAccessToken(authorization.slice(7).trim());
   } catch (error) {
     if (error instanceof InvalidTokenError) {
+      throw unauthorised();
+    }
+    throw error;
+  }
+}
+
+/**
+ * The same, for a super admin's token (P15).
+ *
+ * Separate from {@link authenticate} rather than a branch inside it: these two
+ * produce different types and must stay impossible to mix up, and the platform
+ * one also checks that the session is still live on every request.
+ */
+async function authenticatePlatform(
+  request: FastifyRequest,
+  services: Services,
+): Promise<PlatformPrincipal> {
+  const authorization = header(request, 'authorization');
+  if (!authorization?.toLowerCase().startsWith('bearer ')) {
+    throw unauthorised();
+  }
+
+  try {
+    return await services.platform.authenticate(authorization.slice(7).trim());
+  } catch (error) {
+    if (error instanceof InvalidTokenError || error instanceof SessionRevokedError) {
       throw unauthorised();
     }
     throw error;

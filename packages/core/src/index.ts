@@ -27,13 +27,17 @@ export {
   tokenTypeSchema,
   impersonationClaimSchema,
   accessTokenClaimsSchema,
+  platformTokenClaimsSchema,
   offlineGrantClaimsSchema,
+  toPlatformPrincipal,
   toPrincipal,
   isImpersonating,
   type TokenType,
   type ImpersonationClaim,
   type AccessTokenClaims,
   type OfflineGrantClaims,
+  type PlatformPrincipal,
+  type PlatformTokenClaims,
   type Principal,
 } from './claims.js';
 

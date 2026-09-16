@@ -1,4 +1,4 @@
-import type { Permission, Principal } from '@integr8/core';
+import type { Permission, PlatformPrincipal, Principal } from '@integr8/core';
 import { z } from 'zod';
 import type { Services } from '../composition.js';
 import type { ApiConfig } from '../config.js';
@@ -39,6 +39,21 @@ export interface RequestContext extends BaseRequestContext {
 /** What a public handler receives: a principal only if one happened to be sent. */
 export interface PublicRequestContext extends BaseRequestContext {
   principal: Principal | null;
+  /** Set only on `platform` routes; see {@link PlatformRequestContext}. */
+  platform?: PlatformPrincipal;
+}
+
+/**
+ * What a platform handler receives (P15).
+ *
+ * `platform` rather than `principal`, and a different type, so the two can
+ * never be confused: a platform request has no company, so there is nothing for
+ * `assertCan` or a tenant repository to read from it, and the compiler says so
+ * rather than a null check at runtime.
+ */
+export interface PlatformRequestContext extends BaseRequestContext {
+  principal: null;
+  platform: PlatformPrincipal;
 }
 
 export interface HandlerResult<T> {
@@ -54,7 +69,7 @@ export interface RouteResponse {
   contentType?: string;
 }
 
-export type RouteSecurity = 'public' | 'authenticated';
+export type RouteSecurity = 'public' | 'authenticated' | 'platform';
 
 interface RouteShape {
   method: 'get' | 'post' | 'patch' | 'put' | 'delete';
@@ -67,11 +82,10 @@ interface RouteShape {
 
   /**
    * `public` routes run before authentication; `authenticated` ones receive a
-   * verified principal.
+   * verified principal; `platform` ones receive a super admin and no company
+   * at all (P15).
    *
-   * Not a boolean, because a third kind — a platform-admin route — arrives with
-   * P15's dashboard, and a boolean would have to be replaced rather than
-   * extended.
+   * Never a boolean, for exactly the reason the third kind now demonstrates.
    */
   security: RouteSecurity;
 
@@ -123,7 +137,11 @@ interface TypedRoute<
   body: TBody;
   handler: (
     input: { params: z.infer<TParams>; query: z.infer<TQuery>; body: z.infer<TBody> },
-    context: TSecurity extends 'authenticated' ? RequestContext : PublicRequestContext,
+    context: TSecurity extends 'authenticated'
+      ? RequestContext
+      : TSecurity extends 'platform'
+        ? PlatformRequestContext
+        : PublicRequestContext,
   ) => Promise<HandlerResult<TResult>>;
 }
 

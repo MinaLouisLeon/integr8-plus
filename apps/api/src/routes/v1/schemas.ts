@@ -73,6 +73,32 @@ export const meSchema = z.object({
     .object({ platformUserId: z.uuid(), grantId: z.uuid() })
     .optional()
     .describe('Present only while a super admin is acting as this user.'),
+
+  /**
+   * The features this company has, resolved against the platform defaults
+   * (P15). Same status as `permissions`: it is what to show, not what is
+   * allowed — a flag a client ignores changes nothing the server will accept.
+   */
+  features: z.record(z.string(), z.boolean()),
+
+  /**
+   * Banners to put in front of this person, from the platform.
+   *
+   * Delivered here rather than through their own endpoint because every client
+   * already calls this on launch and on resume, so a banner reaches all three
+   * apps without any of them growing a poll of its own.
+   */
+  announcements: z.array(
+    z.object({
+      id: z.uuid(),
+      severity: z.enum(['info', 'warning', 'critical']),
+      /** By language tag; show the viewer's, falling back to whatever is there. */
+      message: z.record(z.string(), z.string()),
+      dismissible: z.boolean(),
+      startsAt: z.iso.datetime(),
+      endsAt: z.iso.datetime().nullable(),
+    }),
+  ),
 });
 
 export const sessionSchema = z.object({

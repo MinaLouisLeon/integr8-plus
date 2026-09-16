@@ -4,7 +4,12 @@ import {
   type ImpersonationClaim,
   offlineGrantClaimsSchema,
   type OfflineGrantClaims,
+  type PlatformPrincipal,
+  platformTokenClaimsSchema,
+  type PlatformTokenClaims,
+  type PlatformUserId,
   type Principal,
+  toPlatformPrincipal,
   type Role,
   type TenantId,
   toPrincipal,
@@ -66,6 +71,11 @@ export interface MintOfflineGrantInput {
   ttlSeconds?: number;
 }
 
+export interface MintPlatformTokenInput {
+  platformUserId: PlatformUserId;
+  sessionId: string;
+}
+
 export class TokenService {
   readonly #signer: TokenSigner;
 
@@ -122,6 +132,47 @@ export class TokenService {
     });
 
     return { token: await this.#sign(claims), expiresAt, tokenId };
+  }
+
+  /**
+   * A super admin signed in to the dashboard (P15).
+   *
+   * Carries no company and no role, so there is nothing in it for a tenant
+   * handler to read even if one were somehow reached: `verifyAccessToken`
+   * rejects it on `typ` before the claims are looked at, and `toPrincipal`
+   * could not produce a `tid` from it if it did not.
+   */
+  async mintPlatformToken(input: MintPlatformTokenInput): Promise<MintedToken> {
+    const { config } = this.#signer;
+    const issuedAt = this.#now;
+    const expiresAt = new Date(
+      issuedAt.getTime() + config.PLATFORM_ACCESS_TOKEN_TTL_SECONDS * 1000,
+    );
+    const tokenId = randomUUID();
+
+    const claims: PlatformTokenClaims = platformTokenClaimsSchema.parse({
+      iss: config.AUTH_ISSUER,
+      aud: config.AUTH_AUDIENCE,
+      sub: input.platformUserId,
+      jti: tokenId,
+      iat: toSeconds(issuedAt),
+      exp: toSeconds(expiresAt),
+      typ: 'platform',
+      sid: input.sessionId,
+    });
+
+    return { token: await this.#sign(claims), expiresAt, tokenId };
+  }
+
+  /**
+   * Verifies a platform token.
+   *
+   * Says the token is genuine and unexpired, nothing more. Whether the session
+   * behind it is still live is a database question, and
+   * `PlatformSessionService.authenticate` is the one that asks it.
+   */
+  async verifyPlatformToken(token: string): Promise<PlatformPrincipal> {
+    return toPlatformPrincipal(await this.#verify(token, platformTokenClaimsSchema, 'platform'));
   }
 
   /** Verifies an access token and returns who it says the caller is. */

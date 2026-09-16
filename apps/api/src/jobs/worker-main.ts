@@ -4,6 +4,7 @@ import { loadApiConfig } from '../config.js';
 import { createLogger } from '../http/logger.js';
 import { flushSentry, initialiseSentry } from '../observability/sentry.js';
 import { runMediaMaintenance } from '../media/maintenance.js';
+import { purgeDueTenants } from '../platform/purge.js';
 import { runSyncMaintenance } from '../sync/maintenance.js';
 import { buildJobHandlers } from './handlers.js';
 import { Worker } from './worker.js';
@@ -50,6 +51,15 @@ async function main(): Promise<void> {
         logger.error('Sync maintenance had failures', { ...sync });
       } else {
         logger.info('Sync maintenance finished', { ...sync });
+      }
+
+      // Companies whose cooling-off has passed (P15). On the timer rather than
+      // on a queued job, because what has to be reliable is that a due deletion
+      // eventually runs — including one whose job row went down with the
+      // process that held it.
+      const purged = await purgeDueTenants({ media: services.media, logger });
+      if (purged.length > 0) {
+        logger.info('Scheduled deletions completed', { companies: purged.length });
       }
     } catch (error) {
       logger.error('Media maintenance failed', {

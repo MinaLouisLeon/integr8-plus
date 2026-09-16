@@ -5,6 +5,7 @@ import {
   loadAuthConfig,
   loadSigningKey,
   loadVerificationKeys,
+  PlatformSessionService,
   SessionService,
   SignInService,
   SupabaseIdentityProvider,
@@ -37,6 +38,8 @@ export interface Services {
   signIn: SignInService;
   invitations: InvitationService;
   impersonation: ImpersonationService;
+  /** Super admins signed in to the dashboard (P15). No company; see the platform routes. */
+  platform: PlatformSessionService;
   identity: IdentityProvider;
   /** Company buckets: R2, or local disk in development. Reach one through `getStorage`. */
   media: MediaStorage;
@@ -81,6 +84,7 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     signIn: new SignInService({ identity, sessions, config: authConfig }),
     invitations: new InvitationService({ identity, sessions, config: authConfig }),
     impersonation: new ImpersonationService({ sessions, config: authConfig }),
+    platform: new PlatformSessionService({ tokens, config: authConfig }),
     media: buildMediaStorage(options.config),
     geocoder: buildGeocoder(options.config),
     push: buildPushSender(options.config),

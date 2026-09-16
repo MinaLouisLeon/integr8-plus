@@ -54,14 +54,23 @@ export class FormTemplatesReader {
 /**
  * Loading the library, as the schema owner.
  *
- * Until P15 gives super admins a screen for it, the library is whatever
- * @integr8/form-engine ships, synchronised by `db templates`. An upsert rather
+ * The library starts as whatever @integr8/form-engine ships, synchronised by
+ * `db templates`, and P15's dashboard edits it from there. An upsert rather
  * than a replace: removing a template from the code does not remove it from
  * the database, because companies may already have cloned it and a template
  * that vanished from the list would be a support question with no answer.
  */
 export class FormTemplatesWriter {
   constructor(private readonly db: Kysely<Database>) {}
+
+  /** The library as it stands, for the dashboard that manages it (P15). */
+  async list(): Promise<FormTemplateRecord[]> {
+    return new FormTemplatesReader(this.db).list();
+  }
+
+  async find(key: string): Promise<FormTemplateRecord | undefined> {
+    return new FormTemplatesReader(this.db).find(key);
+  }
 
   async upsert(templates: readonly FormTemplateInput[]): Promise<number> {
     if (templates.length === 0) {

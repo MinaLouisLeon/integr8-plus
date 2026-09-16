@@ -36,8 +36,21 @@ export {
   type MintAccessTokenInput,
   type MintedToken,
   type MintOfflineGrantInput,
+  type MintPlatformTokenInput,
   type TokenSigner,
 } from './tokens.js';
+
+export { hashPassword, needsRehash, SCRYPT_PARAMETERS, verifyPassword } from './passwords.js';
+
+export {
+  generateTotpSecret,
+  totpCode,
+  TOTP_DIGITS,
+  TOTP_STEP_SECONDS,
+  TOTP_WINDOW,
+  totpUri,
+  verifyTotp,
+} from './totp.js';
 
 export {
   hashesMatch,
@@ -45,9 +58,14 @@ export {
   INVITATION_TOKEN_PREFIX,
   mintInvitationToken,
   mintRefreshToken,
+  openSecret,
   parseInvitationToken,
   parseRefreshToken,
   REFRESH_TOKEN_PREFIX,
+  SEALED_SECRET_PREFIX,
+  sealSecret,
+  SealedSecretError,
+  secretKeyFrom,
   type ParsedSecret,
   type TenantScopedSecret,
 } from './secrets.js';
@@ -106,3 +124,13 @@ export {
   type StartImpersonationInput,
   type StartImpersonationResult,
 } from './services/impersonation-service.js';
+
+export {
+  mintPlatformRefreshToken,
+  PLATFORM_REFRESH_TOKEN_PREFIX,
+  PlatformSessionService,
+  type PlatformEnrolment,
+  type PlatformSessionServiceDeps,
+  type PlatformSignInInput,
+  type PlatformSignInResult,
+} from './services/platform-session-service.js';
