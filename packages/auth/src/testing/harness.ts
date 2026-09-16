@@ -20,6 +20,7 @@ import { loadAuthConfig } from '../config.js';
 import { loadSigningKey, loadVerificationKeys } from '../keys.js';
 import { FakeIdentityProvider, type FakeIdentity } from '../identity-provider.js';
 import { ImpersonationService } from '../services/impersonation-service.js';
+import { PlatformSessionService } from '../services/platform-session-service.js';
 import { InvitationService } from '../services/invitation-service.js';
 import { SessionService } from '../services/session-service.js';
 import { SignInService } from '../services/sign-in-service.js';
@@ -53,6 +54,7 @@ export class TestDatabaseUnavailableError extends Error {
         `  INTEGR8_TEST_DATABASE=${ACKNOWLEDGEMENT}`,
         '  DATABASE_URL, DATABASE_URL_ADMIN, DATABASE_URL_AUTH',
         '  AUTH_SIGNING_KEY, AUTH_SIGNING_KEY_ID, AUTH_VERIFICATION_KEYS',
+        '  PLATFORM_SECRET_KEY',
         '',
         'See docs/database/runbook-supabase-setup.md and docs/auth/README.md.',
       ].join('\n'),
@@ -78,6 +80,7 @@ export interface TestServices {
   signIn: SignInService;
   invitations: InvitationService;
   impersonation: ImpersonationService;
+  platform: PlatformSessionService;
   identity: FakeIdentityProvider;
   setNow: (date: Date) => void;
 }
@@ -115,6 +118,7 @@ export async function buildServices(identities: FakeIdentity[] = []): Promise<Te
     signIn: new SignInService({ identity, sessions, config, now: clock }),
     invitations: new InvitationService({ identity, sessions, config, now: clock }),
     impersonation: new ImpersonationService({ sessions, config, now: clock }),
+    platform: new PlatformSessionService({ tokens, config, now: clock }),
     setNow: (date: Date) => {
       now = date;
     },

@@ -6,6 +6,7 @@ import {
   loadSigningKey,
   loadVerificationKeys,
 } from './keys.js';
+import { TEST_PLATFORM_SECRET_KEY } from './testing/support.js';
 
 const BASE = {
   AUTH_ISSUER: 'https://api.test.integr8',
@@ -19,6 +20,7 @@ async function config(overrides: Record<string, string>) {
     parsed: authConfigSchema.parse({
       ...BASE,
       AUTH_SIGNING_KEY_ID: pair.kid,
+      PLATFORM_SECRET_KEY: TEST_PLATFORM_SECRET_KEY,
       AUTH_SIGNING_KEY: JSON.stringify(pair.privateJwk),
       AUTH_VERIFICATION_KEYS: JSON.stringify([pair.publicJwk]),
       ...overrides,
@@ -62,6 +64,7 @@ describe('loadSigningKey', () => {
     const parsed = authConfigSchema.parse({
       ...BASE,
       AUTH_SIGNING_KEY_ID: pair.kid,
+      PLATFORM_SECRET_KEY: TEST_PLATFORM_SECRET_KEY,
       AUTH_SIGNING_KEY: JSON.stringify(pair.publicJwk),
       AUTH_VERIFICATION_KEYS: JSON.stringify([pair.publicJwk]),
     });
@@ -131,6 +134,7 @@ describe('loadVerificationKeys', () => {
     const parsed = authConfigSchema.parse({
       ...BASE,
       AUTH_SIGNING_KEY_ID: first.kid,
+      PLATFORM_SECRET_KEY: TEST_PLATFORM_SECRET_KEY,
       AUTH_SIGNING_KEY: JSON.stringify(first.privateJwk),
       AUTH_VERIFICATION_KEYS: JSON.stringify([
         first.publicJwk,
@@ -149,6 +153,7 @@ describe('loadVerificationKeys', () => {
     const parsed = authConfigSchema.parse({
       ...BASE,
       AUTH_SIGNING_KEY_ID: signing.kid,
+      PLATFORM_SECRET_KEY: TEST_PLATFORM_SECRET_KEY,
       AUTH_SIGNING_KEY: JSON.stringify(signing.privateJwk),
       AUTH_VERIFICATION_KEYS: JSON.stringify([other.publicJwk]),
     });
@@ -169,6 +174,7 @@ describe('loadVerificationKeys', () => {
     const parsed = authConfigSchema.parse({
       ...BASE,
       AUTH_SIGNING_KEY_ID: incoming.kid,
+      PLATFORM_SECRET_KEY: TEST_PLATFORM_SECRET_KEY,
       AUTH_SIGNING_KEY: JSON.stringify(incoming.privateJwk),
       AUTH_VERIFICATION_KEYS: JSON.stringify([outgoing.publicJwk, incoming.publicJwk]),
     });

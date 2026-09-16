@@ -1,4 +1,10 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+  timingSafeEqual,
+} from 'node:crypto';
 import { type TenantId, toTenantId } from '@integr8/core';
 
 /**
@@ -123,4 +129,72 @@ export function mintInvitationToken(tenantId: TenantId | string): TenantScopedSe
 
 export function parseInvitationToken(token: string): ParsedSecret | undefined {
   return parseTenantScopedSecret(INVITATION_TOKEN_PREFIX, token);
+}
+
+// ---------------------------------------------------------------------------
+// Secrets the server must be able to read back (P15)
+// ---------------------------------------------------------------------------
+
+/**
+ * A TOTP secret is not a password: verifying a code needs the secret itself, so
+ * it cannot be hashed. It is therefore encrypted with a key held in the
+ * environment and never in the database — AES-256-GCM, a fresh nonce per
+ * secret, the ciphertext authenticated. A stolen database backup yields
+ * nothing without the key; a stolen key yields nothing without the backup.
+ *
+ *   gcm1.<nonce base64url>.<ciphertext+tag base64url>
+ */
+
+export const SEALED_SECRET_PREFIX = 'gcm1';
+const NONCE_BYTES = 12;
+
+export class SealedSecretError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SealedSecretError';
+  }
+}
+
+/** The 32-byte key from configuration, as bytes. */
+export function secretKeyFrom(value: string): Buffer {
+  const key = Buffer.from(value, 'base64');
+  if (key.length !== 32) {
+    throw new SealedSecretError('PLATFORM_SECRET_KEY must be 32 bytes, base64 encoded');
+  }
+  return key;
+}
+
+export function sealSecret(plaintext: string, key: Buffer): string {
+  const nonce = randomBytes(NONCE_BYTES);
+  const cipher = createCipheriv('aes-256-gcm', key, nonce);
+  const sealed = Buffer.concat([
+    cipher.update(plaintext, 'utf8'),
+    cipher.final(),
+    cipher.getAuthTag(),
+  ]);
+  return [SEALED_SECRET_PREFIX, nonce.toString('base64url'), sealed.toString('base64url')].join(
+    '.',
+  );
+}
+
+/** Throws {@link SealedSecretError} for anything that is not this key's ciphertext. */
+export function openSecret(sealed: string, key: Buffer): string {
+  const [prefix, nonce, payload] = sealed.split('.');
+  if (prefix !== SEALED_SECRET_PREFIX || nonce === undefined || payload === undefined) {
+    throw new SealedSecretError('Not a sealed secret');
+  }
+  const bytes = Buffer.from(payload, 'base64url');
+  if (bytes.length <= 16) {
+    throw new SealedSecretError('Sealed secret is too short to hold a tag');
+  }
+  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(nonce, 'base64url'));
+  decipher.setAuthTag(bytes.subarray(bytes.length - 16));
+  try {
+    return Buffer.concat([
+      decipher.update(bytes.subarray(0, bytes.length - 16)),
+      decipher.final(),
+    ]).toString('utf8');
+  } catch {
+    throw new SealedSecretError('Sealed secret does not open with this key');
+  }
 }

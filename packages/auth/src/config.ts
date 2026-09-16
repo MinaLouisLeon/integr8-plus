@@ -124,6 +124,47 @@ export const authConfigSchema = z.object({
 
   /** Minimum password length. Length beats composition rules; see password-policy.ts. */
   AUTH_MIN_PASSWORD_LENGTH: positiveInt(12),
+
+  /**
+   * The key that encrypts platform TOTP secrets at rest (P15).
+   *
+   * Base64url, 32 bytes, from `pnpm --filter @integr8/auth keygen`. A second
+   * factor whose secret sits in plaintext beside the password hash is not a
+   * second factor for anyone who reaches the database, and this is the one
+   * table a super admin's access is worth stealing.
+   *
+   * Has no default: a deployment that forgets it must fail to start, not fall
+   * back to a key everybody knows.
+   */
+  PLATFORM_SECRET_KEY: z.string().min(1),
+
+  /**
+   * How long a super admin's access token lasts. Five minutes.
+   *
+   * Shorter than a tenant access token because this one can reach every
+   * company, and because the dashboard is a browser tab on a desk rather than a
+   * phone on a roof: refreshing costs nothing here.
+   */
+  PLATFORM_ACCESS_TOKEN_TTL_SECONDS: positiveInt(5 * 60),
+
+  /** How long the dashboard can be left alone before the tab has to sign in again. */
+  PLATFORM_REFRESH_TOKEN_TTL_SECONDS: positiveInt(60 * 60),
+
+  /**
+   * The ceiling on one platform session however often it is refreshed. Eight
+   * hours — a working day, then sign in again.
+   */
+  PLATFORM_SESSION_TTL_SECONDS: positiveInt(8 * 60 * 60),
+
+  /**
+   * Consecutive failures before a platform account locks. Lower than a tenant
+   * account's ten, because there are two or three of these accounts and none of
+   * them should be guessing.
+   */
+  PLATFORM_LOCKOUT_THRESHOLD: positiveInt(5),
+
+  /** How long a locked platform account stays locked. */
+  PLATFORM_LOCKOUT_DURATION_SECONDS: positiveInt(15 * 60),
 });
 
 export type AuthConfig = z.infer<typeof authConfigSchema>;

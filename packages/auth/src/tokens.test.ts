@@ -7,6 +7,7 @@ import { generateSigningKeyPair, loadSigningKey, loadVerificationKeys } from './
 import {
   buildTestAuth,
   TEST_GRANT,
+  TEST_PLATFORM_SECRET_KEY,
   TEST_PLATFORM_USER,
   TEST_SESSION,
   TEST_TENANT,
@@ -189,6 +190,7 @@ describe('forgery', () => {
       AUTH_ISSUER: auth.config.AUTH_ISSUER,
       AUTH_AUDIENCE: auth.config.AUTH_AUDIENCE,
       AUTH_SIGNING_KEY_ID: pair.kid,
+      PLATFORM_SECRET_KEY: TEST_PLATFORM_SECRET_KEY,
       AUTH_SIGNING_KEY: JSON.stringify(pair.privateJwk),
       AUTH_VERIFICATION_KEYS: JSON.stringify([pair.publicJwk]),
     });
@@ -223,6 +225,7 @@ describe('environment confusion', () => {
         AUTH_ISSUER: 'https://api.production.integr8',
         AUTH_AUDIENCE: staging.config.AUTH_AUDIENCE,
         AUTH_SIGNING_KEY_ID: staging.config.AUTH_SIGNING_KEY_ID,
+        PLATFORM_SECRET_KEY: TEST_PLATFORM_SECRET_KEY,
         AUTH_SIGNING_KEY: staging.config.AUTH_SIGNING_KEY,
         AUTH_VERIFICATION_KEYS: staging.config.AUTH_VERIFICATION_KEYS,
       }),
@@ -248,6 +251,7 @@ describe('environment confusion', () => {
         AUTH_ISSUER: auth.config.AUTH_ISSUER,
         AUTH_AUDIENCE: 'someone-elses-clients',
         AUTH_SIGNING_KEY_ID: auth.config.AUTH_SIGNING_KEY_ID,
+        PLATFORM_SECRET_KEY: TEST_PLATFORM_SECRET_KEY,
         AUTH_SIGNING_KEY: auth.config.AUTH_SIGNING_KEY,
         AUTH_VERIFICATION_KEYS: auth.config.AUTH_VERIFICATION_KEYS,
       }),
@@ -269,6 +273,7 @@ describe('key rotation', () => {
       AUTH_ISSUER: 'https://api.test.integr8',
       AUTH_AUDIENCE: 'integr8-clients',
       AUTH_SIGNING_KEY_ID: oldPair.kid,
+      PLATFORM_SECRET_KEY: TEST_PLATFORM_SECRET_KEY,
       AUTH_SIGNING_KEY: JSON.stringify(oldPair.privateJwk),
       AUTH_VERIFICATION_KEYS: JSON.stringify([oldPair.publicJwk]),
     });
@@ -278,6 +283,7 @@ describe('key rotation', () => {
       AUTH_ISSUER: before.AUTH_ISSUER,
       AUTH_AUDIENCE: before.AUTH_AUDIENCE,
       AUTH_SIGNING_KEY_ID: newPair.kid,
+      PLATFORM_SECRET_KEY: TEST_PLATFORM_SECRET_KEY,
       AUTH_SIGNING_KEY: JSON.stringify(newPair.privateJwk),
       AUTH_VERIFICATION_KEYS: JSON.stringify([oldPair.publicJwk, newPair.publicJwk]),
     });

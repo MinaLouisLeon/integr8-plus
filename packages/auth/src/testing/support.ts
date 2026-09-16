@@ -11,6 +11,9 @@ import { TokenService } from '../tokens.js';
  * generating an Ed25519 pair costs microseconds.
  */
 
+/** 32 zero bytes, base64. Obviously a test key, and obviously not a secret. */
+export const TEST_PLATFORM_SECRET_KEY = Buffer.alloc(32).toString('base64');
+
 export interface TestAuth {
   config: AuthConfig;
   tokens: TokenService;
@@ -30,6 +33,10 @@ export async function buildTestAuth(
     AUTH_SIGNING_KEY_ID: pair.kid,
     AUTH_SIGNING_KEY: JSON.stringify(pair.privateJwk),
     AUTH_VERIFICATION_KEYS: JSON.stringify([pair.publicJwk]),
+    // Fixed rather than generated: a suite that seals a secret in one process
+    // and opens it in another needs the same key, and this one guards nothing
+    // real. Never use it anywhere a real TOTP secret could be written.
+    PLATFORM_SECRET_KEY: TEST_PLATFORM_SECRET_KEY,
     ...overrides,
   });
 

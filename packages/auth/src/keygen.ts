@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { generateSigningKeyPair } from './keys.js';
 
 /**
@@ -27,6 +28,11 @@ async function main(): Promise<void> {
   console.log(`AUTH_SIGNING_KEY_ID=${kid}`);
   console.log(`AUTH_SIGNING_KEY=${JSON.stringify(privateJwk)}`);
   console.log(`AUTH_VERIFICATION_KEYS=${JSON.stringify([publicJwk])}`);
+  console.log('');
+  console.log('# PLATFORM_SECRET_KEY encrypts super admins’ second-factor secrets at rest');
+  console.log('# (P15). Rotating it makes every enrolled second factor unreadable, so every');
+  console.log('# super admin has to enrol again — plan it, do not do it casually.');
+  console.log(`PLATFORM_SECRET_KEY=${randomBytes(32).toString('base64')}`);
 }
 
 main().catch((error: unknown) => {
