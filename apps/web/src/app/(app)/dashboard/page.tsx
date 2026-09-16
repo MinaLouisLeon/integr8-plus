@@ -97,6 +97,10 @@ export default function DashboardPage() {
             ...(person?.permissions.includes('work_order.manage') === true
               ? ([['/timesheets', 'timesheets', 'timesheetsHint']] as const)
               : []),
+            // What the company is using, and how close to the limit (P16).
+            ...(person?.permissions.includes('storage.read') === true
+              ? ([['/storage', 'storage', 'storageHint']] as const)
+              : []),
           ] as const
         ).map(([href, label, hint]) => (
           <Link
