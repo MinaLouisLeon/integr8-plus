@@ -1,24 +1,31 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { apiBaseUrl, REFRESH_COOKIE, refreshCookieOptions, secondsUntil } from '~/lib/api';
+import {
+  apiBaseUrl,
+  PLATFORM_REFRESH_COOKIE,
+  platformCookieOptions,
+  secondsUntil,
+} from '~/lib/platform-api';
 
 /**
- * Exchanges the refresh cookie for a new access token.
+ * Exchanges the dashboard's refresh cookie for a new access token (P15).
  *
- * Rotation happens here too: the API returns a new refresh token on every
- * refresh, and the cookie is replaced with it. Failing to replace it would send
- * a spent token next time, which the API treats as theft and which would sign
- * the person out of every device.
+ * Rotated on every refresh, and the cookie replaced with the new one. Failing
+ * to replace it would send a spent token next time, which the API treats as
+ * theft — correctly — and which would end the session.
+ *
+ * A platform access token lasts five minutes, so this runs often. That is the
+ * price of a token that can reach every company being short-lived.
  */
 export async function POST(): Promise<NextResponse> {
   const store = await cookies();
-  const refreshToken = store.get(REFRESH_COOKIE)?.value;
+  const refreshToken = store.get(PLATFORM_REFRESH_COOKIE)?.value;
 
   if (refreshToken === undefined) {
     return NextResponse.json({ error: { code: 'no_session' } }, { status: 401 });
   }
 
-  const upstream = await fetch(`${apiBaseUrl()}/v1/auth/refresh`, {
+  const upstream = await fetch(`${apiBaseUrl()}/v1/platform/auth/refresh`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -29,10 +36,10 @@ export async function POST(): Promise<NextResponse> {
   });
 
   if (!upstream.ok) {
-    // Revoked, reused, or expired. None is retriable, so the cookie goes.
+    // Revoked, reused, expired, or the account was disabled. None is retriable.
     const failed = NextResponse.json(await upstream.json(), { status: upstream.status });
     // By name and path; see the sign-out route for why `delete` is not enough.
-    failed.cookies.set(REFRESH_COOKIE, '', refreshCookieOptions(0));
+    failed.cookies.set(PLATFORM_REFRESH_COOKIE, '', platformCookieOptions(0));
     return failed;
   }
 
@@ -49,9 +56,9 @@ export async function POST(): Promise<NextResponse> {
   });
 
   response.cookies.set(
-    REFRESH_COOKIE,
+    PLATFORM_REFRESH_COOKIE,
     tokens.refreshToken,
-    refreshCookieOptions(secondsUntil(tokens.refreshTokenExpiresAt)),
+    platformCookieOptions(secondsUntil(tokens.refreshTokenExpiresAt)),
   );
 
   return response;

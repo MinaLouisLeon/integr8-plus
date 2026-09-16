@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { AuthGuard } from '~/components/auth-guard';
+import { ImpersonationBanner } from '~/components/impersonation-banner';
 import { PreferenceBar } from '~/components/preference-bar';
 import { readPreferences } from '~/lib/preferences';
 
@@ -20,7 +21,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-6 px-6 py-8">
       <PreferenceBar locale={locale} theme={theme} forceRtl={forceRtl} />
-      <AuthGuard>{children}</AuthGuard>
+      <AuthGuard>
+        {/* Above everything, on every signed-in page: a support engineer who
+            forgets they are impersonating causes the worst incidents. */}
+        <ImpersonationBanner />
+        {children}
+      </AuthGuard>
     </div>
   );
 }
