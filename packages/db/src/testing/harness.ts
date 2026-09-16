@@ -104,6 +104,9 @@ const TRUNCATE_GUARDS = [
   { table: 'form_versions', trigger: 'form_versions_no_truncate' },
   { table: 'submission_events', trigger: 'submission_events_no_truncate' },
   { table: 'work_order_events', trigger: 'work_order_events_no_truncate' },
+  // Emptying platform_users cascades to it, and it refuses truncate for the
+  // owner too; see 0015.
+  { table: 'platform_audit_log', trigger: 'platform_audit_log_no_truncate' },
 ] as const;
 
 /**
@@ -124,12 +127,14 @@ export async function truncateAll(): Promise<void> {
       await client.query(
         'truncate table audit_log, tenant_users, tenants restart identity cascade',
       );
+      // Platform tables have no tenant, so nothing above reaches them: a super
+      // admin, their sessions and the platform audit log outlive any company.
+      await client.query('truncate table platform_users, announcements cascade');
     } finally {
       for (const guard of TRUNCATE_GUARDS) {
         await client.query(`alter table ${guard.table} enable trigger ${guard.trigger}`);
       }
     }
-    await client.query('truncate table platform_users cascade');
   } finally {
     await client.end();
   }

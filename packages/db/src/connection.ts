@@ -39,7 +39,16 @@ import { LoginSecurityRepository } from './repositories/login-security.js';
 import { OfflineGrantsRepository } from './repositories/offline-grants.js';
 import { RateLimitRepository } from './repositories/rate-limits.js';
 import { SessionsRepository } from './repositories/sessions.js';
+import { PlatformAuditRepository } from './repositories/platform-audit.js';
+import { PlatformSessionsRepository } from './repositories/platform-sessions.js';
+import {
+  FeatureFlagsReader,
+  PlatformSettingsRepository,
+} from './repositories/platform-settings.js';
 import { PlatformUsersRepository } from './repositories/platform-users.js';
+import { PlatformInsightsRepository } from './repositories/platform-insights.js';
+import { TenantDataExportRepository } from './repositories/tenant-data-export.js';
+import { TenantLifecycleRepository } from './repositories/tenant-lifecycle.js';
 import { TenantsRepository } from './repositories/tenants.js';
 import type { TenantScope } from './repositories/tenant-scope.js';
 import { TenantUsersRepository } from './repositories/tenant-users.js';
@@ -95,6 +104,10 @@ export interface TenantTransaction {
   readonly pushDevices: PushDevicesRepository;
   /** The global template library. Read-only: the runtime role holds select and nothing else. */
   readonly formTemplates: FormTemplatesReader;
+  /** The features this company has, resolved against their defaults (P15). */
+  readonly featureFlags: FeatureFlagsReader;
+  /** Everything this company has, for an export or a data request (P15). */
+  readonly dataExport: TenantDataExportRepository;
 }
 
 /**
@@ -146,10 +159,20 @@ export interface PlatformDataSource {
   readonly tenants: TenantsRepository;
   readonly platformUsers: PlatformUsersRepository;
   readonly jobs: PlatformJobQueue;
-  /** Loading the global template library, until P15 gives it a management screen. */
+  /** The global template library, as the dashboard manages it. */
   readonly formTemplates: FormTemplatesWriter;
   /** Which bucket each company has, and removing a company's media records. */
   readonly storage: StorageRegistry;
+  /** Signed-in super admins (P15). */
+  readonly platformSessions: PlatformSessionsRepository;
+  /** What a super admin did, append-only and tenant-less (P15). */
+  readonly platformAudit: PlatformAuditRepository;
+  /** Feature flags and announcements, as the platform writes them (P15). */
+  readonly settings: PlatformSettingsRepository;
+  /** Exporting a company, and the scheduled purge of one (P15). */
+  readonly lifecycle: TenantLifecycleRepository;
+  /** Cross-company questions: which app versions are in the field, what is failing (P15). */
+  readonly insights: PlatformInsightsRepository;
 }
 
 /**
@@ -302,6 +325,8 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     shifts: new ShiftsRepository(scope),
     pushDevices: new PushDevicesRepository(scope),
     formTemplates: new FormTemplatesReader(scope.trx),
+    featureFlags: new FeatureFlagsReader(scope.trx, scope.tenantId),
+    dataExport: new TenantDataExportRepository(scope),
   };
 }
 
@@ -362,6 +387,11 @@ export function getPlatformDataSource(): PlatformDataSource {
     platformUsers: new PlatformUsersRepository(db),
     formTemplates: new FormTemplatesWriter(db),
     storage: new StorageRegistry(db),
+    platformSessions: new PlatformSessionsRepository(db),
+    platformAudit: new PlatformAuditRepository(db),
+    settings: new PlatformSettingsRepository(db),
+    lifecycle: new TenantLifecycleRepository(db),
+    insights: new PlatformInsightsRepository(db),
     jobs: {
       claim: (options) => claimJobs(db, options),
       complete: (jobId, at) => completeJob(db, jobId, at),

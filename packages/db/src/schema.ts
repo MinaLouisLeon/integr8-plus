@@ -48,13 +48,46 @@ export interface TenantsTable {
   created_at: CreatedAt;
   updated_at: UpdatedAt;
   deleted_at: Date | null;
+  /** What the company pays for (0015). Billing itself is P17. */
+  plan: Generated<TenantPlan>;
+  seats: number | null;
+  suspended_at: Date | null;
+  suspended_reason: string | null;
+  onboarded_by: string | null;
 }
+
+export const TENANT_PLANS = ['trial', 'starter', 'standard', 'enterprise'] as const;
+export type TenantPlan = (typeof TENANT_PLANS)[number];
+
+export const PLATFORM_SESSION_REVOCATION_REASONS = [
+  'signed_out',
+  'signed_out_everywhere',
+  'refresh_token_reuse',
+  'account_disabled',
+  'password_changed',
+] as const;
+export type PlatformSessionRevocationReason = (typeof PLATFORM_SESSION_REVOCATION_REASONS)[number];
+
+export const ANNOUNCEMENT_SEVERITIES = ['info', 'warning', 'critical'] as const;
+export type AnnouncementSeverity = (typeof ANNOUNCEMENT_SEVERITIES)[number];
+
+export const TENANT_EXPORT_STATUSES = ['pending', 'running', 'ready', 'failed'] as const;
+export type TenantExportStatus = (typeof TENANT_EXPORT_STATUSES)[number];
 
 export interface PlatformUsersTable {
   id: Generated<string>;
   email: string;
   display_name: string;
   is_active: Generated<boolean>;
+  /** scrypt, as `scrypt$N$r$p$salt$hash`. Null until the account is set up (0015). */
+  password_hash: string | null;
+  password_changed_at: Date | null;
+  /** The TOTP secret, encrypted with PLATFORM_SECRET_KEY. Null until enrolled (0015). */
+  totp_secret: string | null;
+  totp_enrolled_at: Date | null;
+  last_signed_in_at: Date | null;
+  failed_attempts: Generated<number>;
+  locked_until: Date | null;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
@@ -944,9 +977,121 @@ export interface SyncReportsTable {
   received_at: CreatedAt;
 }
 
+/**
+ * A signed-in browser for a super admin (0015). Short-lived: this session can
+ * reach every company.
+ */
+export interface PlatformSessionsTable {
+  id: Generated<string>;
+  platform_user_id: string;
+  user_agent: string | null;
+  ip_address: string | null;
+  created_at: CreatedAt;
+  last_seen_at: Generated<Date>;
+  expires_at: Date;
+  revoked_at: Date | null;
+  revoked_reason: PlatformSessionRevocationReason | null;
+}
+
+export interface PlatformRefreshTokensTable {
+  id: Generated<string>;
+  session_id: string;
+  token_hash: string;
+  created_at: CreatedAt;
+  expires_at: Date;
+  used_at: Date | null;
+  replaced_by: string | null;
+}
+
+/** Every super-admin action, append-only and tenant-less (0015). */
+export interface PlatformAuditLogTable {
+  id: Generated<string>;
+  occurred_at: Generated<Date>;
+  platform_user_id: string | null;
+  actor_label: string;
+  action: string;
+  /** The company acted on, by id and slug, without a foreign key: this outlives it. */
+  tenant_id: string | null;
+  tenant_slug: string | null;
+  target_kind: string | null;
+  target_id: string | null;
+  reason: string | null;
+  request_id: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  metadata: Generated<Jsonb<Record<string, unknown>>>;
+}
+
+export interface FeatureFlagsTable {
+  key: string;
+  description: string;
+  default_enabled: Generated<boolean>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface TenantFeatureFlagsTable {
+  tenant_id: string;
+  key: string;
+  enabled: boolean;
+  updated_at: UpdatedAt;
+  updated_by: string | null;
+}
+
+export interface AnnouncementsTable {
+  id: Generated<string>;
+  /** Null means every company. */
+  tenant_id: string | null;
+  severity: Generated<AnnouncementSeverity>;
+  message: Jsonb<Record<string, string>>;
+  starts_at: Generated<Date>;
+  ends_at: Date | null;
+  dismissible: Generated<boolean>;
+  created_by: string | null;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface TenantExportsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  tenant_slug: string;
+  requested_by: string | null;
+  status: Generated<TenantExportStatus>;
+  object_key: string | null;
+  byte_size: string | null;
+  contents: Generated<Jsonb<Record<string, number>>>;
+  error: string | null;
+  created_at: CreatedAt;
+  completed_at: Date | null;
+  expires_at: Date | null;
+}
+
+export interface TenantDeletionsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  tenant_slug: string;
+  export_id: string;
+  requested_by: string | null;
+  reason: string;
+  purge_after: Date;
+  created_at: CreatedAt;
+  cancelled_at: Date | null;
+  cancelled_by: string | null;
+  completed_at: Date | null;
+}
+
 export interface Database {
   tenants: TenantsTable;
   platform_users: PlatformUsersTable;
+  platform_sessions: PlatformSessionsTable;
+  platform_refresh_tokens: PlatformRefreshTokensTable;
+  platform_audit_log: PlatformAuditLogTable;
+  feature_flags: FeatureFlagsTable;
+  tenant_feature_flags: TenantFeatureFlagsTable;
+  announcements: AnnouncementsTable;
+  tenant_exports: TenantExportsTable;
+  tenant_deletions: TenantDeletionsTable;
   tenant_users: TenantUsersTable;
   audit_log: AuditLogTable;
   sessions: SessionsTable;
@@ -1023,6 +1168,21 @@ export const PLATFORM_TABLES = [
   // The global form template library belongs to no company, and every company
   // may read it. The runtime role holds select and nothing else; see 0007.
   'form_templates',
+  // Running the business (0015). A super admin's identity, sessions and record
+  // of what they did belong to no company, and the runtime role reaches none of
+  // them. `announcements` carries a nullable tenant_id because a null is every
+  // company; the API reads it as the platform and hands each company its own.
+  // `tenant_exports` and `tenant_deletions` name a company without a foreign key,
+  // because the record that one was exported and purged outlives it.
+  'platform_sessions',
+  'platform_refresh_tokens',
+  'platform_audit_log',
+  'announcements',
+  'tenant_exports',
+  'tenant_deletions',
+  // The flags that exist belong to no company; every company reads them and its
+  // own answers beside them.
+  'feature_flags',
 ] as const;
 
 /**
@@ -1044,6 +1204,9 @@ export type SecurityDefinerView = (typeof SECURITY_DEFINER_VIEWS)[number];
  */
 export const SECURITY_DEFINER_FUNCTIONS = [
   'reject_platform_user_membership',
+  // Deletes every row of one company, in an order it works out itself, with the
+  // audit log's no-delete trigger off for the length of the purge; see 0015.
+  'purge_tenant',
   // Writes submission history and reportable values, which the runtime role
   // cannot write itself; see 0008.
   'record_submission_change',
@@ -1082,6 +1245,7 @@ export type TenantScopedTable = Exclude<keyof Database, PlatformTable | Security
  */
 const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   tenant_users: true,
+  tenant_feature_flags: true,
   audit_log: true,
   sessions: true,
   refresh_tokens: true,
