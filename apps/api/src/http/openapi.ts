@@ -135,7 +135,7 @@ function operation(route: AnyRoute): Record<string, unknown> {
         }
       : {}),
     responses: responses(route),
-    ...(route.security === 'authenticated' ? { security: [{ bearerAuth: [] }] } : {}),
+    ...(route.security === 'public' ? {} : { security: [{ bearerAuth: [] }] }),
   };
 }
 
@@ -179,6 +179,13 @@ function responses(route: AnyRoute): Record<string, unknown> {
     universal['401'] = { description: 'Authentication is required.', content: json(error) };
     universal['403'] = {
       description: 'The caller lacks the required permission.',
+      content: json(error),
+    };
+  }
+
+  if (route.security === 'platform') {
+    universal['401'] = {
+      description: 'A platform session is required.',
       content: json(error),
     };
   }

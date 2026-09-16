@@ -65,6 +65,32 @@ export async function provisionTenantStorage(
 }
 
 /**
+ * The bucket company exports live in (P15).
+ *
+ * Not the company's own bucket, which is where they started: the purge destroys
+ * that bucket, so an export kept there would be deleted by the very act it
+ * exists to justify — and `tenant_exports` would go on saying the archive was
+ * ready long after it was gone.
+ *
+ * One bucket for the platform, outliving every company in it, and keyed by
+ * company inside. No customer's storage registry ever points at it, so no
+ * tenant request can reach it.
+ */
+export const EXPORTS_BUCKET_KEY = 'platform-exports';
+
+export async function getExportStore(media: MediaStorage): Promise<ObjectStore> {
+  const bucket = media.bucketFor(EXPORTS_BUCKET_KEY);
+  // Idempotent, and exports are rare enough that repairing the bucket's
+  // settings on the way past costs nothing worth saving.
+  await media.provision(bucket);
+  return media.open(bucket);
+}
+
+/** Where one company's export archive lives inside that bucket. */
+export const exportKey = (tenantId: string, exportId: string) =>
+  `exports/${tenantId}/${exportId}.json.gz`;
+
+/**
  * Removes every file a company has, from storage and from the ledger.
  *
  * Bytes first, then records: if the bucket cannot be emptied, the ledger still

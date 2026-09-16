@@ -3,6 +3,8 @@ import type { Services } from '../composition.js';
 import { GEOCODE_QUEUE, geocodeSite } from '../geo/geocode-site.js';
 import { IMPORT_QUEUE, runImport } from '../imports/run-import.js';
 import { makeThumbnail, THUMBNAIL_QUEUE } from '../media/thumbnails.js';
+import { EXPORT_QUEUE, runTenantExport } from '../platform/export.js';
+import { PURGE_QUEUE, purgeOne } from '../platform/purge.js';
 import {
   checkReceipts,
   notifyWorkOrderEvent,
@@ -120,6 +122,30 @@ export const buildJobHandlers = (
       );
       throw error;
     }
+  },
+
+  [EXPORT_QUEUE]: async (payload, context) => {
+    const exportId = text(payload, 'exportId');
+    if (exportId === null) {
+      context.logger.warn('Export job without an export id', { jobId: context.jobId });
+      return;
+    }
+    await runTenantExport({
+      exportId,
+      tenantId: context.tenantId,
+      media: services.media,
+      logger: context.logger,
+    });
+  },
+
+  [PURGE_QUEUE]: async (_payload, context) => {
+    // No payload: the company is the job's own tenant. Taking the id from the
+    // payload would make a purge something a malformed row could aim.
+    const outcome = await purgeOne(context.tenantId, {
+      media: services.media,
+      logger: context.logger,
+    });
+    context.logger.info('Purge job finished', { jobId: context.jobId, ...outcome });
   },
 });
 

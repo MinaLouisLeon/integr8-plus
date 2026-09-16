@@ -74,6 +74,16 @@ export const apiConfigSchema = z.object({
    */
   API_PUBLIC_URL: z.url().optional(),
 
+  /**
+   * Where the web app lives, for links sent to people rather than to clients —
+   * today, the invitation an onboarded company's owner follows (P15).
+   *
+   * Optional, and an unset value produces no link at all rather than a guessed
+   * one: an invitation link that goes to the wrong host fails silently for the
+   * one person who cannot tell us it did.
+   */
+  WEB_APP_URL: z.url().optional(),
+
   // -------------------------------------------------------------------------
   // Media
   // -------------------------------------------------------------------------

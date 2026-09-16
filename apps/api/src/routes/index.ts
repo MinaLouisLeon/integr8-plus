@@ -8,6 +8,7 @@ import { jobTypeRoutes } from './v1/job-types.js';
 import { workOrderRoutes } from './v1/work-orders.js';
 import { formRoutes } from './v1/forms.js';
 import { mediaRoutes } from './v1/media.js';
+import { platformRoutes } from './v1/platform/index.js';
 import { submissionRoutes } from './v1/submissions.js';
 import { syncRoutes } from './v1/sync.js';
 import { timeRoutes } from './v1/time.js';
@@ -34,6 +35,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...importRoutes,
     ...syncRoutes,
     ...timeRoutes,
+    ...platformRoutes,
   ];
 }
 
