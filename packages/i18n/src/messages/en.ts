@@ -62,6 +62,27 @@ export const en = {
     invalidCredentials: 'That email address and password did not match.',
     accountLocked: 'Too many attempts. Try again in a few minutes.',
     rateLimited: 'Too many requests. Slow down and try again shortly.',
+
+    // Accepting an invitation (P18). Until this phase the API minted links to
+    // a page that did not exist, so every invitation led to a 404.
+    accept: {
+      title: 'Join your team',
+      subtitle: 'Choose a name and a password, and you are in.',
+      displayName: 'Your name',
+      displayNameHint: 'How you will appear on jobs and forms.',
+      choosePassword: 'Choose a password',
+      submit: 'Accept and sign in',
+      accepting: 'Setting up your account\u2026',
+      // One message for expired, withdrawn, already-used and never-existed.
+      // Telling a stranger which it was tells them the link was once real.
+      invalid:
+        'This invitation is no longer valid. It may have been used, withdrawn, or it may have expired. Ask whoever invited you to send another.',
+      missingToken:
+        'This link is incomplete. Use the link from your invitation email exactly as it arrived.',
+      // The account exists at this point; only the sign-in failed.
+      signInFailed:
+        'Your account is ready, but we could not sign you in automatically. Please sign in.',
+    },
   },
 
   workspace: {
@@ -124,9 +145,8 @@ export const en = {
         'A payment has not gone through. If it is still outstanding on {{when}}, this account becomes read-only — nothing is deleted, but new work cannot be saved.',
       readOnly:
         'This account is read-only because a payment is outstanding. Nothing has been deleted and nothing will be: everything can still be read and exported. Paying restores writing straight away.',
-      // The gap, on the screen rather than only in a document.
       remindersInApp:
-        'Billing reminders appear here, in the app. We do not email them yet, so please check this page if a payment fails.',
+        'If a payment fails we tell you here and email the owners and admins. Keep an eye on whichever you read.',
       limits: 'What your plan allows',
       seats: 'People',
       seatsUsed: '{{used}} of {{allowance}}',
