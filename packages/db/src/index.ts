@@ -71,14 +71,18 @@ export {
 export {
   ANNOUNCEMENT_SEVERITIES,
   PLATFORM_SESSION_REVOCATION_REASONS,
+  BILLING_INTERVALS,
   OVERAGE_POLICIES,
   RECONCILIATION_STATUSES,
+  SUBSCRIPTION_STATUSES,
   TENANT_EXPORT_STATUSES,
   TENANT_PLANS,
   type AnnouncementSeverity,
   type PlatformSessionRevocationReason,
+  type BillingInterval,
   type OveragePolicy,
   type ReconciliationStatus,
+  type SubscriptionStatus,
   type TenantExportStatus,
   type TenantPlan,
 } from './schema.js';
@@ -118,6 +122,13 @@ export type {
   RecentFailure,
   ReleaseInField,
 } from './repositories/platform-insights.js';
+
+export {
+  BillingRepository,
+  TenantSubscriptionReader,
+  type BillingEvent,
+  type Subscription,
+} from './repositories/billing.js';
 
 export {
   StorageMeteringRepository,

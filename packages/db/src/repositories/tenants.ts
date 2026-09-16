@@ -18,6 +18,12 @@ export interface Tenant {
   suspendedAt: Date | null;
   /** Why the company was stopped, in words its own people are shown. */
   suspendedReason: string | null;
+  /**
+   * Non-payment or a lapsed trial (P17), and not the same as suspended: reads
+   * keep working so a company can get its data out and fix its card.
+   */
+  readOnlySince: Date | null;
+  readOnlyReason: string | null;
   onboardedBy: PlatformUserId | null;
   createdAt: Date;
   updatedAt: Date;
@@ -138,6 +144,38 @@ export class TenantsRepository {
       .set({ status: 'suspended', suspended_at: now, suspended_reason: reason.trim() })
       .where('id', '=', toTenantId(tenantId))
       .where('deleted_at', 'is', null)
+      .returningAll()
+      .executeTakeFirst();
+
+    return row === undefined ? undefined : toDomain(row);
+  }
+
+  /**
+   * Marks a company read-only, or lifts it (P17).
+   *
+   * Beside `suspend` because it is the same kind of fact about the same row,
+   * and deliberately not the same thing: a suspended company is refused
+   * everything, a read-only one keeps its reads so it can export its data and
+   * fix its card.
+   *
+   * Marking one that is already read-only does nothing, so a dunning job that
+   * runs twice does not move the date somebody reads to work out how long this
+   * has been going on.
+   */
+  async setReadOnly(
+    tenantId: TenantId | string,
+    reason: string | null,
+    now = new Date(),
+  ): Promise<Tenant | undefined> {
+    const row = await this.db
+      .updateTable('tenants')
+      .set(
+        reason === null
+          ? { read_only_since: null, read_only_reason: null }
+          : { read_only_since: now, read_only_reason: reason },
+      )
+      .where('id', '=', toTenantId(tenantId))
+      .where('read_only_since', reason === null ? 'is not' : 'is', null)
       .returningAll()
       .executeTakeFirst();
 
@@ -341,6 +379,8 @@ function toDomain(row: Selectable<TenantsTable>): Tenant {
     seats: row.seats,
     suspendedAt: row.suspended_at,
     suspendedReason: row.suspended_reason,
+    readOnlySince: row.read_only_since,
+    readOnlyReason: row.read_only_reason,
     onboardedBy: row.onboarded_by as PlatformUserId | null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

@@ -47,6 +47,7 @@ import {
 } from './repositories/platform-settings.js';
 import { PlatformUsersRepository } from './repositories/platform-users.js';
 import { PlatformInsightsRepository } from './repositories/platform-insights.js';
+import { BillingRepository, TenantSubscriptionReader } from './repositories/billing.js';
 import {
   StorageMeteringRepository,
   TenantStorageHistory,
@@ -114,6 +115,8 @@ export interface TenantTransaction {
   readonly dataExport: TenantDataExportRepository;
   /** The company's own storage history, the same numbers the platform sees (P16). */
   readonly storageHistory: TenantStorageHistory;
+  /** What this company is paying for. Select-only for the runtime role (P17). */
+  readonly subscription: TenantSubscriptionReader;
 }
 
 /**
@@ -181,6 +184,8 @@ export interface PlatformDataSource {
   readonly insights: PlatformInsightsRepository;
   /** Allowances, daily samples and the audit against Cloudflare (P16). */
   readonly metering: StorageMeteringRepository;
+  /** Subscriptions, and what the billing provider has told us (P17). */
+  readonly billing: BillingRepository;
 }
 
 /**
@@ -336,6 +341,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     featureFlags: new FeatureFlagsReader(scope.trx, scope.tenantId),
     dataExport: new TenantDataExportRepository(scope),
     storageHistory: new TenantStorageHistory(scope.trx, scope.tenantId),
+    subscription: new TenantSubscriptionReader(scope.trx, scope.tenantId),
   };
 }
 
@@ -402,6 +408,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     lifecycle: new TenantLifecycleRepository(db),
     insights: new PlatformInsightsRepository(db),
     metering: new StorageMeteringRepository(db),
+    billing: new BillingRepository(db),
     jobs: {
       claim: (options) => claimJobs(db, options),
       complete: (jobId, at) => completeJob(db, jobId, at),

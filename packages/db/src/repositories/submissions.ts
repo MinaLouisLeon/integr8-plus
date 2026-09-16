@@ -297,6 +297,23 @@ export class SubmissionsRepository extends TenantScopedRepository {
   }
 
   /**
+   * How many submissions this company has made since a moment (P17).
+   *
+   * Counted rather than kept as a running total, so a deleted submission gives
+   * the allowance back and nobody has to keep a counter honest across a
+   * restore. `submitted_at` rather than `created_at`: a draft started last
+   * month and submitted this one is this month's.
+   */
+  async countSince(since: Date): Promise<number> {
+    const row = await this.#scoped()
+      .select((eb) => eb.fn.countAll<string>().as('count'))
+      .where('submitted_at', '>=', since)
+      .executeTakeFirstOrThrow();
+
+    return Number(row.count);
+  }
+
+  /**
    * Searches and filters, newest first, a page at a time.
    *
    * Pages are keyset, not offset: the ten-thousandth submission costs what the

@@ -29,6 +29,14 @@ export interface PlanAllowance {
   retentionDays: number | null;
   overage: OveragePolicy;
   warnAtPercent: number;
+  /** The rest of what a plan allows (P17). Null is uncapped, as above. */
+  seats: number | null;
+  submissionsPerMonth: number | null;
+  /** What it costs, for a screen to show. The provider does the arithmetic. */
+  priceCents: number | null;
+  currency: string | null;
+  providerPriceMonthly: string | null;
+  providerPriceYearly: string | null;
   updatedAt: Date;
 }
 
@@ -96,6 +104,12 @@ export class StorageMeteringRepository {
       retentionDays?: number | null | undefined;
       overage?: OveragePolicy | undefined;
       warnAtPercent?: number | undefined;
+      seats?: number | null | undefined;
+      submissionsPerMonth?: number | null | undefined;
+      priceCents?: number | null | undefined;
+      currency?: string | null | undefined;
+      providerPriceMonthly?: string | null | undefined;
+      providerPriceYearly?: string | null | undefined;
       updatedBy: PlatformUserId | string | null;
     },
   ): Promise<PlanAllowance | undefined> {
@@ -106,6 +120,18 @@ export class StorageMeteringRepository {
         ...(input.retentionDays === undefined ? {} : { retention_days: input.retentionDays }),
         ...(input.overage === undefined ? {} : { overage: input.overage }),
         ...(input.warnAtPercent === undefined ? {} : { warn_at_percent: input.warnAtPercent }),
+        ...(input.seats === undefined ? {} : { seats: input.seats }),
+        ...(input.submissionsPerMonth === undefined
+          ? {}
+          : { submissions_per_month: input.submissionsPerMonth }),
+        ...(input.priceCents === undefined ? {} : { price_cents: input.priceCents }),
+        ...(input.currency === undefined ? {} : { currency: input.currency }),
+        ...(input.providerPriceMonthly === undefined
+          ? {}
+          : { provider_price_monthly: input.providerPriceMonthly }),
+        ...(input.providerPriceYearly === undefined
+          ? {}
+          : { provider_price_yearly: input.providerPriceYearly }),
         updated_by: input.updatedBy ?? null,
       })
       .where('plan', '=', plan)
@@ -325,6 +351,12 @@ function toAllowance(row: Selectable<PlanAllowancesTable>): PlanAllowance {
     retentionDays: row.retention_days,
     overage: row.overage,
     warnAtPercent: row.warn_at_percent,
+    seats: row.seats,
+    submissionsPerMonth: row.submissions_per_month,
+    priceCents: row.price_cents,
+    currency: row.currency,
+    providerPriceMonthly: row.provider_price_monthly,
+    providerPriceYearly: row.provider_price_yearly,
     updatedAt: row.updated_at,
   };
 }
