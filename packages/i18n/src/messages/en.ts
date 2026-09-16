@@ -85,6 +85,104 @@ export const en = {
     },
   },
 
+  // The public surface (P18). Everything a stranger sees before they have an
+  // account. Written plainly and without superlatives: the people this is sold
+  // to have been promised a lot by software before.
+  marketing: {
+    nav: {
+      features: 'Features',
+      pricing: 'Pricing',
+      help: 'Help',
+      signIn: 'Sign in',
+      signUp: 'Start free',
+    },
+    hero: {
+      title: 'Paperwork that finishes itself',
+      subtitle:
+        'Job sheets, safety checks and certificates, filled in on a phone — including in a basement with no signal. Your office sees them the moment the engineer has a bar again.',
+      cta: 'Start a free trial',
+      note: 'Fourteen days. No card needed.',
+    },
+    // Three claims, each one a thing the product actually does. If a line here
+    // stops being true, it is a bug in the product or a lie on the page.
+    points: {
+      offlineTitle: 'Works with no signal',
+      offlineBody:
+        'Forms are filled in on the device and sent when there is signal. Nothing is lost in a plant room, a loft or a lift shaft.',
+      formsTitle: 'Your forms, not ours',
+      formsBody:
+        'Build the form you already use on paper. Published versions are frozen, so a job filled in last March still reads the way it was signed.',
+      evidenceTitle: 'Evidence that stands up',
+      evidenceBody:
+        'Photos, signatures and timestamps attached to the job, kept for as long as your plan says, and exportable whenever you ask.',
+    },
+    features: {
+      title: 'What it does',
+      subtitle: 'The whole product, without the adjectives.',
+    },
+    pricing: {
+      title: 'Pricing',
+      subtitle: 'The numbers below are the ones the system actually enforces.',
+      // Said out loud, because a pricing page that quietly disagrees with the
+      // software is how trust goes.
+      honest:
+        'These limits are read from the same place the app checks them, so what you see here is what you get.',
+      perMonth: 'per month',
+      free: 'Free trial',
+      seats: '{{count}} people',
+      seatsUncapped: 'Unlimited people',
+      submissions: '{{count}} submissions a month',
+      submissionsUncapped: 'Unlimited submissions',
+      storage: '{{amount}} storage',
+      storageUncapped: 'Unlimited storage',
+      retention: 'Kept for {{count}} days',
+      retentionForever: 'Kept indefinitely',
+      contact: 'Talk to us',
+      choose: 'Start with {{plan}}',
+      notPurchasable: 'Contact us to buy this plan',
+    },
+    help: {
+      title: 'Help',
+      subtitle: 'How the product works, written as questions people actually ask.',
+      // Honest: there are no customers yet, so there are no real support
+      // questions yet either.
+      draftNotice:
+        'These are written from how the product works, not yet from real support questions. They will be rewritten once there are some.',
+      backToHelp: 'All help articles',
+    },
+  },
+
+  signUp: {
+    title: 'Start your free trial',
+    subtitle: 'Fourteen days. No card needed.',
+    companyName: 'Company name',
+    companyNameHint: 'What your customers call you.',
+    email: 'Your email address',
+    submit: 'Send me the link',
+    submitting: 'Sending\u2026',
+    // Deliberately says nothing about whether the address already has an
+    // account: the page must not tell a stranger who your customers are.
+    sent: 'Check your inbox',
+    sentBody:
+      'If we can set up a company for {{email}}, a link is on its way. It expires in a day. Nothing has been created yet — following the link is what creates it.',
+    resend: 'Send it again',
+    resent: 'Sent again, if there was anything to send.',
+    haveAccount: 'Already have an account?',
+    verify: {
+      title: 'Create your company',
+      subtitle: 'Last step. Choose a name and a password and it is yours.',
+      displayName: 'Your name',
+      password: 'Choose a password',
+      submit: 'Create the company',
+      submitting: 'Creating your company\u2026',
+      invalid:
+        'This link is no longer valid. It may have been used already, or it may have expired. Start again and we will send a new one.',
+      missingToken: 'This link is incomplete. Use the link from your email exactly as it arrived.',
+      signInFailed:
+        'Your company is ready, but we could not sign you in automatically. Please sign in.',
+    },
+  },
+
   workspace: {
     signedInAs: 'Signed in as {{name}}',
     company: 'Company',
@@ -94,13 +192,6 @@ export const en = {
       dispatcher: 'Dispatcher',
       engineer: 'Engineer',
       viewer: 'Viewer',
-    },
-    members: {
-      title: 'People',
-      count_one: '{{count}} person',
-      count_other: '{{count}} people',
-      empty: 'Nobody else has joined yet.',
-      invite: 'Invite somebody',
     },
     sessions: {
       title: 'Your devices',
@@ -166,6 +257,105 @@ export const en = {
       notPurchasable: 'That plan cannot be bought online yet. Please contact us.',
       notConfigured: 'Billing is not set up on this installation.',
     },
+    members: {
+      title: 'People',
+      count_one: '{{count}} person',
+      count_other: '{{count}} people',
+      empty: 'Nobody else has joined yet.',
+      manage: 'People',
+      manageSubtitle: 'Who is in this company, and what they may do.',
+      invite: 'Invite somebody',
+      inviteEmail: 'Their email address',
+      inviteRole: 'Their role',
+      inviteSend: 'Send the invitation',
+      invited: 'Invitation sent to {{email}}.',
+      // The honest case: the row exists, the message did not go.
+      invitedNoEmail:
+        'The invitation was created, but we could not email it. Try resending it in a moment.',
+      pending: 'Invited, not yet joined',
+      resend: 'Send again',
+      resent: 'Sent again.',
+      withdraw: 'Withdraw',
+      changeRole: 'Change role',
+      suspend: 'Suspend',
+      reactivate: 'Let back in',
+      remove: 'Remove',
+      removeConfirm:
+        'Remove {{name}}? Everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in.',
+      suspendConfirm:
+        'Suspend {{name}}? They will be signed out and refused entry until you let them back in. Nothing they did is affected.',
+      lastOwner: 'This is the only owner of the company. Make somebody else an owner first.',
+      // The fifteen minutes, said on the screen rather than only in the code.
+      accessNote:
+        'Suspending or removing somebody stops them signing in straight away. A session they already have open can last up to fifteen minutes longer.',
+      status: { invited: 'Invited', active: 'Active', suspended: 'Suspended' },
+    },
+
+    settings: {
+      title: 'Company settings',
+      subtitle: 'How your company works. These apply to everybody.',
+      branding: 'Branding',
+      brandColour: 'Brand colour',
+      brandColourHint: 'Used on documents you send out. Six hex digits, like #1D4ED8.',
+      logo: 'Logo',
+      place: 'Where you are',
+      timezone: 'Timezone',
+      timezoneHint: 'What a working day means for this company.',
+      currency: 'Currency',
+      locale: 'Default language',
+      hours: 'Working hours',
+      dayStarts: 'Day starts',
+      dayEnds: 'Day ends',
+      workingDays: 'Working days',
+      closed: 'Closed — no working days selected.',
+      save: 'Save settings',
+      saved: 'Saved.',
+      unknownTimezone: 'That is not a timezone we recognise.',
+      days: {
+        mon: 'Mon',
+        tue: 'Tue',
+        wed: 'Wed',
+        thu: 'Thu',
+        fri: 'Fri',
+        sat: 'Sat',
+        sun: 'Sun',
+      },
+    },
+
+    firstRun: {
+      title: 'Get set up',
+      subtitle: 'Five things, and then the product is doing something useful.',
+      done: 'All set up. Nothing left on this list.',
+      progress: '{{done}} of {{total}} done',
+      steps: {
+        job_type: 'Set up the kinds of job you do',
+        job_typeHint: 'We have added five to start with. Rename them to match your work.',
+        form: 'Create your first form',
+        formHint: 'Start from one of ours and change it, or build your own.',
+        member: 'Invite an engineer',
+        memberHint: 'They get an email with a link. They need a phone and nothing else.',
+        customer: 'Add a customer',
+        customerHint: 'Or load some samples to see how the screens work.',
+        submission: 'Fill in a form',
+        submissionHint: 'Do one yourself, so you know what your engineers will see.',
+      },
+      demo: {
+        title: 'Sample data',
+        body: 'Three customers with a site and a job each, clearly marked, so the screens are not empty while you look around.',
+        load: 'Load sample data',
+        remove: 'Remove sample data',
+        loaded:
+          'Sample data is loaded: {{customers}} customers, {{sites}} sites, {{workOrders}} jobs.',
+        removed: 'Sample data removed.',
+        // The reassurance that makes it safe to click.
+        safe: 'Removing it only removes rows still marked as samples. Anything you have edited into real work is left alone.',
+      },
+      apps: {
+        title: 'Get the apps',
+        body: 'Your engineers need the mobile app. You can do everything else in this browser.',
+      },
+    },
+
     impersonationBanner: 'You are viewing this account as {{name}}. Everything you do is recorded.',
   },
 
@@ -938,6 +1128,12 @@ export const en = {
       storageHint: 'What you are using, and how much is left.',
       billing: 'Billing',
       billingHint: 'Your plan, your limits and your card.',
+      getStarted: 'Get set up',
+      getStartedHint: 'Five things to do, and sample data to look around with.',
+      people: 'People',
+      peopleHint: 'Invite engineers, change roles, remove somebody.',
+      companySettings: 'Company settings',
+      companySettingsHint: 'Branding, timezone, currency and working hours.',
     },
     duration: {
       hoursMinutes: '{{hours}} h {{minutes}} min',
@@ -1813,6 +2009,37 @@ export const en = {
   // strings are read by the handful of people who run the business, so they say
   // plainly what an action does rather than softening it.
   platform: {
+    funnel: {
+      title: 'Signup funnel',
+      subtitle: 'Where people give up, over the last thirty days.',
+      step: 'Step',
+      reached: 'Reached',
+      ofPrevious: 'of previous',
+      dropOff: 'Drop-off',
+      empty: 'Nothing recorded yet.',
+      // Named steps, in order. Anything the API records that is not listed
+      // here is still shown, using its raw key.
+      steps: {
+        'landing.viewed': 'Saw the landing page',
+        'features.viewed': 'Read the features',
+        'pricing.viewed': 'Read the pricing',
+        'signup.opened': 'Opened the signup form',
+        'signup.started': 'Asked for a company',
+        'signup.email_sent': 'Was sent a link',
+        'signup.verified': 'Followed the link',
+        'signup.provisioned': 'Got a company',
+        'signup.failed': 'Failed',
+      },
+      // Said on the screen, because the first row counts differently from the
+      // rest and a chart that hides that is a chart that misleads.
+      visitsNote:
+        'The page steps count visits, not people: one person reloading counts once per visit. From "asked for a company" onwards each attempt is counted once.',
+      signups: 'Recent signups',
+      pending: 'Pending',
+      verified: 'Verified',
+      expired: 'Expired',
+    },
+
     title: 'Platform',
     signIn: {
       title: 'Platform sign in',
@@ -1827,6 +2054,7 @@ export const en = {
     },
     nav: {
       companies: 'Companies',
+      funnel: 'Signup funnel',
       storage: 'Storage',
       plans: 'Plans',
       audit: 'Audit log',

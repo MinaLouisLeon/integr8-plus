@@ -22,6 +22,7 @@ import { ensurePlatformToken, signOutOfPlatform } from '~/lib/platform-session';
 
 const LINKS = [
   { href: '/platform', key: 'companies' },
+  { href: '/platform/funnel', key: 'funnel' },
   { href: '/platform/storage', key: 'storage' },
   { href: '/platform/plans', key: 'plans' },
   { href: '/platform/audit', key: 'audit' },
