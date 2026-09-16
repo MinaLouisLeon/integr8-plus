@@ -11,7 +11,9 @@ import {
   MULTIPART_PART_BYTES,
   type ObjectStore,
 } from '../../media/storage.js';
+import { planFor } from '../../http/suspension.js';
 import { getStorage, StorageNotReadyError } from '../../media/tenant-storage.js';
+import { assertUploadFits, quotaFor } from '../../media/quota.js';
 import { RESUMABLE_UPLOAD_DAYS } from '../../media/maintenance.js';
 import { THUMBNAIL_QUEUE } from '../../media/thumbnails.js';
 import { iso } from './schemas.js';
@@ -114,6 +116,10 @@ export const createMediaRoute = defineRoute({
         }),
       }),
     },
+    409: {
+      description:
+        'This upload would take the company past its storage allowance (`storage_quota_exceeded`).',
+    },
     503: { description: "The company's storage is still being set up." },
   },
   handler: async ({ body }, context) => {
@@ -133,6 +139,16 @@ export const createMediaRoute = defineRoute({
         },
       ]);
     }
+
+    // The last point before an intent row exists and a link is minted. The
+    // incoming bytes count towards the allowance, because checking only what is
+    // already stored would let one upload of any size through as long as the
+    // company was a byte under.
+    await assertUploadFits({
+      plan: await planFor(principal.tenantId),
+      usage: await withTenant(principal.tenantId, (tx) => tx.files.usage()),
+      incomingBytes: body.byteSize,
+    });
 
     const store = await storageFor(context);
     const id = randomUUID();
@@ -429,7 +445,7 @@ export const storageUsageRoute = defineRoute({
   operationId: 'getStorageUsage',
   summary: "The company's storage use",
   description:
-    'Bytes and objects in the company’s bucket, by kind, as the ledger records them. Deleted files count until their bytes are removed; thumbnails are their own kind.',
+    'Bytes and objects in the company’s bucket, by kind, as the ledger records them, with what the plan allows and the last ninety days of it. Deleted files count until their bytes are removed; thumbnails are their own kind. These are the same numbers the platform sees.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'storage.read',
@@ -449,12 +465,56 @@ export const storageUsageRoute = defineRoute({
         ),
         totalBytes: z.number().int(),
         totalObjects: z.number().int(),
+        /** What the plan allows, and where this company stands against it (P16). */
+        quota: z.object({
+          /** Null is uncapped. */
+          allowanceBytes: z.number().int().nullable(),
+          percentUsed: z.number().nullable(),
+          state: z.enum(['ok', 'warning', 'over']),
+          warnAtPercent: z.number().int(),
+          /** `block` refuses new uploads at the line; `allow` keeps accepting. */
+          overage: z.enum(['block', 'allow']),
+          overageBytes: z.number().int(),
+        }),
+        /** One point per day, newest first. Empty until the sampler has run once. */
+        trend: z.array(
+          z.object({
+            day: z.string(),
+            bytes: z.number().int(),
+            objects: z.number().int(),
+          }),
+        ),
       }),
     },
   },
   handler: async (_input, context) => {
-    const usage = await withTenant(context.principal.tenantId, (tx) => tx.files.usage());
-    return { status: 200, body: usage };
+    const tenantId = context.principal.tenantId;
+    const { usage, trend } = await withTenant(tenantId, async (tx) => ({
+      usage: await tx.files.usage(),
+      trend: await tx.storageHistory.samples(90),
+    }));
+
+    const quota = await quotaFor(await planFor(tenantId), usage);
+
+    return {
+      status: 200,
+      body: {
+        ...usage,
+        quota: {
+          allowanceBytes: quota.allowanceBytes,
+          percentUsed: quota.percentUsed,
+          state: quota.state,
+          warnAtPercent: quota.warnAtPercent,
+          overage: quota.overage,
+          overageBytes: quota.overageBytes,
+        },
+        trend: trend.map((sample) => ({
+          day: sample.sampledOn,
+          bytes: sample.bytes,
+          objects: sample.objects,
+        })),
+      },
+    };
   },
 });
 
@@ -602,6 +662,15 @@ export const prepareMediaRoute = defineRoute({
         },
       };
     }
+
+    // The same check on the resumable path. It sits after the already-stored
+    // answer above, so a phone asking about a file it has already sent is never
+    // refused for a quota it is not about to spend.
+    await assertUploadFits({
+      plan: await planFor(tenantId),
+      usage: await withTenant(tenantId, (tx) => tx.files.usage()),
+      incomingBytes: body.byteSize,
+    });
 
     const store = await storageFor(context);
     const expiresAt = new Date(Date.now() + RESUMABLE_UPLOAD_MS);

@@ -74,6 +74,20 @@ export type AnnouncementSeverity = (typeof ANNOUNCEMENT_SEVERITIES)[number];
 export const TENANT_EXPORT_STATUSES = ['pending', 'running', 'ready', 'failed'] as const;
 export type TenantExportStatus = (typeof TENANT_EXPORT_STATUSES)[number];
 
+/**
+ * What a plan does when a company passes its storage allowance (0016).
+ *
+ * `block` refuses new uploads. `allow` keeps accepting and records the overage
+ * on each daily sample, so P17 can bill for it rather than losing the months
+ * between here and there.
+ */
+export const OVERAGE_POLICIES = ['block', 'allow'] as const;
+export type OveragePolicy = (typeof OVERAGE_POLICIES)[number];
+
+/** How a night's comparison of the ledger against Cloudflare turned out (0016). */
+export const RECONCILIATION_STATUSES = ['matched', 'drifted', 'unavailable'] as const;
+export type ReconciliationStatus = (typeof RECONCILIATION_STATUSES)[number];
+
 export interface PlatformUsersTable {
   id: Generated<string>;
   email: string;
@@ -558,6 +572,63 @@ export interface TenantStorageUsageTable {
   bytes: ColumnType<string, never, never>;
   objects: ColumnType<number, never, never>;
   updated_at: ColumnType<Date, never, never>;
+}
+
+// ---------------------------------------------------------------------------
+// Storage metering and quotas (0016)
+// ---------------------------------------------------------------------------
+
+export interface PlanAllowancesTable {
+  plan: TenantPlan;
+  /** Null is uncapped. */
+  storage_bytes: ColumnType<string | null, number | null, number | null>;
+  /** How long media is kept before the retention job takes it. Null is for ever. */
+  retention_days: number | null;
+  overage: Generated<OveragePolicy>;
+  warn_at_percent: Generated<number>;
+  updated_at: UpdatedAt;
+  updated_by: string | null;
+}
+
+export interface TenantStorageSamplesTable {
+  tenant_id: string;
+  /** The day, not the moment: one row per company per day. */
+  sampled_on: ColumnType<string, string, never>;
+  bytes: BigIntColumn;
+  objects: number;
+  /** Bytes per category on the day. */
+  by_category: Generated<Jsonb<Record<string, number>>>;
+  /**
+   * The allowance that applied on the day, copied rather than joined: an
+   * allowance edited next month must not rewrite last month's overage.
+   */
+  allowance_bytes: ColumnType<string | null, number | null, number | null>;
+  overage_bytes: ColumnType<string | null, number | null, number | null>;
+  class_a_operations: ColumnType<string | null, number | null, number | null>;
+  class_b_operations: ColumnType<string | null, number | null, number | null>;
+}
+
+export interface StorageReconciliationsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  ran_at: CreatedAt;
+  ledger_bytes: BigIntColumn;
+  ledger_objects: number;
+  cloudflare_bytes: ColumnType<string | null, number | null, number | null>;
+  cloudflare_objects: number | null;
+  cloudflare_sampled_at: Date | null;
+  /** Signed: positive means the ledger claims more than Cloudflare reports. */
+  drift_bytes: ColumnType<string | null, number | null, number | null>;
+  status: ReconciliationStatus;
+  note: string | null;
+}
+
+export interface ScheduledTaskRunsTable {
+  task: string;
+  last_run_at: Generated<Date>;
+  last_finished_at: Date | null;
+  claimed_by: string | null;
+  last_error: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1112,6 +1183,10 @@ export interface Database {
   upload_intents: UploadIntentsTable;
   files: FilesTable;
   tenant_storage_usage: TenantStorageUsageTable;
+  plan_allowances: PlanAllowancesTable;
+  tenant_storage_samples: TenantStorageSamplesTable;
+  storage_reconciliations: StorageReconciliationsTable;
+  scheduled_task_runs: ScheduledTaskRunsTable;
   customers: CustomersTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
@@ -1183,6 +1258,11 @@ export const PLATFORM_TABLES = [
   // The flags that exist belong to no company; every company reads them and its
   // own answers beside them.
   'feature_flags',
+  // Metering (0016). What a plan is allowed belongs to the plan, not to any one
+  // company on it; and the record of when a recurring task last ran belongs to
+  // the platform that runs it.
+  'plan_allowances',
+  'scheduled_task_runs',
 ] as const;
 
 /**
@@ -1246,6 +1326,8 @@ export type TenantScopedTable = Exclude<keyof Database, PlatformTable | Security
 const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   tenant_users: true,
   tenant_feature_flags: true,
+  tenant_storage_samples: true,
+  storage_reconciliations: true,
   audit_log: true,
   sessions: true,
   refresh_tokens: true,

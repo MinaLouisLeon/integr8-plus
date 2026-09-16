@@ -155,6 +155,77 @@ company's `files`, `upload_intents` and `tenant_storage_usage` rows and marks
 `tenant_storage` purged. Bytes before records: if the bucket cannot be emptied, the ledger
 still says what is in it. Running it again finishes a partial purge.
 
+## Metering and quotas (P16)
+
+The ledger is the number we **bill** from, because it is attributable to a company, a file
+and a job. Cloudflare is the number we **audit** against. When they disagree, the ledger is
+wrong until proven otherwise — investigate the sweeper.
+
+### What a plan allows
+
+`plan_allowances` holds one row per plan, edited from the dashboard rather than in a deploy:
+a limit that needs an engineer to change it is a limit somebody works around by not setting
+one. Each row carries the storage allowance (null is uncapped), the retention window, the
+warning threshold, and what happens at a hundred percent:
+
+|         |                                                                                          |
+| ------- | ---------------------------------------------------------------------------------------- |
+| `block` | new uploads are refused, with the numbers in the error so a client can say what is wrong |
+| `allow` | uploads keep working, and the overage is recorded on that day's sample for P17 to bill   |
+
+Trial and starter block; standard and enterprise allow. Until P17 exists, overage on the
+larger plans **accrues unbilled** — the daily sample is what makes it billable
+retrospectively rather than lost.
+
+The check runs at both upload entry points (`POST /v1/media` and the resumable
+`PUT /v1/media/:id`), before an intent exists or a link is signed, and the incoming bytes
+count: checking only what is already stored would let one upload of any size through as long
+as the company was a byte under. The plan comes off the same cached `tenants` row the
+suspension check already reads, so enforcement costs no extra query.
+
+### The daily sample
+
+`tenant_storage_samples` gets one row per company per day: bytes, objects, the breakdown by
+kind, what Cloudflare charged for in Class A and Class B operations, and **the allowance that
+applied that day** — copied onto the row rather than joined, so an allowance edited next month
+cannot rewrite last month's overage.
+
+That is what the thirty and ninety day trends read, on both the platform's screen and the
+company's own.
+
+### Checking against Cloudflare
+
+Every night the same pass records a `storage_reconciliations` row per company: what the ledger
+says, what `r2StorageAdaptiveGroups` reports, and the difference. A result is **drift** only
+when it clears both a one percent ratio and a ten megabyte floor — one percent of a trial
+company is a few megabytes and would fire on a single unswept upload, and a flat ten megabytes
+on a company storing terabytes would never fire.
+
+Drift goes to Sentry and to the platform audit log, naming the company and both numbers; the
+dashboard reads the table. When there is nothing to ask — local storage, no analytics token, a
+bucket Cloudflare has not sampled — the row says `unavailable` rather than `matched`, because
+"we could not check" and "we checked and it agreed" are different facts and only one is
+reassuring.
+
+### Retention
+
+A plan's retention window is applied by **soft-deleting** past it, into the same thirty-day
+restore window a person's delete uses; the existing purge step removes the bytes at the end of
+it. So automatic deletion of a customer's data stays reversible for a month, and there is one
+path that removes bytes rather than two.
+
+A file still referenced by a submission is taken too. That is what a retention window means —
+the record ages out — and a policy that quietly skipped anything in use would delete nothing at
+all. Every plan starts with a window, so **set them deliberately**: nothing is deleted until
+somebody does.
+
+### There is no cron
+
+The three nightly tasks run from the worker's housekeeping timer, and several workers run at
+once, so each claims its turn in `scheduled_task_runs` with a conditional update exactly one of
+them wins. The claim is on the _start_, so a run that dies holding its turn is retried after
+the interval rather than never. The dashboard shows when each last ran and whether it finished.
+
 ## Checking the ledger against Cloudflare
 
 ```

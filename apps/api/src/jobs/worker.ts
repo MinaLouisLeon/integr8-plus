@@ -74,6 +74,17 @@ export class Worker {
   }
 
   /**
+   * Who this worker is, in the `locked_by` column and in a claimed task's row.
+   *
+   * Exposed because the housekeeping that runs beside the queue claims its turn
+   * under the same name, so one worker's two kinds of work are traceable to one
+   * process.
+   */
+  get id(): string {
+    return this.#workerId;
+  }
+
+  /**
    * Claims one batch and works through it.
    *
    * Exposed separately from {@link run} so the integration suite can drive the

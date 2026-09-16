@@ -314,6 +314,12 @@ export const setCompanyPlanRoute = defineRoute({
       throw notFound(`No company with id ${params.tenantId}`);
     }
 
+    // The plan decides the storage allowance (P16), and the door-check caches
+    // the company row that carries it. Clearing it here means the admin who
+    // just moved somebody onto a bigger plan sees uploads accepted at once
+    // rather than a minute later.
+    forgetTenantStatus(tenant.id);
+
     await recordPlatformAction(context, {
       action: 'tenant.plan_changed',
       tenantId: tenant.id,

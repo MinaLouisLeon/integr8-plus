@@ -100,3 +100,133 @@ export async function fetchBucketAnalytics(options: {
     sampledAt: new Date(sample.dimensions.datetime),
   };
 }
+
+// ---------------------------------------------------------------------------
+// What a bucket cost, rather than what it holds (P16)
+// ---------------------------------------------------------------------------
+
+/**
+ * Operations against a bucket over a window, by billing class.
+ *
+ * Cloudflare charges for storage and for operations separately, and the two
+ * have nothing to do with each other: a company storing very little can cost
+ * more than one storing a great deal, if their phones sync often enough. Class
+ * A is the expensive kind — writes and lists; Class B is reads. Neither is
+ * visible in the ledger, because neither leaves anything in a bucket.
+ */
+export interface BucketOperations {
+  classA: number;
+  classB: number;
+  /** The window these cover. */
+  since: Date;
+  until: Date;
+}
+
+const OPERATIONS_QUERY = `
+query BucketOperations($accountTag: string!, $bucketName: string!, $since: Time!, $until: Time!) {
+  viewer {
+    accounts(filter: { accountTag: $accountTag }) {
+      r2OperationsAdaptiveGroups(
+        limit: 100
+        filter: { bucketName: $bucketName, datetime_geq: $since, datetime_leq: $until }
+      ) {
+        sum { requests }
+        dimensions { actionType }
+      }
+    }
+  }
+}`;
+
+interface OperationsResponse {
+  data?: {
+    viewer?: {
+      accounts?: {
+        r2OperationsAdaptiveGroups?: {
+          sum: { requests: number };
+          dimensions: { actionType: string };
+        }[];
+      }[];
+    };
+  };
+  errors?: { message: string }[] | null;
+}
+
+/**
+ * Which action types Cloudflare bills as Class A.
+ *
+ * Listed rather than inferred: Cloudflare's own documentation is the source,
+ * and an action type that appears later should be counted deliberately rather
+ * than silently falling into whichever bucket a default chose. Anything not
+ * named here is counted as Class B, which is the cheaper of the two — so a new
+ * action type understates the bill rather than inventing one.
+ */
+const CLASS_A_ACTIONS = new Set([
+  'ListBuckets',
+  'PutBucket',
+  'ListObjects',
+  'PutObject',
+  'CopyObject',
+  'CompleteMultipartUpload',
+  'CreateMultipartUpload',
+  'UploadPart',
+  'UploadPartCopy',
+  'ListMultipartUploads',
+  'PutBucketEncryption',
+  'PutBucketCors',
+  'PutBucketLifecycleConfiguration',
+  'LifecycleStorageTierTransition',
+]);
+
+/** Operations against a bucket over a window, or `undefined` when Cloudflare has none. */
+export async function fetchBucketOperations(options: {
+  accountId: string;
+  apiToken: string;
+  bucket: string;
+  since: Date;
+  until?: Date;
+  fetch?: typeof fetch;
+}): Promise<BucketOperations | undefined> {
+  const until = options.until ?? new Date();
+  const response = await (options.fetch ?? fetch)(ENDPOINT, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${options.apiToken}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      query: OPERATIONS_QUERY,
+      variables: {
+        accountTag: options.accountId,
+        bucketName: options.bucket,
+        since: options.since.toISOString(),
+        until: until.toISOString(),
+      },
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Cloudflare analytics answered ${String(response.status)}.`);
+  }
+  const body = (await response.json()) as OperationsResponse;
+  if (body.errors !== undefined && body.errors !== null && body.errors.length > 0) {
+    throw new Error(
+      `Cloudflare analytics: ${body.errors.map((error) => error.message).join('; ')}`,
+    );
+  }
+
+  const groups = body.data?.viewer?.accounts?.[0]?.r2OperationsAdaptiveGroups;
+  if (groups === undefined) {
+    return undefined;
+  }
+
+  let classA = 0;
+  let classB = 0;
+  for (const group of groups) {
+    if (CLASS_A_ACTIONS.has(group.dimensions.actionType)) {
+      classA += group.sum.requests;
+    } else {
+      classB += group.sum.requests;
+    }
+  }
+
+  return { classA, classB, since: options.since, until };
+}

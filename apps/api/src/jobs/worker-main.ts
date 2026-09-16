@@ -4,6 +4,7 @@ import { loadApiConfig } from '../config.js';
 import { createLogger } from '../http/logger.js';
 import { flushSentry, initialiseSentry } from '../observability/sentry.js';
 import { runMediaMaintenance } from '../media/maintenance.js';
+import { runMetering } from '../media/metering.js';
 import { purgeDueTenants } from '../platform/purge.js';
 import { runSyncMaintenance } from '../sync/maintenance.js';
 import { buildJobHandlers } from './handlers.js';
@@ -60,6 +61,26 @@ async function main(): Promise<void> {
       const purged = await purgeDueTenants({ media: services.media, logger });
       if (purged.length > 0) {
         logger.info('Scheduled deletions completed', { companies: purged.length });
+      }
+
+      // Metering (P16). Runs on the same timer but claims its turn in the
+      // database, so it happens once a night rather than once a night per
+      // worker, and every other tick is a single conditional update that
+      // matches nothing.
+      const metered = await runMetering({
+        media: services.media,
+        config,
+        logger,
+        workerId: worker.id,
+      });
+      if (metered.sampled > 0 || metered.retired > 0 || metered.failures.length > 0) {
+        logger.info('Metering finished', {
+          sampled: metered.sampled,
+          reconciled: metered.reconciled,
+          drifted: metered.drifted.length,
+          retired: metered.retired,
+          failures: metered.failures.length,
+        });
       }
     } catch (error) {
       logger.error('Media maintenance failed', {
