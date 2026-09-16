@@ -25,7 +25,7 @@ import {
 } from './http/errors.js';
 import { withIdempotency } from './http/idempotency.js';
 import { createLogger, type Logger, principalContext } from './http/logger.js';
-import { assertTenantServable } from './http/suspension.js';
+import { assertTenantServable, assertTenantWritable } from './http/suspension.js';
 import type { AnyRoute, ClientApp, PublicRequestContext, RequestContext } from './http/routes.js';
 import { captureException } from './observability/sentry.js';
 
@@ -57,6 +57,25 @@ export interface BuildServerOptions {
   logger?: Logger;
 }
 
+/**
+ * The methods that change something.
+ *
+ * GET and HEAD are reads by definition; everything else is treated as a write
+ * whatever the handler actually does, because guessing the other way round is
+ * how a read-only company keeps writing.
+ */
+const WRITES = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/**
+ * Where a third party's signed deliveries arrive.
+ *
+ * Exempt from the client-version check for the same reason a signed media link
+ * is: the caller is not one of our clients and has no version to send. It is
+ * still rate limited by address, which is the one protection that makes sense
+ * against somebody posting rubbish at it.
+ */
+const WEBHOOK_PREFIX = '/v1/billing/webhook';
+
 export function buildServer(options: BuildServerOptions): FastifyInstance {
   const { config, services, routes } = options;
   const logger =
@@ -79,6 +98,39 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
   });
 
   const limiter = createRateLimiter();
+
+  /**
+   * The bytes of a webhook body, kept as they arrived.
+   *
+   * A signature covers what was sent; parsing JSON and re-serialising it
+   * changes the bytes, so a genuine delivery would look forged. Fastify is
+   * told to hand this content type over untouched, and the route reads the
+   * string. Only routes that declared `rawBody` look at it — everything else
+   * gets the parsed object as before.
+   */
+  const rawBodyRoutes = new Set(
+    routes.filter((route) => route.rawBody === true).map((route) => route.path),
+  );
+  if (rawBodyRoutes.size > 0) {
+    app.addContentTypeParser(
+      'application/json',
+      { parseAs: 'string' },
+      (request, body: string, done) => {
+        if (rawBodyRoutes.has(request.routeOptions.url ?? '')) {
+          request.integr8.rawBody = body;
+          // The handler gets the string; the route's own schema is what reads
+          // it, which for a webhook is `noSchema`.
+          done(null, {});
+          return;
+        }
+        try {
+          done(null, body === '' ? {} : (JSON.parse(body) as unknown));
+        } catch (error) {
+          done(error as Error, undefined);
+        }
+      },
+    );
+  }
 
   // Before anything that could refuse a request: a preflight carries none of
   // the headers the later checks look for.
@@ -108,6 +160,10 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
       ipAddress: request.ip === '' ? null : request.ip,
       userAgent: header(request, 'user-agent'),
       idempotencyKey: header(request, 'idempotency-key'),
+      // Whichever provider signed it. One header per provider, and only a
+      // route that asked for the raw body ever reads it (P17).
+      signatureHeader:
+        header(request, 'stripe-signature') ?? header(request, 'x-webhook-signature') ?? undefined,
       clientApp: readClientApp(header(request, 'x-client-app')),
       startedAt: process.hrtime.bigint(),
     };
@@ -125,10 +181,13 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
     // header policy is a bad afternoon.
     // Signed media links are followed by whatever fetched them — in production
     // they point at R2 and never reach this server — so they carry no client
-    // headers and are authorised by their signature instead.
+    // headers and are authorised by their signature instead. A billing
+    // provider's webhook is the same case: it is somebody else's server, it
+    // sends no client version, and it is authorised by its signature (P17).
     if (
       request.url.startsWith('/health') ||
       request.url.startsWith('/openapi') ||
+      request.url.startsWith(WEBHOOK_PREFIX) ||
       request.url.startsWith(LOCAL_MEDIA_PREFIX)
     ) {
       done();
@@ -237,6 +296,16 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
           // 5b. Is this company still being served? A suspension refuses reads
           // as well as writes; see http/suspension.ts for why.
           await assertTenantServable(principal.tenantId);
+
+          // 5c. A company that has not paid keeps its reads and loses its
+          // writes (P17). Method rather than permission: every permission that
+          // writes would have to be classified, and a new one added without
+          // being classified would default to allowed. A method cannot be
+          // forgotten, and a route that genuinely needs to work read-only —
+          // paying, signing out — says so on the route.
+          if (route.allowedWhenReadOnly !== true && WRITES.has(request.method.toUpperCase())) {
+            await assertTenantWritable(principal.tenantId);
+          }
 
           // 6. Permission.
           if (route.permission !== undefined) {

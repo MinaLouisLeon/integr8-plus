@@ -118,6 +118,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/billing/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What this company is paying for, and what it is allowed
+         * @description The plan, where the subscription stands, and the limits with the usage against them — the same numbers the API enforces, so a screen can warn before a refusal rather than explain one afterwards.
+         */
+        get: operations["getSubscription"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Begin paying for a plan
+         * @description Returns a link to the provider's hosted page. Card details never touch this API — the browser goes to the provider and comes back, and the subscription becomes real when the provider's webhook says so, not when the browser returns.
+         */
+        post: operations["startCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open the provider’s billing portal
+         * @description Where a card is updated, invoices are read and a subscription is cancelled. All of it is the provider’s hosted page, so this API never holds a card number or an invoice.
+         */
+        post: operations["openBillingPortal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What the billing provider says happened
+         * @description Verified by signature over the exact bytes sent, and deduplicated on the provider's own event id. Not for clients: it is called by the provider.
+         */
+        post: operations["billingWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -2698,6 +2778,353 @@ export interface operations {
             };
         };
     };
+    getSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The subscription. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        plan: string;
+                        /** @enum {string} */
+                        status: "trialing" | "active" | "past_due" | "canceled" | "incomplete";
+                        /** @enum {string|null} */
+                        interval: "month" | "year" | null;
+                        /** Format: date-time */
+                        currentPeriodEnd: string | null;
+                        cancelAtPeriodEnd: boolean;
+                        /** Format: date-time */
+                        trialEndsAt: string | null;
+                        /** Format: date-time */
+                        pastDueSince: string | null;
+                        /** Format: date-time */
+                        graceEndsAt: string | null;
+                        readOnly: boolean;
+                        readOnlyReason: string | null;
+                        entitlements: {
+                            seats: number | null;
+                            storageBytes: number | null;
+                            submissionsPerMonth: number | null;
+                        };
+                        usage: {
+                            seatsUsed: number;
+                            submissionsThisMonth: number;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    startCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    plan: "starter" | "standard" | "enterprise";
+                    /**
+                     * @default month
+                     * @enum {string}
+                     */
+                    interval?: "month" | "year";
+                };
+            };
+        };
+        responses: {
+            /** @description Where to send the browser. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        url: string;
+                        provider: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This plan has no price configured (`plan_not_purchasable`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    openBillingPortal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Where to send the browser. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        url: string;
+                        provider: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This company has never paid, so there is no portal yet. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    billingWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted, whether or not it was acted on. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        received: boolean;
+                        duplicate: boolean;
+                        handled: boolean;
+                    };
+                };
+            };
+            /** @description The signature did not verify. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     getMe: {
         parameters: {
             query?: never;
@@ -2722,7 +3149,7 @@ export interface operations {
                         displayName: string;
                         /** @enum {string} */
                         role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
-                        permissions: ("tenant.read" | "tenant.update" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run")[];
+                        permissions: ("tenant.read" | "tenant.update" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -3219,14 +3646,12 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            /** @description Every seat on this plan is taken (`seat_limit_reached`). */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description Already a member, or a role above the inviter’s own. */
             422: {
@@ -5409,7 +5834,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The job is closed (`work_order_closed`), or the form is not one of its forms (`form_not_on_work_order`). */
+            /** @description The job is closed (`work_order_closed`), the form is not one of its forms (`form_not_on_work_order`), or the plan’s submissions for the month are used up (`submission_limit_reached`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5981,7 +6406,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Changed elsewhere, or not in a state that can be submitted. */
+            /** @description Changed elsewhere, not in a state that can be submitted, or the plan’s submissions for the month are used up (`submission_limit_reached`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -16653,6 +17078,30 @@ export interface operations {
                             activeUsers: number;
                             auditedActions: number;
                         }[];
+                        billing: {
+                            provider: string;
+                            /** @enum {string} */
+                            status: "trialing" | "active" | "past_due" | "canceled" | "incomplete";
+                            /** @enum {string} */
+                            plan: "trial" | "starter" | "standard" | "enterprise";
+                            /** @enum {string|null} */
+                            interval: "month" | "year" | null;
+                            /** Format: date-time */
+                            currentPeriodEnd: string | null;
+                            cancelAtPeriodEnd: boolean;
+                            /** Format: date-time */
+                            trialEndsAt: string | null;
+                            /** Format: date-time */
+                            pastDueSince: string | null;
+                            /** Format: date-time */
+                            graceEndsAt: string | null;
+                            remindersSent: number;
+                            /** Format: date-time */
+                            readOnlySince: string | null;
+                            readOnlyReason: string | null;
+                            providerCustomerId: string | null;
+                            providerSubscriptionId: string | null;
+                        } | null;
                         featureFlags: {
                             [key: string]: boolean;
                         };
@@ -19355,6 +19804,12 @@ export interface operations {
                             /** @enum {string} */
                             overage: "block" | "allow";
                             warnAtPercent: number;
+                            seats: number | null;
+                            submissionsPerMonth: number | null;
+                            priceCents: number | null;
+                            currency: string | null;
+                            providerPriceMonthly: string | null;
+                            providerPriceYearly: string | null;
                             /** Format: date-time */
                             updatedAt: string;
                         }[];
@@ -19425,6 +19880,12 @@ export interface operations {
                     /** @enum {string} */
                     overage?: "block" | "allow";
                     warnAtPercent?: number;
+                    seats?: number | null;
+                    submissionsPerMonth?: number | null;
+                    priceCents?: number | null;
+                    currency?: string | null;
+                    providerPriceMonthly?: string | null;
+                    providerPriceYearly?: string | null;
                 };
             };
         };
@@ -19443,6 +19904,12 @@ export interface operations {
                         /** @enum {string} */
                         overage: "block" | "allow";
                         warnAtPercent: number;
+                        seats: number | null;
+                        submissionsPerMonth: number | null;
+                        priceCents: number | null;
+                        currency: string | null;
+                        providerPriceMonthly: string | null;
+                        providerPriceYearly: string | null;
                         /** Format: date-time */
                         updatedAt: string;
                     };

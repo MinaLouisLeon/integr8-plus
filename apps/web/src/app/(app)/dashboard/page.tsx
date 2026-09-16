@@ -101,6 +101,11 @@ export default function DashboardPage() {
             ...(person?.permissions.includes('storage.read') === true
               ? ([['/storage', 'storage', 'storageHint']] as const)
               : []),
+            // The plan, the limits and the card (P17). Shown to anybody who may
+            // read billing, which is owners and admins; only an owner can act.
+            ...(person?.permissions.includes('billing.read') === true
+              ? ([['/billing', 'billing', 'billingHint']] as const)
+              : []),
           ] as const
         ).map(([href, label, hint]) => (
           <Link

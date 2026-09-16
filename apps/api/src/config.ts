@@ -155,6 +155,37 @@ export const apiConfigSchema = z.object({
   /** An Expo access token, when the EAS project has enhanced push security on. */
   EXPO_ACCESS_TOKEN: z.string().optional(),
 
+  // -------------------------------------------------------------------------
+  // Billing (P17)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Who takes the money. `stripe` is the real one; `recording` keeps the
+   * requests in memory so every other part of billing — entitlements, dunning,
+   * read-only — works with no account anywhere. Production refuses `recording`.
+   */
+  BILLING_PROVIDER: z.enum(['recording', 'stripe']).default('recording'),
+  /** Stripe's secret key. Server-side only; it can charge cards. */
+  STRIPE_SECRET_KEY: z.string().optional(),
+  /**
+   * The signing secret for this deployment's webhook endpoint.
+   *
+   * Per endpoint, not per account: a staging secret must not verify a
+   * production delivery, because the two would then be able to move each
+   * other's companies onto paid plans.
+   */
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  /** Where a finished checkout sends the browser back to. */
+  BILLING_RETURN_URL: z.url().optional(),
+  /** How long a new company may use the product before paying. */
+  BILLING_TRIAL_DAYS: positiveInt(14),
+  /**
+   * How long a company whose payment failed keeps working before the account
+   * goes read-only. Long enough for somebody to come back from a week away and
+   * fix a card that expired while they were gone.
+   */
+  BILLING_GRACE_DAYS: positiveInt(14),
+
   /**
    * Sentry. Optional: unset means errors are logged and not reported, which is
    * the right default for a developer's machine and the wrong one for
@@ -269,6 +300,19 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       'Invalid API configuration:\n  GEOCODER is mapbox but MAPBOX_ACCESS_TOKEN is not set.\n\nSee apps/api/.env.example for the full list.',
     );
   }
+  if (result.success) {
+    const billing = billingProblems(result.data);
+    if (billing.length > 0) {
+      throw new Error(
+        [
+          'Invalid API configuration:',
+          ...billing.map((problem) => `  ${problem}`),
+          '',
+          'See apps/api/.env.example for the full list.',
+        ].join('\n'),
+      );
+    }
+  }
   if (result.success && result.data.MEDIA_STORAGE === 'r2') {
     const { missing } = r2Settings(result.data);
     if (missing.length > 0) {
@@ -296,6 +340,23 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
  * silently rather than loudly — which is exactly the kind of thing that is
  * discovered during the incident it would have helped with.
  */
+/** Stripe needs both halves: a key to charge with and a secret to verify with. */
+export function billingProblems(config: ApiConfig): string[] {
+  if (config.BILLING_PROVIDER !== 'stripe') {
+    return [];
+  }
+  const missing: string[] = [];
+  if (config.STRIPE_SECRET_KEY === undefined) {
+    missing.push('STRIPE_SECRET_KEY');
+  }
+  if (config.STRIPE_WEBHOOK_SECRET === undefined) {
+    missing.push('STRIPE_WEBHOOK_SECRET');
+  }
+  return missing.length === 0
+    ? []
+    : [`BILLING_PROVIDER is stripe but ${missing.join(' and ')} not set.`];
+}
+
 export function assertProductionReady(config: ApiConfig): void {
   if (config.APP_ENV !== 'production') {
     return;
@@ -316,6 +377,9 @@ export function assertProductionReady(config: ApiConfig): void {
   }
   if (config.PUSH_SENDER === 'recording') {
     problems.push('PUSH_SENDER is recording: no engineer would be told about a new job.');
+  }
+  if (config.BILLING_PROVIDER === 'recording') {
+    problems.push('BILLING_PROVIDER is recording: nobody could pay, and nothing would be charged.');
   }
   if (config.API_CORS_ORIGINS.trim() === '') {
     problems.push('API_CORS_ORIGINS is not set: no browser client could call this API.');

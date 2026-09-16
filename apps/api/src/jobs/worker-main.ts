@@ -5,6 +5,7 @@ import { createLogger } from '../http/logger.js';
 import { flushSentry, initialiseSentry } from '../observability/sentry.js';
 import { runMediaMaintenance } from '../media/maintenance.js';
 import { runMetering } from '../media/metering.js';
+import { runDunning } from '../billing/dunning.js';
 import { purgeDueTenants } from '../platform/purge.js';
 import { runSyncMaintenance } from '../sync/maintenance.js';
 import { buildJobHandlers } from './handlers.js';
@@ -80,6 +81,23 @@ async function main(): Promise<void> {
           drifted: metered.drifted.length,
           retired: metered.retired,
           failures: metered.failures.length,
+        });
+      }
+
+      // Dunning (P17). Same timer, same turn-claiming. It only ever refuses
+      // writes and posts banners — nothing in it deletes a customer's data.
+      const dunned = await runDunning({ config, logger, workerId: worker.id });
+      if (
+        dunned.trialsEnded > 0 ||
+        dunned.remindersPosted > 0 ||
+        dunned.madeReadOnly > 0 ||
+        dunned.failures.length > 0
+      ) {
+        logger.info('Dunning finished', {
+          trialsEnded: dunned.trialsEnded,
+          remindersPosted: dunned.remindersPosted,
+          madeReadOnly: dunned.madeReadOnly,
+          failures: dunned.failures.length,
         });
       }
     } catch (error) {

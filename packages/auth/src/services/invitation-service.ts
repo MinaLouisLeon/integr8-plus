@@ -56,6 +56,19 @@ export interface InvitationServiceDeps {
   sessions: SessionService;
   config: AuthConfig;
   now?: () => Date;
+  /**
+   * Asked, before a seat is taken, whether the company may take one (P17).
+   *
+   * Injected rather than imported: what a plan allows is a billing question,
+   * and this package knows nothing about plans or providers. It throws to
+   * refuse; the error travels out of `accept` unchanged, so the caller decides
+   * what an over-quota acceptance looks like on the wire.
+   *
+   * Optional, and absent means no limit — the seat rule is enforced by
+   * whoever is enforcing plans, not by the fact that somebody remembered to
+   * pass a callback here.
+   */
+  seatCheck?: (tenantId: TenantId) => Promise<void>;
 }
 
 export class InvitationService {
@@ -63,12 +76,14 @@ export class InvitationService {
   readonly #sessions: SessionService;
   readonly #config: AuthConfig;
   readonly #clock: () => Date;
+  readonly #seatCheck: ((tenantId: TenantId) => Promise<void>) | undefined;
 
   constructor(deps: InvitationServiceDeps) {
     this.#identity = deps.identity;
     this.#sessions = deps.sessions;
     this.#config = deps.config;
     this.#clock = deps.now ?? (() => new Date());
+    this.#seatCheck = deps.seatCheck;
   }
 
   /**
@@ -191,6 +206,17 @@ export class InvitationService {
       invitation.expiresAt <= now
     ) {
       throw new InvitationInvalidError();
+    }
+
+    // Before the identity is created, not after: an acceptance refused for
+    // want of a seat must leave nothing behind at the identity provider, and
+    // `createIdentity` is the first step that is not ours to undo.
+    //
+    // Checked here as well as at invitation because the two moments are weeks
+    // apart. The plan can shrink, or the last seat can be taken by somebody
+    // else, between the invitation being sent and the link being clicked.
+    if (this.#seatCheck !== undefined) {
+      await this.#seatCheck(parsed.tenantId);
     }
 
     if (input.password !== undefined) {

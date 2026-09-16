@@ -15,6 +15,13 @@ import { configureDatabase, loadDatabaseConfig } from '@integr8/db';
 import { type ApiConfig, corsOrigins, publicUrl, r2Settings } from './config.js';
 import { LocalDiskStorage } from './media/local-disk.js';
 import { FakeGeocoder, type Geocoder, MapboxGeocoder } from './geo/geocoder.js';
+import {
+  type BillingProvider,
+  RecordingBillingProvider,
+  StripeBillingProvider,
+} from './billing/provider.js';
+import { assertSeatAvailable } from './billing/entitlements.js';
+import { planFor } from './http/suspension.js';
 import { ExpoPushSender, type PushSender, RecordingPushSender } from './push/sender.js';
 import { R2Storage } from './media/r2.js';
 import type { MediaStorage } from './media/storage.js';
@@ -47,6 +54,8 @@ export interface Services {
   geocoder: Geocoder;
   /** Push notifications to engineers' phones. Used by the worker, never in a request. */
   push: PushSender;
+  /** Who takes the money (P17). Stripe in production, a recording fake elsewhere. */
+  billing: BillingProvider;
 }
 
 export interface BuildServicesOptions {
@@ -82,13 +91,46 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     sessions,
     identity,
     signIn: new SignInService({ identity, sessions, config: authConfig }),
-    invitations: new InvitationService({ identity, sessions, config: authConfig }),
+    invitations: new InvitationService({
+      identity,
+      sessions,
+      config: authConfig,
+      // The plan's seat limit, enforced at the moment a seat is taken (P17).
+      // `@integr8/auth` has no idea what a plan is; this is where the two meet.
+      seatCheck: async (tenantId) =>
+        assertSeatAvailable({ tenantId, plan: await planFor(tenantId) }),
+    }),
     impersonation: new ImpersonationService({ sessions, config: authConfig }),
     platform: new PlatformSessionService({ tokens, config: authConfig }),
     media: buildMediaStorage(options.config),
     geocoder: buildGeocoder(options.config),
     push: buildPushSender(options.config),
+    billing: buildBillingProvider(options.config),
   };
+}
+
+/**
+ * The billing provider.
+ *
+ * Unlike the geocoder, a missing key is not a silent fallback to the fake: a
+ * deployment that meant to charge cards and quietly did not is worse than one
+ * that refuses to start. `loadApiConfig` throws before this is reached, and
+ * this repeats the check because the two could drift.
+ */
+export function buildBillingProvider(config: ApiConfig): BillingProvider {
+  if (config.BILLING_PROVIDER !== 'stripe') {
+    return new RecordingBillingProvider();
+  }
+
+  const secretKey = config.STRIPE_SECRET_KEY;
+  const webhookSecret = config.STRIPE_WEBHOOK_SECRET;
+  if (secretKey === undefined || webhookSecret === undefined) {
+    throw new Error(
+      'BILLING_PROVIDER is stripe but STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET is not set.',
+    );
+  }
+
+  return new StripeBillingProvider({ secretKey, webhookSecret });
 }
 
 export function buildPushSender(config: ApiConfig): PushSender {

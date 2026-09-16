@@ -43,10 +43,20 @@ export interface OnboardCompanyInput {
   onboardedBy: PlatformUserId;
   invitationTtlSeconds: number;
   media: MediaStorage;
+  /**
+   * How long the trial runs, in days, and who will take the money (P17).
+   *
+   * Every company gets a subscription row on its first day, trialing, with the
+   * end date written down. A trial that is inferred from the absence of a row
+   * is a trial nobody can extend, shorten or explain to a customer.
+   */
+  billing: { provider: string; trialDays: number };
 }
 
 export interface OnboardedCompany {
   tenant: Tenant;
+  /** When the trial this company starts on runs out. */
+  trialEndsAt: Date;
   invitation: { id: string; email: string; expiresAt: Date; token: string };
   jobTypes: number;
   storage: { bucket: string | null; created: boolean; error: string | null };
@@ -130,10 +140,21 @@ export async function onboardCompany(input: OnboardCompanyInput): Promise<Onboar
     throw error;
   }
 
+  // After the transaction, because a failure in there takes the company row
+  // back out and a subscription pointing at a deleted company would block it.
+  const trialEndsAt = new Date(Date.now() + input.billing.trialDays * 24 * 60 * 60 * 1000);
+  await platform.billing.start({
+    tenantId: tenant.id,
+    provider: input.billing.provider,
+    plan: input.plan,
+    trialEndsAt,
+  });
+
   const storage = await provision(input.media, tenant.id);
 
   return {
     tenant,
+    trialEndsAt,
     invitation: {
       id: invitation.id,
       email: invitation.email,

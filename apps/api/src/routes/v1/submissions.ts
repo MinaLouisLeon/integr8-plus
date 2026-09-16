@@ -29,6 +29,8 @@ import {
   notFound,
   unprocessable,
 } from '../../http/errors.js';
+import { assertSubmissionAllowed, startOfMonth } from '../../billing/entitlements.js';
+import { planFor } from '../../http/suspension.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { readableWorkOrder, requireWork } from './operations.js';
 import { iso, isoOrNull } from './schemas.js';
@@ -650,13 +652,23 @@ export const startSubmissionRoute = defineRoute({
     201: { description: 'The draft, with the version it is bound to.', schema: detailSchema },
     409: {
       description:
-        'The job is closed (`work_order_closed`), or the form is not one of its forms (`form_not_on_work_order`).',
+        'The job is closed (`work_order_closed`), the form is not one of its forms (`form_not_on_work_order`), or the plan’s submissions for the month are used up (`submission_limit_reached`).',
     },
     403: { description: 'This person’s role may not fill this form.' },
     404: { description: 'No such form, or nothing published to fill.' },
   },
   handler: async ({ body }, context) => {
     const { principal } = context;
+
+    // Checked before the form is opened rather than when it is submitted, so
+    // nobody fills in twenty questions only to be told the month is spent. It
+    // is checked again at submission, because that is the moment a submission
+    // actually exists and a draft can sit unfinished across a month boundary.
+    await assertSubmissionAllowed({
+      tenantId: principal.tenantId,
+      plan: await planFor(principal.tenantId),
+    });
+
     const detail = await withTenant(principal.tenantId, async (tx) => {
       const form = await tx.forms.findForm(body.formId);
       const version = form === undefined ? undefined : await tx.forms.findLatestPublished(form.id);
@@ -1032,7 +1044,10 @@ export const submitRoute = defineRoute({
   responses: {
     200: { description: 'The submitted submission.', schema: detailSchema },
     404: { description: 'No such submission this person may change.' },
-    409: { description: 'Changed elsewhere, or not in a state that can be submitted.' },
+    409: {
+      description:
+        'Changed elsewhere, not in a state that can be submitted, or the plan’s submissions for the month are used up (`submission_limit_reached`).',
+    },
     422: { description: 'The answers were refused. Details name each question.' },
   },
   handler: async ({ params, body }, context) => {
@@ -1063,6 +1078,19 @@ export const submitRoute = defineRoute({
       );
 
       const amending = submission.status === 'reopened';
+
+      // A correction is not a new submission. Counting one would charge a
+      // company twice for the same piece of work, and refusing one would trap
+      // a correction the company has already been asked to make — which is the
+      // one thing a limit must never do.
+      if (!amending) {
+        await assertSubmissionAllowed({
+          tenantId: principal.tenantId,
+          plan: await planFor(principal.tenantId),
+          submissionsUsed: await tx.submissions.countSince(startOfMonth()),
+        });
+      }
+
       const result = await tx.submissions.submit(
         submission.id,
         answers,

@@ -103,11 +103,33 @@ export const getCompanyRoute = defineRoute({
       ),
     );
 
+    const subscription = await platform.billing.find(params.tenantId);
+    const tenant = await platform.tenants.findById(params.tenantId);
+
     return {
       status: 200,
       body: {
         ...toSummary(summary, scheduled),
         activity: await platform.tenants.monthlyActivity(params.tenantId),
+        billing:
+          subscription === undefined
+            ? null
+            : {
+                provider: subscription.provider,
+                status: subscription.status,
+                plan: subscription.plan,
+                interval: subscription.interval,
+                currentPeriodEnd: isoOrNull(subscription.currentPeriodEnd),
+                cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+                trialEndsAt: isoOrNull(subscription.trialEndsAt),
+                pastDueSince: isoOrNull(subscription.pastDueSince),
+                graceEndsAt: isoOrNull(subscription.graceEndsAt),
+                remindersSent: subscription.remindersSent,
+                readOnlySince: isoOrNull(tenant?.readOnlySince ?? null),
+                readOnlyReason: tenant?.readOnlyReason ?? null,
+                providerCustomerId: subscription.providerCustomerId,
+                providerSubscriptionId: subscription.providerSubscriptionId,
+              },
         featureFlags: flags,
         owners: owners.map((member) => ({
           userId: member.userId,
@@ -178,6 +200,10 @@ export const onboardCompanyRoute = defineRoute({
       onboardedBy: toPlatformUserId(context.platform.platformUserId),
       invitationTtlSeconds: INVITATION_TTL_SECONDS,
       media: context.services.media,
+      billing: {
+        provider: context.services.billing.provider,
+        trialDays: context.config.BILLING_TRIAL_DAYS,
+      },
     });
 
     await recordPlatformAction(context, {

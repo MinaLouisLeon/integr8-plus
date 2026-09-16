@@ -57,6 +57,20 @@ const allowanceSchema = z.object({
   retentionDays: z.number().int().nullable(),
   overage: z.enum(OVERAGE_POLICIES),
   warnAtPercent: z.number().int(),
+  /** What the plan costs and allows (P17). Null is uncapped, or unpriced. */
+  seats: z.number().int().nullable(),
+  submissionsPerMonth: z.number().int().nullable(),
+  priceCents: z.number().int().nullable(),
+  currency: z.string().nullable(),
+  /**
+   * The provider's own price identifiers.
+   *
+   * Held rather than derived, because the mapping from one of our plans to a
+   * price at a provider is a decision somebody makes in the provider's
+   * dashboard and then records here. A plan with neither cannot be bought.
+   */
+  providerPriceMonthly: z.string().nullable(),
+  providerPriceYearly: z.string().nullable(),
   updatedAt: z.iso.datetime(),
 });
 
@@ -234,6 +248,18 @@ export const setAllowanceRoute = defineRoute({
     retentionDays: z.number().int().min(1).max(36_500).nullable().optional(),
     overage: z.enum(OVERAGE_POLICIES).optional(),
     warnAtPercent: z.number().int().min(1).max(100).optional(),
+    /** Null is uncapped. Zero is refused by the database: a plan nobody can use is not a plan. */
+    seats: z.number().int().positive().nullable().optional(),
+    submissionsPerMonth: z.number().int().positive().nullable().optional(),
+    /**
+     * The list price, in minor units, with its currency. Neither is what the
+     * customer is charged — the provider's price is — but it is what the
+     * pricing page shows, and the two disagreeing is a support ticket.
+     */
+    priceCents: z.number().int().min(0).nullable().optional(),
+    currency: z.string().length(3).nullable().optional(),
+    providerPriceMonthly: z.string().max(255).nullable().optional(),
+    providerPriceYearly: z.string().max(255).nullable().optional(),
   }),
   responses: {
     200: { description: 'Changed.', schema: allowanceSchema },

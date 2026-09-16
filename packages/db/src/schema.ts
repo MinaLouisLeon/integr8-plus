@@ -52,6 +52,12 @@ export interface TenantsTable {
   plan: Generated<TenantPlan>;
   seats: number | null;
   suspended_at: Date | null;
+  /**
+   * Non-payment or a lapsed trial (0017), and not the same thing as suspended:
+   * reads keep working so a company can still get its data out and pay.
+   */
+  read_only_since: Date | null;
+  read_only_reason: string | null;
   suspended_reason: string | null;
   onboarded_by: string | null;
 }
@@ -87,6 +93,25 @@ export type OveragePolicy = (typeof OVERAGE_POLICIES)[number];
 /** How a night's comparison of the ledger against Cloudflare turned out (0016). */
 export const RECONCILIATION_STATUSES = ['matched', 'drifted', 'unavailable'] as const;
 export type ReconciliationStatus = (typeof RECONCILIATION_STATUSES)[number];
+
+/**
+ * Where a company's subscription stands (0017).
+ *
+ * The vocabulary is ours rather than any provider's, even though it reads like
+ * Stripe's — a regional provider with different words maps onto these, and
+ * nothing above the adapter learns which provider is behind them.
+ */
+export const SUBSCRIPTION_STATUSES = [
+  'trialing',
+  'active',
+  'past_due',
+  'canceled',
+  'incomplete',
+] as const;
+export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
+
+export const BILLING_INTERVALS = ['month', 'year'] as const;
+export type BillingInterval = (typeof BILLING_INTERVALS)[number];
 
 export interface PlatformUsersTable {
   id: Generated<string>;
@@ -582,6 +607,14 @@ export interface PlanAllowancesTable {
   plan: TenantPlan;
   /** Null is uncapped. */
   storage_bytes: ColumnType<string | null, number | null, number | null>;
+  /** The rest of what a plan allows (0017). Null is uncapped, as above. */
+  seats: number | null;
+  submissions_per_month: number | null;
+  /** What it costs, for a screen to show. The provider does the arithmetic. */
+  price_cents: number | null;
+  currency: string | null;
+  provider_price_monthly: string | null;
+  provider_price_yearly: string | null;
   /** How long media is kept before the retention job takes it. Null is for ever. */
   retention_days: number | null;
   overage: Generated<OveragePolicy>;
@@ -621,6 +654,45 @@ export interface StorageReconciliationsTable {
   drift_bytes: ColumnType<string | null, number | null, number | null>;
   status: ReconciliationStatus;
   note: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Subscriptions and billing (0017)
+// ---------------------------------------------------------------------------
+
+export interface SubscriptionsTable {
+  tenant_id: string;
+  provider: string;
+  /** Null until a checkout completes: a company on a trial has neither yet. */
+  provider_customer_id: string | null;
+  provider_subscription_id: string | null;
+  status: Generated<SubscriptionStatus>;
+  plan: Generated<TenantPlan>;
+  billing_interval: BillingInterval | null;
+  current_period_start: Date | null;
+  current_period_end: Date | null;
+  cancel_at_period_end: Generated<boolean>;
+  trial_ends_at: Date | null;
+  /** Dunning: when the card first failed, and when read-only arrives. */
+  past_due_since: Date | null;
+  grace_ends_at: Date | null;
+  reminders_sent: Generated<number>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface BillingEventsTable {
+  id: Generated<string>;
+  provider: string;
+  /** The provider's id for the delivery. Unique, which is the whole dedupe. */
+  provider_event_id: string;
+  type: string;
+  /** Null when the event names a customer this deployment does not know. */
+  tenant_id: string | null;
+  payload: Jsonb<Record<string, unknown>>;
+  received_at: CreatedAt;
+  processed_at: Date | null;
+  error: string | null;
 }
 
 export interface ScheduledTaskRunsTable {
@@ -1187,6 +1259,8 @@ export interface Database {
   tenant_storage_samples: TenantStorageSamplesTable;
   storage_reconciliations: StorageReconciliationsTable;
   scheduled_task_runs: ScheduledTaskRunsTable;
+  subscriptions: SubscriptionsTable;
+  billing_events: BillingEventsTable;
   customers: CustomersTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
@@ -1263,6 +1337,11 @@ export const PLATFORM_TABLES = [
   // the platform that runs it.
   'plan_allowances',
   'scheduled_task_runs',
+  // What the billing provider told us, and when (0017). Its tenant_id is
+  // nullable — an event can name a customer this deployment does not know —
+  // so it cannot be isolated the usual way, and the runtime role holds nothing
+  // on it at all.
+  'billing_events',
 ] as const;
 
 /**
@@ -1328,6 +1407,7 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   tenant_feature_flags: true,
   tenant_storage_samples: true,
   storage_reconciliations: true,
+  subscriptions: true,
   audit_log: true,
   sessions: true,
   refresh_tokens: true,

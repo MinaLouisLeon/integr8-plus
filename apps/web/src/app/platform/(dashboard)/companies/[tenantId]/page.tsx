@@ -91,6 +91,8 @@ export default function CompanyPage() {
         </dl>
       </Panel>
 
+      <BillingPanel billing={detail.billing} />
+
       <Panel title={t('platform.company.people')}>
         {detail.owners.length === 0 ? (
           <p className="text-sm text-content-muted">{t('platform.companies.empty')}</p>
@@ -156,6 +158,91 @@ export default function CompanyPage() {
       <SupportActions tenantId={tenantId} />
       <Lifecycle tenantId={tenantId} name={detail.name} status={detail.status} />
     </main>
+  );
+}
+
+/**
+ * What this company is paying, for whoever is asked "have they paid?" (P17).
+ *
+ * Read-only. Nothing here changes a subscription: the provider owns that, and a
+ * dashboard that could quietly mark a company as paid would be the first place
+ * anybody looked after a discrepancy. The provider's own ids are shown so the
+ * next question — what does their dashboard say — can be answered in one paste.
+ */
+function BillingPanel({
+  billing,
+}: {
+  billing: {
+    provider: string;
+    status: string;
+    plan: string;
+    interval: string | null;
+    currentPeriodEnd: string | null;
+    trialEndsAt: string | null;
+    pastDueSince: string | null;
+    graceEndsAt: string | null;
+    remindersSent: number;
+    readOnlySince: string | null;
+    readOnlyReason: string | null;
+    providerCustomerId: string | null;
+    providerSubscriptionId: string | null;
+  } | null;
+}) {
+  const { t } = useTranslation();
+
+  if (billing === null) {
+    return (
+      <Panel title={t('platform.billing.title')}>
+        <p className="text-sm text-content-muted">{t('platform.billing.none')}</p>
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel title={t('platform.billing.title')}>
+      {billing.readOnlySince === null ? null : (
+        <p className="mb-4 rounded-md bg-danger-subtle px-3 py-2 text-sm text-danger">
+          {t('platform.billing.readOnly', { when: formatDate(billing.readOnlySince) })}
+        </p>
+      )}
+      <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+        <Fact label={t('platform.billing.status')} value={billing.status} />
+        <Fact label={t('platform.companies.plan')} value={billing.plan} />
+        <Fact
+          label={t('platform.billing.interval')}
+          value={
+            billing.interval === null
+              ? '—'
+              : billing.interval === 'year'
+                ? t('platform.billing.year')
+                : t('platform.billing.month')
+          }
+        />
+        <Fact label={t('platform.billing.provider')} value={billing.provider} />
+        <Fact
+          label={t('platform.billing.renews')}
+          value={billing.currentPeriodEnd === null ? '—' : formatDate(billing.currentPeriodEnd)}
+        />
+        <Fact
+          label={t('platform.billing.trialEnds')}
+          value={billing.trialEndsAt === null ? '—' : formatDate(billing.trialEndsAt)}
+        />
+        <Fact
+          label={t('platform.billing.pastDueSince')}
+          value={billing.pastDueSince === null ? '—' : formatDate(billing.pastDueSince)}
+        />
+        <Fact
+          label={t('platform.billing.graceEnds')}
+          value={billing.graceEndsAt === null ? '—' : formatDate(billing.graceEndsAt)}
+        />
+        <Fact label={t('platform.billing.remindersSent')} value={String(billing.remindersSent)} />
+        <Fact label={t('platform.billing.customerId')} value={billing.providerCustomerId ?? '—'} />
+        <Fact
+          label={t('platform.billing.subscriptionId')}
+          value={billing.providerSubscriptionId ?? '—'}
+        />
+      </dl>
+    </Panel>
   );
 }
 

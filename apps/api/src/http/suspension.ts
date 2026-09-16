@@ -17,6 +17,13 @@ import { ApiError } from './errors.js';
  * alternative is a `tenants` read on every single request for a state that
  * changes a handful of times a year.
  *
+ * The same row also carries read-only (P17), which is a different fact for a
+ * different reason and must not be confused with suspension. A suspended
+ * company is refused everything: it is a commercial decision we have taken
+ * about them. A read-only company has not paid, and can still sign in, read
+ * everything, export it and fix their card — because a company that pays late
+ * is still a customer, and one whose data you deleted is a lawsuit.
+ *
  * The same cached row carries the company's plan (P16). The door-check already
  * reads `tenants` on every authenticated request; the quota check needs the
  * plan off that same row, and reading it twice would be two connections' work
@@ -29,6 +36,7 @@ interface CachedStatus {
   status: TenantStatus;
   reason: string | null;
   plan: TenantPlan;
+  readOnlyReason: string | null;
   readAt: number;
 }
 
@@ -80,6 +88,43 @@ export async function planFor(tenantId: string, now = Date.now()): Promise<Tenan
   return fresh.plan;
 }
 
+/**
+ * Refuses a write while a company is read-only (P17).
+ *
+ * 402 rather than 423: the request is well formed and the caller is who they
+ * say they are — what is missing is a payment, and 402 is the one status that
+ * says so. The reason travels with it, because "contact support" is what a
+ * person does when an error does not tell them the card failed.
+ */
+export class TenantReadOnlyError extends ApiError {
+  constructor(reason: string) {
+    super(402, 'tenant_read_only', reason, [
+      {
+        field: 'tenant.billing',
+        code: 'tenant_read_only',
+        message: reason,
+      },
+    ]);
+  }
+}
+
+/**
+ * Throws {@link TenantReadOnlyError} if this company may not write.
+ *
+ * Called only for requests that change something; the pipeline decides which
+ * those are. Reads are never refused here — that is the whole point of the
+ * state.
+ */
+export async function assertTenantWritable(tenantId: string, now = Date.now()): Promise<void> {
+  const cached = cache.get(tenantId);
+  const fresh =
+    cached !== undefined && now - cached.readAt < CACHE_TTL_MS ? cached : await read(tenantId, now);
+
+  if (fresh.readOnlyReason !== null) {
+    throw new TenantReadOnlyError(fresh.readOnlyReason);
+  }
+}
+
 export function forgetTenantStatus(tenantId?: string): void {
   if (tenantId === undefined) {
     cache.clear();
@@ -96,6 +141,7 @@ async function read(tenantId: string, now: number): Promise<CachedStatus> {
     status: tenant?.status ?? 'cancelled',
     reason: tenant?.suspendedReason ?? null,
     plan: tenant?.plan ?? 'trial',
+    readOnlyReason: tenant?.readOnlyReason ?? null,
     readAt: now,
   };
   cache.set(tenantId, entry);
