@@ -11,18 +11,22 @@ import { roleSchema } from './roles.js';
  * expire. None of them may *verify* one: that needs the signing key and lives
  * server-side. Types here, crypto there.
  *
- * Two token types, one signing key, one algorithm:
+ * Three token types, one signing key, one algorithm:
  *
  * - **access** — 15 minutes, presented on every API call.
  * - **offline** — days, verified by the mobile app itself with an embedded
  *   public key so the app opens in a basement with no signal.
+ * - **platform** — minutes, and the only token with no company in it at all: a
+ *   super admin signed in to the dashboard (P15). Widening the access token to
+ *   allow a null tenant was the alternative, and it would have meant every
+ *   handler in the system asking whether `tid` was really there.
  *
  * Refresh tokens are deliberately absent: they are opaque random strings, not
  * JWTs, stored only as a hash. A refresh token that could be read would tell an
  * attacker which company it unlocks before they had spent it.
  */
 
-export const TOKEN_TYPES = ['access', 'offline'] as const;
+export const TOKEN_TYPES = ['access', 'offline', 'platform'] as const;
 export const tokenTypeSchema = z.enum(TOKEN_TYPES);
 export type TokenType = z.infer<typeof tokenTypeSchema>;
 
@@ -79,6 +83,23 @@ export const offlineGrantClaimsSchema = z.object({
 export type OfflineGrantClaims = z.infer<typeof offlineGrantClaimsSchema>;
 
 /**
+ * A super admin signed in to the dashboard (P15).
+ *
+ * No `tid`, no `role`: this token proves who you are on the platform and
+ * nothing about any company. Reaching a company's data from here means minting
+ * an impersonation token, which writes an audit entry first.
+ */
+export const platformTokenClaimsSchema = z.object({
+  ...registeredClaims,
+  sub: platformUserIdSchema,
+  typ: z.literal('platform'),
+  /** The `platform_sessions.id` this token was minted from. */
+  sid: z.uuid(),
+});
+
+export type PlatformTokenClaims = z.infer<typeof platformTokenClaimsSchema>;
+
+/**
  * Who a request is from, after a token has been verified.
  *
  * This is what handlers receive. It is a flattened, named version of the
@@ -108,6 +129,29 @@ export function toPrincipal(claims: AccessTokenClaims): Principal {
     tokenId: claims.jti,
     expiresAt: new Date(claims.exp * 1000),
     ...(claims.imp === undefined ? {} : { impersonatedBy: claims.imp }),
+  };
+}
+
+/**
+ * Who a platform request is from: a super admin, with no company attached.
+ *
+ * A separate type from {@link Principal} on purpose. Nothing that takes a
+ * `Principal` can be handed one of these by mistake, so a tenant handler cannot
+ * be reached by a platform token however the routing is wired.
+ */
+export interface PlatformPrincipal {
+  platformUserId: z.infer<typeof platformUserIdSchema>;
+  sessionId: string;
+  tokenId: string;
+  expiresAt: Date;
+}
+
+export function toPlatformPrincipal(claims: PlatformTokenClaims): PlatformPrincipal {
+  return {
+    platformUserId: claims.sub,
+    sessionId: claims.sid,
+    tokenId: claims.jti,
+    expiresAt: new Date(claims.exp * 1000),
   };
 }
 
