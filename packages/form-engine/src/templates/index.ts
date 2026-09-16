@@ -1,5 +1,6 @@
 import type { FormDefinition } from '../definition.js';
 import type { LocalizedText } from '../ids.js';
+import { EXTRA_TEMPLATES } from './extra.js';
 
 /**
  * The global template library, as shipped.
@@ -290,4 +291,6 @@ export const FORM_TEMPLATES: readonly FormTemplate[] = Object.freeze([
   boilerService,
   riskAssessment,
   jobCompletion,
+  // P18 asked for at least six, and three is not six. See `extra.ts`.
+  ...EXTRA_TEMPLATES,
 ]);

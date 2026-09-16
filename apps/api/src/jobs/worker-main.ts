@@ -6,6 +6,7 @@ import { flushSentry, initialiseSentry } from '../observability/sentry.js';
 import { runMediaMaintenance } from '../media/maintenance.js';
 import { runMetering } from '../media/metering.js';
 import { runDunning } from '../billing/dunning.js';
+import { runSignupExpiry } from '../signup/expire.js';
 import { purgeDueTenants } from '../platform/purge.js';
 import { runSyncMaintenance } from '../sync/maintenance.js';
 import { buildJobHandlers } from './handlers.js';
@@ -86,7 +87,12 @@ async function main(): Promise<void> {
 
       // Dunning (P17). Same timer, same turn-claiming. It only ever refuses
       // writes and posts banners — nothing in it deletes a customer's data.
-      const dunned = await runDunning({ config, logger, workerId: worker.id });
+      const dunned = await runDunning({
+        config,
+        logger,
+        workerId: worker.id,
+        email: services.email,
+      });
       if (
         dunned.trialsEnded > 0 ||
         dunned.remindersPosted > 0 ||
@@ -100,6 +106,10 @@ async function main(): Promise<void> {
           failures: dunned.failures.length,
         });
       }
+
+      // Signups nobody verified (P18). Nothing was created for them, so this
+      // only closes live tokens.
+      await runSignupExpiry({ logger, workerId: worker.id });
     } catch (error) {
       logger.error('Media maintenance failed', {
         error: error instanceof Error ? error.message : String(error),

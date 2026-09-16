@@ -106,6 +106,14 @@ export default function DashboardPage() {
             ...(person?.permissions.includes('billing.read') === true
               ? ([['/billing', 'billing', 'billingHint']] as const)
               : []),
+            // Getting set up, and the people already here (P18).
+            ['/get-started', 'getStarted', 'getStartedHint'] as const,
+            ...(person?.permissions.includes('member.read') === true
+              ? ([['/settings/people', 'people', 'peopleHint']] as const)
+              : []),
+            ...(person?.permissions.includes('tenant.update') === true
+              ? ([['/settings/company', 'companySettings', 'companySettingsHint']] as const)
+              : []),
           ] as const
         ).map(([href, label, hint]) => (
           <Link

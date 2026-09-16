@@ -1,5 +1,6 @@
 import { withTenant } from '@integr8/db';
 import { rowAsText, syncFormTemplates } from '@integr8/db/testing';
+import { FORM_TEMPLATES } from '@integr8/form-engine/templates';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type ApiHarness, type Member, startApi } from '../../testing/api-harness.js';
 
@@ -658,11 +659,12 @@ describe('the template library', () => {
     const list = json<{ items: { key: string; fieldCount: number }[] }>(
       await api.call(engineerToken, { method: 'GET', url: '/v1/form-templates' }),
     );
-    expect(list.items.map((item) => item.key)).toEqual([
-      'job_completion',
-      'boiler_service',
-      'site_risk_assessment',
-    ]);
+    // Every shipped template is listed. Asserted as a set rather than an
+    // ordered array: the order is the query's, not a promise, and pinning it
+    // made this test fail for the crime of adding a template (P18 added three).
+    expect([...list.items.map((item) => item.key)].sort()).toEqual(
+      [...FORM_TEMPLATES.map((template) => template.key)].sort(),
+    );
     expect(list.items.every((item) => item.fieldCount > 0)).toBe(true);
 
     const preview = await api.call(engineerToken, {

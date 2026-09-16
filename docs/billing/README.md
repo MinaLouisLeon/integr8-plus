@@ -145,15 +145,16 @@ maintenance timer and claims its turn in `scheduled_task_runs`, so several worke
 run a night. `reminders_sent` holds a _position in the cadence_ rather than a count of posts, so
 a worker that was down for three days sends the reminder due today instead of three at once.
 
-> **Reminders are in-app only, and somebody who never opens the app is never told before their
-> writes stop.**
+> **Reminders go two places, since P18: a banner and an email.**
 >
-> There is no email sender anywhere in this system. Supabase's magic links and Expo push are the
-> only person-facing channels and neither is a billing channel, so a reminder is an announcement
-> banner posted through the P15 channel. This is a real gap, chosen knowingly rather than papered
-> over: it is written in `dunning.ts`, it is written on the customer's own billing screen, and it
-> is written here. **The first release that adds an email sender should make these same reminders
-> leave the building.**
+> P17 shipped with in-app reminders only, because no email sender existed anywhere in this system —
+> which meant a company whose owner never opened the app was never told before their writes
+> stopped. P18 built `EmailSender`, and `dunning.ts` now emails the owners and admins on the same
+> cadence as the banner. Owners and admins rather than everybody: they are who holds
+> `billing.read`, and an engineer cannot update a card.
+>
+> The email is allowed to fail. A reminder that bounced must not stop the account moving through
+> dunning, and must not make the worker retry the run for every other company.
 
 Nothing in the dunning run deletes anything. The worst it does is refuse writes.
 

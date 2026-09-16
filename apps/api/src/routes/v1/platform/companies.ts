@@ -6,6 +6,7 @@ import { defineRoute, noSchema } from '../../../http/routes.js';
 import { forgetTenantStatus } from '../../../http/suspension.js';
 import { onboardCompany } from '../../../platform/onboarding.js';
 import { iso, isoOrNull } from '../schemas.js';
+import { acceptInvitationUrl } from '../../../email/links.js';
 import { recordPlatformAction } from './audit.js';
 import {
   companyDetailSchema,
@@ -198,6 +199,9 @@ export const onboardCompanyRoute = defineRoute({
       ownerEmail: body.ownerEmail,
       ...(body.jobTypes === undefined ? {} : { jobTypes: body.jobTypes }),
       onboardedBy: toPlatformUserId(context.platform.platformUserId),
+      // The platform path always invites: whoever is onboarding this company is
+      // not the person who will own it.
+      ownerAccess: { kind: 'invitation' },
       invitationTtlSeconds: INVITATION_TTL_SECONDS,
       media: context.services.media,
       billing: {
@@ -230,13 +234,19 @@ export const onboardCompanyRoute = defineRoute({
       status: 201,
       body: {
         company: toSummary(summary ?? fallbackSummary(onboarded.tenant), new Map()),
+        // Never null on this path — `ownerAccess` is `invitation` above — but
+        // the type allows it because self-serve onboarding makes the owner
+        // directly and has nothing to send.
         ownerInvitation: {
-          id: onboarded.invitation.id,
-          email: onboarded.invitation.email,
-          expiresAt: iso(onboarded.invitation.expiresAt),
+          id: onboarded.invitation?.id ?? '',
+          email: onboarded.invitation?.email ?? onboarded.tenant.name,
+          expiresAt: iso(onboarded.invitation?.expiresAt ?? new Date()),
           // The token itself, once, so the dashboard can show a link to send by
           // hand. It is never logged and never stored in plaintext.
-          acceptUrl: acceptUrl(context.config.WEB_APP_URL, onboarded.invitation.token),
+          acceptUrl:
+            onboarded.invitation === null
+              ? null
+              : acceptInvitationUrl(context.config.WEB_APP_URL, onboarded.invitation.token),
         },
         storage: { bucket: onboarded.storage.bucket ?? '', created: onboarded.storage.created },
       },
@@ -365,20 +375,6 @@ export const setCompanyPlanRoute = defineRoute({
 
 /** Long enough to survive a holiday, matching the tenant-side invitation TTL. */
 const INVITATION_TTL_SECONDS = 7 * 24 * 60 * 60;
-
-/**
- * The link the owner follows to accept.
- *
- * Null when `WEB_APP_URL` is not configured, rather than a guess: a half-right
- * invitation link is worse than none, because the person tries it, it fails,
- * and nobody finds out until they give up.
- */
-function acceptUrl(base: string | undefined, token: string): string | null {
-  if (base === undefined || base === '') {
-    return null;
-  }
-  return `${base.replace(/\/+$/u, '')}/accept-invitation?token=${encodeURIComponent(token)}`;
-}
 
 function toSummary(
   company: TenantSummary,

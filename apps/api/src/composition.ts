@@ -23,6 +23,7 @@ import {
 import { assertSeatAvailable } from './billing/entitlements.js';
 import { planFor } from './http/suspension.js';
 import { ExpoPushSender, type PushSender, RecordingPushSender } from './push/sender.js';
+import { type EmailSender, RecordingEmailSender, ResendEmailSender } from './email/sender.js';
 import { R2Storage } from './media/r2.js';
 import type { MediaStorage } from './media/storage.js';
 
@@ -56,6 +57,14 @@ export interface Services {
   push: PushSender;
   /** Who takes the money (P17). Stripe in production, a recording fake elsewhere. */
   billing: BillingProvider;
+  /**
+   * Who carries the mail (P18).
+   *
+   * The dependency several finished features were waiting on: an invitation
+   * that nothing delivered, and dunning reminders that could only be shown
+   * in-app.
+   */
+  email: EmailSender;
 }
 
 export interface BuildServicesOptions {
@@ -106,6 +115,7 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     geocoder: buildGeocoder(options.config),
     push: buildPushSender(options.config),
     billing: buildBillingProvider(options.config),
+    email: buildEmailSender(options.config),
   };
 }
 
@@ -131,6 +141,27 @@ export function buildBillingProvider(config: ApiConfig): BillingProvider {
   }
 
   return new StripeBillingProvider({ secretKey, webhookSecret });
+}
+
+/**
+ * The email sender.
+ *
+ * Like billing and unlike the geocoder, a missing key is not a silent fallback
+ * to the fake. Mail that quietly goes nowhere is worse than mail that fails
+ * loudly: nobody notices until a customer says they never got their invitation.
+ */
+export function buildEmailSender(config: ApiConfig): EmailSender {
+  if (config.EMAIL_SENDER !== 'resend') {
+    return new RecordingEmailSender();
+  }
+
+  const apiKey = config.RESEND_API_KEY;
+  const from = config.EMAIL_FROM;
+  if (apiKey === undefined || from === undefined) {
+    throw new Error('EMAIL_SENDER is resend but RESEND_API_KEY or EMAIL_FROM is not set.');
+  }
+
+  return new ResendEmailSender({ apiKey, from });
 }
 
 export function buildPushSender(config: ApiConfig): PushSender {

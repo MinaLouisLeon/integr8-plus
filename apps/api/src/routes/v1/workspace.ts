@@ -1,9 +1,10 @@
-import { permissionsFor, roleSchema, toUserId } from '@integr8/core';
+import { permissionsFor, type Principal, roleSchema, toUserId } from '@integr8/core';
 import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { notFound } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { assertSeatAvailable } from '../../billing/entitlements.js';
+import { deliverInvitation } from '../../email/deliver.js';
 import { planFor } from '../../http/suspension.js';
 import {
   acceptedSchema,
@@ -186,6 +187,20 @@ export const listMembersRoute = defineRoute({
   },
 });
 
+/**
+ * Who an invitation says it is from.
+ *
+ * Their display name, falling back to their address and then to the company
+ * itself. An invitation that names nobody reads like phishing, and this one
+ * arrives at an address its recipient never gave us.
+ */
+export async function inviterName(principal: Principal): Promise<string> {
+  const member = await withTenant(principal.tenantId, (tx) =>
+    tx.tenantUsers.findByUserId(principal.userId),
+  );
+  return member?.displayName ?? member?.email ?? 'A colleague';
+}
+
 export const inviteMemberRoute = defineRoute({
   method: 'post',
   path: '/v1/members/invitations',
@@ -217,9 +232,25 @@ export const inviteMemberRoute = defineRoute({
       plan: await planFor(context.principal.tenantId),
     });
 
-    const { invitation } = await context.services.invitations.invite(context.principal, {
+    const { invitation, token } = await context.services.invitations.invite(context.principal, {
       email: body.email,
       role: body.role,
+    });
+
+    // And now it is actually sent (P18). Until this phase the token went
+    // nowhere at all: the row was written, the response withheld it, and no
+    // sender existed — so every invitation made through the app was
+    // undeliverable. The delivery cannot fail the request, because the
+    // invitation is already real and rolling it back would be worse.
+    const delivery = await deliverInvitation({
+      sender: context.services.email,
+      config: context.config,
+      logger: context.logger,
+      tenantId: context.principal.tenantId,
+      email: invitation.email,
+      token,
+      invitedBy: await inviterName(context.principal),
+      expiresAt: invitation.expiresAt,
     });
 
     // The token is deliberately absent from the response. It goes to the
@@ -233,6 +264,7 @@ export const inviteMemberRoute = defineRoute({
         role: invitation.role,
         createdAt: iso(invitation.createdAt),
         expiresAt: iso(invitation.expiresAt),
+        emailed: delivery.sent,
       },
     };
   },
@@ -314,7 +346,7 @@ export const acceptInvitationRoute = defineRoute({
     422: { description: 'The invitation is unknown, spent, withdrawn or expired.' },
   },
   handler: async ({ body }, context) => {
-    await context.services.invitations.accept({
+    const accepted = await context.services.invitations.accept({
       token: body.token,
       ...(body.password === undefined ? {} : { password: body.password }),
       displayName: body.displayName,
@@ -327,7 +359,7 @@ export const acceptInvitationRoute = defineRoute({
     // The invitation token travels by email and may sit in a mailbox, a proxy
     // log or a screenshot; handing back a live session in exchange would make
     // every one of those a way in. The client signs in normally afterwards.
-    return { status: 200, body: { accepted: true } };
+    return { status: 200, body: { accepted: true, email: accepted.email } };
   },
 });
 

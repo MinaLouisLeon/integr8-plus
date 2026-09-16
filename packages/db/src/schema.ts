@@ -704,6 +704,57 @@ export interface ScheduledTaskRunsTable {
 }
 
 // ---------------------------------------------------------------------------
+// Self-serve onboarding (0018)
+// ---------------------------------------------------------------------------
+
+export const SIGNUP_STATUSES = ['pending', 'verified', 'expired', 'abandoned'] as const;
+export type SignupStatus = (typeof SIGNUP_STATUSES)[number];
+
+export interface SignupRequestsTable {
+  id: Generated<string>;
+  email: string;
+  company_name: string;
+  /** Only the hash is stored: holding the token grants a company. */
+  token_hash: string;
+  status: Generated<SignupStatus>;
+  expires_at: Date;
+  verified_at: Date | null;
+  /** The company this request created, once it has created one. */
+  tenant_id: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface SignupEventsTable {
+  id: Generated<string>;
+  /** Free text on purpose: a migration to add a funnel step is one nobody writes. */
+  step: string;
+  signup_id: string | null;
+  tenant_id: string | null;
+  metadata: Generated<Jsonb<Record<string, unknown>>>;
+  occurred_at: CreatedAt;
+}
+
+export interface TenantSettingsTable {
+  tenant_id: string;
+  logo_media_id: string | null;
+  brand_colour: string | null;
+  /** An IANA name. What a working day means for this company. */
+  timezone: Generated<string>;
+  currency: Generated<string>;
+  locale: Generated<string>;
+  /** Minutes from midnight, in the company's own timezone. */
+  work_day_starts: Generated<number>;
+  work_day_ends: Generated<number>;
+  /** ISO weekday numbers; 1 is Monday. Empty means the company is closed. */
+  working_days: Generated<number[]>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+// ---------------------------------------------------------------------------
 // Customers, sites and work orders (0010)
 // ---------------------------------------------------------------------------
 
@@ -778,6 +829,8 @@ export interface CustomersTable extends AddressColumns {
   created_at: CreatedAt;
   updated_at: UpdatedAt;
   search: ColumnType<string, never, never>;
+  /** Sample data loaded at onboarding (0018), removable in one action. */
+  is_demo: Generated<boolean>;
 }
 
 export interface CustomerContactsTable {
@@ -820,6 +873,8 @@ export interface SitesTable extends Omit<AddressColumns, 'address_line1'> {
   created_at: CreatedAt;
   updated_at: UpdatedAt;
   search: ColumnType<string, never, never>;
+  /** Sample data loaded at onboarding (0018), removable in one action. */
+  is_demo: Generated<boolean>;
 }
 
 export interface ChecklistTemplateItem {
@@ -900,6 +955,8 @@ export interface WorkOrdersTable {
   signoff_name: string | null;
   signoff_role: string | null;
   signoff_unavailable_reason: string | null;
+  /** Sample data loaded at onboarding (0018), removable in one action. */
+  is_demo: Generated<boolean>;
 }
 
 export interface WorkOrderFormsTable {
@@ -1284,6 +1341,9 @@ export interface Database {
   form_templates: FormTemplatesTable;
   rate_limit_buckets: RateLimitBucketsTable;
   schema_migrations: SchemaMigrationsTable;
+  signup_requests: SignupRequestsTable;
+  signup_events: SignupEventsTable;
+  tenant_settings: TenantSettingsTable;
   auth_memberships: AuthMembershipsView;
 }
 
@@ -1342,6 +1402,12 @@ export const PLATFORM_TABLES = [
   // so it cannot be isolated the usual way, and the runtime role holds nothing
   // on it at all.
   'billing_events',
+  // Self-serve signup (0018). Both describe people who are not yet customers:
+  // a signup request exists before any company does, and the funnel's whole
+  // purpose is to record the attempts that never became one. `audit_log`
+  // cannot hold either, being tenant-scoped. The runtime role reaches neither.
+  'signup_requests',
+  'signup_events',
 ] as const;
 
 /**
@@ -1408,6 +1474,7 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   tenant_storage_samples: true,
   storage_reconciliations: true,
   subscriptions: true,
+  tenant_settings: true,
   audit_log: true,
   sessions: true,
   refresh_tokens: true,

@@ -38,9 +38,29 @@ export interface OnboardCompanyInput {
   plan: TenantPlan;
   seats: number | null;
   ownerEmail: string;
+  /**
+   * How the owner gets in.
+   *
+   * `invitation` mints a token for somebody to be emailed — the platform flow,
+   * where the owner is a stranger to whoever is onboarding them. `direct` is
+   * self-serve: the person is already here, has already proved they own the
+   * address, and is made an active owner immediately. Sending somebody an
+   * invitation to a company they have just created themselves would be absurd.
+   */
+  ownerAccess: { kind: 'invitation' } | { kind: 'direct'; userId: string; displayName: string };
   /** Overrides {@link DEFAULT_JOB_TYPES}; an empty array seeds none. */
   jobTypes?: readonly { name: string; code: string }[];
-  onboardedBy: PlatformUserId;
+  /**
+   * The super admin who onboarded them, or null when nobody did (P18).
+   *
+   * Null is self-serve: a stranger signed up and verified their own address,
+   * and there is no platform user to attribute it to. Everything that used to
+   * name the onboarder — the seeded job types, the owner's invitation, the
+   * audit entry — has to cope with that rather than borrow somebody's id,
+   * because attributing a company's first rows to a super admin who never
+   * touched it is a lie in the table people read to work out who did what.
+   */
+  onboardedBy: PlatformUserId | null;
   invitationTtlSeconds: number;
   media: MediaStorage;
   /**
@@ -57,7 +77,8 @@ export interface OnboardedCompany {
   tenant: Tenant;
   /** When the trial this company starts on runs out. */
   trialEndsAt: Date;
-  invitation: { id: string; email: string; expiresAt: Date; token: string };
+  /** Null when the owner was made directly, which is the self-serve path. */
+  invitation: { id: string; email: string; expiresAt: Date; token: string } | null;
   jobTypes: number;
   storage: { bucket: string | null; created: boolean; error: string | null };
 }
@@ -96,6 +117,20 @@ export async function onboardCompany(input: OnboardCompanyInput): Promise<Onboar
   const seeds = input.jobTypes ?? DEFAULT_JOB_TYPES;
 
   /**
+   * Who the first rows are attributed to.
+   *
+   * On the platform path, the super admin: `created_by` carries no foreign key,
+   * and naming a customer's user for work a super admin did would be a lie in
+   * the table people read to work out who changed what. On the self-serve path
+   * there is no super admin, so it is the owner — who really did cause it by
+   * signing up.
+   */
+  const actor =
+    input.ownerAccess.kind === 'direct'
+      ? toUserId(input.ownerAccess.userId)
+      : toUserId(input.onboardedBy ?? tenant.id);
+
+  /**
    * Everything inside the company, in one transaction.
    *
    * The company row itself cannot join it — `withTenant` opens a connection
@@ -105,28 +140,48 @@ export async function onboardCompany(input: OnboardCompanyInput): Promise<Onboar
    * row is taken back out by hand, and `on delete restrict` everywhere else is
    * the safety net if anything did manage to attach to it.
    */
-  let invitation;
+  let invitation: OnboardedCompany['invitation'];
   try {
     invitation = await withTenant(tenantId, async (tx) => {
       for (const seed of seeds) {
-        // `created_by` is the super admin who onboarded them. It carries no
-        // foreign key, and attributing these to a customer's user would be a
-        // small lie in a table people read to work out who changed what.
-        await tx.jobTypes.create(seed, toUserId(input.onboardedBy));
+        await tx.jobTypes.create(seed, actor);
       }
 
-      const created = await tx.invitations.create({
-        email: input.ownerEmail,
-        role: OWNER_ROLE,
-        invitedByUserId: toUserId(input.onboardedBy),
-        tokenHash: secret.hash,
-        expiresAt,
-      });
+      // The owner, one of two ways. On the self-serve path they have already
+      // proved they own the address, so they are simply made an active owner;
+      // inviting somebody to a company they have just created themselves would
+      // be absurd, and would put a live token in an email for no reason.
+      let created: OnboardedCompany['invitation'] = null;
+      if (input.ownerAccess.kind === 'direct') {
+        await tx.tenantUsers.create({
+          userId: input.ownerAccess.userId,
+          email: input.ownerEmail,
+          displayName: input.ownerAccess.displayName,
+          role: OWNER_ROLE,
+          status: 'active',
+        });
+      } else {
+        const row = await tx.invitations.create({
+          email: input.ownerEmail,
+          role: OWNER_ROLE,
+          invitedByUserId: actor,
+          tokenHash: secret.hash,
+          expiresAt,
+        });
+        created = {
+          id: row.id,
+          email: row.email,
+          expiresAt: row.expiresAt,
+          token: secret.token,
+        };
+      }
 
       await tx.auditLog.append({
-        actorKind: 'platform_user',
+        // A company that onboarded itself has no platform actor, and saying so
+        // is the truth. `system` rather than inventing one.
+        actorKind: input.onboardedBy === null ? 'system' : 'platform_user',
         actorId: input.onboardedBy,
-        actorLabel: 'Platform onboarding',
+        actorLabel: input.onboardedBy === null ? 'Self-serve signup' : 'Platform onboarding',
         action: 'tenant.onboarded',
         resourceType: 'tenant',
         resourceId: tenant.id,
@@ -139,6 +194,10 @@ export async function onboardCompany(input: OnboardCompanyInput): Promise<Onboar
     await platform.tenants.deleteEmpty(tenant.id);
     throw error;
   }
+
+  // Every company gets its settings row here, so nothing downstream has to
+  // cope with its absence.
+  await platform.tenantSettings.ensure(tenant.id);
 
   // After the transaction, because a failure in there takes the company row
   // back out and a subscription pointing at a deleted company would block it.
@@ -155,12 +214,7 @@ export async function onboardCompany(input: OnboardCompanyInput): Promise<Onboar
   return {
     tenant,
     trialEndsAt,
-    invitation: {
-      id: invitation.id,
-      email: invitation.email,
-      expiresAt: invitation.expiresAt,
-      token: secret.token,
-    },
+    invitation,
     jobTypes: seeds.length,
     storage,
   };

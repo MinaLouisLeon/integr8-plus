@@ -177,6 +177,25 @@ export const apiConfigSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   /** Where a finished checkout sends the browser back to. */
   BILLING_RETURN_URL: z.url().optional(),
+
+  // -------------------------------------------------------------------------
+  // Email (P18)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Who carries the mail.
+   *
+   * `recording` keeps what would have been sent, for development and tests;
+   * `resend` sends it. Production refuses `recording`, because the features
+   * that depend on this — an invitation, a signup confirmation, a warning that
+   * an account is about to go read-only — fail silently without it rather than
+   * loudly.
+   */
+  EMAIL_SENDER: z.enum(['recording', 'resend']).default('recording'),
+  /** Resend's API key. A secret: it can send mail as this domain. */
+  RESEND_API_KEY: z.string().optional(),
+  /** `Name <address@domain>`. The domain has to be verified at the provider. */
+  EMAIL_FROM: z.string().optional(),
   /** How long a new company may use the product before paying. */
   BILLING_TRIAL_DAYS: positiveInt(14),
   /**
@@ -301,7 +320,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     );
   }
   if (result.success) {
-    const billing = billingProblems(result.data);
+    const billing = [...billingProblems(result.data), ...emailProblems(result.data)];
     if (billing.length > 0) {
       throw new Error(
         [
@@ -341,6 +360,28 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
  * discovered during the incident it would have helped with.
  */
 /** Stripe needs both halves: a key to charge with and a secret to verify with. */
+/**
+ * What is missing for the configured email sender, if anything.
+ *
+ * Checked at load rather than at the first send: the first send is somebody's
+ * invitation, and finding out then means finding out from a customer.
+ */
+export function emailProblems(config: ApiConfig): string[] {
+  if (config.EMAIL_SENDER !== 'resend') {
+    return [];
+  }
+  const missing: string[] = [];
+  if (config.RESEND_API_KEY === undefined) {
+    missing.push('RESEND_API_KEY');
+  }
+  if (config.EMAIL_FROM === undefined) {
+    missing.push('EMAIL_FROM');
+  }
+  return missing.length === 0
+    ? []
+    : [`EMAIL_SENDER is resend but ${missing.join(' and ')} not set.`];
+}
+
 export function billingProblems(config: ApiConfig): string[] {
   if (config.BILLING_PROVIDER !== 'stripe') {
     return [];
@@ -380,6 +421,16 @@ export function assertProductionReady(config: ApiConfig): void {
   }
   if (config.BILLING_PROVIDER === 'recording') {
     problems.push('BILLING_PROVIDER is recording: nobody could pay, and nothing would be charged.');
+  }
+  if (config.EMAIL_SENDER === 'recording') {
+    problems.push(
+      'EMAIL_SENDER is recording: no invitation, signup confirmation or payment warning would leave the building.',
+    );
+  }
+  if (config.WEB_APP_URL === undefined) {
+    problems.push(
+      'WEB_APP_URL is not set: every link this system emails would have nowhere to point.',
+    );
   }
   if (config.API_CORS_ORIGINS.trim() === '') {
     problems.push('API_CORS_ORIGINS is not set: no browser client could call this API.');

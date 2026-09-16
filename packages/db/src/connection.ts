@@ -48,6 +48,9 @@ import {
 import { PlatformUsersRepository } from './repositories/platform-users.js';
 import { PlatformInsightsRepository } from './repositories/platform-insights.js';
 import { BillingRepository, TenantSubscriptionReader } from './repositories/billing.js';
+import { DemoDataRepository } from './repositories/demo-data.js';
+import { SignupRepository } from './repositories/signup.js';
+import { TenantSettingsRepository, TenantSettingsWriter } from './repositories/tenant-settings.js';
 import {
   StorageMeteringRepository,
   TenantStorageHistory,
@@ -117,6 +120,10 @@ export interface TenantTransaction {
   readonly storageHistory: TenantStorageHistory;
   /** What this company is paying for. Select-only for the runtime role (P17). */
   readonly subscription: TenantSubscriptionReader;
+  /** How this company works: branding, timezone, currency, hours (P18). */
+  readonly settings: TenantSettingsRepository;
+  /** Sample data, labelled so it can be taken away in one action (P18). */
+  readonly demo: DemoDataRepository;
 }
 
 /**
@@ -186,6 +193,10 @@ export interface PlatformDataSource {
   readonly metering: StorageMeteringRepository;
   /** Subscriptions, and what the billing provider has told us (P17). */
   readonly billing: BillingRepository;
+  /** People asking for a company, and the funnel they move through (P18). */
+  readonly signup: SignupRepository;
+  /** Creates a company's settings row when the company is made (P18). */
+  readonly tenantSettings: TenantSettingsWriter;
 }
 
 /**
@@ -342,6 +353,8 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     dataExport: new TenantDataExportRepository(scope),
     storageHistory: new TenantStorageHistory(scope.trx, scope.tenantId),
     subscription: new TenantSubscriptionReader(scope.trx, scope.tenantId),
+    settings: new TenantSettingsRepository(scope.trx, scope.tenantId),
+    demo: new DemoDataRepository(scope.trx, scope.tenantId),
   };
 }
 
@@ -409,6 +422,8 @@ export function getPlatformDataSource(): PlatformDataSource {
     insights: new PlatformInsightsRepository(db),
     metering: new StorageMeteringRepository(db),
     billing: new BillingRepository(db),
+    signup: new SignupRepository(db),
+    tenantSettings: new TenantSettingsWriter(db),
     jobs: {
       claim: (options) => claimJobs(db, options),
       complete: (jobId, at) => completeJob(db, jobId, at),

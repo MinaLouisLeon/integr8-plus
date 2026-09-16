@@ -2,30 +2,57 @@
 
 import { useTranslation } from '@integr8/i18n';
 import Link from 'next/link';
+import { MarketingShell } from '~/components/marketing-shell';
 
 /**
- * The marketing shell.
+ * The landing page (P18).
  *
- * Deliberately thin: P18 builds the real marketing site and self-serve signup.
- * What it establishes now is that the public surface and the signed-in surface
- * are separate route groups with separate layouts, so the dashboard's guard
- * never has to run for a visitor reading the home page.
+ * Three claims and a button. Every claim is something the product actually
+ * does — offline capture, versioned forms of your own, evidence attached to the
+ * job — so if a line here stops being true it is a bug in one or the other,
+ * not marketing licence.
+ *
+ * No superlatives and no invented statistics. The people this is sold to have
+ * been promised a great deal by software before, and the plan is explicit that
+ * the guided first run matters more than this page does.
  */
 export default function HomePage() {
   const { t } = useTranslation();
 
+  const points = [
+    { key: 'offline', title: 'offlineTitle', body: 'offlineBody' },
+    { key: 'forms', title: 'formsTitle', body: 'formsBody' },
+    { key: 'evidence', title: 'evidenceTitle', body: 'evidenceBody' },
+  ] as const;
+
   return (
-    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col justify-center gap-6 px-6">
-      <h1 className="text-4xl font-bold tracking-tight text-content">{t('common.appName')}</h1>
-      <p className="max-w-prose text-lg text-content-muted">{t('auth.signInSubtitle')}</p>
-      <div>
-        <Link
-          href="/sign-in"
-          className="inline-flex rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover"
-        >
-          {t('auth.signIn')}
-        </Link>
-      </div>
-    </main>
+    <MarketingShell step="landing.viewed">
+      <section className="flex flex-col gap-6 py-8">
+        <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-content sm:text-5xl">
+          {t('marketing.hero.title')}
+        </h1>
+        <p className="max-w-prose text-lg text-content-muted">{t('marketing.hero.subtitle')}</p>
+        <div className="flex flex-wrap items-center gap-4">
+          <Link
+            href="/sign-up"
+            className="inline-flex rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-hover"
+          >
+            {t('marketing.hero.cta')}
+          </Link>
+          <span className="text-sm text-content-muted">{t('marketing.hero.note')}</span>
+        </div>
+      </section>
+
+      <section className="grid gap-6 py-8 sm:grid-cols-3">
+        {points.map((point) => (
+          <div key={point.key} className="flex flex-col gap-2">
+            <h2 className="text-base font-semibold text-content">
+              {t(`marketing.points.${point.title}`)}
+            </h2>
+            <p className="text-sm text-content-muted">{t(`marketing.points.${point.body}`)}</p>
+          </div>
+        ))}
+      </section>
+    </MarketingShell>
   );
 }
