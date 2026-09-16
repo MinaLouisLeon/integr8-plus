@@ -61,10 +61,11 @@ becomes real when the provider's webhook says so.
 - **Enforced by HTTP method, not by permission.** Permissions have no read/write classification,
   and a new one added without being classified would default to allowed. A method cannot be
   forgotten, and an omitted route flag refuses a write — the safe direction.
-- **Reminders are in-app only, and it is said out loud.** There is no email sender anywhere in
-  this system. Reminders are announcement banners through the P15 channel, which means somebody
-  who never opens the app is never told before their writes stop. That sentence is in
-  `dunning.ts`, on the customer's billing screen and in `docs/billing/README.md`.
+- **Reminders were in-app only, and it was said out loud.** There was no email sender anywhere in
+  this system, so reminders were announcement banners through the P15 channel — which meant
+  somebody who never opened the app was never told before their writes stopped.
+  **Closed by P18:** `dunning.ts` now emails the owners and admins on the same cadence as the
+  banner. The gap this bullet described lasted one phase.
 - **Three limits, because three have a meaning.** Seats, storage and submissions per month. Each
   is checked in the two places the thing is actually taken, never once at the door.
 - **Webhook idempotency is a unique constraint, not care.** `billing_events (provider,
@@ -83,7 +84,8 @@ provider_event_id)`. The request-level idempotency table cannot serve: it is ten
   is a second source of truth for what a company is allowed, and the first one has to be solid.
 - **Proration on seat removal.** The seat quantity is sent when a checkout is created.
   `setQuantity` exists on the interface and nothing calls it on every membership change yet.
-- **An email sender.** Named here because everything above it depends on the same missing piece.
+- **An email sender.** Named here because everything above it depended on the same missing piece.
+  **Built in P18**, which is what let the dunning reminders leave the building.
 
 ## Found while building this
 
