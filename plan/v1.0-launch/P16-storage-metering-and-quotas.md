@@ -1,7 +1,7 @@
 # P16 — Storage metering and quotas
 
 **Version:** v1.0 Launch
-**Status:** `IN PROGRESS — built and verified; the Cloudflare half awaits a real account run`
+**Status:** `IN PROGRESS — enforcement and metering are done; three reporting gaps and the Cloudflare run remain`
 **Depends on:** P09, P15
 
 ## Goal
@@ -15,30 +15,65 @@ originally justified one bucket per company.
 
 ## Tasks
 
-- [x] Usage view per company: total bytes, object count, and a breakdown by images, video, PDFs and other
-- [x] Thirty and ninety day growth trend per company, plotted against the plan allowance
+- [~] Usage view per company: total bytes, object count, and a breakdown by images, video, PDFs and other
+- [~] Thirty and ninety day growth trend per company, plotted against the plan allowance
 - [x] Cloudflare GraphQL Analytics client reading `r2StorageAdaptiveGroups` per bucket
 - [x] Nightly reconciliation job comparing the ledger total against Cloudflare's reported bucket size
 - [x] Drift alert when the two disagree beyond a threshold, naming the company
-- [x] R2 operations and transfer per company (Class A and Class B), so expensive tenants are visible early
-- [x] Quota enforcement: warn at eighty percent, block or bill at one hundred, per plan
-- [x] In-app warning to the company before they hit their limit, not after
+- [~] R2 operations and transfer per company (Class A and Class B), so expensive tenants are visible early
+- [~] Quota enforcement: warn at eighty percent, block or bill at one hundred, per plan
+- [~] In-app warning to the company before they hit their limit, not after
 - [x] Company-facing usage view, showing them the same numbers you see
 - [x] Platform-wide totals and projected monthly Cloudflare cost
 - [x] Retention policy job deleting media past the plan's retention window
+
+### What the partial marks mean
+
+Every one of these is **built in the API and tested**; what is missing in each case is the last
+hop to a screen, or a half of the task that was never built at all. Marked honestly rather than
+closed, because a tick against something nobody can see is how a gap survives to launch.
+
+- **Per-company usage view (1), the trend (2) and per-company operations (6)** all land on
+  `GET /v1/platform/companies/:tenantId/storage`, which returns the breakdown, ninety days of
+  daily samples with the allowance that applied to each, and the recent reconciliations. It is
+  tested and it works — and **no dashboard screen reads it.** The platform side has the
+  platform-wide page only, so a super admin who wants one company's figures has to call the API
+  by hand. The company's own screen (9) does exist, which is why that one is ticked.
+- **"Plotted against the plan allowance" (2)** is not built in either sense: the company's screen
+  renders the most recent thirty samples as a table of day and bytes, with no allowance line and
+  no chart. The data to draw both is in the response already.
+- **Transfer per company (6)** is not built and is not going to be — see _What is deliberately not
+  here_. Operations are metered by class, stored on each sample, and priced into the projected
+  monthly cost.
+- **"Or bill at one hundred" (7)** is not built. A plan set to `allow` records the overage on the
+  day's sample and nothing charges for it; P17 shipped seats and submissions and did not pick this
+  up. The samples carry the allowance and the overage, so a later release can bill retrospectively
+  rather than losing the months in between — but until something does, **overage on the larger
+  plans is free.**
+- **The eighty-percent warning (8)** is computed correctly and returned by the API, and the
+  company's storage screen shows it. Nothing _delivers_ it: there is no banner outside that page,
+  the successful-upload response says nothing about approaching the line, and there is no email
+  sender anywhere in this system. A company is warned only if somebody chooses to visit the page.
 
 ## Exit criteria
 
 - [~] For every company, the dashboard figure matches Cloudflare's reported bucket size within one percent
 - [x] Uploading past a company's quota is refused with a clear, actionable message
 - [x] The reconciliation job runs nightly, and a deliberately introduced drift raises an alert
-- [x] A company approaching their limit is warned automatically, without you noticing first
+- [~] A company approaching their limit is warned automatically, without you noticing first
 
-Tested in `apps/api/src/media/metering.integration.test.ts`. The first criterion is the one
-that cannot be finished here: the harness stores media on local disk, so there is no Cloudflare
-to agree with. What is tested is that a run with nothing to ask records `unavailable` rather
-than claiming a match, that the comparison and the threshold work, and that a drift raises the
-alert. The agreement itself needs one run against the real account, like the media suite.
+Tested in `apps/api/src/media/metering.integration.test.ts`.
+
+**The first** cannot be finished here: the harness stores media on local disk, so there is no
+Cloudflare to agree with. What is tested is that a run with nothing to ask records `unavailable`
+rather than claiming a match, that the comparison and the threshold work, and that a drift raises
+the alert. The agreement itself needs one run against the real account, like the media suite.
+
+**The fourth** was previously ticked and should not have been. The test behind it asserts that the
+API _reports_ `state: 'warning'` with the numbers — which is the computation, not the delivery.
+The word in the criterion is **automatically**, and a warning that waits on a page for somebody to
+visit is not automatic. Closing this needs somewhere to push it from: the P15 announcement channel
+would do it today, and an email sender would do it properly.
 
 ## Decisions taken before building
 
@@ -47,6 +82,9 @@ alert. The agreement itself needs one run against the real account, like the med
   written down because it is a real cost: until P17 exists, overage on the larger plans accrues
   **unbilled**. The daily sample carries the allowance that applied and the overage against it,
   so P17 can bill retrospectively rather than losing the months in between.
+  **Update, after P17 shipped:** it did not. The samples are still being written, so nothing is
+  lost and the retrospective bill is still possible — but the assumption in this bullet turned
+  out to be wrong, and the overage is still free.
 - **Allowances live in the database, edited from the dashboard.** A limit that needs a deploy
   to change is a limit somebody works around by not setting one.
 - **Retention soft-deletes into the existing thirty-day restore window.** Automatic deletion of
@@ -57,11 +95,12 @@ alert. The agreement itself needs one run against the real account, like the med
 
 ## What is deliberately not here
 
-- **Billing.** P17 owns plan definitions in full — seats, forms, submissions, retention,
-  modules — and the entitlement service. P16 holds the storage half only, because that is the
-  half that costs money the moment it is wrong.
-- **Per-company allowance overrides.** Negotiated deals are explicitly a P17 task. The
-  allowance is per plan here.
+- **Billing.** P17 owns plan definitions in full — seats, submissions, prices — and the
+  entitlement service. P16 holds the storage half only, because that is the half that costs money
+  the moment it is wrong. Note that P17 shipped **without** picking up storage overage billing, so
+  the gap in task 7 is now nobody's, and belongs to whichever release next touches invoicing.
+- **Per-company allowance overrides.** Negotiated deals were a P17 task, and P17 did not build
+  them either. The allowance is still per plan.
 - **Transfer volume per company.** The plan asks for operations _and_ transfer; Cloudflare's
   analytics report operations by class, and R2 charges no egress, so what is metered is what is
   billed. There is no transfer figure to show that would mean anything.
@@ -70,6 +109,20 @@ alert. The agreement itself needs one run against the real account, like the med
   that makes a nightly job nightly when several workers are running.
 - **Event-driven usage.** R2 event notifications into a queue would update usage within
   seconds instead of nightly. That is a Scale item and the plan already tracks it separately.
+
+## What is left to do here
+
+Small, and worth naming precisely so it is not rediscovered:
+
+1. **A per-company storage screen on the dashboard**, reading the route that already exists.
+2. **A chart, against the allowance**, on that screen and on the company's own — the ninety days
+   and the allowance per day are both in the response.
+3. **Push the eighty-percent warning** rather than waiting to be asked for it. The P15
+   announcement channel is the cheapest honest option.
+4. **One reconciliation run against the real Cloudflare account**, which closes the first exit
+   criterion and nothing else will.
+
+Billing the overage is deliberately not on this list: it belongs with invoicing, not with metering.
 
 ## Found while building this
 
