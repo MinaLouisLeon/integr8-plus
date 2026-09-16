@@ -46,11 +46,22 @@ export interface StorageQuota {
  */
 const CACHE_TTL_MS = 60_000;
 
+/**
+ * A plan's rule as this process holds it.
+ *
+ * A narrowed copy of `PlanAllowance` rather than the type itself, because it
+ * carries `readAt` and drops what the cache does not need. Adding a limit to a
+ * plan therefore means touching this and the read below — the compiler says so,
+ * which is the point.
+ */
 interface CachedRule {
   storageBytes: number | null;
   overage: OveragePolicy;
   warnAtPercent: number;
   retentionDays: number | null;
+  /** The rest of what a plan allows (P17). Null is uncapped. */
+  seats: number | null;
+  submissionsPerMonth: number | null;
   readAt: number;
 }
 
@@ -74,6 +85,8 @@ export async function allowanceFor(plan: TenantPlan, now = Date.now()): Promise<
     overage: row?.overage ?? 'allow',
     warnAtPercent: row?.warnAtPercent ?? 80,
     retentionDays: row?.retentionDays ?? null,
+    seats: row?.seats ?? null,
+    submissionsPerMonth: row?.submissionsPerMonth ?? null,
     readAt: now,
   };
 

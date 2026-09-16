@@ -3,6 +3,8 @@ import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { notFound } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
+import { assertSeatAvailable } from '../../billing/entitlements.js';
+import { planFor } from '../../http/suspension.js';
 import {
   acceptedSchema,
   invitationSchema,
@@ -203,9 +205,18 @@ export const inviteMemberRoute = defineRoute({
   }),
   responses: {
     201: { description: 'The invitation was created.', schema: invitationSchema },
+    409: { description: 'Every seat on this plan is taken (`seat_limit_reached`).' },
     422: { description: 'Already a member, or a role above the inviter’s own.' },
   },
   handler: async ({ body }, context) => {
+    // Checked here as well as at acceptance (P17). Here so somebody is told
+    // before they send an invitation that cannot be accepted; there because an
+    // invitation sent last week may be accepted after the plan has changed.
+    await assertSeatAvailable({
+      tenantId: context.principal.tenantId,
+      plan: await planFor(context.principal.tenantId),
+    });
+
     const { invitation } = await context.services.invitations.invite(context.principal, {
       email: body.email,
       role: body.role,

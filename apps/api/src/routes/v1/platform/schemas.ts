@@ -1,5 +1,7 @@
 import {
   ANNOUNCEMENT_SEVERITIES,
+  BILLING_INTERVALS,
+  SUBSCRIPTION_STATUSES,
   TENANT_EXPORT_STATUSES,
   TENANT_PLANS,
   TENANT_STATUSES,
@@ -79,8 +81,35 @@ export const companyActivitySchema = z.object({
   auditedActions: z.number().int(),
 });
 
+/**
+ * What a company is paying, as the platform sees it (P17).
+ *
+ * Null when a company has no subscription row at all — companies onboarded
+ * before P17, which are on a plan somebody set by hand and are charged by
+ * nobody. Saying null is the honest answer; inventing a trial would hide them.
+ */
+export const companyBillingSchema = z.object({
+  provider: z.string(),
+  status: z.enum(SUBSCRIPTION_STATUSES),
+  plan: planSchema,
+  interval: z.enum(BILLING_INTERVALS).nullable(),
+  currentPeriodEnd: timestamp.nullable(),
+  cancelAtPeriodEnd: z.boolean(),
+  trialEndsAt: timestamp.nullable(),
+  pastDueSince: timestamp.nullable(),
+  graceEndsAt: timestamp.nullable(),
+  remindersSent: z.number().int(),
+  /** Whether writes are refused right now, and the words the customer is shown. */
+  readOnlySince: timestamp.nullable(),
+  readOnlyReason: z.string().nullable(),
+  /** The provider's own ids, for looking the customer up in their dashboard. */
+  providerCustomerId: z.string().nullable(),
+  providerSubscriptionId: z.string().nullable(),
+});
+
 export const companyDetailSchema = companySummarySchema.extend({
   activity: z.array(companyActivitySchema),
+  billing: companyBillingSchema.nullable(),
   featureFlags: z.record(z.string(), z.boolean()),
   members: z.number().int(),
   owners: z.array(

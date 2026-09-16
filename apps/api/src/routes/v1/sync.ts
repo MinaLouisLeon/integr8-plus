@@ -155,6 +155,9 @@ const reportSchema = z.object({
 
 export const reportsRoute = defineRoute({
   method: 'post',
+  // Telemetry about a sync run, not the company's data — and while a company
+  // is read-only it is the one signal that says their phones are stuck (P17).
+  allowedWhenReadOnly: true,
   path: '/v1/sync/reports',
   operationId: 'syncReports',
   summary: 'Report how sync went on this phone',

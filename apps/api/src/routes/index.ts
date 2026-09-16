@@ -2,6 +2,7 @@ import type { ApiConfig } from '../config.js';
 import type { AnyRoute } from '../http/routes.js';
 import { healthRoutes } from './health.js';
 import { authRoutes } from './v1/auth.js';
+import { billingRoutes } from './v1/billing.js';
 import { customerRoutes } from './v1/customers.js';
 import { importRoutes } from './v1/imports.js';
 import { jobTypeRoutes } from './v1/job-types.js';
@@ -25,6 +26,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
   return [
     ...healthRoutes(config.APP_ENV),
     ...authRoutes,
+    ...billingRoutes,
     ...workspaceRoutes,
     ...formRoutes,
     ...submissionRoutes,

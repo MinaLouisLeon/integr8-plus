@@ -176,6 +176,9 @@ export const signOutRoute = defineRoute({
   operationId: 'signOut',
   summary: 'End this session, or every session',
   tags: ['authentication'],
+  // Signing out has to work whatever the company owes (P17). Trapping somebody
+  // in a session they are trying to leave would be absurd.
+  allowedWhenReadOnly: true,
   security: 'authenticated',
   params: noSchema,
   query: noSchema,

@@ -28,6 +28,14 @@ export interface BaseRequestContext {
   userAgent: string | null;
   /** The `Idempotency-Key` header, if the caller sent one. */
   idempotencyKey: string | null;
+  /** The body exactly as it arrived, for a route that declared `rawBody`. */
+  rawBody?: string | undefined;
+  /**
+   * The provider's signature over that body, for a route that declared
+   * `rawBody`. Read here rather than in the handler so a webhook route never
+   * reaches into Fastify itself.
+   */
+  signatureHeader?: string | undefined;
   clientApp: ClientApp;
 }
 
@@ -93,6 +101,19 @@ interface RouteShape {
   permission?: Permission;
 
   /**
+   * Whether this route still works while a company is read-only for
+   * non-payment (P17).
+   *
+   * Every method other than GET and HEAD is refused by default, and a route
+   * says otherwise here. The default is the safe direction: forgetting the
+   * flag refuses a write, where forgetting the opposite would let one through.
+   *
+   * The routes that set it are the ones a company needs in order to stop being
+   * read-only — paying, and signing out — plus reads expressed as POST.
+   */
+  allowedWhenReadOnly?: boolean;
+
+  /**
    * Whether this endpoint honours `Idempotency-Key`.
    *
    * Declared per route rather than inferred from the verb: a POST that only
@@ -103,6 +124,16 @@ interface RouteShape {
 
   /** Largest request body, in bytes, where this route needs more than `API_MAX_BODY_BYTES` — a CSV import. */
   bodyLimit?: number;
+
+  /**
+   * Whether this route needs the bytes exactly as they arrived (P17).
+   *
+   * A webhook signature covers what was sent, and parsing JSON and
+   * re-serialising it changes the bytes — a reordered key or a different
+   * escape is enough to make a genuine delivery look forged. A route that sets
+   * this receives the raw string on `context.rawBody` and an unparsed `body`.
+   */
+  rawBody?: boolean;
 
   params: z.ZodType;
   query: z.ZodType;
