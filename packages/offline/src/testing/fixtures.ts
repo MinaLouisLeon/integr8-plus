@@ -31,6 +31,10 @@ export function me(overrides: Partial<Me> = {}): Me {
     displayName: 'Ed Engineer',
     role: 'engineer',
     permissions: [],
+    // Both arrive from the platform (P15) and both are empty for a company
+    // nobody has flagged or announced anything to, which is most of them.
+    features: {},
+    announcements: [],
     ...overrides,
   };
 }
