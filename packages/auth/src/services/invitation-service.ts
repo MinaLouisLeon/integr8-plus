@@ -49,6 +49,8 @@ export interface AcceptInvitationResult {
   tokens: IssuedSession;
   tenantId: TenantId;
   userId: UserId;
+  /** The address the invitation was sent to. The caller decides who may see it. */
+  email: string;
 }
 
 export interface InvitationServiceDeps {
@@ -272,6 +274,6 @@ export class InvitationService {
       return issued;
     });
 
-    return { tokens, tenantId: parsed.tenantId, userId: identity.userId };
+    return { tokens, tenantId: parsed.tenantId, userId: identity.userId, email: invitation.email };
   }
 }
