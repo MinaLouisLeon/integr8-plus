@@ -1,5 +1,5 @@
 import { permissionsFor, roleSchema, toUserId } from '@integr8/core';
-import { withTenant } from '@integr8/db';
+import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { notFound } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
@@ -40,9 +40,10 @@ export const meRoute = defineRoute({
     404: { description: 'The membership behind this token no longer exists.' },
   },
   handler: async (_input, context) => {
-    const member = await withTenant(context.principal.tenantId, (tx) =>
-      tx.tenantUsers.findByUserId(context.principal.userId),
-    );
+    const { member, features } = await withTenant(context.principal.tenantId, async (tx) => ({
+      member: await tx.tenantUsers.findByUserId(context.principal.userId),
+      features: await tx.featureFlags.resolved(),
+    }));
 
     if (member === undefined) {
       // The token is valid but the membership has gone — removed while this
@@ -59,6 +60,17 @@ export const meRoute = defineRoute({
         displayName: member.displayName,
         role: member.role,
         permissions: permissionsFor(member.role),
+        features,
+        announcements: (
+          await getPlatformDataSource().settings.announcementsFor(member.tenantId)
+        ).map((announcement) => ({
+          id: announcement.id,
+          severity: announcement.severity,
+          message: announcement.message,
+          dismissible: announcement.dismissible,
+          startsAt: announcement.startsAt.toISOString(),
+          endsAt: announcement.endsAt?.toISOString() ?? null,
+        })),
         ...(context.principal.impersonatedBy === undefined
           ? {}
           : {
