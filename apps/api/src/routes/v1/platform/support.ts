@@ -2,6 +2,7 @@ import { mintInvitationToken } from '@integr8/auth';
 import { toTenantId, toUserId } from '@integr8/core';
 import { getAuthDataSource, getPlatformDataSource, withTenant } from '@integr8/db';
 import { z } from 'zod';
+import { acceptInvitationUrl } from '../../../email/links.js';
 import { notFound } from '../../../http/errors.js';
 import { defineRoute, noSchema } from '../../../http/routes.js';
 import { iso } from '../schemas.js';
@@ -255,7 +256,7 @@ export const resendInvitationRoute = defineRoute({
         id: reissued.invitation.id,
         email: reissued.invitation.email,
         expiresAt: iso(reissued.invitation.expiresAt),
-        acceptUrl: acceptUrl(context.config.WEB_APP_URL, reissued.token),
+        acceptUrl: acceptInvitationUrl(context.config.WEB_APP_URL, reissued.token),
       },
     };
   },
@@ -301,14 +302,6 @@ export const resetSecondFactorRoute = defineRoute({
 
 /** Matches the tenant-side invitation lifetime: long enough to survive a holiday. */
 const INVITATION_TTL_SECONDS = 7 * 24 * 60 * 60;
-
-/** Null rather than a guess when no web address is configured; see `companies.ts`. */
-function acceptUrl(base: string | undefined, token: string): string | null {
-  if (base === undefined || base === '') {
-    return null;
-  }
-  return `${base.replace(/\/+$/u, '')}/accept-invitation?token=${encodeURIComponent(token)}`;
-}
 
 export const platformSupportRoutes = [
   recentErrorsRoute,

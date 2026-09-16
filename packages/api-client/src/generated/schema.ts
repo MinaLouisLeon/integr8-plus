@@ -198,6 +198,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/members/invitations/{invitationId}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send an invitation again
+         * @description Withdraws the old invitation and issues a new one to the same address and role, then emails it. A new token rather than the old one: the reason for resending is usually that the first link went astray, and a link sitting in the wrong mailbox should stop working.
+         */
+        post: operations["resendMemberInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/members/{userId}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change what somebody may do
+         * @description Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself. Their sessions are ended, so the next token they get carries the new role — but an access token already issued keeps its old role until it lapses, within fifteen minutes.
+         */
+        patch: operations["changeMemberRole"];
+        trace?: never;
+    };
+    "/v1/members/{userId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Suspend somebody, or let them back in
+         * @description Suspending refuses them entry and keeps everything they have ever done. It is the reversible half of removing somebody: the right answer for a lost phone or somebody between jobs. Their sessions are ended, so they cannot sign in or refresh — but see the note on this file about the fifteen minutes an access token already in their hands stays valid.
+         */
+        patch: operations["setMemberStatus"];
+        trace?: never;
+    };
+    "/v1/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove somebody from this company
+         * @description Soft, and deliberately so: everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in and the seat they were taking up. As with suspending, an access token already issued outlives this by up to fifteen minutes.
+         */
+        delete: operations["removeMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -3125,6 +3205,407 @@ export interface operations {
             };
         };
     };
+    resendMemberInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A new invitation, sent. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        email: string;
+                        /** @enum {string} */
+                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        expiresAt: string;
+                        /** @default null */
+                        emailed: boolean | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such invitation, or it has been accepted or withdrawn. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    changeMemberRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                };
+            };
+        };
+        responses: {
+            /** @description The person, with their new role. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        userId: string;
+                        email: string;
+                        displayName: string;
+                        /** @enum {string} */
+                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                        /** @enum {string} */
+                        status: "invited" | "active" | "suspended";
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such person in this company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This is the company’s only owner (`last_owner`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A role above the caller’s own (`role_above_own`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setMemberStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "active" | "suspended";
+                };
+            };
+        };
+        responses: {
+            /** @description The person, with their new status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        userId: string;
+                        email: string;
+                        displayName: string;
+                        /** @enum {string} */
+                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                        /** @enum {string} */
+                        status: "invited" | "active" | "suspended";
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such person in this company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This is the company’s only owner (`last_owner`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    removeMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        removed: boolean;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such person in this company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This is the company’s only owner (`last_owner`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     getMe: {
         parameters: {
             query?: never;
@@ -3529,6 +4010,8 @@ export interface operations {
                             createdAt: string;
                             /** Format: date-time */
                             expiresAt: string;
+                            /** @default null */
+                            emailed: boolean | null;
                         }[];
                     };
                 };
@@ -3625,6 +4108,8 @@ export interface operations {
                         createdAt: string;
                         /** Format: date-time */
                         expiresAt: string;
+                        /** @default null */
+                        emailed: boolean | null;
                     };
                 };
             };
@@ -3797,6 +4282,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         accepted: boolean;
+                        email: string;
                     };
                 };
             };

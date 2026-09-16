@@ -129,9 +129,30 @@ export const invitationSchema = z.object({
   role: roleSchema,
   createdAt: timestamp,
   expiresAt: timestamp,
+  /**
+   * Whether the message actually left the building (P18).
+   *
+   * Null on an invitation read back from a list, where nobody recorded it;
+   * true or false on one just created or resent. An invitation whose email
+   * failed is still valid — the screen offers to resend rather than pretending
+   * it arrived, which is what this API did before there was any sender at all.
+   */
+  emailed: z.boolean().nullable().default(null),
 });
 
-export const acceptedSchema = z.object({ accepted: z.boolean() });
+export const acceptedSchema = z.object({
+  accepted: z.boolean(),
+  /**
+   * The address the invitation was sent to (P18).
+   *
+   * So the page can sign the new member in with the password they have just
+   * chosen, instead of asking them to work out which address they were invited
+   * at. Still no tokens in this response — but returning the address grants
+   * nothing, because whoever holds the invitation has just set the password
+   * anyway.
+   */
+  email: z.string(),
+});
 export const revokedSchema = z.object({ revoked: z.boolean() });
 
 export const listSchema = <T extends z.ZodType>(item: T) => z.object({ items: z.array(item) });
