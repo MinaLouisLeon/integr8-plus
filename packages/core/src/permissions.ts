@@ -84,6 +84,19 @@ export const PERMISSIONS = [
   'work_order.review',
   /** Import customers, sites and work orders from CSV. */
   'import.run',
+
+  /**
+   * See what the company is paying for: the plan, the period, the card's
+   * last failure. Separate from `billing.manage` because an admin may need to
+   * know why uploads stopped without being able to change the subscription.
+   */
+  'billing.read',
+  /**
+   * Start a checkout, open the provider's portal, cancel. Owner only: the
+   * person who signs up for a recurring charge should be the person who can
+   * end it, and that is not everybody with an admin badge.
+   */
+  'billing.manage',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -101,6 +114,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
   owner: [
     'tenant.read',
     'tenant.update',
+    'billing.read',
+    'billing.manage',
     'member.read',
     'member.invite',
     'member.update_role',
@@ -129,9 +144,12 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
 
   // Everything an owner can do except change the company itself. The line is
   // drawn at what an owner would want to be the only person able to alter:
-  // company identity today, the subscription that pays for it from P17.
+  // company identity, and the subscription that pays for it (P17). An admin
+  // may read the billing state, because "why did uploads stop" is a question
+  // they will be asked before the owner is.
   admin: [
     'tenant.read',
+    'billing.read',
     'member.read',
     'member.invite',
     'member.update_role',

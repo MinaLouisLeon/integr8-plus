@@ -56,9 +56,11 @@ describe('who can do what', () => {
     }
   });
 
-  it('withholds only company settings from an admin', () => {
+  it('withholds company settings and the subscription from an admin', () => {
     const withheld = PERMISSIONS.filter((permission) => !can('admin', permission));
-    expect(withheld).toEqual(['tenant.update']);
+    // An admin may read the billing state — "why did uploads stop" reaches
+    // them first — but may not start or end a recurring charge (P17).
+    expect(withheld).toEqual(['tenant.update', 'billing.manage']);
   });
 
   it('does not let a dispatcher manage members despite outranking an engineer', () => {
