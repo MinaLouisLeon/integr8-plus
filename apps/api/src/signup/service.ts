@@ -1,4 +1,10 @@
-import { mintInvitationToken, parseInvitationToken } from '@integr8/auth';
+import {
+  assessPassword,
+  mintInvitationToken,
+  parseInvitationToken,
+  type PasswordPolicy,
+  WeakPasswordError,
+} from '@integr8/auth';
 import { toPlatformUserId } from '@integr8/core';
 import { getPlatformDataSource } from '@integr8/db';
 import type { ApiConfig } from '../config.js';
@@ -35,6 +41,15 @@ export const SIGNUP_TTL_SECONDS = 24 * 60 * 60;
 
 /** How many times one address may ask, per window, before we stop sending. */
 const MAX_REQUESTS_PER_DAY = 5;
+
+/**
+ * How many times one request's link may be sent again.
+ *
+ * Without a cap, `/resend` was a way to send unlimited mail from our domain to
+ * any address somebody else typed in — one signup, then a loop. Three covers a
+ * message that went to spam and one that was deleted by mistake.
+ */
+const MAX_RESENDS = 3;
 
 export const SIGNUP_STEPS = {
   started: 'signup.started',
@@ -191,6 +206,7 @@ export async function verifySignup(
   input: VerifySignupInput,
   deps: SignupDeps & {
     identity: { createIdentity: (email: string, password: string) => Promise<{ userId: string }> };
+    passwordPolicy: PasswordPolicy;
   },
 ): Promise<VerifiedSignup> {
   const parsed = parseInvitationToken(input.token);
@@ -204,6 +220,15 @@ export async function verifySignup(
     // Expired, spent and never-existed are one answer. Distinguishing them
     // tells a stranger which addresses have signed up.
     throw invalidToken();
+  }
+
+  // The same policy an invited engineer meets. Checked before anything is
+  // created, so a refused password costs nothing and the link stays usable.
+  const assessment = assessPassword(input.password, deps.passwordPolicy, {
+    email: request.email,
+  });
+  if (!assessment.acceptable) {
+    throw new WeakPasswordError(assessment.problems);
   }
 
   await recordStep(deps.logger, SIGNUP_STEPS.verified, { signupId: request.id });
@@ -264,9 +289,19 @@ export async function resendSignup(email: string, deps: SignupDeps): Promise<voi
     return;
   }
 
+  if (request.expiresAt <= new Date()) {
+    // The link has died with its request; asking again means signing up again.
+    return;
+  }
+
+  // The expiry is not extended: a resend is the same request's link sent again,
+  // not a new day's grace. Extending it would let a resend loop keep a request
+  // alive — and a stranger's inbox filling — indefinitely.
   const secret = mintInvitationToken(toPlatformUserId(PLACEHOLDER_TENANT));
-  const expiresAt = new Date(Date.now() + SIGNUP_TTL_SECONDS * 1000);
-  if (!(await signup.rotateToken(request.id, secret.hash, expiresAt))) {
+  if (!(await signup.rotateToken(request.id, secret.hash, MAX_RESENDS))) {
+    // Spent its resends. Silent, like every other refusal here: the answer
+    // must not say whether an address has a request at all.
+    deps.logger.warn('Signup resend throttled', { reason: 'too_many_resends' });
     return;
   }
 
@@ -282,7 +317,7 @@ export async function resendSignup(email: string, deps: SignupDeps): Promise<voi
       to: request.email,
       companyName: request.companyName,
       verifyUrl: url,
-      expiresAt,
+      expiresAt: request.expiresAt,
     }),
     { kind: 'signup_resend', signupId: request.id },
   );

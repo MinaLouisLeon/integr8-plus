@@ -208,9 +208,19 @@ export const openPortalRoute = defineRoute({
     }
 
     const returnUrl = context.config.BILLING_RETURN_URL ?? context.config.WEB_APP_URL;
+    if (returnUrl === undefined) {
+      // The same refusal as checkout: a relative return address is one the
+      // provider rejects, and the result would be a 500 for a configuration
+      // problem.
+      throw new ApiError(
+        503,
+        'billing_not_configured',
+        'Billing is not configured on this deployment.',
+      );
+    }
     const session = await context.services.billing.createPortal({
       customerId,
-      returnUrl: `${returnUrl ?? ''}/billing`,
+      returnUrl: `${returnUrl}/billing`,
     });
 
     return {

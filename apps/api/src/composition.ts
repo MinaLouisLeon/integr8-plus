@@ -5,6 +5,7 @@ import {
   loadAuthConfig,
   loadSigningKey,
   loadVerificationKeys,
+  type PasswordPolicy,
   PlatformSessionService,
   SessionService,
   SignInService,
@@ -49,6 +50,12 @@ export interface Services {
   /** Super admins signed in to the dashboard (P15). No company; see the platform routes. */
   platform: PlatformSessionService;
   identity: IdentityProvider;
+  /**
+   * What a password has to be, for the one place outside `@integr8/auth` that
+   * takes one: self-serve signup (P18). The same policy invitation acceptance
+   * applies, so a company's owner is held to what its engineers are.
+   */
+  passwordPolicy: PasswordPolicy;
   /** Company buckets: R2, or local disk in development. Reach one through `getStorage`. */
   media: MediaStorage;
   /** Site addresses to coordinates. Used by the worker, never in a request. */
@@ -110,6 +117,7 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
         assertSeatAvailable({ tenantId, plan: await planFor(tenantId) }),
     }),
     impersonation: new ImpersonationService({ sessions, config: authConfig }),
+    passwordPolicy: { minLength: authConfig.AUTH_MIN_PASSWORD_LENGTH },
     platform: new PlatformSessionService({ tokens, config: authConfig }),
     media: buildMediaStorage(options.config),
     geocoder: buildGeocoder(options.config),

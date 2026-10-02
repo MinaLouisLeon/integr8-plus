@@ -1,9 +1,9 @@
 import { mintInvitationToken } from '@integr8/auth';
-import { roleRank, roleSchema, toUserId } from '@integr8/core';
+import { type Principal, type Role, roleRank, roleSchema, toUserId } from '@integr8/core';
 import { withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { deliverInvitation } from '../../email/deliver.js';
-import { conflict, notFound, unprocessable } from '../../http/errors.js';
+import { conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { invitationSchema, iso, memberSchema } from './schemas.js';
 import { inviterName } from './workspace.js';
@@ -86,6 +86,20 @@ async function assertNotLastOwner(tenantId: string, userId: string, action: stri
       action +
       '. Make somebody else an owner first.',
   );
+}
+
+/**
+ * The second rule: **nobody acts on somebody ranked above them.**
+ *
+ * The routes below already refuse to *grant* a role above the caller's own.
+ * Without this they still let an admin demote, suspend or remove an owner, so
+ * long as another owner remained — which turns `member.update_role` into a way
+ * of unseating the people who granted it.
+ */
+function assertOutranks(principal: Principal, target: { role: Role }, action: string): void {
+  if (roleRank(target.role) > roleRank(principal.role)) {
+    throw forbidden(`You cannot ${action} somebody whose role is above your own.`);
+  }
 }
 
 async function memberOr404(tenantId: string, userId: string) {
@@ -189,7 +203,8 @@ export const changeMemberRoleRoute = defineRoute({
   },
   handler: async ({ params, body }, context) => {
     const tenantId = context.principal.tenantId;
-    await memberOr404(tenantId, params.userId);
+    const target = await memberOr404(tenantId, params.userId);
+    assertOutranks(context.principal, target, 'change the role of');
 
     if (roleRank(body.role) > roleRank(context.principal.role)) {
       throw unprocessable('role_above_own', 'You cannot give somebody a role above your own.', [
@@ -252,7 +267,12 @@ export const setMemberStatusRoute = defineRoute({
   },
   handler: async ({ params, body }, context) => {
     const tenantId = context.principal.tenantId;
-    await memberOr404(tenantId, params.userId);
+    const target = await memberOr404(tenantId, params.userId);
+    assertOutranks(
+      context.principal,
+      target,
+      body.status === 'suspended' ? 'suspend' : 'reactivate',
+    );
 
     if (body.status === 'suspended') {
       await assertNotLastOwner(tenantId, params.userId, 'suspended');
@@ -307,7 +327,8 @@ export const removeMemberRoute = defineRoute({
   },
   handler: async ({ params }, context) => {
     const tenantId = context.principal.tenantId;
-    await memberOr404(tenantId, params.userId);
+    const target = await memberOr404(tenantId, params.userId);
+    assertOutranks(context.principal, target, 'remove');
     await assertNotLastOwner(tenantId, params.userId, 'removed');
 
     const removed = await withTenant(tenantId, async (tx) => {

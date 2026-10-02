@@ -22,7 +22,7 @@ import type { BillingProvider, ParsedWebhook } from './provider.js';
  */
 
 export interface WebhookOutcome {
-  /** Already seen; nothing was done. */
+  /** Seen before. With `handled` false, nothing was done this time. */
   duplicate: boolean;
   handled: boolean;
   tenantId: string | null;
@@ -50,9 +50,10 @@ export async function applyWebhook(input: {
     payload: parsed.payload,
   });
 
-  if (duplicate) {
-    // The delivery has been seen. Saying so is the whole point: the provider
-    // retries, and a retry must not charge, cancel or unlock anything twice.
+  if (duplicate && event.processedAt !== null && event.error === null) {
+    // The delivery has been seen and applied. Saying so is the whole point: the
+    // provider retries, and a retry must not charge, cancel or unlock anything
+    // twice.
     input.logger.info('Billing event already applied', {
       provider: provider.provider,
       eventId: parsed.id,
@@ -61,18 +62,32 @@ export async function applyWebhook(input: {
     return { duplicate: true, handled: false, tenantId: event.tenantId, type: parsed.type };
   }
 
+  if (duplicate) {
+    // Seen, but never applied: the handler threw, or the process died between
+    // recording the row and acting on it. The row was inserted before the
+    // handler ran, so without this the provider's retry — the one thing that
+    // can still apply a payment — would be answered "already seen" and the
+    // company would stay unpaid for ever.
+    input.logger.warn('Billing event recorded earlier but not applied; applying on retry', {
+      provider: provider.provider,
+      eventId: parsed.id,
+      type: parsed.type,
+      previousError: event.error,
+    });
+  }
+
   if (tenantId === null) {
     // Usually a test delivery, or a customer created against the same provider
     // account by another environment. Kept, because the record is what makes
     // the question answerable later.
     await billing.markEventProcessed(event.id, 'No company matches this customer.');
-    return { duplicate: false, handled: false, tenantId: null, type: parsed.type };
+    return { duplicate, handled: false, tenantId: null, type: parsed.type };
   }
 
   try {
     await handle({ tenantId, parsed, provider, config: input.config, now });
     await billing.markEventProcessed(event.id);
-    return { duplicate: false, handled: true, tenantId, type: parsed.type };
+    return { duplicate, handled: true, tenantId, type: parsed.type };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await billing.markEventProcessed(event.id, message);
