@@ -12,6 +12,7 @@ import {
 import type { AuthConfig } from '../config.js';
 import {
   AccountLockedError,
+  ImpersonationDeniedError,
   InvalidCredentialsError,
   NotAMemberError,
   RateLimitedError,
@@ -170,6 +171,15 @@ export class SignInService {
       ipAddress?: string | null;
     },
   ): Promise<SignInResult> {
+    // A grant covers one company. The session this issues carries no grant, so
+    // it would be a plain session as the target, in a company whose owner never
+    // consented, lasting the full session ceiling, and invisible to `end()`.
+    if (principal.impersonatedBy !== undefined) {
+      throw new ImpersonationDeniedError(
+        'An impersonation grant covers one company; it cannot be carried to another',
+      );
+    }
+
     const auth = await getAuthDataSource();
     const membership = await auth.memberships.find(principal.userId, targetTenantId);
 

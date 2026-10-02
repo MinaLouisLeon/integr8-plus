@@ -140,9 +140,13 @@ export const switchTenantRoute = defineRoute({
   operationId: 'switchTenant',
   summary: 'Move to another of your companies',
   description:
-    'Membership is checked afresh: holding a valid token for one company says nothing about another. The current session is revoked, so a device holds one session at a time.',
+    'Membership is checked afresh: holding a valid token for one company says nothing about another. The current session is revoked, so a device holds one session at a time. An impersonation session cannot switch: its grant covers one company only.',
   tags: ['authentication'],
   security: 'authenticated',
+  // Leaving a company that has stopped paying for one that has not is not a
+  // write to the first company; refusing it would trap a person in the wrong
+  // one.
+  allowedWhenReadOnly: true,
   params: noSchema,
   query: noSchema,
   body: z.object({
@@ -152,7 +156,9 @@ export const switchTenantRoute = defineRoute({
   }),
   responses: {
     200: { description: 'Switched.', schema: signInResponseSchema },
-    403: { description: 'Not a member of that company.' },
+    403: {
+      description: 'Not a member of that company, or impersonating (`auth.impersonation_denied`).',
+    },
   },
   handler: async ({ body }, context) => {
     const result = await context.services.signIn.switchTenant(
