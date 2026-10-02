@@ -229,23 +229,49 @@ function toClaimed(row: Selectable<JobsTable>): ClaimedJob {
   return { ...job, lockedUntil: job.lockedUntil };
 }
 
-/** Marks a claimed job done. Runs on the owner connection, like the claim. */
+export interface CompleteJobOptions {
+  /**
+   * Who is reporting. With it, the row is only touched if this worker still
+   * holds the lease; a worker that finished after its lease was taken over
+   * reports to nobody. Without it, the caller is trusted — the integration
+   * suites, which drive the queue by hand.
+   */
+  workerId?: string;
+  /** The database's clock unless a test injects one, for the reason `claimJobs` gives. */
+  at?: Date;
+}
+
+/**
+ * Marks a claimed job done. Runs on the owner connection, like the claim.
+ *
+ * Returns false when nothing was marked: the job is no longer this worker's.
+ * A lease is a lease because it can run out, and a worker that took ninety
+ * seconds over a sixty-second lease has, by then, been replaced. Its result is
+ * not wrong, but the row now belongs to whoever reclaimed it, and letting the
+ * late worker write "succeeded" over a job still running elsewhere — or, worse,
+ * "pending" — is how one job runs three times.
+ */
 export async function completeJob(
   db: Kysely<Database>,
   jobId: string,
-  at: Date = new Date(),
-): Promise<void> {
-  await db
+  options: CompleteJobOptions = {},
+): Promise<boolean> {
+  const result = await db
     .updateTable('jobs')
     .set({
       status: 'succeeded',
-      completed_at: at,
+      completed_at: options.at ?? sql<Date>`now()`,
       locked_by: null,
       locked_until: null,
       last_error: null,
     })
     .where('id', '=', jobId)
-    .execute();
+    .$if(options.workerId !== undefined, (query) =>
+      query.where('locked_by', '=', options.workerId ?? '').where('status', '=', 'running'),
+    )
+    .executeTakeFirst();
+
+  return (result.numUpdatedRows ?? 0n) > 0n;
 }
 
 export interface FailJobOptions {
@@ -253,6 +279,8 @@ export interface FailJobOptions {
   /** When to try again. Computed by the worker's backoff policy. */
   retryAt: Date;
   now?: Date;
+  /** Who is reporting; see {@link CompleteJobOptions.workerId}. */
+  workerId?: string;
 }
 
 /**
@@ -261,36 +289,39 @@ export interface FailJobOptions {
  * The decision is made here rather than by the caller so that "attempts
  * exhausted" is one rule in one place, and so a worker that crashes between
  * failing and rescheduling leaves the row in a state the next poll understands.
+ * It is made inside the update itself, rather than read first and written
+ * after, so the row it judges is the row it changes.
+ *
+ * `lost` means the lease was no longer this worker's — see {@link completeJob}.
  */
 export async function failJob(
   db: Kysely<Database>,
   jobId: string,
   options: FailJobOptions,
-): Promise<'retrying' | 'dead'> {
-  const now = options.now ?? new Date();
+): Promise<'retrying' | 'dead' | 'lost'> {
+  const now = options.now === undefined ? sql<Date>`now()` : sql<Date>`${options.now}::timestamptz`;
 
-  const job = await db
-    .selectFrom('jobs')
-    .select(['attempts', 'max_attempts'])
-    .where('id', '=', jobId)
-    .executeTakeFirst();
-
-  const exhausted = job === undefined || job.attempts >= job.max_attempts;
-
-  await db
+  const row = await db
     .updateTable('jobs')
     .set({
-      status: exhausted ? 'dead' : 'pending',
+      status: sql<JobStatus>`case when attempts >= max_attempts then 'dead' else 'pending' end`,
       last_error: options.error.slice(0, 4000),
       locked_by: null,
       locked_until: null,
       available_at: options.retryAt,
-      dead_lettered_at: exhausted ? now : null,
+      dead_lettered_at: sql<Date | null>`case when attempts >= max_attempts then ${now} else null end`,
     })
     .where('id', '=', jobId)
-    .execute();
+    .$if(options.workerId !== undefined, (query) =>
+      query.where('locked_by', '=', options.workerId ?? '').where('status', '=', 'running'),
+    )
+    .returning('status')
+    .executeTakeFirst();
 
-  return exhausted ? 'dead' : 'retrying';
+  if (row === undefined) {
+    return 'lost';
+  }
+  return row.status === 'dead' ? 'dead' : 'retrying';
 }
 
 function toDomain(row: Selectable<JobsTable>): Job {

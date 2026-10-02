@@ -14,6 +14,7 @@ import { ImpersonationRepository } from './repositories/impersonation.js';
 import {
   type ClaimedJob,
   claimJobs,
+  type CompleteJobOptions,
   completeJob,
   type FailJobOptions,
   failJob,
@@ -166,8 +167,9 @@ export interface PlatformJobQueue {
     leaseMs?: number;
     now?: Date;
   }) => Promise<ClaimedJob[]>;
-  complete: (jobId: string, at?: Date) => Promise<void>;
-  fail: (jobId: string, options: FailJobOptions) => Promise<'retrying' | 'dead'>;
+  /** False when the job is no longer this worker's; see `completeJob`. */
+  complete: (jobId: string, options?: CompleteJobOptions) => Promise<boolean>;
+  fail: (jobId: string, options: FailJobOptions) => Promise<'retrying' | 'dead' | 'lost'>;
 }
 
 /** A connection as the schema owner. RLS does not apply — see {@link getPlatformDataSource}. */
@@ -426,7 +428,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     tenantSettings: new TenantSettingsWriter(db),
     jobs: {
       claim: (options) => claimJobs(db, options),
-      complete: (jobId, at) => completeJob(db, jobId, at),
+      complete: (jobId, options) => completeJob(db, jobId, options),
       fail: (jobId, options) => failJob(db, jobId, options),
     },
   };

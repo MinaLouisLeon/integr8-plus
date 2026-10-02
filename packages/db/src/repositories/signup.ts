@@ -120,12 +120,20 @@ export class SignupRepository {
   }
 
   /** Rotates the token, for a resend. The old link stops working. */
-  async rotateToken(id: string, tokenHash: string, expiresAt: Date): Promise<boolean> {
+  /**
+   * Replaces the token, counting the resend against the request's cap.
+   *
+   * One statement, so two resends racing cannot both pass the cap. False when
+   * the request is no longer pending or has had its `maxResends`. The expiry is
+   * deliberately left alone: a resend is the same link sent again.
+   */
+  async rotateToken(id: string, tokenHash: string, maxResends: number): Promise<boolean> {
     const result = await this.db
       .updateTable('signup_requests')
-      .set({ token_hash: tokenHash, expires_at: expiresAt })
+      .set({ token_hash: tokenHash, resend_count: sql<number>`resend_count + 1` })
       .where('id', '=', id)
       .where('status', '=', 'pending')
+      .where('resend_count', '<', maxResends)
       .executeTakeFirst();
 
     return (result.numUpdatedRows ?? 0n) > 0n;
