@@ -11,25 +11,33 @@ import {
   backoffSeconds,
   type ChangeContext,
   markBatchUnanswered,
+  markSent,
   queueUpload,
+  recordAccessChange,
   recordAnswers,
   recordComment,
   recordFormStarted,
   recordSubmit,
   recordTransition,
+  retryChange,
   selectBatch,
 } from './outbox.js';
 
 const NOW = new Date('2026-09-14T12:00:00.000Z');
 const random = (length: number) => new Uint8Array(randomBytes(length));
 
-/** A phone holding two jobs, with a clock the test moves by hand. */
+/** A phone holding two dispatched jobs and one being worked, with a clock the test moves by hand. */
 async function phone() {
   const { db } = await openTestDatabase();
   const customer = customerDetail();
   const jobs = [workOrderDetail(customer), workOrderDetail(customer)] as const;
+  const working = workOrderDetail(customer, { state: 'in_progress' });
   await db.write(['work_orders'], (sql) =>
-    applySnapshot(sql, { me: me(), workOrders: [...jobs], customers: [customer], forms: [] }, NOW),
+    applySnapshot(
+      sql,
+      { me: me(), workOrders: [...jobs, working], customers: [customer], forms: [] },
+      NOW,
+    ),
   );
   const clock = { current: NOW, now: () => clock.current };
   const context: ChangeContext = { db, clock, random };
@@ -39,7 +47,7 @@ async function phone() {
       const { rows } = await selectBatch(sql, clock.current);
       return applyPushResults(sql, rows, results, clock.current);
     });
-  return { db, clock, context, jobs, batch, answer };
+  return { db, clock, context, jobs, working, customer, batch, answer };
 }
 
 const applied = (id: string, revision: number | null = 1): PushResult => ({
@@ -223,5 +231,95 @@ describe('forms', () => {
       sql.run(`update uploads set state = 'confirmed' where media_id = ?`, [mediaId]),
     );
     expect((await batch()).mutations.map((mutation) => mutation.id)).toEqual([submitted]);
+  });
+});
+
+describe('what a completion waits for', () => {
+  it('follows a change it waited for when that change is sent again under a new id', async () => {
+    const { context, working, batch, answer } = await phone();
+    const { mutationId: started, submissionId } = await recordFormStarted(context, {
+      formId: uuid(),
+      formVersionId: uuid(),
+      workOrderId: working.workOrder.id,
+    });
+    await answer([applied(started, 1)]);
+    const submitted = await recordSubmit(context, {
+      submissionId,
+      answers: { note: 'final' },
+      filledOn: '2026-09-14',
+    });
+    const completed = await recordTransition(context, {
+      workOrderId: working.workOrder.id,
+      to: 'complete',
+    });
+    expect((await batch()).mutations.map((mutation) => mutation.id)).toEqual([submitted]);
+
+    // The office changed the form; the submit is refused and the engineer
+    // sends it again. Resending gives it a new id.
+    await answer([
+      {
+        id: submitted,
+        outcome: 'rejected',
+        replayed: false,
+        code: 'transition_not_allowed',
+        message: 'No',
+        details: [],
+      },
+    ]);
+    expect((await batch()).mutations).toEqual([]);
+    const again = await retryChange(context, submitted);
+    expect(again).not.toBe(submitted);
+
+    // The completion waits for the new id, not for one nothing will ever carry.
+    expect((await batch()).mutations.map((mutation) => mutation.id)).toEqual([again]);
+    await answer([applied(again, 2)]);
+    expect((await batch()).mutations.map((mutation) => mutation.id)).toEqual([completed]);
+  });
+
+  it('goes once an autosave it waited for has been replaced by the submit', async () => {
+    const { context, working, batch, answer } = await phone();
+    const { mutationId: started, submissionId } = await recordFormStarted(context, {
+      formId: uuid(),
+      formVersionId: uuid(),
+      workOrderId: working.workOrder.id,
+    });
+    await answer([applied(started, 1)]);
+    await recordAnswers(context, { submissionId, answers: { note: 'draft' } });
+    const completed = await recordTransition(context, {
+      workOrderId: working.workOrder.id,
+      to: 'complete',
+    });
+    expect((await batch()).mutations.map((mutation) => mutation.id)).not.toContain(completed);
+
+    // The submit deletes the unsent autosave the completion was waiting for.
+    const submitted = await recordSubmit(context, {
+      submissionId,
+      answers: { note: 'final' },
+      filledOn: '2026-09-14',
+    });
+    const ids = (await batch()).mutations.map((mutation) => mutation.id);
+    expect(ids).toHaveLength(2);
+    expect(ids).toContain(submitted);
+    expect(ids).toContain(completed);
+  });
+});
+
+describe('access notes', () => {
+  it('folds unsent corrections into one change, but never into one already on the wire', async () => {
+    const { db, context, customer, clock, batch } = await phone();
+    const siteId = customer.sites[0]!.id;
+    const first = await recordAccessChange(context, { siteId, changes: { gateCode: '1111#' } });
+
+    // The engine hands the batch to the network and marks it sent in the same
+    // write. A correction made now must become a change of its own, or the
+    // answer to the first change would mark it done without it ever leaving.
+    const { rows } = await batch();
+    await db.write(['outbox'], (sql) => markSent(sql, rows, clock.current));
+    const second = await recordAccessChange(context, { siteId, changes: { parking: 'Rear' } });
+    expect(second).not.toBe(first);
+
+    // One that has not left still folds.
+    const third = await recordAccessChange(context, { siteId, changes: { hazards: 'Dog' } });
+    expect(third).toBe(second);
   });
 });
