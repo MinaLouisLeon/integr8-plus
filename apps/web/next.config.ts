@@ -1,8 +1,25 @@
 import { withSentryConfig } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
 
+/**
+ * Browser defences that cost nothing and that no page here needs relaxed.
+ *
+ * Nothing on this site is meant to be shown inside another site's frame — least
+ * of all the super admin dashboard, where suspending a company is one click.
+ * Without `frame-ancestors`, any page anywhere could lay a transparent copy of
+ * it over its own buttons.
+ */
+const SECURITY_HEADERS = [
+  { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+];
+
 const config: NextConfig = {
   reactStrictMode: true,
+
+  headers: () => Promise.resolve([{ source: '/:path*', headers: SECURITY_HEADERS }]),
 
   // The workspace packages ship TypeScript-compiled ESM; Next needs telling
   // which of its dependencies are local source rather than published builds.

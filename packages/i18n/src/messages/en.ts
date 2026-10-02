@@ -186,6 +186,7 @@ export const en = {
   workspace: {
     signedInAs: 'Signed in as {{name}}',
     company: 'Company',
+    roleLabel: 'Role',
     role: {
       owner: 'Owner',
       admin: 'Admin',

@@ -89,7 +89,7 @@ export default function PeoplePage() {
         <p className="text-sm text-content-muted">{t('workspace.members.manageSubtitle')}</p>
       </header>
 
-      {notice === null ? null : (
+      {notice === null || notice === '' ? null : (
         <p role="status" className="rounded-md bg-surface-muted px-3 py-2 text-sm text-content">
           {notice}
         </p>

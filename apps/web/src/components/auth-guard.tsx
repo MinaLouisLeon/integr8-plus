@@ -3,7 +3,7 @@
 import { useTranslation } from '@integr8/i18n';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { LoadingState } from '~/components/ui';
+import { ErrorState, LoadingState } from '~/components/ui';
 import { ensureAccessToken } from '~/lib/session';
 
 /**
@@ -20,13 +20,25 @@ import { ensureAccessToken } from '~/lib/session';
 export function AuthGuard({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const [state, setState] = useState<'checking' | 'signed-in'>('checking');
+  const [state, setState] = useState<'checking' | 'signed-in' | 'failed'>('checking');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
-      const token = await ensureAccessToken();
+      let token: string | null;
+      try {
+        token = await ensureAccessToken();
+      } catch {
+        // The API is unreachable, or the network is. Not "signed out" — the
+        // cookie may be perfectly good — so not a redirect, and not a spinner
+        // that never ends either: something to read, and a button.
+        if (!cancelled) {
+          setState('failed');
+        }
+        return;
+      }
       if (cancelled) {
         return;
       }
@@ -42,10 +54,21 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, attempt]);
 
   if (state === 'checking') {
     return <LoadingState label={t('common.loading')} />;
+  }
+
+  if (state === 'failed') {
+    return (
+      <ErrorState
+        onRetry={() => {
+          setState('checking');
+          setAttempt((current) => current + 1);
+        }}
+      />
+    );
   }
 
   return <>{children}</>;

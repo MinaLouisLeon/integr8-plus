@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
-import { apiBaseUrl, REFRESH_COOKIE, refreshCookieOptions, secondsUntil } from '~/lib/api';
+import {
+  apiBaseUrl,
+  crossSiteRefusal,
+  isCrossSiteRequest,
+  readJson,
+  REFRESH_COOKIE,
+  refreshCookieOptions,
+  secondsUntil,
+} from '~/lib/api';
 
 /**
  * Signs in, and keeps the refresh token on the server.
@@ -9,8 +17,20 @@ import { apiBaseUrl, REFRESH_COOKIE, refreshCookieOptions, secondsUntil } from '
  * reach JavaScript. The access token goes back in the body and lives in memory
  * for the life of the tab.
  */
-export async function POST(request: Request): Promise<NextResponse> {
-  const credentials = (await request.json()) as { email: string; password: string };
+export async function POST(request: Request): Promise<Response> {
+  // A sign-in posted from another site would set this cookie for a session
+  // the attacker chose; see `isCrossSiteRequest`.
+  if (isCrossSiteRequest(request)) {
+    return crossSiteRefusal();
+  }
+
+  const credentials = (await readJson(request)) as { email: string; password: string } | undefined;
+  if (credentials === undefined) {
+    return NextResponse.json(
+      { error: { code: 'invalid_body', message: 'The request body could not be read as JSON.' } },
+      { status: 400 },
+    );
+  }
 
   const upstream = await fetch(`${apiBaseUrl()}/v1/auth/sign-in`, {
     method: 'POST',
