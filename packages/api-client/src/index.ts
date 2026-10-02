@@ -121,6 +121,16 @@ export function createClient(options: ClientOptions) {
   return client;
 }
 
+/**
+ * The body of every request that has one, kept until its response is dealt with.
+ *
+ * `fetch` consumes a Request's body, and openapi-fetch hands `onResponse` the
+ * very Request it sent. A retry built from that request throws "body is already
+ * used" instead of retrying — which is what every POST, PUT and PATCH did after
+ * a 401 until this was added. A clone taken before sending still has its body.
+ */
+const unsentBodies = new WeakMap<Request, Request>();
+
 /** Adds the auth header and the two client-identity headers to every request. */
 function identityMiddleware(options: ClientOptions): Middleware {
   return {
@@ -131,6 +141,10 @@ function identityMiddleware(options: ClientOptions): Middleware {
       const token = await options.getAccessToken();
       if (token !== null && token !== '') {
         request.headers.set('authorization', `Bearer ${token}`);
+      }
+
+      if (request.body !== null) {
+        unsentBodies.set(request, request.clone());
       }
 
       return request;
@@ -159,7 +173,8 @@ function errorMiddleware(options: ClientOptions): Middleware {
         const refreshed = await options.onUnauthorised();
 
         if (refreshed !== null && refreshed !== '') {
-          const retry = new Request(request);
+          const retry = new Request(unsentBodies.get(request) ?? request);
+          unsentBodies.delete(request);
           retry.headers.set('authorization', `Bearer ${refreshed}`);
           const retried = await (options.fetch ?? globalThis.fetch)(retry);
 

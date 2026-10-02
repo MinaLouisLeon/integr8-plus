@@ -15,20 +15,24 @@ const REQUEST_ID = '018f2b3c-4d5e-7f80-9a1b-2c3d4e5f6071';
 interface Recorded {
   url: string;
   headers: Record<string, string>;
+  body: string | null;
 }
 
 function stub(handler: (call: number) => Response) {
   const calls: Recorded[] = [];
 
-  const fetchImpl: typeof globalThis.fetch = (input, init) => {
+  const fetchImpl: typeof globalThis.fetch = async (input, init) => {
     const request = input instanceof Request ? input : new Request(String(input), init);
     const headers: Record<string, string> = {};
     request.headers.forEach((value, key) => {
       headers[key] = value;
     });
 
-    calls.push({ url: request.url, headers });
-    return Promise.resolve(handler(calls.length));
+    // Read as a real server would, so a retry that re-sends a consumed body
+    // fails here the way it fails in production.
+    const body = request.body === null ? null : await request.text();
+    calls.push({ url: request.url, headers, body });
+    return handler(calls.length);
   };
 
   return { calls, fetchImpl };
@@ -248,6 +252,34 @@ describe('refreshing after a 401', () => {
     expect(calls).toHaveLength(2);
     expect(calls[0]?.headers.authorization).toBe('Bearer expired');
     expect(calls[1]?.headers.authorization).toBe('Bearer refreshed');
+  });
+
+  it('retries a request that carries a body, with the same body', async () => {
+    // The body is consumed by the first send. A retry built from the sent
+    // request would throw rather than retry, and every mutation in every app
+    // would fail on an expired token where a read would have recovered.
+    const { calls, fetchImpl } = stub((call) =>
+      call === 1
+        ? jsonResponse(errorBody('unauthorised', 'Authentication is required'), 401)
+        : jsonResponse({ recorded: true }, 202),
+    );
+
+    const api = createClient({
+      baseUrl: 'https://api.integr8.example',
+      clientApp: 'web',
+      clientVersion: '1.0.0',
+      getAccessToken: () => 'expired',
+      onUnauthorised: () => Promise.resolve('refreshed'),
+      fetch: fetchImpl,
+    });
+
+    const { response } = await api.POST('/v1/signup/step', { body: { step: 'landing.viewed' } });
+
+    expect(response.status).toBe(202);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]?.headers.authorization).toBe('Bearer refreshed');
+    expect(calls[1]?.body).toBe(JSON.stringify({ step: 'landing.viewed' }));
+    expect(calls[1]?.body).toBe(calls[0]?.body);
   });
 
   it('retries only once, however many times the server says no', async () => {
