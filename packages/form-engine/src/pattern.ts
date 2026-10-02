@@ -289,18 +289,27 @@ class Parser {
         throw new PatternError('"[" must be escaped inside a character class', this.#index);
       }
 
+      const lowStart = this.#index;
+      let low: string | null;
       if (char === '\\') {
+        // An escaped literal such as `\[` is one character and can start a
+        // range: the engine reads `[\[--]` as the range `[` to `-`, which runs
+        // backwards, so the checker has to read it the same way or it accepts
+        // a pattern the engine then refuses to compile. A shorthand such as
+        // `\d` is not a character and a `-` after it is a literal hyphen.
+        const escaped = this.source[this.#index + 1];
         this.#escape(true);
         members += 1;
-        continue;
+        low = escaped !== undefined && ESCAPABLE.has(escaped) ? escaped : null;
+      } else {
+        low = char;
+        this.#index += 1;
+        members += 1;
       }
-
-      const low = char;
-      this.#index += 1;
-      members += 1;
 
       // A range: `a-z`. A trailing `-` before `]` is a literal hyphen.
       if (
+        low !== null &&
         this.#peek() === '-' &&
         this.source[this.#index + 1] !== ']' &&
         this.source[this.#index + 1] !== undefined
@@ -310,7 +319,7 @@ class Parser {
           throw new PatternError('a range must run between two plain characters', this.#index);
         }
         if (high < low) {
-          throw new PatternError(`the range "${low}-${high}" runs backwards`, this.#index - 1);
+          throw new PatternError(`the range "${low}-${high}" runs backwards`, lowStart);
         }
         this.#index += 2;
       }

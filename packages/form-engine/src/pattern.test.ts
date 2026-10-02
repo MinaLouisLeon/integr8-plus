@@ -12,6 +12,7 @@ describe('patterns a company admin would actually write', () => {
     ['GB\\d{2}|IE\\d{2}', 'IE12', 'FR12'],
     ['[a-z-]+', 'north-wind', 'North'],
     ['[-a-z]+', '-a', '1'],
+    ['[\\--9]+', '-.9', 'a'],
     ['\\(\\d{2}\\) \\d{4}', '(02) 1234', '02 1234'],
     ['(ab)?c', 'abc', 'bc'],
     ['.{2,5}', 'abc', 'a'],
@@ -106,6 +107,9 @@ describe('malformed patterns, reported with a position', () => {
     ['[z-a]', 'the range "z-a" runs backwards', 1],
     ['[a-\\d]', 'a range must run between two plain characters', 2],
     ['[a[b]', '"[" must be escaped inside a character class', 2],
+    // An escaped literal starts a range just as a plain character does; the
+    // engine refuses this one as out of order, so the checker must too.
+    ['[\\[--]', 'the range "[--" runs backwards', 1],
   ])('%j: %s at %i', (source, reason, index) => {
     expect(checkPattern(source)).toEqual({ ok: false, reason, index });
   });
