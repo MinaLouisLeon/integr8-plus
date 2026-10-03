@@ -27,7 +27,7 @@
     "@integr8/i18n": "workspace:*",
     "@integr8/operations-dom": "workspace:*",
     "@integr8/tokens": "workspace:*",
-    "@sentry/react": "10.74.0",
+    "@sentry/react": "11.1.0",
     "@tanstack/react-query": "5.102.8",
     "@tauri-apps/api": "2.11.1",
     "@tauri-apps/plugin-updater": "2.11.0",
