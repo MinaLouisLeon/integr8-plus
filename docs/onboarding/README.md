@@ -12,8 +12,8 @@ apps/web  /                        landing
         │  /accept-invitation      where an invited engineer joins
         │  (app)/get-started       the five-step checklist and the sample data
         │  (app)/settings/people   invite, resend, change role, suspend, remove
-        │  (app)/settings/company  branding, timezone, currency, hours
-        │  platform/funnel         where people give up
+        │  (app)/settings/company  logo, branding, timezone, currency, hours
+        │  platform/funnel         where people give up, and landing to first form
         │
 apps/api  routes/v1/signup.ts      POST /v1/signup, /verify, /resend, /step
         │  signup/service.ts       verify-then-provision, and the funnel steps
@@ -93,13 +93,30 @@ and attributed the seeded job types and the audit entry to it. Self-serve has no
 
 ## The order inside verification
 
-Identity first, company second. A failure creating the identity leaves nothing; a failure creating
-the company leaves an identity that can simply sign up again. The reverse order leaves an orphan
-company that nobody can reach.
+Claim first, then identity, then company, then mark it verified.
 
-`markVerified` is conditional on the request still being pending, so a mail client that prefetches
-links — or a person who double-clicks — makes one company, not two. The second attempt loses the
-update and is told the link is spent.
+**The claim** is `signup.claim`: `pending` → `verifying` in one conditional update (migration
+0020 added the status). It happens before anything is created, so a mail client that prefetches
+links — or a person who double-clicks — makes one company, not two: the second finds no pending
+row to claim and is told the link is spent. The first version of this flow checked `pending`,
+provisioned, and only then ran the conditional update. Two verifies at once both passed the
+check; with the fake identity provider both made a company, and with GoTrue the second was
+refused as a duplicate address and left the request pending for ever, so an address that already
+had an identity could never finish signing up.
+
+**Identity before company.** A failure creating the identity leaves nothing; a failure creating
+the company leaves an identity that can simply sign up again. The reverse order leaves an orphan
+company that nobody can reach. An identity the address already has — a member of another
+company, or an account left over from one — is found with `findByEmail` and used rather than
+created: the person has just proved they own the address. The password they typed is not applied
+to it, because following a signup link is not a password reset for a credential some other
+company's sign-in may rest on; they sign in with the one they have, or with a magic link.
+
+**Any failure between the claim and the mark** releases the claim (`verifying` → `pending`) and
+records `signup.failed`, so the same link works once the provider is back. A process that dies in
+between leaves a `verifying` row that nothing touches; the person starts again. The expiry sweep
+deliberately leaves `verifying` alone, so a request being provisioned at the moment it expires
+cannot be marked expired under the verify that is finishing it.
 
 ---
 
@@ -120,6 +137,23 @@ saying so would overstate the top of the funnel and make every drop below look w
 
 No third-party analytics. A hosted script on a public marketing site brings cookie-consent
 obligations and sends visitor data off your infrastructure, for a question a table answers.
+
+### Landing to first form, measured
+
+P18's second exit criterion — _time from landing page to first submitted form_ — is measured by
+the same route, as a **median over the companies created in the window**, with the count of
+companies it was taken across. `PlatformInsightsRepository.timeToFirstSubmission` joins each
+verified `signup_requests` row to its `signup.provisioned` event (falling back to
+`signup.started` on the same request, since funnel writes are allowed to fail) and to the
+company's earliest `submissions.submitted_at`, across every tenant on the owner connection.
+
+**The clock starts when the company exists, not at the landing page**, and the dashboard says
+so. The page views before that carry no id and cannot honestly be tied to a company; the first
+moment that can is the signup request, and the moment the company came to exist is the one that
+means "they are inside the product". A median rather than a mean, because the first dozen
+companies will include one that signed up on a Friday and filled in a form on Monday.
+
+The response carries company ids and seconds. The no-personal-data test covers it.
 
 ---
 
@@ -170,7 +204,9 @@ what exists, and offering it would send somebody to a checkout that refuses them
   exist.
 - **The marketing copy is a first draft.** The positioning is not settled, and the words on the
   landing and features pages should be rewritten by whoever owns it.
-- **There is no logo upload.** `tenant_settings.logo_media_id` exists and is wired to the media
-  ledger; no screen sets it yet.
-- **Invoices are still not surfaced** in the app — they are one click away on the provider's
-  hosted portal, which is not the same thing.
+- **The logo is a file like any other.** The company settings screen uploads it through the same
+  three-step media flow a photo uses, and `PATCH /v1/settings` refuses anything that is not a
+  stored image of that company's. It is not yet drawn on any document the product sends out,
+  because no document the product sends out carries branding yet.
+- **The thirty-minute number does not exist until a real company has produced it.** The
+  measurement runs automatically; the test proves it measures, not that the target is met.

@@ -1,5 +1,6 @@
 import {
   assessPassword,
+  type IdentityProvider,
   mintInvitationToken,
   parseInvitationToken,
   type PasswordPolicy,
@@ -197,15 +198,27 @@ export interface VerifiedSignup {
 /**
  * Proves the address, and only then builds the company.
  *
- * The order matters and is the opposite of what reads naturally: the identity
- * is created at the provider *before* the company, because a failure there must
- * not leave an orphan company, while a failure creating the company leaves an
- * identity that can simply sign up again.
+ * Three steps, in an order where each one matters:
+ *
+ * 1. **Claim the request** — `pending` → `verifying`, one conditional update.
+ *    Before anything is provisioned, not after: a mail client that prefetches
+ *    the link and the person who then clicks it both read `pending`, and
+ *    claiming afterwards let both of them provision. With the real identity
+ *    provider the second was refused as a duplicate address and the request
+ *    stayed pending, so an address with an existing identity could never
+ *    finish. The loser of the claim is told the link is spent.
+ * 2. **Find or create the identity**, before the company: a failure here leaves
+ *    nothing, while a failure creating the company leaves an identity that can
+ *    simply sign up again. The reverse order leaves an orphan company nobody can
+ *    reach. An identity the address already has is used rather than created —
+ *    the person has just proved they own the address by following the link.
+ * 3. **Mark it verified**, naming the company. Any failure between 1 and 3
+ *    releases the claim, so the same link still works.
  */
 export async function verifySignup(
   input: VerifySignupInput,
   deps: SignupDeps & {
-    identity: { createIdentity: (email: string, password: string) => Promise<{ userId: string }> };
+    identity: Pick<IdentityProvider, 'createIdentity' | 'findByEmail'>;
     passwordPolicy: PasswordPolicy;
   },
 ): Promise<VerifiedSignup> {
@@ -231,12 +244,27 @@ export async function verifySignup(
     throw new WeakPasswordError(assessment.problems);
   }
 
+  // The claim. Everything above cost nothing and can be repeated; everything
+  // below creates things, and must happen once per request.
+  if (!(await signup.claim(request.id))) {
+    // Somebody else holds it, or it was spent or expired between the read and
+    // now. The same answer as a dead link, for the same reason.
+    throw invalidToken();
+  }
+
   await recordStep(deps.logger, SIGNUP_STEPS.verified, { signupId: request.id });
 
-  const identity = await deps.identity.createIdentity(request.email, input.password);
-
+  let identity;
   let onboarded;
   try {
+    // The password typed into the form is not applied to an identity that
+    // already exists: it may be the sign-in for another company, and following
+    // a signup link is not a password reset. They sign in with the one they
+    // have, or with a magic link.
+    identity =
+      (await deps.identity.findByEmail(request.email)) ??
+      (await deps.identity.createIdentity(request.email, input.password));
+
     onboarded = await onboardCompany({
       slug: await freeSlug(request.companyName),
       name: request.companyName,
@@ -258,6 +286,10 @@ export async function verifySignup(
       },
     });
   } catch (error) {
+    // Nothing was made, or what was made (an identity) can be reused next time,
+    // so the link goes back to working: a provider outage must not cost the
+    // person their signup.
+    await signup.release(request.id);
     await recordStep(deps.logger, SIGNUP_STEPS.failed, {
       signupId: request.id,
       metadata: { reason: 'provisioning_failed' },
@@ -265,11 +297,15 @@ export async function verifySignup(
     throw error;
   }
 
-  // Conditional on still being pending: a mail client that prefetches links,
-  // or a person who double-clicks, would otherwise make two companies.
-  const claimed = await signup.markVerified(request.id, onboarded.tenant.id);
-  if (!claimed) {
-    deps.logger.warn('Signup verified twice; the second is a no-op', { signupId: request.id });
+  // From the claim this verify holds. It cannot lose to another verify — that
+  // was decided at the claim — so a miss here means the row was changed
+  // underneath by something else, which is worth a log line but not a failure:
+  // the company exists and its owner can sign in.
+  if (!(await signup.markVerified(request.id, onboarded.tenant.id))) {
+    deps.logger.warn('Signup request was not verifying when its company was made', {
+      signupId: request.id,
+      tenantId: onboarded.tenant.id,
+    });
   }
 
   await recordStep(deps.logger, SIGNUP_STEPS.provisioned, {

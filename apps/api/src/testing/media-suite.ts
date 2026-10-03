@@ -583,6 +583,62 @@ export function defineMediaSuite(storage: 'local' | 'r2'): void {
       expect(shown.totalObjects).toBe((await bucketContents()).size);
     });
 
+    it('becomes the company logo once uploaded, and only an image of this company’s can (P18)', async () => {
+      const logo = await upload(tokens.owner, new Uint8Array([1, 2, 3, 4]), 'image/png');
+
+      const set = await api.call(tokens.owner, {
+        method: 'PATCH',
+        url: '/v1/settings',
+        payload: { logoMediaId: logo.id },
+      });
+      expect(set.statusCode, set.body).toBe(200);
+      expect(json<{ logoMediaId: string | null }>(set).logoMediaId).toBe(logo.id);
+
+      // Shown back, and readable through the same signed link as any file.
+      const shown = await api.call(tokens.owner, { method: 'GET', url: '/v1/settings' });
+      expect(json<{ logoMediaId: string | null }>(shown).logoMediaId).toBe(logo.id);
+      expect(
+        (await api.call(tokens.owner, { method: 'GET', url: `/v1/media/${logo.id}` })).statusCode,
+      ).toBe(200);
+
+      // A file this company never stored: 422 naming the field, not a
+      // constraint error dressed as a 500. The composite foreign key would
+      // refuse it anyway; this is about what the caller is told.
+      const stranger = await api.call(tokens.owner, {
+        method: 'PATCH',
+        url: '/v1/settings',
+        payload: { logoMediaId: crypto.randomUUID() },
+      });
+      expect(stranger.statusCode, stranger.body).toBe(422);
+      expect(json<{ error: { code: string } }>(stranger).error.code).toBe('logo_not_found');
+
+      // A stored file that is not an image is refused the same way.
+      const document = await upload(
+        tokens.owner,
+        new Uint8Array([37, 80, 68, 70]),
+        'application/pdf',
+      );
+      const notAnImage = await api.call(tokens.owner, {
+        method: 'PATCH',
+        url: '/v1/settings',
+        payload: { logoMediaId: document.id },
+      });
+      expect(notAnImage.statusCode, notAnImage.body).toBe(422);
+
+      // Removed with a null, and the file itself is untouched: it is still the
+      // company's to delete or keep.
+      const cleared = await api.call(tokens.owner, {
+        method: 'PATCH',
+        url: '/v1/settings',
+        payload: { logoMediaId: null },
+      });
+      expect(cleared.statusCode, cleared.body).toBe(200);
+      expect(json<{ logoMediaId: string | null }>(cleared).logoMediaId).toBeNull();
+      expect(
+        (await api.call(tokens.owner, { method: 'GET', url: `/v1/media/${logo.id}` })).statusCode,
+      ).toBe(200);
+    });
+
     it('removes the ledger rows and the bucket when the company’s data is deleted', async () => {
       const bucket = store.bucket;
       expect((await usage()).totalObjects).toBeGreaterThan(0);

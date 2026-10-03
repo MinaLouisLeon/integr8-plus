@@ -232,7 +232,19 @@ export class InvitationService {
       }
     }
 
-    const identity = await this.#identity.createIdentity(invitation.email, input.password ?? '');
+    // The address may have an identity already: a member of another company,
+    // or somebody removed and invited back. The invitation arrived in that
+    // mailbox, which is the same proof of ownership creating one would rest
+    // on, so the existing identity is used. Creating unconditionally was
+    // refused by GoTrue as a duplicate and the invitation could never be
+    // accepted; the fake provider hid it by returning the existing identity.
+    //
+    // The password typed here is not applied to an identity that already has
+    // one. Changing a credential that is also another company's sign-in is
+    // not what accepting an invitation means.
+    const identity =
+      (await this.#identity.findByEmail(invitation.email)) ??
+      (await this.#identity.createIdentity(invitation.email, input.password ?? ''));
 
     const tokens = await withTenant(parsed.tenantId, async (tx) => {
       // Re-checked inside the transaction. Two people clicking the same link at
