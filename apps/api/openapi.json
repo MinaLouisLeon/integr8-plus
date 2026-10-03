@@ -1205,6 +1205,176 @@
         ]
       }
     },
+    "/v1/billing/invoices": {
+      "get": {
+        "operationId": "listInvoices",
+        "summary": "The invoices this company has been sent",
+        "description": "Newest first, read from the billing provider on each call so a payment made on the provider's page shows here straight away. Each links to the provider's hosted copy and its PDF. Empty for a company that has never subscribed.",
+        "tags": [
+          "billing"
+        ],
+        "responses": {
+          "200": {
+            "description": "The invoices, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "open",
+                              "paid",
+                              "uncollectible",
+                              "void"
+                            ]
+                          },
+                          "amountDueCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "amountPaidCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "periodStart": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "periodEnd": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "hostedUrl": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "pdfUrl": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "number",
+                          "status",
+                          "amountDueCents",
+                          "amountPaidCents",
+                          "currency",
+                          "periodStart",
+                          "periodEnd",
+                          "createdAt",
+                          "hostedUrl",
+                          "pdfUrl"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/v1/billing/checkout": {
       "post": {
         "operationId": "startCheckout",
@@ -1343,7 +1513,7 @@
       "post": {
         "operationId": "openBillingPortal",
         "summary": "Open the provider’s billing portal",
-        "description": "Where a card is updated, invoices are read and a subscription is cancelled. All of it is the provider’s hosted page, so this API never holds a card number or an invoice.",
+        "description": "Where a card is updated and a subscription is cancelled. All of it is the provider’s hosted page, so this API never holds a card number. Invoices are listed by `GET /v1/billing/invoices` as well, and each links back here.",
         "tags": [
           "billing"
         ],
@@ -2792,7 +2962,7 @@
             }
           },
           "422": {
-            "description": "An unknown timezone, or a day that ends before it starts."
+            "description": "An unknown timezone (`unknown_timezone`), or a logo that is not a stored image of this company’s (`logo_not_found`)."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -46798,6 +46968,315 @@
         ]
       }
     },
+    "/v1/platform/health": {
+      "get": {
+        "operationId": "getPlatformHealth",
+        "summary": "What is failing quietly",
+        "description": "Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, and background work that gave up — over the last few days, across every company. The things that look fine from the office until a customer rings.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 90
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The window, and what went wrong in it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "since": {
+                      "type": "string"
+                    },
+                    "sync": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "tenantId": {
+                                "type": "string"
+                              },
+                              "userId": {
+                                "type": "string"
+                              },
+                              "runs": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "failedRuns": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "partialRuns": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "rejected": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "conflicts": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "uploadsFailed": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "queueDepth": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "pendingUploads": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "lastOutcome": {
+                                "type": "string"
+                              },
+                              "lastReportAt": {
+                                "type": "string"
+                              },
+                              "appVersion": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "tenantId",
+                              "userId",
+                              "runs",
+                              "failedRuns",
+                              "partialRuns",
+                              "rejected",
+                              "conflicts",
+                              "uploadsFailed",
+                              "queueDepth",
+                              "pendingUploads",
+                              "lastOutcome",
+                              "lastReportAt",
+                              "appVersion"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "webhooks": {
+                      "type": "object",
+                      "properties": {
+                        "received": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "applied": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "failed": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "unmatched": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "pending": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "tenantId": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "receivedAt": {
+                                "type": "string"
+                              },
+                              "processedAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "outcome": {
+                                "type": "string",
+                                "enum": [
+                                  "applied",
+                                  "failed",
+                                  "unmatched",
+                                  "pending"
+                                ]
+                              },
+                              "error": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "tenantId",
+                              "receivedAt",
+                              "processedAt",
+                              "outcome",
+                              "error"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "received",
+                        "applied",
+                        "failed",
+                        "unmatched",
+                        "pending",
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "jobs": {
+                      "type": "object",
+                      "properties": {
+                        "deadLettered": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "retrying": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "deadLettered",
+                        "retrying"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "since",
+                    "sync",
+                    "webhooks",
+                    "jobs"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/v1/platform/funnel": {
       "get": {
         "operationId": "getSignupFunnel",
@@ -46853,6 +47332,47 @@
                         "additionalProperties": false
                       }
                     },
+                    "timeToFirstForm": {
+                      "type": "object",
+                      "properties": {
+                        "companies": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "medianSeconds": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "tenantId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "seconds": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "tenantId",
+                              "seconds"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "companies",
+                        "medianSeconds",
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
                     "signups": {
                       "type": "array",
                       "items": {
@@ -46873,6 +47393,7 @@
                             "type": "string",
                             "enum": [
                               "pending",
+                              "verifying",
                               "verified",
                               "expired",
                               "abandoned"
@@ -46912,6 +47433,7 @@
                   "required": [
                     "days",
                     "steps",
+                    "timeToFirstForm",
                     "signups"
                   ],
                   "additionalProperties": false

@@ -7,6 +7,7 @@ import {
   resolveAccessConflict,
   resolveAnswersConflict,
   retryChange,
+  UPLOAD_FAILED,
 } from '@integr8/offline';
 import { fontSize, radii, spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -110,7 +111,11 @@ function Conflict() {
 
       {conflict === null ? (
         <>
-          <Body>{t('mobile.conflict.refused', { message: change.lastError?.message ?? '' })}</Body>
+          <Body>
+            {change.lastError?.code === UPLOAD_FAILED
+              ? t('mobile.conflict.uploadFailed')
+              : t('mobile.conflict.refused', { message: change.lastError?.message ?? '' })}
+          </Body>
           <Button
             label={t('mobile.syncScreen.retry')}
             busy={busy}

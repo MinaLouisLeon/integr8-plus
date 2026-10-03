@@ -84,7 +84,10 @@ export const updateSettingsRoute = defineRoute({
   }),
   responses: {
     200: { description: 'The settings, as they now are.', schema: settingsSchema },
-    422: { description: 'An unknown timezone, or a day that ends before it starts.' },
+    422: {
+      description:
+        'An unknown timezone (`unknown_timezone`), or a logo that is not a stored image of this company’s (`logo_not_found`).',
+    },
   },
   handler: async ({ body }, context) => {
     if (body.timezone !== undefined && !isKnownTimezone(body.timezone)) {
@@ -92,6 +95,23 @@ export const updateSettingsRoute = defineRoute({
     }
 
     const settings = await withTenant(context.principal.tenantId, async (tx) => {
+      if (body.logoMediaId != null) {
+        // The column's foreign key already refuses another company's file and
+        // a file that does not exist, but it refuses with a constraint error
+        // that would surface as a 500. Checked here so a crafted request gets
+        // a 422 that names the field, and so a deleted file or a PDF cannot
+        // become the logo: the key does not know what kind of file it is.
+        const file = await tx.files.find(body.logoMediaId);
+        // Missing, deleted, or not an image: `deletedAt` is `undefined` for a
+        // missing file, which is `!== null` and so is refused with the rest.
+        if (file?.deletedAt !== null || file.category !== 'image') {
+          throw unprocessable(
+            'logo_not_found',
+            'The logo must be an image uploaded by this company.',
+            [{ field: 'body.logoMediaId', code: 'logo_not_found', message: 'Not a stored image.' }],
+          );
+        }
+      }
       const updated = await tx.settings.update(body);
       await tx.auditLog.append({
         actorKind: 'tenant_user',

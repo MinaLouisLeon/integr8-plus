@@ -17,8 +17,10 @@ import type { BillingProvider, ParsedWebhook } from './provider.js';
  *   retries for days, so this is the normal path rather than the unlucky one.
  * - **it never trusts the body for identity.** The company comes from the
  *   customer id we stored when the checkout was created, or from the reference
- *   we put on the checkout ourselves. A payload that names a company we do not
- *   have is recorded and dropped.
+ *   we put on the checkout ourselves — on the checkout event directly, and on
+ *   the subscription and invoice events through the metadata Stripe copies
+ *   from our checkout, because those routinely arrive first. A payload that
+ *   names a company we do not have is recorded and dropped.
  */
 
 export interface WebhookOutcome {
@@ -80,7 +82,10 @@ export async function applyWebhook(input: {
     // Usually a test delivery, or a customer created against the same provider
     // account by another environment. Kept, because the record is what makes
     // the question answerable later.
-    await billing.markEventProcessed(event.id, 'No company matches this customer.');
+    await billing.markEventProcessed(
+      event.id,
+      'No company matches this customer or the reference our checkout attached.',
+    );
     return { duplicate, handled: false, tenantId: null, type: parsed.type };
   }
 
@@ -99,9 +104,19 @@ export async function applyWebhook(input: {
  * Which company a delivery is about.
  *
  * Two ways, in order of trust: the customer id we recorded when this company
- * first paid, and — only for a completed checkout — the reference we attached
- * to the checkout ourselves. Nothing reads a company id straight out of an
- * arbitrary payload.
+ * first paid, and the reference our own checkout call attached — carried on the
+ * checkout event as `client_reference_id`, and on the subscription and invoice
+ * events as the metadata Stripe copies from the checkout onto them. Nothing
+ * reads a company id straight out of an arbitrary payload: the reference is
+ * accepted only when no customer is on file, only when it names a company we
+ * have, and only when that company has no *other* customer on file.
+ *
+ * The second way matters more than it looks. Stripe does not order deliveries,
+ * and for a first purchase `customer.subscription.created` and `invoice.paid`
+ * usually arrive before `checkout.session.completed` — the one event that used
+ * to be able to name the company. Without the reference on those, the plan and
+ * status they carry were dropped with a 200, the company stayed on `trial`, and
+ * the trial's end made a paying customer read-only.
  */
 async function findTenant(provider: string, parsed: ParsedWebhook): Promise<string | null> {
   const billing = getPlatformDataSource().billing;
@@ -113,19 +128,40 @@ async function findTenant(provider: string, parsed: ParsedWebhook): Promise<stri
 
   const byCustomer = await billing.findByCustomer(provider, event.customerId);
   if (byCustomer !== undefined) {
+    // A stored mapping always wins. Whatever the payload's reference says, a
+    // customer we have on file belongs to the company we filed it under.
     return byCustomer.tenantId;
   }
 
-  if (event.kind === 'checkout_completed' && event.tenantId !== null) {
-    // The first payment: there is no customer id on file yet, because this is
-    // the event that brings one. The reference was put there by our own
-    // checkout call, so it is ours rather than the caller's.
-    const subscription = await billing.find(event.tenantId);
-    return subscription === undefined ? null : subscription.tenantId;
+  const reference = event.kind === 'checkout_completed' ? event.tenantId : event.tenantHint;
+  if (reference === null || !UUID.test(reference)) {
+    // Not shaped like one of our ids, so not something our checkout wrote.
+    // Checked before the query, because a malformed id would make Postgres
+    // throw, the route answer 500, and the provider retry a delivery that can
+    // never succeed.
+    return null;
   }
 
-  return null;
+  const subscription = await billing.find(reference);
+  if (subscription === undefined) {
+    return null;
+  }
+
+  if (
+    subscription.providerCustomerId !== null &&
+    subscription.providerCustomerId !== event.customerId
+  ) {
+    // The company named already pays as somebody else. Our checkout reuses a
+    // company's customer id, so a second customer with our reference on it is
+    // not something we produced; recorded and dropped rather than letting a
+    // reference re-point a company's billing.
+    return null;
+  }
+
+  return subscription.tenantId;
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 async function handle(input: {
   tenantId: string;
@@ -141,10 +177,39 @@ async function handle(input: {
 
   switch (event.kind) {
     case 'checkout_completed': {
+      const existing = await billing.find(tenantId);
+
+      // The ids are what this event is for, and are always taken. The status
+      // and plan are taken only when nothing has been heard about this
+      // subscription yet: when the subscription's own events arrived first —
+      // the usual order — they have already said more than a checkout can, and
+      // a checkout that completed an hour ago must not undo a `past_due` that
+      // arrived since. When they have not arrived, the row would otherwise sit
+      // on `trial` with a paid subscription's ids, which is the state the trial
+      // sweep later turns read-only.
+      const unheard =
+        event.subscriptionId !== null && existing?.providerSubscriptionId !== event.subscriptionId;
+      const plan = unheard ? await planForPrice(event.priceId) : undefined;
+      const status = unheard ? event.status : null;
+
       await billing.update(tenantId, {
         providerCustomerId: event.customerId,
         ...(event.subscriptionId === null ? {} : { providerSubscriptionId: event.subscriptionId }),
+        ...(plan === undefined ? {} : { plan }),
+        ...(status === null ? {} : { status }),
+        ...(status === 'active' ? { pastDueSince: null, graceEndsAt: null, remindersSent: 0 } : {}),
       });
+
+      if (plan !== undefined) {
+        await platform.tenants.setPlan(tenantId, { plan });
+      }
+      if (status === 'active') {
+        await platform.tenants.setReadOnly(tenantId, null);
+      }
+      if (plan !== undefined || status !== null) {
+        forgetTenantStatus(tenantId);
+        forgetAllowances();
+      }
       return;
     }
 

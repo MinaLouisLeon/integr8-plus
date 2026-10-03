@@ -153,13 +153,38 @@ jobs:
 
   database:
     name: Migrations, isolation, authentication and API
-    # Gated on a repository variable rather than on the secret, because a job
-    # cannot branch on a secret's presence. Setting DATABASE_TESTS=enabled is
-    # step 8 of docs/database/runbook-supabase-setup.md, and until it is set the
-    # P02 exit criterion "the isolation suite runs in CI" is not met.
-    if: vars.DATABASE_TESTS == 'enabled'
+    # Runs on every pull request against a throwaway Postgres in a service
+    # container, with no account anywhere. Until this job existed the isolation
+    # suite — the most consequential code in the repository — had only ever run
+    # on a laptop, because the previous version was gated on a Supabase project
+    # nobody had wired in. A real Supabase project still matters for what only
+    # it can show (Supavisor transaction pooling, the managed roles); that is
+    # docs/database/runbook-supabase-setup.md, not this job.
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: integr8_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APP_ENV: test
+      INTEGR8_TEST_DATABASE: i-know-this-database-is-disposable
+      # Throwaway credentials for a database that is deleted with the runner.
+      INTEGR8_APP_PASSWORD: ci-app-password
+      INTEGR8_AUTH_PASSWORD: ci-auth-password
+      DATABASE_URL_ADMIN: postgres://postgres:postgres@localhost:5432/integr8_test
+      DATABASE_URL: postgres://integr8_app:ci-app-password@localhost:5432/integr8_test
+      DATABASE_URL_AUTH: postgres://integr8_auth:ci-auth-password@localhost:5432/integr8_test
+      AUTH_ISSUER: https://api.ci.integr8.example
     steps:
       - uses: actions/checkout@v5
 
@@ -178,45 +203,31 @@ jobs:
       - name: Build workspace packages
         run: pnpm build
 
+      # The two login roles the runbook creates by hand on Supabase. Same
+      # command, same grants, so what the suites prove about them holds there.
+      - name: Create the runtime and auth roles
+        run: pnpm --filter @integr8/db db bootstrap
+
       # Rolls the schema all the way down and back up before the suites run, so
       # every `down` file is exercised on every pull request rather than being
       # written once and never executed.
       - name: Migrate, isolate, verify
         run: pnpm --filter @integr8/db test:integration
-        env:
-          APP_ENV: test
-          INTEGR8_TEST_DATABASE: i-know-this-database-is-disposable
-          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
-          DATABASE_URL_ADMIN: ${{ secrets.TEST_DATABASE_URL_ADMIN }}
-          DATABASE_URL_AUTH: ${{ secrets.TEST_DATABASE_URL_AUTH }}
 
       # Runs after the database suite, which has just rolled the schema down and
       # back up. Keys are generated per run rather than stored: nothing here
       # needs to verify a token minted by a previous run.
       - name: Generate signing keys for this run
-        id: keys
         run: pnpm --filter @integr8/auth keygen >> "$GITHUB_ENV"
 
       - name: Sessions, invitations and impersonation
         run: pnpm --filter @integr8/auth test:integration
-        env:
-          APP_ENV: test
-          INTEGR8_TEST_DATABASE: i-know-this-database-is-disposable
-          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
-          DATABASE_URL_ADMIN: ${{ secrets.TEST_DATABASE_URL_ADMIN }}
-          DATABASE_URL_AUTH: ${{ secrets.TEST_DATABASE_URL_AUTH }}
-          AUTH_ISSUER: https://api.ci.integr8.example
 
       # Real HTTP through the assembled server: idempotent replay, the
-      # outdated-client response, and the request id on every log line.
-      - name: API contract and request pipeline
+      # outdated-client response, the request id on every log line, and the
+      # phone's own sync engine against the real server.
+      - name: API contract, request pipeline and sync
         run: pnpm --filter @integr8/api test:integration
-        env:
-          APP_ENV: test
-          INTEGR8_TEST_DATABASE: i-know-this-database-is-disposable
-          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
-          DATABASE_URL_ADMIN: ${{ secrets.TEST_DATABASE_URL_ADMIN }}
-          DATABASE_URL_AUTH: ${{ secrets.TEST_DATABASE_URL_AUTH }}
 
   secret-scan:
     name: Secret scan

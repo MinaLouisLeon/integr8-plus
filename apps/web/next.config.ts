@@ -1,5 +1,6 @@
 import { withSentryConfig } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
+import path from 'node:path';
 
 /**
  * Browser defences that cost nothing and that no page here needs relaxed.
@@ -18,6 +19,13 @@ const SECURITY_HEADERS = [
 
 const config: NextConfig = {
   reactStrictMode: true,
+
+  // A self-contained server in `.next/standalone`, which is what the Docker
+  // image copies: the traced files only, not the workspace's node_modules.
+  // The tracing root is the repository, because the workspace packages this
+  // app imports live two directories up.
+  output: 'standalone',
+  outputFileTracingRoot: path.join(import.meta.dirname, '../..'),
 
   headers: () => Promise.resolve([{ source: '/:path*', headers: SECURITY_HEADERS }]),
 

@@ -329,6 +329,53 @@ describe('a twenty-question form on the phone, offline', () => {
   });
 });
 
+describe('a form changed on another device while it is open', () => {
+  it('takes on what sync merged in, keeps what is being typed here, and ignores its own saves coming back', async () => {
+    const { db, context, submissionId } = await phone();
+    const { model, saves } = open(context, submissionId, {});
+    const stored = async () =>
+      (await db.read((sql) => fillSession(sql, submissionId)))!.submission.answers;
+
+    // Its own saves come back from the watched row and change nothing.
+    model.answer('make', 'Worcester');
+    model.answer('model', 'Greenstar 30i');
+    await model.flush();
+    expect(model.absorbStoredAnswers(await stored())).toBe(false);
+    const written = saves();
+
+    // The engineer types the serial; before that save lands, sync writes the
+    // row with another device's fuel, merged by the server.
+    model.answer('serial', 'GC-47-406-12');
+    expect(
+      model.absorbStoredAnswers({ make: 'Worcester', model: 'Greenstar 30i', fuel: 'oil' }),
+    ).toBe(true);
+    expect(model.snapshot().state.answers).toMatchObject({
+      make: 'Worcester',
+      model: 'Greenstar 30i',
+      serial: 'GC-47-406-12',
+      fuel: 'oil',
+    });
+    await model.flush();
+    // The row has both: theirs, and the serial typed here on top.
+    expect(await stored()).toMatchObject({ fuel: 'oil', serial: 'GC-47-406-12' });
+    expect(saves()).toBeGreaterThan(written);
+    expect(model.absorbStoredAnswers(await stored())).toBe(false);
+
+    // A question changed on both sides since the row was last seen keeps the
+    // engineer's: what is on the screen is never pulled out from under them.
+    model.answer('model', 'Greenstar 30i ErP');
+    expect(
+      model.absorbStoredAnswers({ ...(await stored()), model: 'Greenstar 25i', fuel: 'gas' }),
+    ).toBe(true);
+    await model.flush();
+    expect(model.snapshot().state.answers).toMatchObject({
+      model: 'Greenstar 30i ErP',
+      fuel: 'gas',
+    });
+    expect(await stored()).toMatchObject({ model: 'Greenstar 30i ErP', fuel: 'gas' });
+  });
+});
+
 describe('entries of a repeatable section on the phone (P13b)', () => {
   /** A radiator survey: at least one radiator, each with a room, an output and a photo. */
   const SURVEY = {

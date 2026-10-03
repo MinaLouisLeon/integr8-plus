@@ -21,6 +21,7 @@ import {
   progressFraction,
   visiblePages,
 } from '@integr8/form-input';
+import { sameJson, takeTheirs } from '@integr8/offline';
 
 /**
  * Filling one form on the phone, without the UI (P13).
@@ -41,6 +42,12 @@ import {
  * entries; adding one, or tapping one, opens it on its own, with only its
  * questions on the screen. Adding, removing and moving an entry are saved like
  * any answer.
+ *
+ * **Changed from outside.** The phone's row for this form can change under an
+ * open screen: a sync brings back answers the server merged from another device
+ * (P12). The screen hands every stored version to `absorbStoredAnswers`; one the
+ * model wrote itself is its own save echoing back and changes nothing, any other
+ * is merged in, keeping what the engineer has changed here since.
  */
 
 export type SaveStatus = 'saved' | 'saving' | 'failed';
@@ -92,12 +99,17 @@ export class FillModel {
   #queued: Record<string, unknown> | undefined;
   #saving: Promise<void> | undefined;
   #snapshot: FillSnapshot;
+  /** The stored answers this model last saw come back from the database: what its edits are measured against. */
+  #stored: Record<string, unknown>;
+  /** Answers handed to `save` and not yet seen back, oldest first. */
+  #unseen: Record<string, unknown>[] = [];
 
   constructor(options: FillOptions) {
     this.form = options.form;
     this.#context = options.context;
     this.#save = options.save;
     this.#newEntryId = options.newEntryId;
+    this.#stored = { ...(options.answers ?? {}) };
     // A section that needs entries, and has none, opens with that many.
     this.#state = createFormState(options.form, options.answers, {
       newEntryId: options.newEntryId,
@@ -235,6 +247,40 @@ export class FillModel {
     return toSubmission(this.form, this.#state, this.#context);
   }
 
+  /**
+   * The answers the phone now holds for this form, as the screen's watched row
+   * reports them. A version this model saved is its own write coming back and is
+   * only noted. Any other was written by sync — the server merged in another
+   * device's answers — and is taken on, question by question: a question changed
+   * out there takes the stored value unless the engineer has changed it here
+   * since the model last saw the row, in which case theirs stands and goes with
+   * the next save. Returns whether anything on screen changed.
+   */
+  absorbStoredAnswers(stored: Record<string, unknown>): boolean {
+    const echoed = this.#unseen.findIndex((written) => sameJson(written, stored));
+    if (echoed !== -1) {
+      this.#unseen.splice(0, echoed + 1);
+      this.#stored = stored;
+      return false;
+    }
+    if (sameJson(stored, this.#stored)) {
+      return false;
+    }
+    const merged = takeTheirs(this.#stored, this.#state.answers, stored);
+    this.#stored = stored;
+    if (sameJson(merged, this.#state.answers)) {
+      return false;
+    }
+    this.#state = { ...this.#state, answers: merged };
+    if (!sameJson(merged, stored)) {
+      // The engineer's own edits sit on top of what arrived; the row gets them too.
+      this.#queued = { ...merged };
+      this.#startSaving();
+    }
+    this.#changed();
+    return true;
+  }
+
   /** Waits for every save, retrying one that failed. Rejects if it still cannot save. */
   async flush(): Promise<void> {
     if (this.#saveStatus === 'failed') {
@@ -279,6 +325,10 @@ export class FillModel {
       while (this.#queued !== undefined) {
         const answers = this.#queued;
         this.#queued = undefined;
+        // Remembered before the write, so the row coming back is known as ours
+        // however quickly the screen's watcher reports it. Only so many are kept:
+        // one that never comes back has failed, and is not worth a growing list.
+        this.#unseen = [...this.#unseen.slice(-31), answers];
         try {
           await this.#save(answers);
         } catch {

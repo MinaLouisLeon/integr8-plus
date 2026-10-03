@@ -5,7 +5,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { Badge, Panel } from '~/components/platform-bits';
 import { ErrorState, LoadingState } from '~/components/ui';
-import { formatDate } from '~/lib/platform-format';
+import { formatDate, formatDuration } from '~/lib/platform-format';
 import { platformClient } from '~/lib/platform-session';
 
 /**
@@ -21,6 +21,11 @@ import { platformClient } from '~/lib/platform-session';
  * nothing to identify an attempt by and nothing should be invented. Presenting
  * the two as one series without saying so would overstate the top of the funnel
  * and make every drop below it look worse than it is.
+ *
+ * Under the table: **landing to first form**, the second exit criterion, as a
+ * median over the companies created in the window. The API measures it from
+ * the company coming to exist, and the panel says so, because the page views
+ * before that cannot be tied to a company without inventing an identity.
  */
 
 /** The order steps happen in. Anything unrecognised is listed after, as-is. */
@@ -67,6 +72,8 @@ export default function FunnelPage() {
     .filter((step) => !ORDER.includes(step.step as (typeof ORDER)[number]))
     .map((step) => ({ step: step.step, count: step.count }));
   const rows = [...known, ...extra];
+
+  const timing = funnel.data.timeToFirstForm;
 
   const label = (step: string) => {
     const key = `platform.funnel.steps.${step}`;
@@ -118,6 +125,25 @@ export default function FunnelPage() {
             </table>
             <p className="mt-4 text-xs text-content-muted">{t('platform.funnel.visitsNote')}</p>
           </>
+        )}
+      </Panel>
+
+      <Panel
+        title={t('platform.funnel.timeToFirstForm')}
+        description={t('platform.funnel.timeToFirstFormHint')}
+      >
+        {timing === undefined || timing.companies === 0 || timing.medianSeconds === null ? (
+          <p className="text-sm text-content-muted">{t('platform.funnel.timeToFirstFormEmpty')}</p>
+        ) : (
+          <div className="flex flex-col gap-1">
+            <p className="text-3xl font-semibold tabular-nums text-content">
+              {formatDuration(timing.medianSeconds) ?? '—'}
+            </p>
+            <p className="text-sm text-content-muted">
+              {t('platform.funnel.timeToFirstFormCompanies', { count: timing.companies })}{' '}
+              {t('platform.funnel.timeToFirstFormTarget')}
+            </p>
+          </div>
         )}
       </Panel>
 

@@ -1,6 +1,7 @@
+import { IdentityProviderError } from '@integr8/auth';
 import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { RecordingEmailSender } from '../email/sender.js';
 import { type ApiHarness, startApi } from '../testing/api-harness.js';
 
@@ -166,11 +167,104 @@ describe('following the link', () => {
     );
   });
 
+  it('makes one company when the same link is followed twice at once', async () => {
+    // Not one after the other — at the same time, which is what a prefetching
+    // mail client and a person's click produce. Both used to pass the "still
+    // pending" read and both provisioned; now the request is claimed before
+    // anything is made, and exactly one claim succeeds.
+    const to = address('race');
+    await signUp(to, 'Race Condition Ltd');
+    const token = tokenFrom(to);
+
+    const [first, second] = await Promise.all([verify(token, 'One'), verify(token, 'Two')]);
+    const statuses = [first.statusCode, second.statusCode].sort();
+    expect(statuses, `${first.body} / ${second.body}`).toEqual([200, 422]);
+
+    const refused = first.statusCode === 422 ? first : second;
+    expect((JSON.parse(refused.body) as { error: { code: string } }).error.code).toBe(
+      'invalid_signup_token',
+    );
+
+    const companies = await getPlatformDataSource().tenants.directory({ includeDeleted: true });
+    expect(companies.filter((company) => company.name === 'Race Condition Ltd')).toHaveLength(1);
+
+    const request = await getPlatformDataSource().signup.findLatestByEmail(to);
+    expect(request?.status).toBe('verified');
+  });
+
+  it('completes for an address that already has an identity, using that identity', async () => {
+    // Somebody who already signs in somewhere — another company, or an account
+    // left over from one — starts a company of their own. GoTrue refuses to
+    // create a second user for the address, so the existing one must be found
+    // and used; the fake provider now refuses duplicates too, so this would
+    // fail without the lookup.
+    const to = address('returning');
+    const existing = await api.services.identity.createIdentity(to, 'their-existing-password');
+
+    await signUp(to, 'Returning Founder Ltd');
+    const verified = await verify(tokenFrom(to), 'Returning Founder', 'a-brand-new-password');
+    expect(verified.statusCode, verified.body).toBe(200);
+
+    const body = JSON.parse(verified.body) as { tenantId: string };
+    const members = await withTenant(body.tenantId, (tx) => tx.tenantUsers.list());
+    expect(members).toHaveLength(1);
+    expect(members[0]).toMatchObject({ userId: existing.userId, role: 'owner', status: 'active' });
+
+    // Their credential is the one they had. A signup link is not a password
+    // reset for an identity some other company's sign-in may rest on.
+    const signedIn = await api.app.inject({
+      method: 'POST',
+      url: '/v1/auth/sign-in',
+      remoteAddress: api.remoteAddress,
+      headers,
+      payload: { email: to, password: 'their-existing-password', clientApp: 'web' },
+    });
+    expect(signedIn.statusCode, signedIn.body).toBe(200);
+  });
+
+  it('gives the link back when provisioning fails, so the next attempt works', async () => {
+    const to = address('outage');
+    await signUp(to, 'Outage Ltd');
+    const token = tokenFrom(to);
+
+    // The identity provider is down for exactly one call.
+    const down = vi
+      .spyOn(api.services.identity, 'createIdentity')
+      .mockRejectedValueOnce(new IdentityProviderError('GoTrue is not answering'));
+    try {
+      const failed = await verify(token);
+      expect(failed.statusCode, failed.body).toBe(502);
+    } finally {
+      down.mockRestore();
+    }
+
+    // Nothing was made, the claim was released, and the funnel saw it.
+    const platform = getPlatformDataSource();
+    const companies = await platform.tenants.directory({ includeDeleted: true });
+    expect(companies.some((company) => company.name === 'Outage Ltd')).toBe(false);
+    expect((await platform.signup.findLatestByEmail(to))?.status).toBe('pending');
+
+    const events = await platform.signup.recentEvents(50);
+    expect(
+      events.some(
+        (event) =>
+          event.step === 'signup.failed' && event.metadata.reason === 'provisioning_failed',
+      ),
+    ).toBe(true);
+
+    // The same link, once the provider is back.
+    const retried = await verify(token);
+    expect(retried.statusCode, retried.body).toBe(200);
+  });
+
   it('refuses a weak password before creating anything, and keeps the link usable', async () => {
     // Not "weak-password": the policy also refuses a password that repeats
     // part of the address, which would make the good password below fail too.
     const to = address('feeble');
-    await signUp(to, 'Weak Ltd');
+    // A unique name: the suite's database persists between local runs, and the
+    // assertion below is that this run created nothing.
+    const companyName = `Weak ${randomUUID().slice(0, 8)} Ltd`;
+    await signUp(to, companyName);
     const token = tokenFrom(to);
 
     const refused = await verify(token, 'Sam Owner', 'short');
@@ -181,7 +275,7 @@ describe('following the link', () => {
 
     // Nothing was made, and the same link goes on to work with a real password.
     const companies = await getPlatformDataSource().tenants.directory({ includeDeleted: true });
-    expect(companies.some((company) => company.name === 'Weak Ltd')).toBe(false);
+    expect(companies.some((company) => company.name === companyName)).toBe(false);
     expect((await verify(token)).statusCode).toBe(200);
   });
 
@@ -284,4 +378,127 @@ describe('the funnel', () => {
     expect(serialised).not.toContain(to);
     expect(serialised).not.toContain('Private Ltd');
   });
+
+  it('measures the time from a company existing to its first submitted form', async () => {
+    // The second exit criterion, measured rather than walked with a stopwatch:
+    // a stranger signs up, gets a company, and submits a form in it.
+    const to = address('stopwatch');
+    await signUp(to, 'Stopwatch Ltd');
+    const verified = await verify(tokenFrom(to));
+    expect(verified.statusCode, verified.body).toBe(200);
+    const { tenantId } = JSON.parse(verified.body) as { tenantId: string };
+
+    const token = await signInAs(to);
+    await submitFirstForm(token);
+
+    const admin = await api.platformAdmin('funnel-reader');
+    const response = await api.call(admin.accessToken, {
+      method: 'GET',
+      url: '/v1/platform/funnel?days=1',
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    const body = JSON.parse(response.body) as {
+      timeToFirstForm: {
+        companies: number;
+        medianSeconds: number | null;
+        items: { tenantId: string; seconds: number }[];
+      };
+    };
+
+    // This company is measured, from `signup.provisioned` to `submitted_at`,
+    // and the median exists because at least one company does.
+    const mine = body.timeToFirstForm.items.find((item) => item.tenantId === tenantId);
+    expect(mine).toBeDefined();
+    expect(mine?.seconds).toBeGreaterThanOrEqual(0);
+    expect(mine?.seconds).toBeLessThan(600);
+    expect(body.timeToFirstForm.companies).toBeGreaterThanOrEqual(1);
+    expect(body.timeToFirstForm.medianSeconds).not.toBeNull();
+
+    // Company ids and seconds. The funnel's promise holds for this too.
+    const serialised = JSON.stringify(body.timeToFirstForm);
+    expect(serialised).not.toContain(to);
+    expect(serialised).not.toContain('Stopwatch Ltd');
+  });
 });
+
+/** Signs in as a self-serve owner, with the password every `verify` in this file chooses. */
+async function signInAs(to: string): Promise<string> {
+  const signedIn = await api.app.inject({
+    method: 'POST',
+    url: '/v1/auth/sign-in',
+    remoteAddress: api.remoteAddress,
+    headers,
+    payload: { email: to, password: 'a-long-enough-password', clientApp: 'web' },
+  });
+  expect(signedIn.statusCode, signedIn.body).toBe(200);
+  return (JSON.parse(signedIn.body) as { tokens: { accessToken: string } }).tokens.accessToken;
+}
+
+/**
+ * The emptiest form the engine accepts, published and submitted once.
+ *
+ * What is being measured is *that* a form was submitted and when, not what was
+ * in it, so one optional question is the whole form.
+ */
+async function submitFirstForm(token: string): Promise<void> {
+  const created = await api.call(token, {
+    method: 'POST',
+    url: '/v1/forms',
+    payload: { title: 'First form' },
+  });
+  expect(created.statusCode, created.body).toBe(201);
+  const formId = (JSON.parse(created.body) as { form: { id: string } }).form.id;
+
+  const detail = JSON.parse(
+    (await api.call(token, { method: 'GET', url: `/v1/forms/${formId}` })).body,
+  ) as { draft: { revision: number } | null };
+
+  const saved = await api.call(token, {
+    method: 'PUT',
+    url: `/v1/forms/${formId}/draft`,
+    payload: {
+      definition: {
+        schemaVersion: 1,
+        title: { en: 'First form' },
+        pages: [
+          {
+            id: 'page_1',
+            sections: [
+              {
+                id: 'section_1',
+                fields: [{ id: 'note', type: 'text', label: { en: 'Anything to add?' } }],
+              },
+            ],
+          },
+        ],
+      },
+      expectedRevision: detail.draft?.revision ?? null,
+    },
+  });
+  expect(saved.statusCode, saved.body).toBe(200);
+
+  const published = await api.call(token, {
+    method: 'POST',
+    url: `/v1/forms/${formId}/draft/publish`,
+    payload: {
+      expectedRevision: (JSON.parse(saved.body) as { revision: number }).revision,
+      acknowledgeBreakingChanges: false,
+    },
+  });
+  expect(published.statusCode, published.body).toBe(200);
+
+  const draft = await api.call(token, {
+    method: 'POST',
+    url: '/v1/submissions',
+    payload: { formId },
+  });
+  expect(draft.statusCode, draft.body).toBe(201);
+  const started = JSON.parse(draft.body) as { submission: { id: string; revision: number } };
+
+  const submitted = await api.call(token, {
+    method: 'POST',
+    url: `/v1/submissions/${started.submission.id}/submit`,
+    payload: { answers: {}, expectedRevision: started.submission.revision },
+  });
+  expect(submitted.statusCode, submitted.body).toBe(200);
+}

@@ -1,10 +1,13 @@
 'use client';
 
 import { ApiRequestError } from '@integr8/api-client';
+import { apiMediaAdapter } from '@integr8/form-renderer-dom/screens';
 import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Button, ErrorState, Field, LoadingState } from '~/components/ui';
+import { checkLogo, LOGO_MAX_BYTES, LOGO_TYPES } from '~/lib/logo';
+import { formatBytes } from '~/lib/platform-format';
 import { apiClient } from '~/lib/session';
 
 /**
@@ -19,6 +22,11 @@ import { apiClient } from '~/lib/session';
  *   knows every zone this runtime has, which is the same question the API asks
  *   of its own runtime when it validates. A hand-maintained list would be wrong
  *   within a year.
+ * - **The logo saves itself, outside the form.** It goes through the same
+ *   three-step media upload a photo does, and the id is written to the
+ *   settings the moment the upload confirms — not when "Save settings" is
+ *   pressed. A file uploaded and then abandoned by closing the tab would
+ *   otherwise sit in metered storage pointed at by nothing.
  */
 
 const DAYS = [
@@ -55,6 +63,7 @@ function timezones(): string[] {
 }
 
 interface Settings {
+  logoMediaId: string | null;
   brandColour: string | null;
   timezone: string;
   currency: string;
@@ -153,6 +162,7 @@ function SettingsForm({ initial }: { initial: Settings }) {
           <h2 className="text-base font-semibold text-content">
             {t('workspace.settings.branding')}
           </h2>
+          <LogoSection logoMediaId={initial.logoMediaId} />
           <Field
             label={t('workspace.settings.brandColour')}
             hint={t('workspace.settings.brandColourHint')}
@@ -262,5 +272,158 @@ function SettingsForm({ initial }: { initial: Settings }) {
         </div>
       </form>
     </main>
+  );
+}
+
+/**
+ * The company's logo: shown, replaced, removed.
+ *
+ * The upload is `apiMediaAdapter`, the same code that uploads a photo from a
+ * form, so a logo is metered, thumbnailed and purged like any other file. What
+ * is this screen's own is the gate in front of it — type and size, checked
+ * before a byte is sent — and writing the id to the settings afterwards.
+ */
+function LogoSection({ logoMediaId }: { logoMediaId: string | null }) {
+  const { t } = useTranslation();
+  const queries = useQueryClient();
+  const input = useRef<HTMLInputElement>(null);
+  const [notice, setNotice] = useState<{ kind: 'ok' | 'problem'; text: string } | null>(null);
+
+  // The link to the current logo expires in five minutes; asking again a little
+  // before that keeps the image from breaking under somebody reading the page.
+  const link = useQuery({
+    queryKey: ['settings', 'logo', logoMediaId],
+    enabled: logoMediaId !== null,
+    staleTime: 4 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await apiClient().GET('/v1/media/{mediaId}', {
+        params: { path: { mediaId: logoMediaId ?? '' } },
+      });
+      return data?.url ?? null;
+    },
+  });
+
+  const save = useMutation({
+    mutationFn: async (file: File | null) => {
+      let next: string | null = null;
+      if (file !== null) {
+        const stored = await apiMediaAdapter(apiClient()).upload(file, { contentType: file.type });
+        next = stored.mediaId;
+      }
+      await apiClient().PATCH('/v1/settings', { body: { logoMediaId: next } });
+
+      // The previous logo is now pointed at by nothing. Deleting it is a
+      // courtesy to the company's storage allowance, not a requirement, so a
+      // refusal — somebody else uploaded it, say — is not a failure here.
+      if (logoMediaId !== null && logoMediaId !== next) {
+        await apiClient()
+          .DELETE('/v1/media/{mediaId}', { params: { path: { mediaId: logoMediaId } } })
+          .catch(() => undefined);
+      }
+      return next;
+    },
+    onSuccess: (next) => {
+      setNotice({
+        kind: 'ok',
+        text:
+          next === null ? t('workspace.settings.logoRemoved') : t('workspace.settings.logoSaved'),
+      });
+      void queries.invalidateQueries({ queryKey: ['settings'] });
+    },
+    onError: () => {
+      setNotice({ kind: 'problem', text: t('workspace.settings.logoFailed') });
+    },
+  });
+
+  const max = formatBytes(LOGO_MAX_BYTES);
+
+  const chosen = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    // Cleared so choosing the same file again, after fixing a problem, fires.
+    event.target.value = '';
+    if (file === undefined) {
+      return;
+    }
+    const problem = checkLogo(file);
+    if (problem !== null) {
+      setNotice({
+        kind: 'problem',
+        text:
+          problem === 'wrong_type'
+            ? t('workspace.settings.logoWrongType')
+            : t('workspace.settings.logoTooLarge', { max }),
+      });
+      return;
+    }
+    setNotice(null);
+    save.mutate(file);
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm font-medium text-content">{t('workspace.settings.logo')}</span>
+      <div className="flex flex-wrap items-center gap-4">
+        {logoMediaId !== null && typeof link.data === 'string' ? (
+          // A plain <img>: the source is a signed link that expires, which
+          // Next's image optimiser would try to fetch and cache on the server.
+          <img
+            src={link.data}
+            alt={t('workspace.settings.logoAlt')}
+            className="h-16 w-16 rounded-md border border-border-subtle bg-surface object-contain"
+          />
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded-md border border-dashed border-border-subtle p-1 text-center text-xs text-content-muted">
+            {logoMediaId === null ? t('workspace.settings.logoNone') : ''}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={input}
+              type="file"
+              accept={LOGO_TYPES.join(',')}
+              className="sr-only"
+              aria-label={t('workspace.settings.logoChoose')}
+              onChange={chosen}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              busy={save.isPending}
+              onClick={() => input.current?.click()}
+            >
+              {save.isPending
+                ? t('workspace.settings.logoUploading')
+                : logoMediaId === null
+                  ? t('workspace.settings.logoChoose')
+                  : t('workspace.settings.logoReplace')}
+            </Button>
+            {logoMediaId !== null ? (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={save.isPending}
+                onClick={() => {
+                  setNotice(null);
+                  save.mutate(null);
+                }}
+              >
+                {t('workspace.settings.logoRemove')}
+              </Button>
+            ) : null}
+          </div>
+          <p className="text-xs text-content-muted">{t('workspace.settings.logoHint', { max })}</p>
+          {notice === null ? null : (
+            <p
+              role={notice.kind === 'problem' ? 'alert' : 'status'}
+              className={`text-sm ${notice.kind === 'problem' ? 'text-danger' : 'text-content-muted'}`}
+            >
+              {notice.text}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -6,6 +6,7 @@ import { forgetTenantStatus } from '../http/suspension.js';
 import { forgetAllowances } from '../media/quota.js';
 import { type ApiHarness, type Member, startApi } from '../testing/api-harness.js';
 import { runDunning } from './dunning.js';
+import type { RecordingBillingProvider } from './provider.js';
 import type { RecordingEmailSender } from '../email/sender.js';
 
 /**
@@ -233,6 +234,52 @@ describe('subscribing', () => {
   });
 });
 
+describe('invoices', () => {
+  it('lists what the provider has issued to this company, newest first, with the links', async () => {
+    const provider = api.services.billing as RecordingBillingProvider;
+    const older = provider.issueInvoice(CUSTOMER, { amountDueCents: 4900 });
+    const newer = provider.issueInvoice(CUSTOMER, { status: 'open', amountPaidCents: 0 });
+    // Somebody else's invoice, which must not appear: the list is by the
+    // provider's customer id, which is the one thing that ties a company to
+    // its own bills.
+    provider.issueInvoice(`cus_other_${RUN}`);
+
+    const response = await api.call(token, { method: 'GET', url: '/v1/billing/invoices' });
+    expect(response.statusCode, response.body).toBe(200);
+
+    const body = JSON.parse(response.body) as {
+      items: { id: string; number: string | null; status: string; hostedUrl: string | null }[];
+    };
+    expect(body.items.map((item) => item.id)).toEqual([newer.id, older.id]);
+    expect(body.items[0]).toMatchObject({
+      number: newer.number,
+      status: 'open',
+      amountDueCents: 4900,
+      amountPaidCents: 0,
+      currency: 'GBP',
+      hostedUrl: newer.hostedUrl,
+      pdfUrl: newer.pdfUrl,
+    });
+  });
+
+  it('is an empty list, not an error, for a company that has never subscribed', async () => {
+    await getPlatformDataSource().billing.update(api.tenantId, { providerCustomerId: null });
+
+    const response = await api.call(token, { method: 'GET', url: '/v1/billing/invoices' });
+    expect(response.statusCode, response.body).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ items: [] });
+  });
+
+  it('is refused to somebody who cannot manage billing', async () => {
+    const engineer = await api.member('engineer', 'billing-engineer');
+    const response = await api.call(await api.signIn(engineer), {
+      method: 'GET',
+      url: '/v1/billing/invoices',
+    });
+    expect(response.statusCode).toBe(403);
+  });
+});
+
 describe('a delivery from a stranger', () => {
   it('is accepted without any of the headers our own clients send', async () => {
     // Stripe sends `stripe-signature` and a JSON body. It does not send
@@ -312,6 +359,187 @@ describe('a delivery that arrives twice', () => {
     // Put back, so the suites after this one start from a paying company.
     const restored = await deliver(subscriptionChanged(`evt_restore_${String(Date.now())}`));
     expect(restored).toMatchObject({ handled: true });
+  });
+});
+
+/**
+ * Stripe does not order deliveries. For a first purchase the subscription and
+ * invoice events usually arrive *before* `checkout.session.completed`, and that
+ * was the only event that could name a company with no customer id on file —
+ * so the ones before it were recorded as unmatched, answered 200 and never
+ * retried, and the company stayed on `trial` for the trial sweep to turn
+ * read-only. Our checkout puts the company on the subscription's metadata, the
+ * translation reads it back as a hint, and these are the rules for the hint.
+ */
+describe('a delivery that arrives before the checkout', () => {
+  /** A company that has never paid: a subscription row and no customer id. */
+  async function freshCompany(label: string) {
+    const platform = getPlatformDataSource();
+    const tenant = await platform.tenants.create({
+      slug: `early-${label}-${randomUUID().slice(0, 8)}`,
+      name: `Early ${label} Ltd`,
+    });
+    await platform.billing.start({
+      tenantId: tenant.id,
+      provider: 'recording',
+      plan: 'trial',
+      trialEndsAt: new Date(Date.now() + 14 * DAY_MS),
+    });
+    return tenant;
+  }
+
+  it('is applied through the hint our checkout attached, and the checkout then adds nothing wrong', async () => {
+    const platform = getPlatformDataSource();
+    const tenant = await freshCompany('hinted');
+    const customer = `cus_early_${RUN}`;
+    const sub = `sub_early_${RUN}`;
+
+    const outcome = await deliver(
+      subscriptionChanged(`evt_early_${String(Date.now())}`, {
+        customerId: customer,
+        subscriptionId: sub,
+        tenantHint: tenant.id,
+      }),
+    );
+    expect(outcome.handled).toBe(true);
+
+    let row = await platform.billing.find(tenant.id);
+    expect(row).toMatchObject({
+      providerCustomerId: customer,
+      providerSubscriptionId: sub,
+      status: 'active',
+      plan: 'starter',
+    });
+    expect((await platform.tenants.findById(tenant.id))?.plan).toBe('starter');
+
+    // The checkout event, late. Its ids match what is already there, and it
+    // does not disturb what the subscription's own event said.
+    const late = await deliver({
+      id: `evt_late_checkout_${String(Date.now())}`,
+      type: 'checkout.session.completed',
+      event: {
+        kind: 'checkout_completed',
+        customerId: customer,
+        subscriptionId: sub,
+        tenantId: tenant.id,
+        priceId: STARTER_PRICE,
+        status: 'trialing',
+      },
+    });
+    expect(late.handled).toBe(true);
+
+    row = await platform.billing.find(tenant.id);
+    expect(row).toMatchObject({ providerCustomerId: customer, status: 'active', plan: 'starter' });
+
+    // And from here on the customer id is what matches, hint or no hint.
+    const paid = await deliver({
+      id: `evt_early_paid_${String(Date.now())}`,
+      type: 'invoice.paid',
+      event: { kind: 'payment_succeeded', customerId: customer, subscriptionId: sub },
+    });
+    expect(paid.handled).toBe(true);
+  });
+
+  it('puts the company on the plan when the checkout is all that has arrived', async () => {
+    // The other order: the checkout first, the subscription's events still in
+    // flight. Before, this wrote the ids and left `trial`/`trialing` on the
+    // row — a paying company the trial sweep would later make read-only.
+    const platform = getPlatformDataSource();
+    const tenant = await freshCompany('checkout-first');
+    const customer = `cus_first_${RUN}`;
+    const sub = `sub_first_${RUN}`;
+
+    const outcome = await deliver({
+      id: `evt_first_checkout_${String(Date.now())}`,
+      type: 'checkout.session.completed',
+      event: {
+        kind: 'checkout_completed',
+        customerId: customer,
+        subscriptionId: sub,
+        tenantId: tenant.id,
+        priceId: STARTER_PRICE,
+        status: 'active',
+      },
+    });
+    expect(outcome.handled).toBe(true);
+
+    const row = await platform.billing.find(tenant.id);
+    expect(row).toMatchObject({
+      providerCustomerId: customer,
+      providerSubscriptionId: sub,
+      status: 'active',
+      plan: 'starter',
+    });
+    expect((await platform.tenants.findById(tenant.id))?.plan).toBe('starter');
+  });
+
+  it('is recorded and dropped when the hint names a company we do not have', async () => {
+    const id = `evt_stranger_${String(Date.now())}`;
+
+    const outcome = await deliver(
+      subscriptionChanged(id, {
+        customerId: `cus_nobody_${RUN}`,
+        subscriptionId: `sub_nobody_${RUN}`,
+        tenantHint: randomUUID(),
+      }),
+    );
+    expect(outcome).toMatchObject({ duplicate: false, handled: false });
+
+    // Kept, with the reason, and attached to nobody. The record is what makes
+    // the question answerable later.
+    const stored = (await getPlatformDataSource().billing.recentEvents(200)).find(
+      (event) => event.providerEventId === id,
+    );
+    expect(stored?.tenantId).toBeNull();
+    expect(stored?.processedAt).not.toBeNull();
+    expect(stored?.error).toContain('No company matches');
+
+    // Nor does a hint that is not even shaped like one of our ids reach the
+    // database: a malformed id would make the route answer 500 and the
+    // provider retry for ever.
+    const malformed = await deliver(
+      subscriptionChanged(`evt_malformed_${String(Date.now())}`, {
+        customerId: `cus_malformed_${RUN}`,
+        subscriptionId: `sub_malformed_${RUN}`,
+        tenantHint: 'not-a-uuid; drop table tenants',
+      }),
+    );
+    expect(malformed.handled).toBe(false);
+  });
+
+  it('never overrides a customer we already have on file', async () => {
+    const platform = getPlatformDataSource();
+    const other = await freshCompany('bystander');
+
+    // The customer id belongs to the suite's company; the hint names another.
+    // The mapping wins, and the other company is untouched.
+    const id = `evt_override_${String(Date.now())}`;
+    const outcome = await deliver(subscriptionChanged(id, { tenantHint: other.id }));
+    expect(outcome.handled).toBe(true);
+
+    const stored = (await platform.billing.recentEvents(200)).find(
+      (event) => event.providerEventId === id,
+    );
+    expect(stored?.tenantId).toBe(api.tenantId);
+
+    const bystander = await platform.billing.find(other.id);
+    expect(bystander).toMatchObject({
+      providerCustomerId: null,
+      status: 'trialing',
+      plan: 'trial',
+    });
+
+    // The reverse, too: a hint naming a company that already pays as somebody
+    // else is dropped rather than re-pointing that company's billing.
+    const foreign = await deliver(
+      subscriptionChanged(`evt_foreign_${String(Date.now())}`, {
+        customerId: `cus_foreign_${RUN}`,
+        subscriptionId: `sub_foreign_${RUN}`,
+        tenantHint: api.tenantId,
+      }),
+    );
+    expect(foreign.handled).toBe(false);
+    expect((await platform.billing.find(api.tenantId))?.providerCustomerId).toBe(CUSTOMER);
   });
 });
 
