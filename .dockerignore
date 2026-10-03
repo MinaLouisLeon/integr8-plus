@@ -1,0 +1,15 @@
+# What a Docker build context does not need. The source tree itself is copied
+# whole, because a pnpm workspace install with a frozen lockfile needs every
+# package.json the lockfile names.
+.git
+**/node_modules
+**/.turbo
+**/dist
+**/.next
+**/coverage
+**/.expo
+**/src-tauri/target
+.data
+**/.env
+**/.env.*
+!**/.env.example

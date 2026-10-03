@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --project unit",
     "worker": "tsx --env-file-if-exists=.env src/jobs/worker-main.ts",
+    "platform-admin": "tsx --env-file-if-exists=.env src/platform/admin-cli.ts",
     "openapi": "tsx --env-file-if-exists=.env src/openapi/emit.ts",
     "storage": "tsx --env-file-if-exists=.env src/media/storage-cli.ts",
     "test:integration": "vitest run --project integration"

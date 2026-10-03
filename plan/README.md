@@ -92,7 +92,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 - [~] **P16** — Storage metering and quotas
 - [~] **P17** — Subscriptions and billing
 - [~] **P18** — Marketing site and self-serve onboarding
-- [ ] **P19** — Production hardening
+- [~] **P19** — Production hardening
 - [ ] **P20** — Packaging, signing and release
 - [ ] **P21** — First customer onboarding
 
