@@ -1,0 +1,12 @@
+{
+  "extends": "@integr8/typescript-config/react.json",
+  "compilerOptions": {
+    "plugins": [{ "name": "next" }],
+    "types": ["node"],
+    "paths": { "~/*": ["./src/*"] },
+    "incremental": true,
+    "tsBuildInfoFile": "./.next/.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "next-env.d.ts", ".next/types/**/*.ts"],
+  "exclude": ["node_modules", ".next"]
+}

@@ -1,0 +1,39 @@
+@import 'tailwindcss';
+@import '@integr8/tokens/theme.css';
+
+/* The shared form renderer writes Tailwind classes; scan them too. */
+@source '../node_modules/@integr8/form-renderer-dom/dist';
+@source '../node_modules/@integr8/operations-dom/dist';
+
+/*
+ * The same two imports as the web app, because the design system has one home.
+ * `@integr8/tokens` is plain TypeScript so React Native reads the same values.
+ */
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color-scheme: light dark;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--colour-background);
+    color: var(--colour-text);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--colour-focus);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

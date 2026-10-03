@@ -1,0 +1,39 @@
+[package]
+name = "integr8-desktop"
+version = "0.1.0"
+description = "Integr8 Plus desktop"
+edition = "2021"
+rust-version = "1.77"
+publish = false
+
+[lib]
+# Tauri v2 puts the app in a library so the binary stays a three-line shim.
+# `_lib` avoids a name collision with the binary on Windows.
+#
+# `rlib` only. Tauri's template also builds `staticlib` and `cdylib`, which
+# exist for its iOS and Android targets — and this product's mobile app is Expo,
+# so neither is ever produced. Dropping them is not only tidiness: linking a
+# cdylib this size with MinGW fails outright with "export ordinal too large".
+name = "integr8_desktop_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# The reason this app exists rather than being a browser tab: one API over the
+# macOS Keychain, the Windows Credential Manager and the Linux Secret Service.
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+
+[profile.release]
+# A desktop binary is downloaded before it is run, so size is a real cost.
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

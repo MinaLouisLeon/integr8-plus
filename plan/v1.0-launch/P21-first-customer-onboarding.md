@@ -5,12 +5,15 @@
 **Depends on:** P20
 
 ## Goal
+
 One real company runs their real operations on the product, and you learn what you got wrong.
 
 ## Scope
+
 Not a coding phase. It is the phase that decides whether v1.1 is worth building as planned.
 
 ## Tasks
+
 - [ ] Import their existing customers, sites and assets
 - [ ] Build their real forms with them, in the builder, in one session
 - [ ] Configure their job types, roles and working hours
@@ -23,12 +26,14 @@ Not a coding phase. It is the phase that decides whether v1.1 is worth building 
 - [ ] Write the findings into a document that shapes v1.1 and v1.2
 
 ## Exit criteria
+
 - [ ] The company completes one full week of real work entirely in the product
 - [ ] Their engineers prefer it to what they used before — asked directly, answered honestly
 - [ ] Every complaint from the pilot is logged and triaged into a phase or explicitly declined
 - [ ] They pay a second month without being chased
 
 ## Notes
+
 - Resist building anything new during the pilot. Log it and keep watching. Half of what
   gets requested in week one stops mattering by week three.
 - If the engineers do not prefer it, no amount of v1.1 features will save the account.
