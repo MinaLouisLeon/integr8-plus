@@ -12,7 +12,7 @@ import { View } from 'react-native';
 import { LocalGate } from '~/components/local-gate';
 import { SyncBanner } from '~/components/sync-banner';
 import { Body, Button, Detail, Heading, Row, ScrollScreen, Section } from '~/components/ui';
-import { describeChange } from '~/lib/describe-change';
+import { describeChange, describeRefusal } from '~/lib/describe-change';
 import { formatBytes, formatWhen } from '~/lib/format';
 import { localData } from '~/local/local-data';
 import { useLocalQuery, useSyncActivity } from '~/local/react';
@@ -78,7 +78,7 @@ function Sync() {
             <Row
               key={change.id}
               title={describeChange(t, change)}
-              lines={[change.lastError?.message ?? '', change.job?.title ?? '']}
+              lines={[describeRefusal(t, change), change.job?.title ?? '']}
               tag={{
                 label:
                   change.state === 'conflict'
