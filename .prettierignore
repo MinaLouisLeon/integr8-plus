@@ -1,0 +1,17 @@
+node_modules
+dist
+build
+coverage
+.turbo
+.next
+pnpm-lock.yaml
+
+# Generated artefacts, rewritten wholesale on every spec change. Formatting them
+# would make `pnpm format` and the CI drift check disagree about what the file
+# should contain; the drift check is the one that matters.
+apps/api/openapi.json
+packages/api-client/src/generated/
+packages/tokens/theme.css
+
+# Written by `next build`; formatting it is undone on the next build.
+apps/web/next-env.d.ts

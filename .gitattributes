@@ -9,3 +9,8 @@
 # needs.
 *.sh text eol=lf
 .husky/* text eol=lf
+
+# The form engine's golden file is compared byte for byte between JavaScript
+# engines. A carriage return added by a Windows checkout would be a difference
+# that no engine produced.
+*.jsonl text eol=lf

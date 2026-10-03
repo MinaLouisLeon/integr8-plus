@@ -1,0 +1,86 @@
+{
+  "expo": {
+    "name": "Integr8 Plus",
+    "slug": "integr8-plus",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "integr8",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.integr8.plus"
+    },
+    "android": {
+      "package": "com.integr8.plus",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-localization",
+      [
+        "expo-sqlite",
+        {
+          "useSQLCipher": true,
+          "enableFTS": true
+        }
+      ],
+      "expo-background-task",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Integr8 Plus uses the camera to photograph work and to scan barcodes into forms.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Integr8 Plus lets you add photos from this phone to a form.",
+          "cameraPermission": "Integr8 Plus uses the camera to photograph work for a form.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Integr8 Plus records where a form was submitted, and fills location questions.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Integr8 Plus uses Face ID to unlock, so customers’ details stay private on a phone left unattended."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "jobs"
+        }
+      ],
+      "expo-updates"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000000"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/00000000-0000-0000-0000-000000000000",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
+  }
+}

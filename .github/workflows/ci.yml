@@ -1,0 +1,241 @@
+name: CI
+
+# Pull requests only. The push side of main, staging and dev belongs to the
+# three branch workflows, which run the same verification through verify.yml
+# before deciding whether to release. Leaving the push trigger here as well
+# would run the whole suite twice on every merge and say nothing new the second
+# time.
+on:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      # The published contract is generated from the route registry and
+      # committed, so a spec change is a diff in review. This fails if the two
+      # have drifted — which is the only way three generated clients can quietly
+      # stop matching the server.
+      - name: OpenAPI spec is up to date
+        run: |
+          pnpm --filter @integr8/api openapi
+          pnpm --filter @integr8/api-client generate
+          if ! git diff --exit-code -- apps/api/openapi.json packages/api-client/src/generated; then
+            echo "::error::The OpenAPI spec or the generated client is out of date."
+            echo "Run: pnpm --filter @integr8/api openapi && pnpm --filter @integr8/api-client generate"
+            exit 1
+          fi
+
+      # The contract, downloadable from the run that produced it. A partner
+      # integrating against a specific release should not have to guess which
+      # commit it came from.
+      - name: Publish the OpenAPI spec
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-${{ github.sha }}
+          path: apps/api/openapi.json
+          if-no-files-found: error
+
+  commit-messages:
+    name: Conventional commits
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate commit messages in this PR
+        run: >
+          pnpm exec commitlint
+          --from ${{ github.event.pull_request.base.sha }}
+          --to ${{ github.event.pull_request.head.sha }}
+          --verbose
+
+  form-engine-hermes:
+    name: Form engine agrees in Hermes
+    # P06's first exit criterion: the same definition and answers produce
+    # byte-identical results in Node and in a React Native runtime. The unit
+    # tests produce the golden file in Node; this runs the same corpus inside a
+    # second JavaScript engine and compares every byte.
+    #
+    # The Hermes command-line runner is pinned by checksum. It is the newest
+    # prebuilt one Facebook publishes (the v0.13.0 release, whose binary reports
+    # itself as 0.12.0); the phone runs Hermes V1 inside React Native 0.86.
+    # docs/form-engine/README.md says exactly what that does and does not prove.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      HERMES_RELEASE: v0.13.0
+      HERMES_SHA256: aead6eb0b8f563bb022354352eae32dad96c933330b6c1941b6db17674ca68ae
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install the Hermes command-line runner
+        run: |
+          set -euo pipefail
+          curl -fsSL -o hermes.tar.gz             "https://github.com/facebook/hermes/releases/download/${HERMES_RELEASE}/hermes-cli-linux.tar.gz"
+          echo "${HERMES_SHA256}  hermes.tar.gz" | sha256sum --check --strict
+          mkdir -p "${RUNNER_TEMP}/hermes"
+          tar -xzf hermes.tar.gz -C "${RUNNER_TEMP}/hermes"
+          echo "HERMES_BIN=${RUNNER_TEMP}/hermes/hermes" >> "${GITHUB_ENV}"
+
+      - name: Build workspace packages
+        run: pnpm build
+
+      - name: Run the conformance corpus in Hermes
+        run: pnpm --filter @integr8/form-engine conformance:hermes
+
+  database:
+    name: Migrations, isolation, authentication and API
+    # Gated on a repository variable rather than on the secret, because a job
+    # cannot branch on a secret's presence. Setting DATABASE_TESTS=enabled is
+    # step 8 of docs/database/runbook-supabase-setup.md, and until it is set the
+    # P02 exit criterion "the isolation suite runs in CI" is not met.
+    if: vars.DATABASE_TESTS == 'enabled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm build
+
+      # Rolls the schema all the way down and back up before the suites run, so
+      # every `down` file is exercised on every pull request rather than being
+      # written once and never executed.
+      - name: Migrate, isolate, verify
+        run: pnpm --filter @integr8/db test:integration
+        env:
+          APP_ENV: test
+          INTEGR8_TEST_DATABASE: i-know-this-database-is-disposable
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          DATABASE_URL_ADMIN: ${{ secrets.TEST_DATABASE_URL_ADMIN }}
+          DATABASE_URL_AUTH: ${{ secrets.TEST_DATABASE_URL_AUTH }}
+
+      # Runs after the database suite, which has just rolled the schema down and
+      # back up. Keys are generated per run rather than stored: nothing here
+      # needs to verify a token minted by a previous run.
+      - name: Generate signing keys for this run
+        id: keys
+        run: pnpm --filter @integr8/auth keygen >> "$GITHUB_ENV"
+
+      - name: Sessions, invitations and impersonation
+        run: pnpm --filter @integr8/auth test:integration
+        env:
+          APP_ENV: test
+          INTEGR8_TEST_DATABASE: i-know-this-database-is-disposable
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          DATABASE_URL_ADMIN: ${{ secrets.TEST_DATABASE_URL_ADMIN }}
+          DATABASE_URL_AUTH: ${{ secrets.TEST_DATABASE_URL_AUTH }}
+          AUTH_ISSUER: https://api.ci.integr8.example
+
+      # Real HTTP through the assembled server: idempotent replay, the
+      # outdated-client response, and the request id on every log line.
+      - name: API contract and request pipeline
+        run: pnpm --filter @integr8/api test:integration
+        env:
+          APP_ENV: test
+          INTEGR8_TEST_DATABASE: i-know-this-database-is-disposable
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          DATABASE_URL_ADMIN: ${{ secrets.TEST_DATABASE_URL_ADMIN }}
+          DATABASE_URL_AUTH: ${{ secrets.TEST_DATABASE_URL_AUTH }}
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # On a pull request gitleaks-action asks the API for the PR's commits before
+    # it scans anything. Without `pull-requests: read` that call fails with
+    # "Resource not accessible by integration", the action crashes, and the job
+    # goes red having scanned nothing — which it did on every pull request until
+    # this was added. A red secret scan that is always red is not a secret scan.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

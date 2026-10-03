@@ -1,0 +1,37 @@
+{
+  "name": "@integr8/tokens",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./theme.css": "./theme.css"
+  },
+  "files": [
+    "dist",
+    "theme.css"
+  ],
+  "scripts": {
+    "build": "tsc --build && tsx src/emit-css.ts",
+    "clean": "rm -rf dist .turbo theme.css *.tsbuildinfo",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "css": "tsx src/emit-css.ts"
+  },
+  "devDependencies": {
+    "@integr8/eslint-config": "workspace:*",
+    "@integr8/typescript-config": "workspace:*",
+    "@types/node": "22.20.2",
+    "eslint": "10.10.0",
+    "tsx": "4.23.13",
+    "typescript": "6.0.3",
+    "vitest": "5.0.0"
+  }
+}

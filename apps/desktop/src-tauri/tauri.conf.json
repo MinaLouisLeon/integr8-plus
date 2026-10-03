@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Integr8 Plus",
+  "version": "0.1.0",
+  "identifier": "com.integr8.plus",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:3002",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Integr8 Plus",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "label": "main"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:3000 https://api.integr8.example https://*.r2.cloudflarestorage.com https://*.ingest.sentry.io; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://localhost:3000 https://*.r2.cloudflarestorage.com https://tile.openstreetmap.org https://api.mapbox.com"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "copyright": "Integr8 Media",
+    "category": "Business",
+    "shortDescription": "Field operations",
+    "longDescription": "Multi-tenant field operations platform."
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://releases.integr8.example/desktop/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDkxQ0NDMEE5MjQwNjFEMTYKUldRV0hRWWtxY0RNa1lDdTVRRVVaTndCYXpIbnpmTVVtT1NaNWdPclhNTFkvR1Q4T2JjUVNNcHkK"
+    }
+  }
+}
