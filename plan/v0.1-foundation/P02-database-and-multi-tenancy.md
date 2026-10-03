@@ -31,7 +31,7 @@ most consequential phase in the entire plan.
 
 ## Exit criteria
 
-- [ ] The isolation suite runs in CI and fails the build if any cross-tenant access succeeds
+- [x] The isolation suite runs in CI and fails the build if any cross-tenant access succeeds
 - [x] Deliberately removing a `tenant_id` filter from one repository method makes the isolation suite fail
 - [ ] A migration can be applied and rolled back against a copy of production data
 - [ ] A restore from backup has been performed end to end and timed
@@ -58,8 +58,10 @@ Do these in order; they are the whole of the remaining phase.
    — about fifteen minutes, steps 1–6. This ticks the first task and, at step 5, proves
    the isolation suite passes against real Postgres.
 
-2. **Enable the CI job.** Step 8 of the same runbook sets `DATABASE_TESTS=enabled` and
-   the two test connection secrets. This ticks the first exit criterion.
+2. ~~**Enable the CI job.**~~ Done without Supabase: the `database` job in `ci.yml` and
+   `verify.yml` runs the suite against a Postgres 16 service container on every pull
+   request and every merge. Step 8 of the runbook now says what a real project still
+   proves (Supavisor, the managed roles) and how to run the suites against one by hand.
 
 3. **Break something on purpose.** Delete the `.where('tenant_users.tenant_id', ...)`
    from `TenantUsersRepository`'s `#scoped()` and run `pnpm test:integration`. The
@@ -206,5 +208,6 @@ and an RLS test that committed a delete the next test depended on.
 | `@integr8/db` integration, including a full roll-down and re-apply of every migration | 111 of 111                                             |
 | Removing the `tenant_id` predicate from `TenantUsersRepository#scoped()` by hand      | 13 of 21 isolation tests fail; restored, 21 of 21 pass |
 
-Still open: running the suite **in CI** (needs `DATABASE_TESTS` and the test connection strings),
-rehearsing a migration against a copy of production data, and a timed restore.
+The suite runs **in CI** on every pull request since the first-customer preparation branch
+(a Postgres 16 service container; no account needed). Still open: rehearsing a migration
+against a copy of production data, and a timed restore.
