@@ -47,7 +47,10 @@ import {
   PlatformSettingsRepository,
 } from './repositories/platform-settings.js';
 import { PlatformUsersRepository } from './repositories/platform-users.js';
-import { PlatformInsightsRepository } from './repositories/platform-insights.js';
+import {
+  PlatformHealthRepository,
+  PlatformInsightsRepository,
+} from './repositories/platform-insights.js';
 import { BillingRepository, TenantSubscriptionReader } from './repositories/billing.js';
 import { DemoDataRepository } from './repositories/demo-data.js';
 import { SignupRepository } from './repositories/signup.js';
@@ -191,6 +194,8 @@ export interface PlatformDataSource {
   readonly lifecycle: TenantLifecycleRepository;
   /** Cross-company questions: which app versions are in the field, what is failing (P15). */
   readonly insights: PlatformInsightsRepository;
+  /** Sync trouble and failing background work across every company (P19). */
+  readonly health: PlatformHealthRepository;
   /** Allowances, daily samples and the audit against Cloudflare (P16). */
   readonly metering: StorageMeteringRepository;
   /** Subscriptions, and what the billing provider has told us (P17). */
@@ -422,6 +427,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     settings: new PlatformSettingsRepository(db),
     lifecycle: new TenantLifecycleRepository(db),
     insights: new PlatformInsightsRepository(db),
+    health: new PlatformHealthRepository(db),
     metering: new StorageMeteringRepository(db),
     billing: new BillingRepository(db),
     signup: new SignupRepository(db),

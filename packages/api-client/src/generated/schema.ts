@@ -138,6 +138,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/billing/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The invoices this company has been sent
+         * @description Newest first, read from the billing provider on each call so a payment made on the provider's page shows here straight away. Each links to the provider's hosted copy and its PDF. Empty for a company that has never subscribed.
+         */
+        get: operations["listInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/billing/checkout": {
         parameters: {
             query?: never;
@@ -169,7 +189,7 @@ export interface paths {
         put?: never;
         /**
          * Open the provider’s billing portal
-         * @description Where a card is updated, invoices are read and a subscription is cancelled. All of it is the provider’s hosted page, so this API never holds a card number or an invoice.
+         * @description Where a card is updated and a subscription is cancelled. All of it is the provider’s hosted page, so this API never holds a card number. Invoices are listed by `GET /v1/billing/invoices` as well, and each links back here.
          */
         post: operations["openBillingPortal"];
         delete?: never;
@@ -2455,6 +2475,26 @@ export interface paths {
         patch: operations["setPlanAllowance"];
         trace?: never;
     };
+    "/v1/platform/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What is failing quietly
+         * @description Phones whose sync runs show trouble, billing deliveries that were recorded but not applied, and background work that gave up — over the last few days, across every company. The things that look fine from the office until a customer rings.
+         */
+        get: operations["getPlatformHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/platform/funnel": {
         parameters: {
             query?: never;
@@ -3087,6 +3127,98 @@ export interface operations {
                             seatsUsed: number;
                             submissionsThisMonth: number;
                         };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listInvoices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The invoices, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            id: string;
+                            number: string | null;
+                            /** @enum {string} */
+                            status: "draft" | "open" | "paid" | "uncollectible" | "void";
+                            amountDueCents: number;
+                            amountPaidCents: number;
+                            currency: string;
+                            /** Format: date-time */
+                            periodStart: string | null;
+                            /** Format: date-time */
+                            periodEnd: string | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            hostedUrl: string | null;
+                            pdfUrl: string | null;
+                        }[];
                     };
                 };
             };
@@ -4198,7 +4330,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description An unknown timezone, or a day that ends before it starts. */
+            /** @description An unknown timezone (`unknown_timezone`), or a logo that is not a stored image of this company’s (`logo_not_found`). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -21407,6 +21539,114 @@ export interface operations {
             };
         };
     };
+    getPlatformHealth: {
+        parameters: {
+            query?: {
+                days?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The window, and what went wrong in it. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        since: string;
+                        sync: {
+                            items: {
+                                tenantId: string;
+                                userId: string;
+                                runs: number;
+                                failedRuns: number;
+                                partialRuns: number;
+                                rejected: number;
+                                conflicts: number;
+                                uploadsFailed: number;
+                                queueDepth: number;
+                                pendingUploads: number;
+                                lastOutcome: string;
+                                lastReportAt: string;
+                                appVersion: string | null;
+                            }[];
+                        };
+                        webhooks: {
+                            received: number;
+                            applied: number;
+                            failed: number;
+                            unmatched: number;
+                            pending: number;
+                            items: {
+                                id: string;
+                                type: string;
+                                tenantId: string | null;
+                                receivedAt: string;
+                                processedAt: string | null;
+                                /** @enum {string} */
+                                outcome: "applied" | "failed" | "unmatched" | "pending";
+                                error: string | null;
+                            }[];
+                        };
+                        jobs: {
+                            deadLettered: number;
+                            retrying: number;
+                        };
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     getSignupFunnel: {
         parameters: {
             query?: {
@@ -21430,13 +21670,22 @@ export interface operations {
                             step: string;
                             count: number;
                         }[];
+                        timeToFirstForm: {
+                            companies: number;
+                            medianSeconds: number | null;
+                            items: {
+                                /** Format: uuid */
+                                tenantId: string;
+                                seconds: number;
+                            }[];
+                        };
                         signups: {
                             /** Format: uuid */
                             id: string;
                             email: string;
                             companyName: string;
                             /** @enum {string} */
-                            status: "pending" | "verified" | "expired" | "abandoned";
+                            status: "pending" | "verifying" | "verified" | "expired" | "abandoned";
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */

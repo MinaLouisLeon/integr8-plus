@@ -120,9 +120,11 @@ export type {
 } from './repositories/tenant-lifecycle.js';
 
 export type {
+  PlatformHealthRepository,
   PlatformInsightsRepository,
   RecentFailure,
   ReleaseInField,
+  TimeToFirstSubmission,
 } from './repositories/platform-insights.js';
 
 export {
