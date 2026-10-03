@@ -94,7 +94,10 @@ export const verifySignupRoute = defineRoute({
       description: 'The company exists.',
       schema: z.object({ tenantId: z.uuid(), email: z.string() }),
     },
-    422: { description: 'The link is spent, expired or unknown (`invalid_signup_token`).' },
+    422: {
+      description:
+        'The link is spent, expired or unknown (`invalid_signup_token`), or the password is too weak (`auth.weak_password`).',
+    },
   },
   handler: async ({ body }, context) => {
     const result = await verifySignup(
@@ -106,6 +109,7 @@ export const verifySignupRoute = defineRoute({
         media: context.services.media,
         billingProvider: context.services.billing.provider,
         identity: context.services.identity,
+        passwordPolicy: context.services.passwordPolicy,
       },
     );
 

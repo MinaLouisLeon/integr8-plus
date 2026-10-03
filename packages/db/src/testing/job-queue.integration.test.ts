@@ -122,6 +122,49 @@ describe('claiming jobs', () => {
     await queue().complete(job.id);
   });
 
+  it('ignores a completion or a failure from a worker whose lease has been taken over', async () => {
+    const start = new Date(Date.now() + 60 * MINUTE);
+    const job = await withTenant(tenant.id, (tx) =>
+      tx.jobs.enqueue({ queue: 'media.thumbnail', availableAt: start, maxAttempts: 3 }),
+    );
+    await queue().claim({ workerId: 'slow', now: start, leaseMs: MINUTE });
+    const [taken] = await queue().claim({
+      workerId: 'fast',
+      now: new Date(start.getTime() + 2 * MINUTE),
+    });
+    expect(taken?.id).toBe(job.id);
+
+    // The slow worker finishes late. Whatever it says, the row is no longer
+    // its to say it about: a "succeeded" would hide the run in progress, and a
+    // "pending" would hand the job to a third worker while the second has it.
+    expect(await queue().complete(job.id, { workerId: 'slow' })).toBe(false);
+    expect(await queue().fail(job.id, { workerId: 'slow', error: 'late', retryAt: start })).toBe(
+      'lost',
+    );
+
+    const stored = await withTenant(tenant.id, (tx) => tx.jobs.findById(job.id));
+    expect(stored).toMatchObject({ status: 'running', lockedBy: 'fast', attempts: 2 });
+
+    // The holder's word still counts.
+    expect(await queue().complete(job.id, { workerId: 'fast' })).toBe(true);
+  });
+
+  it('decides exhaustion and the failure in one statement', async () => {
+    const job = await withTenant(tenant.id, (tx) =>
+      tx.jobs.enqueue({ queue: 'media.thumbnail', maxAttempts: 1 }),
+    );
+    const [claimed] = await queue().claim({ workerId: 'once' });
+    expect(claimed?.id).toBe(job.id);
+
+    expect(
+      await queue().fail(job.id, { workerId: 'once', error: 'no good', retryAt: new Date() }),
+    ).toBe('dead');
+
+    const stored = await withTenant(tenant.id, (tx) => tx.jobs.findById(job.id));
+    expect(stored).toMatchObject({ status: 'dead', lockedBy: null, lastError: 'no good' });
+    expect(stored?.deadLetteredAt).not.toBeNull();
+  });
+
   it('still reclaims a job whose worker died with attempts to spare', async () => {
     const start = new Date(Date.now() + 60 * MINUTE);
     const job = await withTenant(tenant.id, (tx) =>

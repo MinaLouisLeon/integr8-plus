@@ -13,6 +13,11 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',
+    // The property suites run hundreds of generated forms each, and `pnpm test`
+    // runs every package's suite at once on a two-core CI runner. Under that
+    // load a run that takes three seconds alone has been seen to take twenty,
+    // and a timeout there says nothing about the engine.
+    testTimeout: 60_000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

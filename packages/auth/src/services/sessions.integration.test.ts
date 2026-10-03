@@ -3,6 +3,7 @@ import { withTenant } from '@integr8/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   AccountLockedError,
+  ImpersonationDeniedError,
   InvalidCredentialsError,
   InvalidTokenError,
   NotAMemberError,
@@ -12,6 +13,7 @@ import {
 import {
   buildServices,
   createMember,
+  createPlatformUser,
   createTenant,
   type MemberFixture,
   releaseServices,
@@ -555,6 +557,26 @@ describe('switching companies', () => {
         clientApp: 'web',
       }),
     ).rejects.toThrow(NotAMemberError);
+  });
+
+  it('refuses an impersonation session, whose grant covers one company only', async () => {
+    // Switching issues a plain session with no grant behind it. Allowed, a
+    // super admin impersonating somebody with two companies would hold an
+    // unaudited, full-length session in the second one, which ending the grant
+    // could not revoke. Refused before membership is even looked at.
+    const superAdmin = await createPlatformUser();
+    const started = await services.impersonation.start({
+      platformUserId: superAdmin.id,
+      tenantId: northwind.id,
+      targetUserId: dana.userId,
+      reason: 'Customer asked us to check why switching companies fails',
+      clientApp: 'web',
+    });
+    const principal = await services.tokens.verifyAccessToken(started.tokens.accessToken);
+
+    await expect(
+      services.signIn.switchTenant(principal, southgate.id, { clientApp: 'web' }),
+    ).rejects.toThrow(ImpersonationDeniedError);
   });
 });
 

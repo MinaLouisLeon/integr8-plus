@@ -216,6 +216,48 @@ describe('managing a member', () => {
     );
   });
 
+  it('refuses to demote, suspend or remove somebody ranked above the caller', async () => {
+    // An admin holds every member.* permission, and the company keeps a second
+    // owner, so neither the permission check nor the last-owner rule stands in
+    // the way. Rank does: the people who granted the admin's role are not
+    // theirs to unseat.
+    const admin = await api.member('admin', 'junior-admin');
+    const adminToken = await api.signIn(admin);
+    const senior = await api.member('owner', 'senior-owner');
+
+    const demote = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${senior.userId}/role`,
+      payload: { role: 'engineer' },
+    });
+    expect(demote.statusCode, demote.body).toBe(403);
+
+    const suspend = await api.call(adminToken, {
+      method: 'PATCH',
+      url: `/v1/members/${senior.userId}/status`,
+      payload: { status: 'suspended' },
+    });
+    expect(suspend.statusCode, suspend.body).toBe(403);
+
+    const remove = await api.call(adminToken, {
+      method: 'DELETE',
+      url: `/v1/members/${senior.userId}`,
+    });
+    expect(remove.statusCode, remove.body).toBe(403);
+
+    // Still here, still an owner.
+    const members = await api.call(ownerToken, { method: 'GET', url: '/v1/members' });
+    expect(members.body).toContain(senior.userId);
+
+    // An owner may act on an owner. Removed, so the suite below still has a
+    // company with exactly one.
+    const removed = await api.call(ownerToken, {
+      method: 'DELETE',
+      url: `/v1/members/${senior.userId}`,
+    });
+    expect(removed.statusCode, removed.body).toBe(200);
+  });
+
   it('suspends somebody and shuts the door behind them', async () => {
     const person = await api.member('engineer', 'suspendee');
     await api.signIn(person);

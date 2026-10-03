@@ -139,7 +139,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex flex-col gap-1 text-start">
             <dt className="text-xs uppercase tracking-wide text-content-muted">
-              {t('workspace.role.owner')}
+              {t('workspace.roleLabel')}
             </dt>
             <dd className="text-sm text-content">{person?.role}</dd>
           </div>

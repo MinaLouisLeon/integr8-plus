@@ -21,9 +21,11 @@ import { apiClient } from '~/lib/session';
  * the benefit is a checklist nobody has to distrust.
  */
 
+// Forms are built in the desktop app, not here: the step links to the article
+// that says so and where to get it. `/forms` is not a page this app has.
 const LINKS: Record<string, string> = {
   job_type: '/settings/job-types',
-  form: '/forms',
+  form: '/help#build-a-form',
   member: '/settings/people',
   customer: '/customers',
   submission: '/fill',

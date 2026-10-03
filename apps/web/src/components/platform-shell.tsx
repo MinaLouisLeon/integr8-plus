@@ -4,7 +4,7 @@ import { useTranslation } from '@integr8/i18n';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Button, LoadingState } from '~/components/ui';
+import { Button, ErrorState, LoadingState } from '~/components/ui';
 import { ensurePlatformToken, signOutOfPlatform } from '~/lib/platform-session';
 
 /**
@@ -36,13 +36,24 @@ export function PlatformShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
-  const [state, setState] = useState<'checking' | 'signed-in'>('checking');
+  const [state, setState] = useState<'checking' | 'signed-in' | 'failed'>('checking');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
-      const token = await ensurePlatformToken();
+      let token: string | null;
+      try {
+        token = await ensurePlatformToken();
+      } catch {
+        // Unreachable, not signed out. See `AuthGuard` for why this is an
+        // error with a retry rather than a redirect or an endless spinner.
+        if (!cancelled) {
+          setState('failed');
+        }
+        return;
+      }
       if (cancelled) {
         return;
       }
@@ -56,12 +67,25 @@ export function PlatformShell({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, attempt]);
 
   if (state === 'checking') {
     return (
       <div className="mx-auto flex min-h-dvh max-w-6xl items-center justify-center px-6">
         <LoadingState label={t('common.loading')} />
+      </div>
+    );
+  }
+
+  if (state === 'failed') {
+    return (
+      <div className="mx-auto flex min-h-dvh max-w-6xl items-center justify-center px-6">
+        <ErrorState
+          onRetry={() => {
+            setState('checking');
+            setAttempt((current) => current + 1);
+          }}
+        />
       </div>
     );
   }

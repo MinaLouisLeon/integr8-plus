@@ -357,9 +357,11 @@ export async function recordAccessChange(
     const at = now.toISOString();
 
     // Unsent edits to the same site's notes become one change, keeping what the
-    // engineer first saw as its base.
+    // engineer first saw as its base. Never one already handed to the network:
+    // its answer may be on its way back, and would mark this edit done unsent.
     const earlier = await sql.get<RawRow>(
       `select * from outbox where kind = 'site.access' and entity_id = ? and state = 'pending' and attempts = 0
+         and sent_at is null
        order by seq desc limit 1`,
       [input.siteId],
     );
@@ -948,10 +950,14 @@ export async function selectBatch(
       await sql.all<{ media_id: string }>(`select media_id from uploads where state <> 'confirmed'`)
     ).map((row) => row.media_id),
   );
-  const doneMutations = new Set(
+  // A change waits on another by id. The wait holds while that id is on this
+  // phone and not yet done. An id that is gone was an unsent change superseded
+  // by a later one — an autosave by its submit, a photo by its removal — and
+  // there is nothing left to wait for; holding on would strand the completion.
+  const unfinishedMutations = new Set(
     (
       await sql.all<{ id: string }>(
-        `select id from outbox where state = 'done' and id in (select value from json_each(?))`,
+        `select id from outbox where state <> 'done' and id in (select value from json_each(?))`,
         [JSON.stringify(outstanding.flatMap((row) => row.waitsFor.mutations))],
       )
     ).map((row) => row.id),
@@ -972,7 +978,7 @@ export async function selectBatch(
     const due = row.nextAttemptAt === null || row.nextAttemptAt <= now;
     const waiting =
       row.waitsFor.media.some((mediaId) => unconfirmed.has(mediaId)) ||
-      row.waitsFor.mutations.some((mutationId) => !doneMutations.has(mutationId));
+      row.waitsFor.mutations.some((mutationId) => unfinishedMutations.has(mutationId));
     if (row.state !== 'pending' || !due || waiting) {
       blocked.add(row.entityKey);
       continue;
@@ -1194,6 +1200,14 @@ async function reissue(
       now.toISOString(),
       row.seq,
     ],
+  );
+  // Whatever waited for this change by its old id waits for the new one. The
+  // ids are quoted UUIDs inside JSON text, so a text replacement is exact.
+  // Without this a completion recorded while the change was pending would wait
+  // for an id no row will ever carry as done, and sit unsent for ever.
+  await sql.run(
+    `update outbox set waits_for = replace(waits_for, ?, ?) where state <> 'done' and instr(waits_for, ?) > 0`,
+    [`"${row.id}"`, `"${id}"`, `"${row.id}"`],
   );
   return id;
 }

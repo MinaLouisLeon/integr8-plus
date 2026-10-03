@@ -721,6 +721,8 @@ export interface SignupRequestsTable {
   verified_at: Date | null;
   /** The company this request created, once it has created one. */
   tenant_id: string | null;
+  /** How many times the link has been sent again (0019). Capped by the service. */
+  resend_count: Generated<number>;
   ip_address: string | null;
   user_agent: string | null;
   created_at: CreatedAt;

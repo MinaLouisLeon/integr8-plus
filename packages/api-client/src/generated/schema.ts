@@ -92,7 +92,7 @@ export interface paths {
         put?: never;
         /**
          * Move to another of your companies
-         * @description Membership is checked afresh: holding a valid token for one company says nothing about another. The current session is revoked, so a device holds one session at a time.
+         * @description Membership is checked afresh: holding a valid token for one company says nothing about another. The current session is revoked, so a device holds one session at a time. An impersonation session cannot switch: its grant covers one company only.
          */
         post: operations["switchTenant"];
         delete?: never;
@@ -2915,7 +2915,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Not a member of that company. */
+            /** @description Not a member of that company, or impersonating (`auth.impersonation_denied`). */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3887,7 +3887,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The link is spent, expired or unknown (`invalid_signup_token`). */
+            /** @description The link is spent, expired or unknown (`invalid_signup_token`), or the password is too weak (`auth.weak_password`). */
             422: {
                 headers: {
                     [name: string]: unknown;

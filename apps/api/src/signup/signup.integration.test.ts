@@ -166,6 +166,25 @@ describe('following the link', () => {
     );
   });
 
+  it('refuses a weak password before creating anything, and keeps the link usable', async () => {
+    // Not "weak-password": the policy also refuses a password that repeats
+    // part of the address, which would make the good password below fail too.
+    const to = address('feeble');
+    await signUp(to, 'Weak Ltd');
+    const token = tokenFrom(to);
+
+    const refused = await verify(token, 'Sam Owner', 'short');
+    expect(refused.statusCode, refused.body).toBe(422);
+    expect((JSON.parse(refused.body) as { error: { code: string } }).error.code).toBe(
+      'auth.weak_password',
+    );
+
+    // Nothing was made, and the same link goes on to work with a real password.
+    const companies = await getPlatformDataSource().tenants.directory({ includeDeleted: true });
+    expect(companies.some((company) => company.name === 'Weak Ltd')).toBe(false);
+    expect((await verify(token)).statusCode).toBe(200);
+  });
+
   it('refuses a token that never existed, without saying so', async () => {
     const refused = await verify('not-a-real-token');
     expect(refused.statusCode).toBe(422);
@@ -195,6 +214,33 @@ describe('resending', () => {
 
     expect((await verify(first)).statusCode).toBe(422);
     expect((await verify(second)).statusCode).toBe(200);
+  });
+
+  it('stops after three, so it cannot be used to fill a stranger’s inbox', async () => {
+    const to = address('resend-flood');
+    await signUp(to, 'Flood Ltd');
+    const sentTo = () => email.sent.filter((message) => message.to === to).length;
+    expect(sentTo()).toBe(1);
+
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      const resent = await api.app.inject({
+        method: 'POST',
+        url: '/v1/signup/resend',
+        remoteAddress: api.remoteAddress,
+        headers,
+        payload: { email: to },
+      });
+      // The answer never changes: saying "no more" would say "this address
+      // has a request", which is the thing the endpoint must not say.
+      expect(resent.statusCode).toBe(202);
+    }
+
+    // One original and three resends. The fourth and fifth asked for nothing
+    // that was sent.
+    expect(sentTo()).toBe(4);
+
+    // The last link that was actually sent still works.
+    expect((await verify(tokenFrom(to))).statusCode).toBe(200);
   });
 });
 

@@ -55,6 +55,8 @@ export interface WorkerRunResult {
   succeeded: number;
   retrying: number;
   dead: number;
+  /** Finished after the lease had been taken over; the result went nowhere. */
+  lost: number;
 }
 
 export class Worker {
@@ -62,7 +64,17 @@ export class Worker {
   readonly #logger: Logger;
   readonly #handlers: JobHandlers;
   readonly #workerId: string;
-  readonly #now: () => Date;
+  /**
+   * A test's clock, or nothing.
+   *
+   * Nothing is the production case, and it matters that it stays nothing: the
+   * queue compares `available_at` and leases against the database's `now()`
+   * when it is given no time, and against this process's when it is. Passing
+   * `new Date()` here would put two clocks on either side of every comparison,
+   * which is the bug `claimJobs` describes — and which this worker reintroduced
+   * for a while by always handing one over.
+   */
+  readonly #now: (() => Date) | undefined;
   #running = false;
 
   constructor(options: WorkerOptions) {
@@ -70,7 +82,16 @@ export class Worker {
     this.#logger = options.logger;
     this.#handlers = options.handlers;
     this.#workerId = options.workerId ?? `worker-${process.pid.toString()}`;
-    this.#now = options.now ?? (() => new Date());
+    this.#now = options.now;
+  }
+
+  /** The injected clock as a `now` option, or no option at all. */
+  #injectedNow(): { now?: Date } {
+    return this.#now === undefined ? {} : { now: this.#now() };
+  }
+
+  #clock(): Date {
+    return this.#now?.() ?? new Date();
   }
 
   /**
@@ -96,7 +117,7 @@ export class Worker {
       workerId: this.#workerId,
       limit: this.#config.WORKER_BATCH_SIZE,
       leaseMs: this.#config.WORKER_LEASE_MS,
-      now: this.#now(),
+      ...this.#injectedNow(),
     });
 
     const result: WorkerRunResult = {
@@ -104,17 +125,12 @@ export class Worker {
       succeeded: 0,
       retrying: 0,
       dead: 0,
+      lost: 0,
     };
 
     for (const job of jobs) {
       const outcome = await this.#execute(job);
-      if (outcome === 'succeeded') {
-        result.succeeded += 1;
-      } else if (outcome === 'retrying') {
-        result.retrying += 1;
-      } else {
-        result.dead += 1;
-      }
+      result[outcome] += 1;
     }
 
     return result;
@@ -153,7 +169,7 @@ export class Worker {
     this.#running = false;
   }
 
-  async #execute(job: ClaimedJob): Promise<'succeeded' | 'retrying' | 'dead'> {
+  async #execute(job: ClaimedJob): Promise<'succeeded' | 'retrying' | 'dead' | 'lost'> {
     const platform = getPlatformDataSource();
     const logger = this.#logger.child({
       jobId: job.id,
@@ -169,12 +185,13 @@ export class Worker {
       // handler, and the payload is preserved for whoever deploys the version
       // that has one.
       logger.error('No handler for queue');
-      await platform.jobs.fail(job.id, {
+      const outcome = await platform.jobs.fail(job.id, {
         error: `No handler registered for queue "${job.queue}"`,
-        retryAt: this.#now(),
-        now: this.#now(),
+        retryAt: this.#clock(),
+        workerId: this.#workerId,
+        ...this.#injectedNow(),
       });
-      return 'dead';
+      return outcome === 'lost' ? 'lost' : 'dead';
     }
 
     try {
@@ -190,7 +207,17 @@ export class Worker {
         });
       });
 
-      await platform.jobs.complete(job.id, this.#now());
+      const completed = await platform.jobs.complete(job.id, {
+        workerId: this.#workerId,
+        ...(this.#now === undefined ? {} : { at: this.#now() }),
+      });
+      if (!completed) {
+        // The handler took longer than the lease, and another worker has the
+        // job now. Whatever this one did is done; the row is not ours to mark,
+        // and marking it would hide a second run of the same job.
+        logger.warn('Job finished after its lease was taken over', { attempts: job.attempts });
+        return 'lost';
+      }
       logger.info('Job completed');
       return 'succeeded';
     } catch (error) {
@@ -198,14 +225,23 @@ export class Worker {
       const outcome = await platform.jobs.fail(job.id, {
         error: message,
         retryAt: new Date(
-          this.#now().getTime() +
+          this.#clock().getTime() +
             retryDelayMs(job.attempts, {
               baseMs: this.#config.WORKER_RETRY_BASE_MS,
               maxMs: this.#config.WORKER_RETRY_MAX_MS,
             }),
         ),
-        now: this.#now(),
+        workerId: this.#workerId,
+        ...this.#injectedNow(),
       });
+
+      if (outcome === 'lost') {
+        logger.warn('Job failed after its lease was taken over', {
+          error: message,
+          attempts: job.attempts,
+        });
+        return 'lost';
+      }
 
       if (outcome === 'dead') {
         // The dead-letter queue is a status, not a second table, so the payload

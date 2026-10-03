@@ -686,7 +686,7 @@
       "post": {
         "operationId": "switchTenant",
         "summary": "Move to another of your companies",
-        "description": "Membership is checked afresh: holding a valid token for one company says nothing about another. The current session is revoked, so a device holds one session at a time.",
+        "description": "Membership is checked afresh: holding a valid token for one company says nothing about another. The current session is revoked, so a device holds one session at a time. An impersonation session cannot switch: its grant covers one company only.",
         "tags": [
           "authentication"
         ],
@@ -835,7 +835,7 @@
             }
           },
           "403": {
-            "description": "Not a member of that company."
+            "description": "Not a member of that company, or impersonating (`auth.impersonation_denied`)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -2281,7 +2281,7 @@
             }
           },
           "422": {
-            "description": "The link is spent, expired or unknown (`invalid_signup_token`)."
+            "description": "The link is spent, expired or unknown (`invalid_signup_token`), or the password is too weak (`auth.weak_password`)."
           },
           "429": {
             "description": "Rate limit exceeded.",

@@ -249,6 +249,7 @@ export {
 
 export {
   type ClaimedJob,
+  type CompleteJobOptions,
   type EnqueueJobInput,
   type FailJobOptions,
   type Job,

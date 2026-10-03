@@ -280,6 +280,39 @@ describe('a delivery that arrives twice', () => {
     );
     expect(stored).toHaveLength(1);
   });
+
+  it('is applied on retry when the first attempt was recorded but never applied', async () => {
+    // The row is written before the handler runs, so a handler that threw — or
+    // a process that died between the two — leaves a recorded delivery that
+    // changed nothing. The provider retries exactly that delivery, and the
+    // retry has to be the one that applies it, or a paid invoice stays unpaid
+    // for ever.
+    const id = `evt_retry_${String(Date.now())}`;
+    const billing = getPlatformDataSource().billing;
+    const { event } = await billing.recordEvent({
+      provider: 'recording',
+      providerEventId: id,
+      type: 'customer.subscription.updated',
+      payload: {},
+    });
+    await billing.markEventProcessed(event.id, 'The database went away mid-handler.');
+
+    const retried = await deliver(subscriptionChanged(id, { status: 'past_due' }));
+    expect(retried).toMatchObject({ duplicate: true, handled: true });
+
+    const body = await subscription();
+    expect(body.status).toBe('past_due');
+
+    const stored = (await billing.recentEvents(200)).find(
+      (candidate) => candidate.providerEventId === id,
+    );
+    expect(stored?.error).toBeNull();
+    expect(stored?.processedAt).not.toBeNull();
+
+    // Put back, so the suites after this one start from a paying company.
+    const restored = await deliver(subscriptionChanged(`evt_restore_${String(Date.now())}`));
+    expect(restored).toMatchObject({ handled: true });
+  });
 });
 
 describe('a payment that fails', () => {
