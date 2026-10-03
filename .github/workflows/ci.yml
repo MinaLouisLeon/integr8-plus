@@ -218,7 +218,9 @@ jobs:
       # back up. Keys are generated per run rather than stored: nothing here
       # needs to verify a token minted by a previous run.
       - name: Generate signing keys for this run
-        run: pnpm --filter @integr8/auth keygen >> "$GITHUB_ENV"
+        # Only the KEY=VALUE lines: pnpm's own banner and keygen's explanatory
+        # comments are not environment variables, and GITHUB_ENV refuses them.
+        run: pnpm --silent --filter @integr8/auth keygen | grep -E '^[A-Z_]+=' >> "$GITHUB_ENV"
 
       - name: Sessions, invitations and impersonation
         run: pnpm --filter @integr8/auth test:integration

@@ -1,0 +1,9 @@
+# Findings gitleaks reports that are not secrets.
+#
+# One fingerprint per line: <commit>:<file>:<rule>:<line>. Each entry says why.
+
+# deploy/.env.example as first committed had `# STRIPE_WEBHOOK_SECRET=` directly
+# above `BILLING_TRIAL_DAYS=14`; the generic rule read across the line break and
+# took the next variable name as the secret. The template was reworded in the
+# following commit; this entry covers the commit that is already in history.
+ac99074d4566f49d6f05a0fab9b58abf1c9c9121:deploy/.env.example:generic-api-key:100
