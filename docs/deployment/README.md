@@ -22,15 +22,15 @@ configuration.
                                       Supabase Auth · R2 · Stripe · Resend · Mapbox · Expo · Sentry
 ```
 
-| Piece                  | Where                                             | Notes                                                                  |
-| ---------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- |
-| API image              | `apps/api/Dockerfile`                             | Also the worker (`node dist/jobs/worker-main.js`) and the migrator     |
-| Web image              | `apps/web/Dockerfile`                             | Next.js standalone server; `NEXT_PUBLIC_*` baked in at build time      |
-| Compose stack          | `deploy/compose.yml`, `deploy/.env.example`       | Postgres + bootstrap + migrate + api + worker + web, on one machine    |
-| Railway services       | `deploy/railway/*.json`                           | The same three processes as managed services, no machine; see below    |
-| Machine preparation    | `deploy/vps/setup-ubuntu.sh`, `Caddyfile.example` | Firewall, Docker and Caddy on a fresh Ubuntu machine, x86 or ARM       |
-| Images in the registry | `.github/workflows/publish-images.yml`            | `ghcr.io/<owner>/integr8-api` and `integr8-web`, tagged per branch/sha |
-| Database runbooks      | `docs/database/`                                  | Supabase setup, migrations, backup and restore                         |
+| Piece                  | Where                                       | Notes                                                                  |
+| ---------------------- | ------------------------------------------- | ---------------------------------------------------------------------- |
+| API image              | `apps/api/Dockerfile`                       | Also the worker (`node dist/jobs/worker-main.js`) and the migrator     |
+| Web image              | `apps/web/Dockerfile`                       | Next.js standalone server; `NEXT_PUBLIC_*` baked in at build time      |
+| Compose stack          | `deploy/compose.yml`, `deploy/.env.example` | Postgres + bootstrap + migrate + api + worker + web, on one machine    |
+| Railway services       | `deploy/railway/*.json`                     | The same three processes as managed services, no machine; see below    |
+| Machine preparation    | `deploy/vps/setup.sh`, `Caddyfile.example`  | Firewall, Docker and Caddy on a fresh Ubuntu or Oracle Linux machine   |
+| Images in the registry | `.github/workflows/publish-images.yml`      | `ghcr.io/<owner>/integr8-api` and `integr8-web`, tagged per branch/sha |
+| Database runbooks      | `docs/database/`                            | Supabase setup, migrations, backup and restore                         |
 
 ## Two modes
 
@@ -51,8 +51,8 @@ configuration.
    names pointing at it: `app.` for the web app and `api.` for the API. Put a
    reverse proxy with TLS in front (Caddy does this in four lines; any load
    balancer works). The API must be reachable from phones, so it needs its own
-   public hostname. On a fresh Ubuntu machine, `deploy/vps/setup-ubuntu.sh`
-   opens the firewall, installs Docker and Caddy, and
+   public hostname. On a fresh Ubuntu or Oracle Linux machine,
+   `deploy/vps/setup.sh` opens the firewall, installs Docker and Caddy, and
    `deploy/vps/Caddyfile.example` is the proxy configuration; see **Oracle
    Cloud** below for the free machine this was written against.
 2. **A Supabase project for identity.** Only Auth is used at this stage. Copy
@@ -107,7 +107,7 @@ runs the compose stack as is. Three things are specific to it:
   path for a first deployment (allow ten to fifteen minutes).
 - **Two firewalls.** The console's security list (VCN → subnet → Default
   Security List) must have ingress rules for TCP 80 and 443, _and_ the Ubuntu
-  image's own iptables rules must allow them. `setup-ubuntu.sh` does the second
+  image's own iptables rules must allow them. `setup.sh` does the second
   part; the console cannot.
 - **Capacity and idling.** ARM capacity in busy regions is often exhausted
   ("Out of host capacity"); retrying later, or asking for 2 OCPUs and 12 GB,
