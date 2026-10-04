@@ -186,8 +186,31 @@ Follow `docs/database/runbook-supabase-setup.md`, then set `DATABASE_URL`
 `postgres` service and the `depends_on` that point at it. `migrate` keeps
 running on every deploy; it is idempotent.
 
+## Backups, before any real data
+
+The compose Postgres is one volume on one disk. `deploy/vps/backup-postgres.sh`
+dumps it daily from root's cron (its header has the line and the restore
+command) and keeps the last fourteen files under `/var/backups/integr8`. That
+covers a bad migration or a deleted company. Losing the machine needs a copy
+elsewhere: a boot-volume backup policy in the cloud console (Oracle's Always
+Free tier includes five), or `rclone` from the backup directory to an R2
+bucket. Moving the database to Supabase (below) replaces all of this with
+managed backups and point-in-time recovery, and is the right answer before a
+paying customer's data exists.
+
+Container logs are capped at 50 MB per container by the `x-logging` block in
+`deploy/compose.yml`, so a chatty week cannot fill the disk.
+
 ## Releasing a new version
 
+0. **Bump the version** in the root `package.json` in the pull request that
+   promotes `staging` to `main`. `release-main.yml` refuses `0.0.0` and refuses
+   a version that already has a release, so a merge into `main` without a bump
+   fails its release job (the images still publish). The version also stamps
+   `APP_VERSION`/`API_RELEASE` in a deployment's env file. Until signed desktop
+   installers are wanted (P20), set the repository variable
+   `DESKTOP_BUILDS=disabled` so the release does not spend macOS and Windows
+   runner minutes on unsigned builds.
 1. Merge to `staging`. `publish-images.yml` pushes `integr8-api:staging` and
    `integr8-web:staging`.
 2. On the machine: set `API_IMAGE`/`WEB_IMAGE` in `deploy/.env` to the tags,
