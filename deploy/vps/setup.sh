@@ -19,6 +19,8 @@
 #    lack the compose plugin), and lets the current user run it without sudo.
 # 3. Installs Caddy, the reverse proxy that obtains and renews TLS certificates
 #    by itself. deploy/vps/Caddyfile.example is the two-site configuration.
+# 4. Turns on automatic security updates for the operating system. Docker and
+#    the containers are not touched by it; those update when you deploy.
 #
 # Idempotent: running it again changes nothing that is already in place.
 set -euo pipefail
@@ -143,6 +145,16 @@ UNIT
 fi
 $SUDO systemctl enable --now caddy >/dev/null 2>&1 || true
 
+echo '==> Automatic security updates'
+if [ "$FAMILY" = debian ]; then
+  $SUDO apt-get install -y -qq unattended-upgrades >/dev/null
+  $SUDO dpkg-reconfigure -f noninteractive unattended-upgrades
+else
+  $SUDO dnf -y -q install dnf-automatic
+  $SUDO sed -i 's/^apply_updates = no/apply_updates = yes/; s/^upgrade_type = default/upgrade_type = security/' /etc/dnf/automatic.conf
+  $SUDO systemctl enable --now dnf-automatic.timer
+fi
+
 echo '==> git'
 if ! command -v git >/dev/null 2>&1; then
   if [ "$FAMILY" = debian ]; then
@@ -157,3 +169,4 @@ echo 'Done. Next:'
 echo '  1. git clone the repository to /opt/integr8 and fill deploy/.env'
 echo '  2. copy deploy/vps/Caddyfile.example to /etc/caddy/Caddyfile with your hostnames, then: sudo systemctl reload caddy'
 echo '  3. docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build'
+echo '  4. schedule deploy/vps/backup-postgres.sh from cron (see its header) before any real data goes in'
