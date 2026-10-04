@@ -1,7 +1,7 @@
 'use client';
 
 import { ApiRequestError } from '@integr8/api-client';
-import { useTranslation } from '@integr8/i18n';
+import { formatCurrency, formatDate, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Button, ErrorState, LoadingState } from '~/components/ui';
@@ -22,9 +22,37 @@ import { apiClient } from '~/lib/session';
  * No card number is typed here, ever. Both buttons hand the browser to the
  * provider's own hosted page and come back; nothing in this app sees a card,
  * which is the whole reason it is done this way.
+ *
+ * The invoices are listed here too (P18), read from the provider on each
+ * visit rather than copied: an invoice is paid, voided or refunded over there,
+ * and a copy here would be the one that was wrong. Each row opens the
+ * provider's own hosted copy.
  */
+
+type InvoiceStatus = 'draft' | 'open' | 'paid' | 'uncollectible' | 'void';
+
+interface Invoice {
+  id: string;
+  number: string | null;
+  status: InvoiceStatus;
+  amountDueCents: number;
+  amountPaidCents: number;
+  currency: string;
+  periodStart: string | null;
+  periodEnd: string | null;
+  createdAt: string;
+  hostedUrl: string | null;
+  pdfUrl: string | null;
+}
+
+async function fetchInvoices(): Promise<Invoice[]> {
+  const { data } = await apiClient().GET('/v1/billing/invoices');
+  return data?.items ?? [];
+}
+
 export default function BillingPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language;
   const [problem, setProblem] = useState<string | null>(null);
 
   const subscription = useQuery({
@@ -34,6 +62,8 @@ export default function BillingPage() {
       return data;
     },
   });
+
+  const invoices = useQuery({ queryKey: ['billing', 'invoices'], queryFn: fetchInvoices });
 
   /**
    * Sends the browser to the provider.
@@ -100,8 +130,7 @@ export default function BillingPage() {
   }
 
   const data = subscription.data;
-  const day = (value: string | null) =>
-    value === null ? '' : new Date(value).toLocaleDateString();
+  const day = (value: string | null) => (value === null ? '' : formatDate(value, { locale }));
 
   return (
     <main className="flex flex-col gap-6">
@@ -206,6 +235,25 @@ export default function BillingPage() {
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold text-content">{t('workspace.billing.invoices')}</h2>
+        <p className="text-sm text-content-muted">{t('workspace.billing.invoicesHint')}</p>
+        {invoices.isPending ? (
+          <LoadingState />
+        ) : invoices.isError ? (
+          <ErrorState
+            requestId={
+              invoices.error instanceof ApiRequestError ? invoices.error.requestId : undefined
+            }
+            onRetry={() => void invoices.refetch()}
+          />
+        ) : invoices.data.length === 0 ? (
+          <p className="text-sm text-content-muted">{t('workspace.billing.invoicesEmpty')}</p>
+        ) : (
+          <InvoiceTable invoices={invoices.data} locale={locale} />
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold text-content">{t('workspace.billing.manage')}</h2>
         <p className="text-sm text-content-muted">{t('workspace.billing.manageHint')}</p>
         <div className="flex flex-wrap gap-3">
@@ -244,5 +292,90 @@ function Limit({ label, value }: { label: string; value: string }) {
       <dt className="text-sm text-content-muted">{label}</dt>
       <dd className="text-lg tabular-nums text-content">{value}</dd>
     </div>
+  );
+}
+
+/**
+ * The invoices, newest first, as the provider sent them.
+ *
+ * Money and dates go through `@integr8/i18n`, so `£49.00` and `1 October 2026`
+ * follow the reader's locale rather than the server's — and so the currency
+ * symbol is the invoice's own, never a default that happens to look right.
+ */
+function InvoiceTable({ invoices, locale }: { invoices: Invoice[]; locale: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <table className="w-full border-collapse text-sm">
+      <thead>
+        <tr className="text-content-muted">
+          <th className="py-1 text-start font-medium">{t('workspace.billing.invoiceNumber')}</th>
+          <th className="py-1 text-start font-medium">{t('workspace.billing.invoiceDate')}</th>
+          <th className="py-1 text-end font-medium">{t('workspace.billing.invoiceAmount')}</th>
+          <th className="py-1 text-start font-medium ps-4">
+            {t('workspace.billing.invoiceStatusLabel')}
+          </th>
+          <th className="py-1 text-end font-medium">
+            <span className="sr-only">{t('workspace.billing.invoiceOpen')}</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {invoices.map((invoice) => {
+          const label = invoice.number ?? t('workspace.billing.invoiceUnnumbered');
+          return (
+            <tr key={invoice.id} className="border-t border-border-subtle">
+              <td className="py-2 text-content">
+                {invoice.hostedUrl === null ? (
+                  label
+                ) : (
+                  <a
+                    href={invoice.hostedUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline-offset-2 hover:underline"
+                  >
+                    {label}
+                  </a>
+                )}
+              </td>
+              <td className="py-2 text-content-muted">
+                {formatDate(invoice.createdAt, { locale })}
+              </td>
+              <td className="py-2 text-end tabular-nums text-content">
+                {formatCurrency(invoice.amountDueCents / 100, invoice.currency, { locale })}
+              </td>
+              <td className="py-2 ps-4 text-content-muted">
+                {t(`workspace.billing.invoiceStatus.${invoice.status}`)}
+              </td>
+              <td className="py-2 text-end">
+                <span className="flex justify-end gap-3">
+                  {invoice.hostedUrl === null ? null : (
+                    <a
+                      href={invoice.hostedUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      {t('workspace.billing.invoiceOpen')}
+                    </a>
+                  )}
+                  {invoice.pdfUrl === null ? null : (
+                    <a
+                      href={invoice.pdfUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      {t('workspace.billing.invoicePdf')}
+                    </a>
+                  )}
+                </span>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }

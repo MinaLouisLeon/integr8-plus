@@ -55,9 +55,9 @@ Interface conventions — tokens, translation and right-to-left layout — are i
 | App            | Package            | What it is today                                                                             |
 | -------------- | ------------------ | -------------------------------------------------------------------------------------------- |
 | `apps/api`     | `@integr8/api`     | Fastify service: versioned `/v1` routes, generated OpenAPI, idempotency, jobs, rate limiting |
-| `apps/web`     | `@integr8/web`     | Placeholder. Next.js shell arrives in **P05**                                                |
-| `apps/desktop` | `@integr8/desktop` | Placeholder. React SPA + Tauri v2 shell arrive in **P05**                                    |
-| `apps/mobile`  | `@integr8/mobile`  | Placeholder. Expo shell arrives in **P05**                                                   |
+| `apps/web`     | `@integr8/web`     | Next.js: marketing, signup, the office screens, billing, the super admin dashboard           |
+| `apps/desktop` | `@integr8/desktop` | React SPA in Tauri v2: the form builder, operations and submissions; also a browser page     |
+| `apps/mobile`  | `@integr8/mobile`  | Expo, offline-first: the engineer's jobs, forms, photos, signatures and sync                 |
 
 Check the API is up:
 
@@ -94,6 +94,12 @@ See [`docs/database/`](./docs/database/README.md).
 | `pnpm clean`            | Removes build output and caches                       |
 
 Add `--filter @integr8/<name>` to scope any of them to one package.
+
+## Deploying
+
+Two container images and a database. [`docs/deployment/`](./docs/deployment/README.md)
+walks through a first production-for-testing stack with `deploy/compose.yml`, and how to
+turn each external service real afterwards.
 
 ## Contributing
 

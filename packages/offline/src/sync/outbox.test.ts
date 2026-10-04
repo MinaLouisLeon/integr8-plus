@@ -10,6 +10,8 @@ import {
   applyPushResults,
   backoffSeconds,
   type ChangeContext,
+  changesNeedingAttention,
+  discardChange,
   markBatchUnanswered,
   markSent,
   queueUpload,
@@ -231,6 +233,156 @@ describe('forms', () => {
       sql.run(`update uploads set state = 'confirmed' where media_id = ?`, [mediaId]),
     );
     expect((await batch()).mutations.map((mutation) => mutation.id)).toEqual([submitted]);
+  });
+});
+
+describe('a form changed on two devices', () => {
+  it('takes on the answers the server merged, keeping what was typed here since', async () => {
+    const { db, context, jobs, batch, answer, clock } = await phone();
+    const { mutationId: started, submissionId } = await recordFormStarted(context, {
+      formId: uuid(),
+      formVersionId: uuid(),
+      workOrderId: jobs[0].workOrder.id,
+    });
+    await answer([applied(started, 1)]);
+    const sent = await recordAnswers(context, {
+      submissionId,
+      answers: { note: 'Started', pressure: 18 },
+    });
+    // On the wire; and while it is, the engineer keeps typing.
+    await db.write(['outbox'], async (sql) => {
+      const { rows } = await selectBatch(sql, clock.current);
+      await markSent(sql, rows, clock.current);
+    });
+    const later = await recordAnswers(context, {
+      submissionId,
+      answers: { note: 'Started', pressure: 20 },
+    });
+    expect(later).not.toBe(sent);
+
+    // The server had another device's customer name, and merged the two.
+    await answer([
+      {
+        id: sent,
+        outcome: 'applied',
+        replayed: false,
+        alreadyApplied: false,
+        revision: 2,
+        answers: { note: 'Started', pressure: 18, customer_name: 'Pat' },
+      },
+    ]);
+
+    const local = await db.read((sql) =>
+      sql.get<{ answers: string; server_answers: string }>(
+        'select answers, server_answers from submissions where id = ?',
+        [submissionId],
+      ),
+    );
+    expect(JSON.parse(local!.answers)).toEqual({
+      note: 'Started',
+      pressure: 20,
+      customer_name: 'Pat',
+    });
+    expect(JSON.parse(local!.server_answers)).toEqual({
+      note: 'Started',
+      pressure: 18,
+      customer_name: 'Pat',
+    });
+    // The autosave still to go carries the merge too, so it cannot undo it.
+    const [next] = (await batch()).mutations;
+    expect(next).toMatchObject({
+      id: later,
+      payload: { answers: { note: 'Started', pressure: 20, customer_name: 'Pat' } },
+      base: { revision: 2, answers: { note: 'Started', pressure: 18, customer_name: 'Pat' } },
+    });
+  });
+});
+
+describe('a submit the server refuses', () => {
+  it('is a draft again on the phone, with its answers, until the engineer drops it and the draft goes on', async () => {
+    const { db, context, jobs, batch, answer } = await phone();
+    const { mutationId: started, submissionId } = await recordFormStarted(context, {
+      formId: uuid(),
+      formVersionId: uuid(),
+      workOrderId: jobs[0].workOrder.id,
+    });
+    await answer([applied(started, 1)]);
+    const submitted = await recordSubmit(context, {
+      submissionId,
+      answers: { note: 'Done' },
+      filledOn: '2020-01-01',
+    });
+    const local = () =>
+      db.read((sql) =>
+        sql.get<{ status: string; answers: string; submitted_at: string | null }>(
+          'select status, answers, submitted_at from submissions where id = ?',
+          [submissionId],
+        ),
+      );
+    expect(await local()).toMatchObject({ status: 'submitted' });
+
+    await answer([
+      {
+        id: submitted,
+        outcome: 'rejected',
+        replayed: false,
+        code: 'today_out_of_range',
+        message: 'The date the form was filled is not today.',
+      },
+    ] as PushResult[]);
+    expect(await local()).toEqual({
+      status: 'draft',
+      answers: '{"note":"Done"}',
+      submitted_at: null,
+    });
+    expect(await db.read(changesNeedingAttention)).toMatchObject([
+      { id: submitted, state: 'failed', lastError: { code: 'today_out_of_range' } },
+    ]);
+    // Editable again: an autosave is taken, and waits behind the refused submit.
+    await recordAnswers(context, { submissionId, answers: { note: 'Done', pressure: 21 } });
+    expect((await batch()).mutations).toEqual([]);
+
+    // Dropping the submit keeps the answers as the draft, which goes to the server.
+    await discardChange(context, submitted);
+    expect(await db.read(changesNeedingAttention)).toEqual([]);
+    expect(await local()).toMatchObject({
+      status: 'draft',
+      answers: '{"note":"Done","pressure":21}',
+    });
+    const { mutations } = await batch();
+    expect(mutations).toHaveLength(1);
+    expect(mutations[0]).toMatchObject({
+      kind: 'submission.answers',
+      payload: { answers: { note: 'Done', pressure: 21 } },
+      base: { revision: 1, answers: {} },
+    });
+  });
+
+  it('keeps a correction a correction when its submit is refused', async () => {
+    const { db, context, jobs, answer } = await phone();
+    const { mutationId: started, submissionId } = await recordFormStarted(context, {
+      formId: uuid(),
+      formVersionId: uuid(),
+      workOrderId: jobs[0].workOrder.id,
+    });
+    await answer([applied(started, 1)]);
+    await db.write(['submissions'], (sql) =>
+      sql.run(`update submissions set status = 'reopened' where id = ?`, [submissionId]),
+    );
+    const submitted = await recordSubmit(context, {
+      submissionId,
+      answers: { note: 'Corrected' },
+      filledOn: '2026-09-14',
+      reason: 'Wrong reading',
+    });
+    await answer([
+      { id: submitted, outcome: 'rejected', replayed: false, code: 'forbidden', message: 'No.' },
+    ] as PushResult[]);
+    expect(
+      await db.read((sql) =>
+        sql.get('select status from submissions where id = ?', [submissionId]),
+      ),
+    ).toEqual({ status: 'reopened' });
   });
 });
 

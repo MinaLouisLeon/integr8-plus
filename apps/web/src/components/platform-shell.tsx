@@ -30,6 +30,7 @@ const LINKS = [
   { href: '/platform/announcements', key: 'announcements' },
   { href: '/platform/templates', key: 'templates' },
   { href: '/platform/releases', key: 'releases' },
+  { href: '/platform/health', key: 'health' },
 ] as const;
 
 export function PlatformShell({ children }: { children: ReactNode }) {

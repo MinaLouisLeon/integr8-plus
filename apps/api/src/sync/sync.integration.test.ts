@@ -17,7 +17,9 @@ import {
 import {
   changesNeedingAttention,
   discardChange,
+  fillSession,
   job as localJob,
+  jobForms,
   localCompletion,
   jobSyncState,
   queueUpload,
@@ -598,6 +600,140 @@ describe('the same job changed on two devices offline', () => {
       customer_name: 'Pat',
     });
   });
+
+  it('shows the merge on the device that caused it, so its next autosave keeps the other device’s answer', async () => {
+    const job = await newJob([engineer]);
+    const phone = await openPhone(api, engineer);
+    const tablet = await openPhone(api, engineer);
+    await phone.sync();
+    const { submissionId } = await recordFormStarted(phone.context, {
+      formId,
+      formVersionId: await liveVersion(phone),
+      workOrderId: job.workOrder.id,
+    });
+    await recordAnswers(phone.context, { submissionId, answers: { note: 'Started' } });
+    await phone.sync();
+    await tablet.sync();
+    const answersOn = (device: Phone) =>
+      device.db.read(async (sql) => (await fillSession(sql, submissionId))!.submission.answers);
+
+    // Different questions on each device: nothing to ask about.
+    phone.network.online = false;
+    tablet.network.online = false;
+    await recordAnswers(phone.context, {
+      submissionId,
+      answers: { note: 'Started', pressure: 18 },
+    });
+    await recordAnswers(tablet.context, {
+      submissionId,
+      answers: { note: 'Started', customer_name: 'Pat' },
+    });
+    phone.network.online = true;
+    await phone.sync();
+    tablet.network.online = true;
+    expect((await tablet.sync()).outcome).toBe('complete');
+    expect(await tablet.db.read(changesNeedingAttention)).toEqual([]);
+    // The tablet shows what the server merged, not only what it typed.
+    expect(await answersOn(tablet)).toEqual({
+      note: 'Started',
+      pressure: 18,
+      customer_name: 'Pat',
+    });
+
+    // The engineer goes on from what the tablet now shows: the phone's pressure travels with it.
+    await recordAnswers(tablet.context, {
+      submissionId,
+      answers: { ...(await answersOn(tablet)), note: 'Needs a part' },
+    });
+    expect((await tablet.sync()).outcome).toBe('complete');
+    const stored = await call<{ submission: { answers: Record<string, unknown> } }>(
+      await api.signIn(engineer),
+      'GET',
+      `/v1/submissions/${submissionId}`,
+    );
+    expect(stored.submission.answers).toEqual({
+      note: 'Needs a part',
+      pressure: 18,
+      customer_name: 'Pat',
+    });
+    await phone.sync();
+    expect(await answersOn(phone)).toEqual({
+      note: 'Needs a part',
+      pressure: 18,
+      customer_name: 'Pat',
+    });
+  });
+});
+
+describe('a submit the server refuses', () => {
+  it('is a draft again on the phone, with its answers, and the job no longer counts the form as done', async () => {
+    const job = await newJob([engineer]);
+    const phone = await openPhone(api, engineer);
+    await phone.sync();
+    const { submissionId } = await recordFormStarted(phone.context, {
+      formId,
+      formVersionId: await liveVersion(phone),
+      workOrderId: job.workOrder.id,
+    });
+    await recordAnswers(phone.context, { submissionId, answers: { note: 'Started' } });
+    await phone.sync();
+    const missingForms = async () =>
+      (await phone.db.read((sql) => localCompletion(sql, job.workOrder.id)))!.missing.forms;
+    const theForm = async () =>
+      (await phone.db.read((sql) => jobForms(sql, job.workOrder.id))).find(
+        (form) => form.formId === formId,
+      )!.submission;
+
+    // Filled "years ago": a day the server will not take for a form recorded now.
+    await recordSubmit(phone.context, {
+      submissionId,
+      answers: { note: 'Done' },
+      filledOn: '2020-01-01',
+      location: { status: 'denied' },
+    });
+    expect(await theForm()).toMatchObject({ status: 'submitted', sent: false });
+    expect(await missingForms()).toEqual([]);
+
+    const run = await phone.sync();
+    expect(run.rejected).toBe(1);
+    const [refused] = await phone.db.read(changesNeedingAttention);
+    expect(refused).toMatchObject({
+      kind: 'submission.submit',
+      state: 'failed',
+      lastError: { code: 'today_out_of_range' },
+    });
+    // A draft again, holding everything the engineer wrote, and needed again to complete.
+    expect(
+      (await phone.db.read((sql) => fillSession(sql, submissionId)))!.submission,
+    ).toMatchObject({ status: 'draft', answers: { note: 'Done' } });
+    expect(await theForm()).toMatchObject({ status: 'draft' });
+    expect(await missingForms()).toEqual([{ formId, title: 'Gas safety' }]);
+    expect((await phone.db.read((sql) => jobSyncState(sql, job.workOrder.id))).safeToLeave).toBe(
+      false,
+    );
+
+    // Editable: another answer is taken, and waits behind the refused submit.
+    await recordAnswers(phone.context, { submissionId, answers: { note: 'Done', pressure: 21 } });
+    expect((await phone.sync()).pushed).toBe(0);
+
+    // Dropping the submit lets the draft go on to the server as it stands on the phone.
+    await discardChange(phone.context, refused!.id);
+    expect((await phone.sync()).outcome).toBe('complete');
+    const stored = await call<{ submission: { status: string; answers: Record<string, unknown> } }>(
+      await api.signIn(engineer),
+      'GET',
+      `/v1/submissions/${submissionId}`,
+    );
+    expect(stored.submission).toMatchObject({
+      status: 'draft',
+      answers: { note: 'Done', pressure: 21 },
+    });
+    expect(await phone.db.read(changesNeedingAttention)).toEqual([]);
+    expect(await theForm()).toMatchObject({ status: 'draft', sent: true });
+    expect((await phone.db.read((sql) => jobSyncState(sql, job.workOrder.id))).safeToLeave).toBe(
+      true,
+    );
+  });
 });
 
 describe('entries changed on two devices offline (P13b)', () => {
@@ -1000,7 +1136,7 @@ describe('the same form on the phone and on the desktop (P13)', () => {
     await recordSubmit(phone.context, {
       submissionId: phoneSubmission,
       answers: phoneAnswers,
-      filledOn: '2026-09-15',
+      filledOn: today(phone.clock),
       location: { status: 'denied' },
     });
     expect((await phone.sync()).outcome).toBe('complete');
@@ -1037,10 +1173,11 @@ describe('the same form on the phone and on the desktop (P13)', () => {
       certificate: await uploadRest(30_000, 'application/pdf'),
       radiatorPhoto: await uploadRest(150_000, 'image/jpeg'),
     });
+    // The desktop's "today" is the server's calendar day: the server refuses any other.
     await call(engineerToken, 'POST', `/v1/submissions/${started.submission.id}/submit`, {
       answers: desktopAnswers,
       expectedRevision: started.submission.revision,
-      today: '2026-09-15',
+      today: new Date().toISOString().slice(0, 10),
     });
 
     const stored = async (id: string) => {

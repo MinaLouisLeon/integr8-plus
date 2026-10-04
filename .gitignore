@@ -45,3 +45,6 @@ pnpm-debug.log*
 
 # Local media storage (MEDIA_STORAGE=local)
 .data/
+
+# Claude Code agent worktrees, created beside the checkout while a session runs.
+.claude/worktrees/

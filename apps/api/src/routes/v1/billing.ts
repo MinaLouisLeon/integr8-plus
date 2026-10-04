@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { billableSeats, entitlementsFor, usageFor } from '../../billing/entitlements.js';
 import { ApiError, conflict, notFound } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
+import { INVOICE_STATUSES } from '../../billing/provider.js';
 import { applyWebhook } from '../../billing/webhook.js';
-import { isoOrNull } from './schemas.js';
+import { iso, isoOrNull } from './schemas.js';
 
 /**
  * Paying, and seeing what you pay for (P17).
@@ -178,7 +179,7 @@ export const openPortalRoute = defineRoute({
   operationId: 'openBillingPortal',
   summary: 'Open the provider’s billing portal',
   description:
-    'Where a card is updated, invoices are read and a subscription is cancelled. All of it is the provider’s hosted page, so this API never holds a card number or an invoice.',
+    'Where a card is updated and a subscription is cancelled. All of it is the provider’s hosted page, so this API never holds a card number. Invoices are listed by `GET /v1/billing/invoices` as well, and each links back here.',
   tags: ['billing'],
   security: 'authenticated',
   permission: 'billing.manage',
@@ -226,6 +227,85 @@ export const openPortalRoute = defineRoute({
     return {
       status: 200,
       body: { url: session.url, provider: context.services.billing.provider },
+    };
+  },
+});
+
+const invoiceSchema = z.object({
+  id: z.string(),
+  /** The number printed on it; null while the provider still calls it a draft. */
+  number: z.string().nullable(),
+  status: z.enum(INVOICE_STATUSES),
+  /** Integer minor units — pence, cents. A float is how 19.99 becomes 19.989999. */
+  amountDueCents: z.number().int(),
+  amountPaidCents: z.number().int(),
+  currency: z.string(),
+  periodStart: z.iso.datetime().nullable(),
+  periodEnd: z.iso.datetime().nullable(),
+  createdAt: z.iso.datetime(),
+  /** The provider's hosted page for this invoice, and its PDF. */
+  hostedUrl: z.string().nullable(),
+  pdfUrl: z.string().nullable(),
+});
+
+/**
+ * The invoices, in the app rather than one click away from it (P18).
+ *
+ * Read from the provider each time instead of mirrored into a table. An
+ * invoice is the provider's document: it is paid, voided or refunded over
+ * there, by events this system does not act on, and a copy here would be the
+ * one that was wrong. Twenty-four of them is two years of monthly billing,
+ * which is as far back as anybody has asked.
+ */
+export const listInvoicesRoute = defineRoute({
+  method: 'get',
+  path: '/v1/billing/invoices',
+  operationId: 'listInvoices',
+  summary: 'The invoices this company has been sent',
+  description:
+    "Newest first, read from the billing provider on each call so a payment made on the provider's page shows here straight away. Each links to the provider's hosted copy and its PDF. Empty for a company that has never subscribed.",
+  tags: ['billing'],
+  security: 'authenticated',
+  permission: 'billing.manage',
+  // A read, so the method already passes; said explicitly because somebody in
+  // arrears needs their invoices more than anybody else does.
+  allowedWhenReadOnly: true,
+  params: noSchema,
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: {
+      description: 'The invoices, newest first.',
+      schema: z.object({ items: z.array(invoiceSchema) }),
+    },
+  },
+  handler: async (_input, context) => {
+    const subscription = await getPlatformDataSource().billing.find(context.principal.tenantId);
+
+    const customerId = subscription?.providerCustomerId;
+    if (customerId == null || customerId === '') {
+      // Not an error: a company on its trial has simply never been billed.
+      return { status: 200, body: { items: [] } };
+    }
+
+    const invoices = await context.services.billing.listInvoices(customerId);
+    return {
+      status: 200,
+      body: {
+        items: invoices.map((invoice) => ({
+          id: invoice.id,
+          number: invoice.number,
+          status: invoice.status,
+          amountDueCents: invoice.amountDueCents,
+          amountPaidCents: invoice.amountPaidCents,
+          currency: invoice.currency,
+          periodStart: isoOrNull(invoice.periodStart),
+          periodEnd: isoOrNull(invoice.periodEnd),
+          createdAt: iso(invoice.createdAt),
+          hostedUrl: invoice.hostedUrl,
+          pdfUrl: invoice.pdfUrl,
+        })),
+      },
     };
   },
 });
@@ -299,6 +379,7 @@ export const billingWebhookRoute = defineRoute({
 
 export const billingRoutes = [
   getSubscriptionRoute,
+  listInvoicesRoute,
   startCheckoutRoute,
   openPortalRoute,
   billingWebhookRoute,

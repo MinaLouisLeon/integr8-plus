@@ -1,0 +1,125 @@
+# Container images for the API (which is also the worker and the migrator) and
+# the web app, published to this repository's GitHub Container Registry.
+#
+# Runs after a merge into staging (tagged `staging` and by commit) and into main
+# (tagged `latest`, `main` and by commit), and on a version tag. Nothing here
+# deploys: a deployment pulls an image by tag, which is what makes a rollback
+# "pull the previous tag" rather than "rebuild and hope".
+#
+# The web image bakes NEXT_PUBLIC_API_BASE_URL into the browser bundle, so there
+# is one web image per API hostname. Set the PUBLIC_API_URL repository variable
+# (and, for staging, STAGING_PUBLIC_API_URL) before expecting the image to
+# reach the right API.
+name: Publish images
+
+on:
+  push:
+    branches: [staging, main]
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: publish-images-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: ${{ github.repository_owner }}
+
+jobs:
+  api:
+    name: API image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/integr8-api
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+  web:
+    name: Web image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/integr8-web
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      # The browser bundle needs the API's public address at build time. The
+      # staging branch gets the staging address when one is set, otherwise the
+      # production one.
+      - name: Pick the API address this image will talk to
+        env:
+          PRODUCTION_URL: ${{ vars.PUBLIC_API_URL }}
+          STAGING_URL: ${{ vars.STAGING_PUBLIC_API_URL }}
+        run: |
+          if [ "${GITHUB_REF}" = 'refs/heads/staging' ] && [ -n "${STAGING_URL}" ]; then
+            echo "api_url=${STAGING_URL}" >> "$GITHUB_OUTPUT"
+          else
+            echo "api_url=${PRODUCTION_URL:-http://localhost:3000}" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -z "${PRODUCTION_URL}" ] && [ -z "${STAGING_URL}" ]; then
+            echo "::warning::Neither PUBLIC_API_URL nor STAGING_PUBLIC_API_URL is set; the web image will point at localhost."
+          fi
+        id: api
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ steps.api.outputs.api_url }}
+            NEXT_PUBLIC_APP_VERSION=${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+            NEXT_PUBLIC_APP_ENV=${{ github.ref == 'refs/heads/staging' && 'staging' || 'production' }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ vars.WEB_PUBLIC_SENTRY_DSN }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max

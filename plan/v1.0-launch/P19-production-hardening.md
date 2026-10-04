@@ -1,7 +1,7 @@
 # P19 — Production hardening
 
 **Version:** v1.0 Launch
-**Status:** `NOT STARTED`
+**Status:** `IN PROGRESS — the groundwork: suites in CI, images, a compose stack, a health screen`
 **Depends on:** P16
 
 ## Goal
@@ -15,12 +15,12 @@ Everything invisible to customers that determines whether the product survives i
 
 ## Tasks
 
-- [ ] Tenant isolation suite expanded to cover every endpoint added since P02, running on every pull request
-- [ ] Staging environment mirroring production, with a seeded demo tenant that also serves App Store review
+- [~] Tenant isolation suite expanded to cover every endpoint added since P02, running on every pull request
+- [~] Staging environment mirroring production, with a seeded demo tenant that also serves App Store review
 - [ ] Backups verified by an actual restore drill, timed and documented
 - [ ] Point-in-time recovery configured and tested
 - [ ] Rate limiting tuned per endpoint against real traffic shapes
-- [ ] Uptime and health monitoring with alerting to a channel you actually read
+- [~] Uptime and health monitoring with alerting to a channel you actually read
 - [ ] Sentry alert rules that distinguish a new error from a known one
 - [ ] Performance budgets: API p95, cold start, job list render, sync duration — measured, with regression alarms
 - [ ] Database indexes reviewed against real query plans; slow query log watched
@@ -29,6 +29,24 @@ Everything invisible to customers that determines whether the product survives i
 - [ ] Dependency and secret scanning enforced in CI
 - [ ] Incident runbook: who is called, how to roll back, how to communicate
 - [ ] Terms of service, privacy policy and a DPA published
+
+Three marks need explaining:
+
+- **The isolation suite is `[~]`: it runs on every pull request now, but has not been
+  expanded.** The `database` job in `ci.yml` and `verify.yml` runs the db, auth and API
+  integration suites against a Postgres 16 service container, so the suite that had only
+  ever run on a laptop runs on every change. Coverage of every endpoint, and the check that
+  enforces it, are still to do.
+- **Staging is `[~]`: the shape exists, the environment does not.** `apps/api/Dockerfile`
+  (also the worker and the migrator), `apps/web/Dockerfile`, `deploy/compose.yml` with its
+  env template, `publish-images.yml` pushing both images to GHCR, and
+  `docs/deployment/README.md` describing the first production-for-testing stack. A
+  super admin can be created from the image (`admin-cli`), which nothing outside the
+  development seed could do before. Nobody has run it on a machine yet.
+- **Monitoring is `[~]`: the dashboard has a Health page**, showing phones whose sync runs
+  are in trouble, billing deliveries recorded but not applied, and background work that gave
+  up — the three things the October review found failing quietly. It is a screen somebody
+  has to open, not an alert in a channel.
 
 ## Exit criteria
 

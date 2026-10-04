@@ -707,7 +707,18 @@ export interface ScheduledTaskRunsTable {
 // Self-serve onboarding (0018)
 // ---------------------------------------------------------------------------
 
-export const SIGNUP_STATUSES = ['pending', 'verified', 'expired', 'abandoned'] as const;
+/**
+ * `verifying` (0020) is the claim: one verify has taken the request and is
+ * provisioning the company. It lasts seconds, and a failure puts the request
+ * back to `pending` so the link still works.
+ */
+export const SIGNUP_STATUSES = [
+  'pending',
+  'verifying',
+  'verified',
+  'expired',
+  'abandoned',
+] as const;
 export type SignupStatus = (typeof SIGNUP_STATUSES)[number];
 
 export interface SignupRequestsTable {

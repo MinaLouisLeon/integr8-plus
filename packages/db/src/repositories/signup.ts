@@ -102,18 +102,61 @@ export class SignupRepository {
   }
 
   /**
-   * Marks a request verified and names the company it made.
+   * Takes the request for one verify, before anything is provisioned.
    *
-   * Conditional on still being pending, so two clicks on the same link — which
-   * is what a mail client that prefetches links produces — create one company
-   * rather than two. The second loses the update and is told so.
+   * `pending` → `verifying`, in one statement, so two clicks on the same link —
+   * which is what a mail client that prefetches links produces — create one
+   * company rather than two. The second finds no pending row to claim and is
+   * told the link is spent. Claiming *before* provisioning rather than after is
+   * the whole fix (0020): a check-then-provision-then-mark order let both
+   * clicks past the check, and with the real identity provider the second one
+   * failed on a duplicate address and left the request pending for ever.
+   *
+   * False when the request is not pending or has expired.
+   */
+  async claim(id: string, now = new Date()): Promise<boolean> {
+    const result = await this.db
+      .updateTable('signup_requests')
+      .set({ status: 'verifying' })
+      .where('id', '=', id)
+      .where('status', '=', 'pending')
+      .where('expires_at', '>', now)
+      .executeTakeFirst();
+
+    return (result.numUpdatedRows ?? 0n) > 0n;
+  }
+
+  /**
+   * Gives a claim back after provisioning failed, so the same link still works.
+   *
+   * `verifying` → `pending`, and nothing else: the token, the expiry and the
+   * resend count are as they were. Nothing was made, so there is nothing to
+   * name.
+   */
+  async release(id: string): Promise<boolean> {
+    const result = await this.db
+      .updateTable('signup_requests')
+      .set({ status: 'pending' })
+      .where('id', '=', id)
+      .where('status', '=', 'verifying')
+      .executeTakeFirst();
+
+    return (result.numUpdatedRows ?? 0n) > 0n;
+  }
+
+  /**
+   * Marks a claimed request verified and names the company it made.
+   *
+   * Conditional on the claim this verify holds: only a `verifying` row moves,
+   * so a request that was somehow released or expired underneath cannot be
+   * marked as having made a company it did not.
    */
   async markVerified(id: string, tenantId: string, now = new Date()): Promise<boolean> {
     const result = await this.db
       .updateTable('signup_requests')
       .set({ status: 'verified', verified_at: now, tenant_id: tenantId })
       .where('id', '=', id)
-      .where('status', '=', 'pending')
+      .where('status', '=', 'verifying')
       .executeTakeFirst();
 
     return (result.numUpdatedRows ?? 0n) > 0n;

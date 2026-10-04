@@ -39,6 +39,36 @@ export interface HostedSession {
   id: string;
 }
 
+export const INVOICE_STATUSES = ['draft', 'open', 'paid', 'uncollectible', 'void'] as const;
+export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
+
+/**
+ * One invoice, in our words.
+ *
+ * Amounts are integer minor units — pence, cents — because that is what every
+ * provider sends and a float is how 19.99 becomes 19.989999. The two links are
+ * the provider's own hosted pages: this API never holds an invoice, so showing
+ * one means sending the browser to where it actually is.
+ */
+export interface Invoice {
+  id: string;
+  /** The number printed on it, which is what somebody quotes to their accountant. */
+  number: string | null;
+  status: InvoiceStatus;
+  amountDueCents: number;
+  amountPaidCents: number;
+  /** Upper-case ISO 4217. */
+  currency: string;
+  periodStart: Date | null;
+  periodEnd: Date | null;
+  createdAt: Date;
+  hostedUrl: string | null;
+  pdfUrl: string | null;
+}
+
+/** How many invoices a list asks for: two years of monthly billing. */
+export const INVOICE_LIST_LIMIT = 24;
+
 /**
  * What a webhook turned out to say, in our words.
  *
@@ -58,17 +88,53 @@ export type BillingEventKind =
       currentPeriodStart: Date | null;
       currentPeriodEnd: Date | null;
       cancelAtPeriodEnd: boolean;
+      tenantHint: string | null;
     }
-  | { kind: 'payment_failed'; customerId: string; subscriptionId: string | null }
-  | { kind: 'payment_succeeded'; customerId: string; subscriptionId: string | null }
+  | {
+      kind: 'payment_failed';
+      customerId: string;
+      subscriptionId: string | null;
+      tenantHint: string | null;
+    }
+  | {
+      kind: 'payment_succeeded';
+      customerId: string;
+      subscriptionId: string | null;
+      tenantHint: string | null;
+    }
   | {
       kind: 'checkout_completed';
       customerId: string;
       subscriptionId: string | null;
       /** The company this checkout was started for, carried through by us. */
       tenantId: string | null;
+      /**
+       * What the checkout says about the subscription it started, when it says
+       * anything: the price our own checkout call asked for, and whether the
+       * first charge was taken (`active`) or deferred by a trial (`trialing`).
+       * Null when the payload does not carry it.
+       */
+      priceId: string | null;
+      status: 'active' | 'trialing' | null;
     }
   | { kind: 'ignored' };
+
+/**
+ * The `tenantHint` on the subscription and invoice events is **the company our
+ * own checkout named**, read back out of the metadata Stripe copies from the
+ * checkout onto the subscription and from the subscription onto its invoices.
+ *
+ * It exists because Stripe does not order deliveries. For a first purchase,
+ * `customer.subscription.created` and `invoice.paid` routinely arrive before
+ * `checkout.session.completed`, and until that one has arrived there is no
+ * customer id on file to match them by — so they were recorded as "no company
+ * matches", answered 200, and never retried, leaving a paying company on its
+ * trial for dunning to make read-only. The hint lets the earlier events land.
+ *
+ * A hint, not an identity: the webhook handler trusts a stored customer
+ * mapping over it, and before acting on it checks that the company it names
+ * exists and has no other customer.
+ */
 
 export interface ParsedWebhook {
   /** The provider's own id for this delivery. What makes it idempotent. */
@@ -105,6 +171,16 @@ export interface BillingProvider {
 
   /** Changes how many seats a subscription is billed for, prorated. */
   setQuantity(subscriptionId: string, quantity: number): Promise<void>;
+
+  /**
+   * The invoices a customer has been sent, newest first.
+   *
+   * Read from the provider on every call rather than mirrored into a table:
+   * an invoice is the provider's document, it changes there (paid, voided,
+   * refunded) without a webhook we act on, and a copy here would be the one
+   * that was wrong.
+   */
+  listInvoices(customerId: string): Promise<Invoice[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +204,8 @@ export class RecordingBillingProvider implements BillingProvider {
   readonly checkouts: CheckoutRequest[] = [];
   readonly portals: PortalRequest[] = [];
   readonly quantities: { subscriptionId: string; quantity: number }[] = [];
+  /** What this fake has "issued", by customer. Seeded by tests through `issueInvoice`. */
+  readonly invoices: (Invoice & { customerId: string })[] = [];
 
   createCheckout(request: CheckoutRequest): Promise<HostedSession> {
     this.checkouts.push(request);
@@ -157,7 +235,7 @@ export class RecordingBillingProvider implements BillingProvider {
     return {
       id: body.id ?? 'evt_test',
       type: body.type ?? 'test.event',
-      event: body.event ?? { kind: 'ignored' },
+      event: withDefaults(body.event ?? { kind: 'ignored' }),
       payload: JSON.parse(rawBody) as Record<string, unknown>,
     };
   }
@@ -165,6 +243,73 @@ export class RecordingBillingProvider implements BillingProvider {
   setQuantity(subscriptionId: string, quantity: number): Promise<void> {
     this.quantities.push({ subscriptionId, quantity });
     return Promise.resolve();
+  }
+
+  /**
+   * Pretends to have billed a customer.
+   *
+   * Deterministic by construction — the number, the id and the dates follow
+   * from how many have been issued so far — so a test can assert on exact
+   * values and a screenshot of the billing page looks the same twice.
+   */
+  issueInvoice(customerId: string, overrides: Partial<Invoice> = {}): Invoice {
+    const sequence = this.invoices.length + 1;
+    // A fixed calendar rather than `Date.now()`: the point of the fake is that
+    // nothing about it depends on when it is run.
+    const periodEnd = new Date(Date.UTC(2026, sequence, 1));
+    const periodStart = new Date(Date.UTC(2026, sequence - 1, 1));
+    const invoice: Invoice = {
+      id: `in_test_${String(sequence)}`,
+      number: `TEST-${String(sequence).padStart(4, '0')}`,
+      status: 'paid',
+      amountDueCents: 4900,
+      amountPaidCents: 4900,
+      currency: 'GBP',
+      periodStart,
+      periodEnd,
+      createdAt: periodStart,
+      hostedUrl: `https://billing.invalid/invoices/in_test_${String(sequence)}`,
+      pdfUrl: `https://billing.invalid/invoices/in_test_${String(sequence)}.pdf`,
+      ...overrides,
+    };
+    this.invoices.push({ ...invoice, customerId });
+    return invoice;
+  }
+
+  listInvoices(customerId: string): Promise<Invoice[]> {
+    return Promise.resolve(
+      this.invoices
+        .filter((invoice) => invoice.customerId === customerId)
+        .map(({ customerId: _owner, ...invoice }) => invoice)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+    );
+  }
+}
+
+/**
+ * Fills in what a hand-written event may leave out.
+ *
+ * The fake takes the body as the event, so a test written before the tenant
+ * hint existed — or one that has no interest in it — would otherwise hand the
+ * handler an object missing a field the type says is there. Absent means null,
+ * which is what the Stripe translation produces for a subscription our checkout
+ * did not create.
+ */
+function withDefaults(event: BillingEventKind): BillingEventKind {
+  switch (event.kind) {
+    case 'subscription_changed':
+    case 'payment_failed':
+    case 'payment_succeeded':
+      return { ...event, tenantHint: event.tenantHint ?? null };
+    case 'checkout_completed':
+      return {
+        ...event,
+        tenantId: event.tenantId ?? null,
+        priceId: event.priceId ?? null,
+        status: event.status ?? null,
+      };
+    default:
+      return event;
   }
 }
 
@@ -188,7 +333,7 @@ export interface StripeOptions {
  * Stripe, over its REST API rather than its SDK.
  *
  * The SDK is good and this deliberately does without it: the surface used here
- * is three endpoints and one signature check, and a dependency that sits in the
+ * is four endpoints and one signature check, and a dependency that sits in the
  * payment path is a dependency to audit on every release. The signature check
  * is the part worth owning outright, and it is the one part of Stripe that can
  * be tested without an account — which it is.
@@ -210,10 +355,17 @@ export class StripeBillingProvider implements BillingProvider {
       success_url: request.successUrl,
       cancel_url: request.cancelUrl,
       // Carried back on the completed event, so a webhook can find the company
-      // without trusting anything the browser sent.
+      // without trusting anything the browser sent. The subscription gets the
+      // same metadata, and Stripe copies it onto every invoice — which is what
+      // lets a subscription or invoice event that arrives *before* the checkout
+      // event find its company (see `translate`).
       'metadata[tenant_id]': request.tenantId,
       'subscription_data[metadata][tenant_id]': request.tenantId,
       client_reference_id: request.tenantId,
+      // The price too, so the completed-checkout event alone can put the
+      // company on the right plan: the session object in a webhook is not
+      // expanded and does not carry its line items.
+      'metadata[price_id]': request.priceId,
     };
     if (request.customerId === undefined) {
       form.customer_email = request.email;
@@ -256,6 +408,15 @@ export class StripeBillingProvider implements BillingProvider {
       // what somebody adding a seat mid-month expects to happen.
       proration_behavior: 'create_prorations',
     });
+  }
+
+  async listInvoices(customerId: string): Promise<Invoice[]> {
+    const query = new URLSearchParams({
+      customer: customerId,
+      limit: String(INVOICE_LIST_LIMIT),
+    });
+    const page = await this.#get<{ data: StripeInvoice[] }>(`/invoices?${query.toString()}`);
+    return page.data.map(toInvoice);
   }
 
   parseWebhook(rawBody: string, signature: string | undefined): ParsedWebhook {
@@ -399,11 +560,25 @@ function translate(event: StripeEvent): BillingEventKind {
 
   switch (event.type) {
     case 'checkout.session.completed': {
+      const paymentStatus = text(object, 'payment_status');
       return {
         kind: 'checkout_completed',
         customerId: text(object, 'customer') ?? '',
         subscriptionId: text(object, 'subscription'),
-        tenantId: text(object, 'client_reference_id'),
+        // Both were set by our own checkout call: the reference is what the
+        // handler has always read, the metadata is the same value by another
+        // route in case a later API version drops one of them.
+        tenantId: text(object, 'client_reference_id') ?? metadataText(object, 'tenant_id'),
+        priceId: metadataText(object, 'price_id'),
+        // `paid` means the first charge went through; `no_payment_required` is
+        // what a subscription that opens with a trial says. `unpaid` is a
+        // checkout that completed without collecting: nothing to assert.
+        status:
+          paymentStatus === 'paid'
+            ? 'active'
+            : paymentStatus === 'no_payment_required'
+              ? 'trialing'
+              : null,
       };
     }
 
@@ -430,6 +605,9 @@ function translate(event: StripeEvent): BillingEventKind {
         currentPeriodStart: seconds(object.current_period_start),
         currentPeriodEnd: seconds(object.current_period_end),
         cancelAtPeriodEnd: object.cancel_at_period_end === true,
+        // `subscription_data[metadata][tenant_id]` from our checkout, now on
+        // the subscription itself.
+        tenantHint: metadataText(object, 'tenant_id'),
       };
     }
 
@@ -437,7 +615,8 @@ function translate(event: StripeEvent): BillingEventKind {
       return {
         kind: 'payment_failed',
         customerId: text(object, 'customer') ?? '',
-        subscriptionId: text(object, 'subscription'),
+        subscriptionId: invoiceSubscription(object),
+        tenantHint: invoiceTenantHint(object),
       };
     }
 
@@ -446,13 +625,60 @@ function translate(event: StripeEvent): BillingEventKind {
       return {
         kind: 'payment_succeeded',
         customerId: text(object, 'customer') ?? '',
-        subscriptionId: text(object, 'subscription'),
+        subscriptionId: invoiceSubscription(object),
+        tenantHint: invoiceTenantHint(object),
       };
     }
 
     default:
       return { kind: 'ignored' };
   }
+}
+
+/**
+ * The subscription an invoice bills.
+ *
+ * `invoice.subscription` on API versions before 2025-03-31, and
+ * `invoice.parent.subscription_details.subscription` from then on. Both are
+ * read, because the version is a setting on the Stripe account rather than
+ * anything this code controls.
+ */
+function invoiceSubscription(invoice: Record<string, unknown>): string | null {
+  return text(invoice, 'subscription') ?? text(subscriptionDetails(invoice), 'subscription');
+}
+
+/**
+ * The company an invoice is for, from the metadata Stripe copied off the
+ * subscription — which copied it off our checkout.
+ *
+ * Two places: `subscription_details.metadata` (on the invoice directly, or under
+ * `parent` on newer API versions), and the first line's metadata, which Stripe
+ * also fills from the subscription and which every version carries.
+ */
+function invoiceTenantHint(invoice: Record<string, unknown>): string | null {
+  const lines = (invoice.lines as { data?: Record<string, unknown>[] } | undefined)?.data ?? [];
+  return (
+    metadataText(subscriptionDetails(invoice), 'tenant_id') ??
+    metadataText(lines[0] ?? {}, 'tenant_id')
+  );
+}
+
+function subscriptionDetails(invoice: Record<string, unknown>): Record<string, unknown> {
+  if (isRecord(invoice.subscription_details)) {
+    return invoice.subscription_details;
+  }
+  const parent = invoice.parent;
+  const nested = isRecord(parent) ? parent.subscription_details : undefined;
+  return isRecord(nested) ? nested : {};
+}
+
+/** A string out of an object's `metadata`, when it has one. */
+function metadataText(object: Record<string, unknown>, key: string): string | null {
+  return isRecord(object.metadata) ? text(object.metadata, key) : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -479,6 +705,49 @@ function mapStatus(
     default:
       return 'canceled';
   }
+}
+
+/** The fields of a Stripe invoice this system reads. The object has two hundred more. */
+interface StripeInvoice {
+  id: string;
+  number: string | null;
+  status: string | null;
+  amount_due: number;
+  amount_paid: number;
+  currency: string;
+  period_start: number | null;
+  period_end: number | null;
+  created: number;
+  hosted_invoice_url: string | null;
+  invoice_pdf: string | null;
+}
+
+function toInvoice(invoice: StripeInvoice): Invoice {
+  return {
+    id: invoice.id,
+    number: invoice.number,
+    status: mapInvoiceStatus(invoice.status),
+    amountDueCents: invoice.amount_due,
+    amountPaidCents: invoice.amount_paid,
+    // Stripe sends `gbp`; `Intl` and `plan_allowances` both say `GBP`.
+    currency: invoice.currency.toUpperCase(),
+    periodStart: seconds(invoice.period_start),
+    periodEnd: seconds(invoice.period_end),
+    createdAt: seconds(invoice.created) ?? new Date(0),
+    hostedUrl: invoice.hosted_invoice_url,
+    pdfUrl: invoice.invoice_pdf,
+  };
+}
+
+/**
+ * Stripe's invoice statuses are already ours — the list was taken from theirs
+ * — so this only guards against a value added later. An unknown status reads
+ * as `open`, which is the one that makes somebody look rather than relax.
+ */
+function mapInvoiceStatus(status: string | null): InvoiceStatus {
+  return (INVOICE_STATUSES as readonly string[]).includes(status ?? '')
+    ? (status as InvoiceStatus)
+    : 'open';
 }
 
 function text(object: Record<string, unknown>, key: string): string | null {

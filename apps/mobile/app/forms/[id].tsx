@@ -44,7 +44,9 @@ function Fill() {
     (sql) => fillSession(sql, id),
   );
   // The form is opened once, from what the phone held at that moment. Autosaves
-  // write to the same rows this query watches; they must not reset what is on screen.
+  // write to the same rows this query watches; they must not reset what is on
+  // screen. What the query reports afterwards is handed to the model, which
+  // tells its own saves from answers a sync merged in from another device.
   const [opened, setOpened] = useState<FillSession | undefined>(undefined);
   if (opened === undefined && state.status === 'ready' && state.data !== undefined) {
     setOpened(state.data);
@@ -68,12 +70,25 @@ function Fill() {
     prefilled === undefined || from === undefined
       ? undefined
       : t('mobile.fill.start.prefilled', { count: Number(prefilled), job: from });
-  return <Session session={opened} notice={notice} />;
+  return <Session session={opened} live={state.data} notice={notice} />;
 }
 
-function Session({ session, notice }: { session: FillSession; notice: string | undefined }) {
+function Session({
+  session,
+  live,
+  notice,
+}: {
+  /** The form as it was opened. */
+  session: FillSession;
+  /** The form as the phone holds it now; undefined once it has left the phone. */
+  live: FillSession | undefined;
+  notice: string | undefined;
+}) {
   const { t, i18n } = useTranslation();
   const form = compiledVersion(session.submission.formVersionId, session.definition);
+  // Whether the form may be edited follows the phone's row, not the moment it was
+  // opened: a submit the server refused makes it a draft again (P12).
+  const submission = live?.submission ?? session.submission;
   const [today] = useState(localToday);
   const subtitle =
     session.job === null
@@ -110,6 +125,14 @@ function Session({ session, notice }: { session: FillSession; notice: string | u
     }
     return opened;
   });
+  // Answers the sync engine wrote while the form is open: another device's,
+  // merged by the server. The model keeps the engineer's own edits on top.
+  const storedAnswers = live?.submission.answers;
+  useEffect(() => {
+    if (model !== undefined && storedAnswers !== undefined) {
+      model.absorbStoredAnswers(storedAnswers);
+    }
+  }, [model, storedAnswers]);
   // The page and open entry in the route, so the screen remembered for a force
   // close includes them.
   useEffect(
@@ -139,7 +162,7 @@ function Session({ session, notice }: { session: FillSession; notice: string | u
     );
   }
 
-  if (session.submission.status === 'submitted') {
+  if (submission.status === 'submitted') {
     return (
       <ScrollScreen>
         <View style={styles.back}>
@@ -149,13 +172,13 @@ function Session({ session, notice }: { session: FillSession; notice: string | u
         {subtitle === undefined ? null : <Body muted>{subtitle}</Body>}
         <Body>{t('mobile.fill.submittedBody')}</Body>
         <FormMediaProvider
-          workOrderId={session.submission.workOrderId}
-          answers={session.submission.answers}
+          workOrderId={submission.workOrderId}
+          answers={submission.answers}
           settled={() => Promise.resolve()}
         >
           <AnswerList
             form={form}
-            answers={session.submission.answers}
+            answers={submission.answers}
             locale={i18n.language}
             today={today}
           />
@@ -174,7 +197,7 @@ function Session({ session, notice }: { session: FillSession; notice: string | u
           workOrderId={session.submission.workOrderId}
           locale={i18n.language}
           today={today}
-          correction={session.submission.status === 'reopened'}
+          correction={submission.status === 'reopened'}
           notice={notice}
           onClose={() => {
             void model.flush().finally(() => router.back());

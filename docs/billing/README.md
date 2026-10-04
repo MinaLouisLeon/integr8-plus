@@ -4,11 +4,12 @@ A company pays, and **what they pay for is enforced by the API** — not by a sc
 client, and not by anything a crafted request can talk its way past (P17).
 
 ```
-apps/web  (app)/billing            the plan, the limits, the usage, and two buttons
+apps/web  (app)/billing            the plan, the limits, the usage, the invoices, and two buttons
+        │  GET  /v1/billing/invoices   ← the invoices, read from the provider each time
         │  POST /v1/billing/checkout   → the provider's hosted page
-        │  POST /v1/billing/portal     → the provider's card/invoice/cancel page
+        │  POST /v1/billing/portal     → the provider's card/cancel page
         │
-apps/api  routes/v1/billing.ts     those two, plus the public webhook
+apps/api  routes/v1/billing.ts     those three, plus the public webhook
         │  billing/provider.ts     BillingProvider: Stripe, or a recording fake
         │  billing/webhook.ts      what a verified delivery does
         │  billing/entitlements.ts the refusals: seats, submissions, storage
@@ -83,11 +84,14 @@ Not by permission: permissions have no read/write classification, and a new perm
 without being classified would default to _allowed_. A method cannot be forgotten, and the
 failure direction of an omitted flag is a refused write, which is the safe one.
 
-Three routes declare the flag, and the list is meant to stay about this short:
+Four routes declare the flag, and the list is meant to stay about this short:
 
 - `POST /v1/billing/checkout` and `POST /v1/billing/portal` — **a company that has not paid
   must be able to pay.** A read-only company that cannot reach the checkout is a company that
   cannot stop being read-only.
+- `GET /v1/billing/invoices` — a read, so the method already lets it through; it declares the
+  flag anyway because somebody in arrears needs their invoices more than anybody else does, and
+  the intent should survive the route ever changing shape.
 - `POST /v1/auth/sign-out` — refusing somebody the ability to sign out is pure spite.
 - `POST /v1/sync/report` — a diagnostic report, not the company's data.
 
@@ -95,6 +99,29 @@ One consequence is worth stating plainly: **sync push is refused while a company
 Phones keep pulling, because that is a `GET`; work queued on a device stays on the device until
 the bill is paid. That is what read-only means, and it is better than the alternative of
 silently accepting work into an account nobody is paying for.
+
+---
+
+## Invoices are read, never copied
+
+`GET /v1/billing/invoices` asks the provider for the customer's last twenty-four invoices — two
+years of monthly billing — and hands back the number, status, amount, period and the provider's
+own hosted and PDF links. The billing page lists them, with money and dates formatted through
+`@integr8/i18n` so `£49.00` and `1 October 2026` follow the reader's locale and the currency
+symbol is always the invoice's own.
+
+They are **not mirrored into a table**. An invoice is the provider's document: it is paid,
+voided or refunded over there, by events this system does not act on, and a copy here would be
+the one that was wrong the moment it mattered. Reading it on each visit costs one request to
+the provider from a page a company opens a few times a year.
+
+A company with no provider customer — on its trial, never subscribed — gets an empty list, not
+an error. The recording fake keeps an in-memory list that tests seed with `issueInvoice`, which is
+deterministic by construction so a test can name exact values.
+
+What stays on the provider's hosted portal is **the card and cancellation**: those are writes
+against the provider's records, and a form in this app that took a card number would undo the
+reason the portal exists.
 
 ---
 
@@ -122,9 +149,35 @@ provider that receives an error retries for days, and retrying will not make us 
 event we have no handler for. It answers **400 only when the signature fails**, and says nothing
 more than that: the detail goes to our logs, never to whoever sent it.
 
-Identity never comes from the payload. A delivery is matched to a company by the customer id we
-stored when that company first paid, or — only for a completed checkout — by the reference our
-own checkout call attached. A payload naming a company we do not have is recorded and dropped.
+### How a company is identified
+
+Identity never comes from the payload. A delivery is matched to a company in two ways, in order
+of trust:
+
+1. **The customer id we stored** when that company first paid. A stored mapping always wins.
+2. **The reference our own checkout call attached.** On `checkout.session.completed` it is
+   `client_reference_id`; on the subscription and invoice events it is the `tenant_id` metadata
+   that `createCheckout` sets with `subscription_data[metadata]`, which Stripe copies onto the
+   subscription and from there onto every invoice. `translate` reads it back as `tenantHint`.
+
+The second way exists because **Stripe does not order deliveries.** For a first purchase,
+`customer.subscription.created` and `invoice.paid` usually arrive _before_ the checkout event,
+and until the checkout event arrived there was no customer id on file to match them by. They
+were recorded as unmatched, answered 200 — so never retried — and the company stayed on `trial`
+with a paid subscription's ids, for the trial sweep to turn read-only a fortnight later.
+
+The hint is accepted only when no customer is on file for the delivery, only when it is shaped
+like one of our ids, only when it names a company we have, and only when that company has no
+_other_ customer on file — our checkout reuses a company's customer id, so a second customer
+carrying our reference is not something we produced. A payload naming a company we do not have,
+or failing any of those, is recorded and dropped.
+
+The checkout event also carries the price our checkout asked for (`metadata[price_id]`) and
+whether the first charge was taken (`payment_status`). When it is the first thing heard about a
+subscription it puts the company on that plan and status; when the subscription's own events got
+there first — the usual order — it adds only the ids, because those events have already said
+more than a checkout can, and a checkout that completed an hour ago must not undo a `past_due`
+that arrived since.
 
 ---
 
