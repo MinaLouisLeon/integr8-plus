@@ -71,3 +71,68 @@ jobs:
             echo "Run: pnpm --filter @integr8/api openapi && pnpm --filter @integr8/api-client generate"
             exit 1
           fi
+
+  # The same suites the pull request ran, on the merge result, because the
+  # merge result is the commit a nightly or a release is actually built from.
+  database:
+    name: Migrations, isolation, authentication and API
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: integr8_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APP_ENV: test
+      INTEGR8_TEST_DATABASE: i-know-this-database-is-disposable
+      INTEGR8_APP_PASSWORD: ci-app-password
+      INTEGR8_AUTH_PASSWORD: ci-auth-password
+      DATABASE_URL_ADMIN: postgres://postgres:postgres@localhost:5432/integr8_test
+      DATABASE_URL: postgres://integr8_app:ci-app-password@localhost:5432/integr8_test
+      DATABASE_URL_AUTH: postgres://integr8_auth:ci-auth-password@localhost:5432/integr8_test
+      AUTH_ISSUER: https://api.ci.integr8.example
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm build
+
+      - name: Create the runtime and auth roles
+        run: pnpm --filter @integr8/db db bootstrap
+
+      - name: Migrate, isolate, verify
+        run: pnpm --filter @integr8/db test:integration
+
+      - name: Generate signing keys for this run
+        # Only the KEY=VALUE lines: pnpm's own banner and keygen's explanatory
+        # comments are not environment variables, and GITHUB_ENV refuses them.
+        run: pnpm --silent --filter @integr8/auth keygen | grep -E '^[A-Z_]+=' >> "$GITHUB_ENV"
+
+      - name: Sessions, invitations and impersonation
+        run: pnpm --filter @integr8/auth test:integration
+
+      - name: API contract, request pipeline and sync
+        run: pnpm --filter @integr8/api test:integration

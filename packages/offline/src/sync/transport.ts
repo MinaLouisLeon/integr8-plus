@@ -10,6 +10,7 @@ import type {
   PushRequest,
   PushResponse,
   SyncReport,
+  SyncSubmission,
   WorkOrderDetail,
 } from '../api-types.js';
 
@@ -23,6 +24,8 @@ export interface SyncApi {
   me(): Promise<Me>;
   workOrder(workOrderId: string): Promise<WorkOrderDetail | undefined>;
   customer(customerId: string): Promise<CustomerDetail | undefined>;
+  /** One form's submission as the pull would send it; undefined when gone or not this person's to see. */
+  submission(submissionId: string): Promise<SyncSubmission | undefined>;
   pull(query: { cursor?: string; page?: string; retentionDays: number }): Promise<PullPage>;
   push(body: PushRequest): Promise<PushResponse>;
   reports(reports: readonly SyncReport[]): Promise<void>;
@@ -72,6 +75,32 @@ export function syncApiFor(client: Integr8Client): SyncApi {
             })
           ).data,
       ),
+    submission: (submissionId) =>
+      unlessGone(async () => {
+        const data = (
+          await client.GET('/v1/submissions/{submissionId}', {
+            params: { path: { submissionId } },
+          })
+        ).data;
+        if (data === undefined) {
+          return undefined;
+        }
+        // The detail route answers the desktop's questions too; the phone keeps
+        // the same fields of it that a pull carries.
+        const { submission } = data;
+        return {
+          id: submission.id,
+          formId: submission.formId,
+          formVersionId: submission.formVersionId,
+          workOrderId: submission.workOrder?.id ?? null,
+          status: submission.status,
+          revision: submission.revision,
+          answers: submission.answers,
+          submittedBy: submission.submittedBy,
+          submittedAt: submission.submittedAt,
+          updatedAt: submission.updatedAt,
+        };
+      }),
     pull: async (query) => (await client.GET('/v1/sync/pull', { params: { query } })).data!,
     push: async (body) => (await client.POST('/v1/sync/push', { body })).data!,
     reports: async (reports) => {

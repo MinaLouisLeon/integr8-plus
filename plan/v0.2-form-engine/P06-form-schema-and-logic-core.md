@@ -70,8 +70,8 @@ So the criterion stays unticked. Either of these closes it:
 
 ### The database proof in CI
 
-The immutability suite passes against PostgreSQL 17.10. It runs in CI inside the existing
-`database` job, which is still gated on `DATABASE_TESTS` — see P02.
+The immutability suite passes against PostgreSQL 17.10. It runs in CI inside the `database`
+job on every pull request, against a Postgres 16 service container — see P02.
 
 ## Decisions taken during implementation
 

@@ -282,6 +282,10 @@ export async function pullChanges(
  * Fetches jobs whose shown state may no longer be right: a change to them was
  * refused, conflicted, or dropped by the engineer, so the phone's copy still has
  * it applied. A delta pull would not bring them if nothing changed on the server.
+ *
+ * The job's forms come with it: a submit that was refused or dropped left the
+ * phone showing a form the server never received as submitted, and only the
+ * server's copy says what the form really is.
  */
 export async function refreshRequested(db: LocalDatabase, api: SyncApi): Promise<number> {
   const requested = await db.read(async (sql) => {
@@ -294,6 +298,15 @@ export async function refreshRequested(db: LocalDatabase, api: SyncApi): Promise
   for (const workOrderId of requested) {
     const detail = await api.workOrder(workOrderId);
     const customer = detail === undefined ? undefined : await api.customer(detail.customer.id);
+    const submissions: SyncSubmission[] = [];
+    for (const form of detail?.forms ?? []) {
+      if (form.submission !== null) {
+        const submission = await api.submission(form.submission.id);
+        if (submission !== undefined) {
+          submissions.push(submission);
+        }
+      }
+    }
     await db.write(PULL_TABLES, async (sql) => {
       const at = new Date().toISOString();
       if (customer !== undefined) {
@@ -313,6 +326,9 @@ export async function refreshRequested(db: LocalDatabase, api: SyncApi): Promise
           at,
         );
         refreshed += 1;
+      }
+      for (const submission of submissions) {
+        await writeSubmission(sql, submission, at);
       }
       const row = await sql.get<{ value: string }>(
         `select value from meta where key = 'refresh_work_orders'`,

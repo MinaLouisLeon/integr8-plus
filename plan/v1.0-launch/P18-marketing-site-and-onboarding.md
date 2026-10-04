@@ -1,7 +1,7 @@
 # P18 — Marketing site and self-serve onboarding
 
 **Version:** v1.0 Launch
-**Status:** `IN PROGRESS — everything built and tested; the copy is a first draft and one exit criterion needs a real run`
+**Status:** `IN PROGRESS — everything built and tested; the copy is a first draft and one exit criterion is measured but has no number yet`
 **Depends on:** P17
 
 ## Goal
@@ -21,13 +21,13 @@ The Next.js public surface and the signup-to-productive path.
 - [x] Guided first-run: create a job type, clone a starter form, invite an engineer, download the apps
 - [x] Starter form template library visible during onboarding
 - [x] Demo company data, clearly labelled, removable in one click
-- [~] Company settings: branding and logo, working hours, timezone, currency, locale, job types
+- [x] Company settings: branding and logo, working hours, timezone, currency, locale, job types
 - [x] User management: invite, deactivate, change role, resend invite
-- [~] Billing portal surfacing plan, invoices, seats and current usage
+- [x] Billing portal surfacing plan, invoices, seats and current usage
 - [x] Help centre with the first fifteen articles, written from real support questions
 - [x] Analytics on the signup funnel, so you can see where people drop out
 
-Three of these need their marks explained, because a tick that means something different from
+Four of these need their marks explained, because a tick that means something different from
 what the line says is worse than no tick at all.
 
 - **The signup flow does not follow the order written above.** The task says "company → Stripe
@@ -37,17 +37,22 @@ what the line says is worse than no tick at all.
   plan's wording lost to the code that already existed. "Owner invited" is also wrong for
   self-serve: the owner is made directly, because they have just proved they own the address and
   emailing somebody an invitation to a company they created themselves would be absurd.
-- **Company settings is `[~]`: there is no logo upload.** The column and the foreign key exist and
-  point at the media ledger, so a logo is metered and purged like any other file. No screen sets
-  it. Everything else on that line — working hours, timezone, currency, locale, job types — is
-  done.
+- **Company settings: the logo is uploaded, shown, replaced and removed** from the settings
+  screen, through the same three-step media flow a photo uses, so it is metered and purged like
+  any other file. `PATCH /v1/settings` refuses anything that is not a stored image of that
+  company's with a 422 rather than a constraint error. What the tick does **not** mean is that
+  the logo is drawn on anything yet: no document the product sends out carries branding, so
+  there is nowhere to draw it.
 - **The help centre is `[x]` but not written from real support questions**, because there are no
   customers and therefore no support questions. Fifteen articles exist, written from how the
   product actually behaves, and **the help page says so at the top** rather than implying a
   provenance they do not have. They are the first thing to rewrite once real questions exist.
-- **The billing portal stays `[~]`**, unchanged from stage A: plan, subscription state, all three
-  limits and the usage against them are on the screen; invoices are one click away on the
-  provider's hosted portal, which is not the same as being surfaced.
+- **The billing portal is `[x]` with one word to define.** Plan, subscription state, all three
+  limits, the usage against them and now **the invoices** — number, date, amount, status, each
+  linking to the provider's hosted copy and its PDF — are on the screen, read from the provider
+  on each visit rather than mirrored. "Portal" here does not mean the card form: updating a card
+  and cancelling stay on the provider's hosted page, because a form in this app that took a card
+  number would undo the reason the provider's page exists.
 
 ## Prerequisites the plan did not name
 
@@ -73,7 +78,9 @@ a page that did not exist.** Both were fixed first.
 ## Exit criteria
 
 - [~] A test user signs up, pays and completes a job in the mobile app, with no manual step from you
-- [ ] Time from landing page to first submitted form is under thirty minutes, measured
+- [ ] Time from landing page to first submitted form is under thirty minutes — **measured
+      automatically** on the funnel screen as a median across the companies created in the
+      window; unticked because no real company has produced the number yet
 - [x] Every plan limit shown on the pricing page matches what the entitlement service enforces
 - [x] The funnel is instrumented and drop-off is visible per step
 
@@ -82,8 +89,16 @@ verifies, gets a company with job types, storage, a trial and an active owner, a
 with no manual step. Paying cannot be proven without a Stripe account; P17 proves everything up
 to the provider's own hosted page.
 
-**The second is unmeasured, not unmet.** The funnel records the steps it would be measured from,
-but nobody has walked the path with a stopwatch. It needs a person, not a test.
+**The second is measured, not met — because there is nothing to measure yet.** `GET
+/v1/platform/funnel` reports, for every company created in the window that has submitted
+anything, the time from `signup.provisioned` (falling back to `signup.started` on the same
+request) to its first `submissions.submitted_at`, with the median and the count of companies
+behind it; the funnel screen shows it as "landing to first form, median". **The clock starts when
+the company exists, not at the landing page**, and the screen says so: the page views before
+that carry no id and cannot honestly be tied to a company. `signup.integration.test.ts` proves a
+stranger who signs up and submits a form is measured, and that the measurement carries company
+ids and seconds and nothing that identifies a person. The box stays empty until a real company
+has done it in under thirty minutes; a test that did it in two seconds would not be evidence.
 
 **The third is structural rather than asserted.** The pricing page renders `GET /v1/plans`, which
 returns the same `plan_allowances` rows the entitlement service reads. It cannot disagree, because
@@ -122,10 +137,16 @@ table.
 - **The slug is derived from the company name.** Letting a self-serve caller choose it means two
   people racing for the same one, and the unique index is the only protection onboarding has.
 - **Every signup answer is identical** whether or not the address already has a company.
+- **Invoices are read from the provider, never copied.** An invoice is paid, voided or refunded
+  over there by events this system does not act on; a mirror here would be the copy that was
+  wrong when it mattered.
+- **"Landing to first form" starts its clock at the company existing.** The honest alternative
+  was to not measure it; inventing a visitor identity to start it at the landing page was not an
+  alternative at all.
 
 ## What is deliberately not here
 
-- **A logo upload screen.** The column, the foreign key and the metering all exist.
+- **The logo on a document.** It can be uploaded; nothing the product sends out draws it yet.
 - **Real support questions.** There are no customers.
 - **Final marketing copy.** The positioning is not settled, and the words on the landing and
   features pages are a first draft to be rewritten by whoever owns it.

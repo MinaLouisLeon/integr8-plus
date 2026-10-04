@@ -163,25 +163,27 @@ both with a different role in each. The seed refuses to run when `APP_ENV` is
 Follow [runbook-backup-and-restore.md](./runbook-backup-and-restore.md), then
 rehearse a restore. A backup nobody has restored is a hypothesis.
 
-## 8. Enable the database job in CI
+## 8. The database job in CI
 
-The isolation suite has to run on every pull request, or it decays into
-decoration.
+Nothing to set up. The `database` job in `.github/workflows/ci.yml` (and the
+same job in `verify.yml`, which the branch builds call) starts a throwaway
+Postgres 16 in a service container, creates the two roles with the same
+`db bootstrap` command step 3 uses, rolls every migration down and up, and runs
+the isolation, authentication and API suites — on every pull request and every
+merge, with no account anywhere.
 
-In **GitHub → Settings → Secrets and variables → Actions**:
+What the service container cannot show is what is specific to Supabase: the
+Supavisor transaction pooler and the managed roles. Run the same three suites
+by hand against a disposable project or a Supabase branch after a change to
+connection handling, pooling or role grants:
 
-| Kind     | Name                      | Value                                                 |
-| -------- | ------------------------- | ----------------------------------------------------- |
-| Variable | `DATABASE_TESTS`          | `enabled`                                             |
-| Secret   | `TEST_DATABASE_URL`       | `integr8_app` pooler string for the **test** project  |
-| Secret   | `TEST_DATABASE_URL_ADMIN` | direct owner string for the **test** project          |
-| Secret   | `TEST_DATABASE_URL_AUTH`  | `integr8_auth` pooler string for the **test** project |
+```bash
+APP_ENV=test INTEGR8_TEST_DATABASE=i-know-this-database-is-disposable \
+DATABASE_URL=... DATABASE_URL_ADMIN=... DATABASE_URL_AUTH=... \
+pnpm --filter @integr8/db test:integration
+```
 
-Point them at a disposable project or a Supabase branch. Never at production.
-
-Until `DATABASE_TESTS` is set, the `database` job in `.github/workflows/ci.yml`
-is skipped, and the P02 exit criterion "the isolation suite runs in CI" is not
-met.
+Never against production.
 
 ---
 

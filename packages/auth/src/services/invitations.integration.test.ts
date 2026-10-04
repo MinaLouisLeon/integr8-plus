@@ -164,6 +164,37 @@ describe('accepting', () => {
     expect(member?.status).toBe('active');
   });
 
+  it('uses the identity an address already has, rather than failing to create a second', async () => {
+    // Somebody who already belongs to Southgate is invited to Northwind. GoTrue
+    // refuses a second user for the address, so the only way this can work is
+    // to look first — which the fake provider now insists on too.
+    const contractor = await createMember(services.identity, southgate.id, 'engineer', 'shared');
+    const { token } = await services.invitations.invite(ownerPrincipal, {
+      email: contractor.email,
+      role: 'engineer',
+    });
+
+    const accepted = await services.invitations.accept({
+      token,
+      password: 'a different perfectly good passphrase',
+      displayName: 'Sam Shared',
+      clientApp: 'web',
+    });
+
+    // The same person, in both companies.
+    expect(accepted.userId).toBe(contractor.userId);
+    const member = await withTenant(northwind.id, (tx) =>
+      tx.tenantUsers.findByEmail(contractor.email),
+    );
+    expect(member).toMatchObject({ userId: contractor.userId, role: 'engineer', status: 'active' });
+
+    // And their credential is the one they had: accepting an invitation is not
+    // a password reset for an identity another company's sign-in rests on.
+    await expect(
+      services.identity.signInWithPassword(contractor.email, contractor.password),
+    ).resolves.toMatchObject({ userId: contractor.userId });
+  });
+
   it('cannot be redeemed twice', async () => {
     const email = uniqueEmail('twice');
     const { token } = await services.invitations.invite(ownerPrincipal, { email, role: 'viewer' });

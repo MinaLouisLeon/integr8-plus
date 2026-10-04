@@ -211,7 +211,137 @@ describe('translating Stripe into our words', () => {
       customerId: 'cus_1',
       subscriptionId: 'sub_1',
       tenantId: '00000000-0000-4000-8000-000000000001',
+      priceId: null,
+      status: null,
     });
+  });
+
+  it('reads the price and the payment state our checkout put on the session', () => {
+    const parsed = deliver({
+      id: 'evt_4b',
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          customer: 'cus_1',
+          subscription: 'sub_1',
+          // No `client_reference_id`: the metadata carries the same value.
+          metadata: { tenant_id: '00000000-0000-4000-8000-000000000001', price_id: 'price_1' },
+          payment_status: 'paid',
+        },
+      },
+    });
+
+    expect(parsed.event).toMatchObject({
+      kind: 'checkout_completed',
+      tenantId: '00000000-0000-4000-8000-000000000001',
+      priceId: 'price_1',
+      status: 'active',
+    });
+
+    // A checkout that opens with a trial collected nothing, and says so.
+    const trial = deliver({
+      id: 'evt_4c',
+      type: 'checkout.session.completed',
+      data: { object: { customer: 'cus_1', payment_status: 'no_payment_required' } },
+    });
+    expect(trial.event).toMatchObject({ kind: 'checkout_completed', status: 'trialing' });
+  });
+
+  /**
+   * Stripe does not order deliveries, and the subscription and invoice events
+   * for a first purchase usually land before the checkout event that carries
+   * `client_reference_id`. Our checkout puts the company on the subscription's
+   * metadata, and Stripe copies it onto every invoice; reading it back is what
+   * lets those earlier events find their company.
+   */
+  it('carries the company our checkout named on a subscription, as a hint', () => {
+    const parsed = deliver({
+      id: 'evt_6',
+      type: 'customer.subscription.created',
+      data: {
+        object: {
+          id: 'sub_1',
+          customer: 'cus_1',
+          status: 'active',
+          metadata: { tenant_id: '00000000-0000-4000-8000-000000000001' },
+          items: { data: [] },
+        },
+      },
+    });
+
+    expect(parsed.event).toMatchObject({
+      kind: 'subscription_changed',
+      tenantHint: '00000000-0000-4000-8000-000000000001',
+    });
+
+    const bare = deliver({
+      id: 'evt_7',
+      type: 'customer.subscription.updated',
+      data: { object: { id: 'sub_2', customer: 'cus_2', status: 'active', items: { data: [] } } },
+    });
+    expect(bare.event).toMatchObject({ kind: 'subscription_changed', tenantHint: null });
+  });
+
+  it('carries the hint on an invoice, wherever the API version puts it', () => {
+    const tenant = '00000000-0000-4000-8000-000000000001';
+
+    const classic = deliver({
+      id: 'evt_8',
+      type: 'invoice.paid',
+      data: {
+        object: {
+          customer: 'cus_1',
+          subscription: 'sub_1',
+          subscription_details: { metadata: { tenant_id: tenant } },
+        },
+      },
+    });
+    expect(classic.event).toEqual({
+      kind: 'payment_succeeded',
+      customerId: 'cus_1',
+      subscriptionId: 'sub_1',
+      tenantHint: tenant,
+    });
+
+    // From API version 2025-03-31 the subscription moved under `parent`.
+    const basil = deliver({
+      id: 'evt_9',
+      type: 'invoice.payment_failed',
+      data: {
+        object: {
+          customer: 'cus_1',
+          parent: {
+            subscription_details: { subscription: 'sub_1', metadata: { tenant_id: tenant } },
+          },
+        },
+      },
+    });
+    expect(basil.event).toEqual({
+      kind: 'payment_failed',
+      customerId: 'cus_1',
+      subscriptionId: 'sub_1',
+      tenantHint: tenant,
+    });
+
+    // And the line items carry the subscription's metadata on every version.
+    const fromLines = deliver({
+      id: 'evt_10',
+      type: 'invoice.payment_succeeded',
+      data: {
+        object: {
+          customer: 'cus_1',
+          lines: { data: [{ metadata: { tenant_id: tenant } }] },
+        },
+      },
+    });
+    expect(fromLines.event).toMatchObject({ kind: 'payment_succeeded', tenantHint: tenant });
+
+    const none = deliver({
+      id: 'evt_11',
+      type: 'invoice.paid',
+      data: { object: { customer: 'cus_1', subscription: 'sub_1' } },
+    });
+    expect(none.event).toMatchObject({ kind: 'payment_succeeded', tenantHint: null });
   });
 
   it('records what it does not act on rather than refusing it', () => {
@@ -224,7 +354,98 @@ describe('translating Stripe into our words', () => {
   });
 });
 
+describe('listing invoices from Stripe', () => {
+  it('asks for the customer’s last two years and translates each invoice', async () => {
+    const calls: { url: string; method: string | undefined }[] = [];
+    const provider = new StripeBillingProvider({
+      secretKey: 'sk_test',
+      webhookSecret: SECRET,
+      fetch: (input, init) => {
+        const url =
+          typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+        calls.push({ url, method: init?.method });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              data: [
+                {
+                  id: 'in_1',
+                  number: 'ACME-0001',
+                  status: 'paid',
+                  amount_due: 4900,
+                  amount_paid: 4900,
+                  currency: 'gbp',
+                  period_start: 1_756_684_800,
+                  period_end: 1_759_276_800,
+                  created: 1_759_276_800,
+                  hosted_invoice_url: 'https://invoice.stripe.com/i/in_1',
+                  invoice_pdf: 'https://pay.stripe.com/invoice/in_1/pdf',
+                },
+                {
+                  id: 'in_0',
+                  number: null,
+                  status: 'something_new',
+                  amount_due: 0,
+                  amount_paid: 0,
+                  currency: 'gbp',
+                  period_start: null,
+                  period_end: null,
+                  created: 1_756_684_800,
+                  hosted_invoice_url: null,
+                  invoice_pdf: null,
+                },
+              ],
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        );
+      },
+    });
+
+    const invoices = await provider.listInvoices('cus_123');
+
+    // A GET, for this customer, two years of monthly invoices.
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.method).toBeUndefined();
+    expect(calls[0]?.url).toBe('https://api.stripe.com/v1/invoices?customer=cus_123&limit=24');
+
+    expect(invoices[0]).toMatchObject({
+      id: 'in_1',
+      number: 'ACME-0001',
+      status: 'paid',
+      amountDueCents: 4900,
+      amountPaidCents: 4900,
+      // Stripe says `gbp`; `Intl` and our own plan rows say `GBP`.
+      currency: 'GBP',
+      hostedUrl: 'https://invoice.stripe.com/i/in_1',
+      pdfUrl: 'https://pay.stripe.com/invoice/in_1/pdf',
+    });
+    expect(invoices[0]?.periodStart?.toISOString()).toBe('2025-09-01T00:00:00.000Z');
+    expect(invoices[0]?.createdAt.toISOString()).toBe('2025-10-01T00:00:00.000Z');
+
+    // A status Stripe adds later reads as open — the one that makes somebody
+    // look — rather than as paid or as a crash.
+    expect(invoices[1]).toMatchObject({ status: 'open', periodStart: null, hostedUrl: null });
+  });
+});
+
 describe('the fake', () => {
+  it('lists the invoices it issued to a customer, newest first, and nobody else’s', async () => {
+    const provider = new RecordingBillingProvider();
+    const first = provider.issueInvoice('cus_a');
+    const second = provider.issueInvoice('cus_a', { status: 'open', amountPaidCents: 0 });
+    provider.issueInvoice('cus_b');
+
+    // Deterministic: the same sequence every run, so a test can say exactly
+    // what it expects and a screenshot looks the same twice.
+    expect(first).toMatchObject({ id: 'in_test_1', number: 'TEST-0001', status: 'paid' });
+    expect(first.hostedUrl).toContain('billing.invalid');
+
+    const listed = await provider.listInvoices('cus_a');
+    expect(listed.map((invoice) => invoice.id)).toEqual([second.id, first.id]);
+    expect(await provider.listInvoices('cus_nobody')).toEqual([]);
+  });
+
   it('records what it was asked for, and sends nobody anywhere real', async () => {
     const provider = new RecordingBillingProvider();
 
@@ -243,5 +464,31 @@ describe('the fake', () => {
     // Nowhere real, on purpose: a fake that looked like it took a payment is a
     // fake somebody eventually believes.
     expect(checkout.url).toContain('billing.invalid');
+  });
+
+  it('fills in the tenant hint a hand-written event leaves out', () => {
+    const provider = new RecordingBillingProvider();
+
+    const bare = provider.parseWebhook(
+      JSON.stringify({
+        id: 'evt_1',
+        type: 'invoice.paid',
+        event: { kind: 'payment_succeeded', customerId: 'cus_1', subscriptionId: 'sub_1' },
+      }),
+      undefined,
+    );
+    expect(bare.event).toMatchObject({ kind: 'payment_succeeded', tenantHint: null });
+
+    // And carries one that is there, so a test can post an event that arrived
+    // before the checkout did.
+    const hinted = provider.parseWebhook(
+      JSON.stringify({
+        id: 'evt_2',
+        type: 'customer.subscription.created',
+        event: { kind: 'subscription_changed', customerId: 'cus_1', tenantHint: 'tenant-1' },
+      }),
+      undefined,
+    );
+    expect(hinted.event).toMatchObject({ kind: 'subscription_changed', tenantHint: 'tenant-1' });
   });
 });

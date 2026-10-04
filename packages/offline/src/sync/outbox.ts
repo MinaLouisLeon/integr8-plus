@@ -466,47 +466,61 @@ export async function recordAnswers(
   context: ChangeContext,
   input: { submissionId: string; answers: Record<string, unknown> },
 ): Promise<string> {
-  const { db, clock, random } = context;
+  const { db } = context;
   return db.write(OUTBOX_TABLES, async (sql) => {
     const submission = await submissionRow(sql, input.submissionId);
     if (submission.status === 'submitted') {
       throw new LocalChangeError('form_submitted', 'This form has been submitted.');
     }
-    const now = clock.now();
-    const at = now.toISOString();
-    await sql.run('update submissions set answers = ?, updated_at = ? where id = ?', [
-      JSON.stringify(input.answers),
-      at,
-      input.submissionId,
-    ]);
-    const unsent = await sql.get<{ seq: number; id: string }>(
-      `select seq, id from outbox
-       where entity_key = ? and kind = 'submission.answers' and state = 'pending' and attempts = 0
-         and sent_at is null
-         and seq = (select max(seq) from outbox where entity_key = ? and state <> 'done')`,
-      [`submission:${input.submissionId}`, `submission:${input.submissionId}`],
-    );
-    if (unsent !== undefined) {
-      await sql.run('update outbox set payload = ?, recorded_at = ? where seq = ?', [
-        JSON.stringify({ answers: input.answers }),
-        at,
-        unsent.seq,
-      ]);
-      return unsent.id;
-    }
-    const id = uuidv7(now.getTime(), random);
-    await insertChange(sql, {
-      id,
-      kind: 'submission.answers',
-      entityKey: `submission:${input.submissionId}`,
-      entityId: input.submissionId,
+    return saveAnswers(sql, context, {
+      submissionId: input.submissionId,
       workOrderId: submission.work_order_id,
-      payload: { answers: input.answers },
-      base: null,
-      at,
+      answers: input.answers,
     });
-    return id;
   });
+}
+
+/** The autosave itself, inside a transaction the caller holds. */
+async function saveAnswers(
+  sql: SqlConnection,
+  context: ChangeContext,
+  input: { submissionId: string; workOrderId: string | null; answers: Record<string, unknown> },
+): Promise<string> {
+  const { clock, random } = context;
+  const now = clock.now();
+  const at = now.toISOString();
+  await sql.run('update submissions set answers = ?, updated_at = ? where id = ?', [
+    JSON.stringify(input.answers),
+    at,
+    input.submissionId,
+  ]);
+  const unsent = await sql.get<{ seq: number; id: string }>(
+    `select seq, id from outbox
+     where entity_key = ? and kind = 'submission.answers' and state = 'pending' and attempts = 0
+       and sent_at is null
+       and seq = (select max(seq) from outbox where entity_key = ? and state <> 'done')`,
+    [`submission:${input.submissionId}`, `submission:${input.submissionId}`],
+  );
+  if (unsent !== undefined) {
+    await sql.run('update outbox set payload = ?, recorded_at = ? where seq = ?', [
+      JSON.stringify({ answers: input.answers }),
+      at,
+      unsent.seq,
+    ]);
+    return unsent.id;
+  }
+  const id = uuidv7(now.getTime(), random);
+  await insertChange(sql, {
+    id,
+    kind: 'submission.answers',
+    entityKey: `submission:${input.submissionId}`,
+    entityId: input.submissionId,
+    workOrderId: input.workOrderId,
+    payload: { answers: input.answers },
+    base: null,
+    at,
+  });
+  return id;
 }
 
 /** Media ids named anywhere in a set of answers. */
@@ -1066,6 +1080,9 @@ export async function applyPushResults(
               row.entityId,
             ],
           );
+          if (result.answers !== null && ANSWER_KINDS.has(row.kind)) {
+            await absorbServerAnswers(sql, row, result.answers);
+          }
         }
         break;
       case 'conflict':
@@ -1087,6 +1104,9 @@ export async function applyPushResults(
           JSON.stringify({ code: result.code, message: result.message, details: result.details }),
           row.seq,
         ]);
+        if (row.kind === 'submission.submit') {
+          await unsubmitLocally(sql, row, now);
+        }
         break;
       case 'retry': {
         counts.retried += 1;
@@ -1115,6 +1135,124 @@ export async function applyPushResults(
     }
   }
   return counts;
+}
+
+/** Kinds whose payload carries a full set of answers. */
+const ANSWER_KINDS: ReadonlySet<MutationKind> = new Set([
+  'submission.answers',
+  'submission.submit',
+]);
+
+/** Deep equality for JSON values. Key order does not matter: Postgres stores jsonb in its own. */
+export function sameJson(a: unknown, b: unknown): boolean {
+  if (a === b) {
+    return true;
+  }
+  if (a === undefined || b === undefined || a === null || b === null) {
+    return (a ?? null) === (b ?? null);
+  }
+  if (typeof a !== 'object' || typeof b !== 'object') {
+    return false;
+  }
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return (
+      Array.isArray(a) &&
+      Array.isArray(b) &&
+      a.length === b.length &&
+      a.every((item, index) => sameJson(item, b[index]))
+    );
+  }
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  for (const key of keys) {
+    if (!sameJson(left[key], right[key])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Their changes on top of mine: every question the server changed since `base`
+ * — another device's answer, merged in — takes the server's value, unless the
+ * engineer changed that same question here since `base` too, in which case the
+ * engineer's stands and goes with the next autosave. A question is one key: a
+ * repeatable section's entries move as a whole.
+ */
+export function takeTheirs(
+  base: Record<string, unknown>,
+  mine: Record<string, unknown>,
+  theirs: Record<string, unknown>,
+): Record<string, unknown> {
+  const merged = { ...mine };
+  for (const key of new Set([...Object.keys(base), ...Object.keys(theirs)])) {
+    if (!sameJson(theirs[key], base[key]) && sameJson(mine[key], base[key])) {
+      setOrDelete(merged, key, theirs[key]);
+    }
+  }
+  return merged;
+}
+
+/**
+ * An applied autosave or submit came back with the answers the server now holds.
+ * When those differ from what was sent, another device changed the form and the
+ * server merged the two. The phone's copy, and any autosave still waiting to go,
+ * were made against what was sent; left alone, the next autosave would carry the
+ * other device's questions as they were before, against the merged base, and
+ * quietly undo its work. So both take the server's merged answers, keeping only
+ * what the engineer has changed here since.
+ */
+async function absorbServerAnswers(
+  sql: SqlConnection,
+  row: OutboxRow,
+  theirs: Record<string, unknown>,
+): Promise<void> {
+  const base = (row.payload.answers ?? {}) as Record<string, unknown>;
+  if (sameJson(base, theirs)) {
+    return;
+  }
+  const local = await sql.get<{ answers: string }>('select answers from submissions where id = ?', [
+    row.entityId,
+  ]);
+  if (local === undefined) {
+    return;
+  }
+  const mine = JSON.parse(local.answers) as Record<string, unknown>;
+  await sql.run('update submissions set answers = ? where id = ?', [
+    JSON.stringify(takeTheirs(base, mine, theirs)),
+    row.entityId,
+  ]);
+  // Only one change to a form is ever on the wire, so anything after this one
+  // has not left and can still be corrected.
+  const later = await sql.all<{ seq: number; payload: string }>(
+    `select seq, payload from outbox
+     where entity_key = ? and seq > ? and state = 'pending' and sent_at is null
+       and kind in ('submission.answers', 'submission.submit')`,
+    [row.entityKey, row.seq],
+  );
+  for (const change of later) {
+    const payload = JSON.parse(change.payload) as { answers: Record<string, unknown> };
+    await sql.run('update outbox set payload = ? where seq = ?', [
+      JSON.stringify({ ...payload, answers: takeTheirs(base, payload.answers, theirs) }),
+      change.seq,
+    ]);
+  }
+}
+
+/**
+ * A submit the server refused, or the engineer dropped, never happened: the
+ * form on the phone goes back to being the draft it was — or the correction, when
+ * the submit carried a reason — with the engineer's answers kept as that draft.
+ * Nothing is lost, the form opens for editing again, and the job no longer
+ * counts it as done.
+ */
+async function unsubmitLocally(sql: SqlConnection, row: OutboxRow, at: string): Promise<void> {
+  await sql.run(
+    `update submissions set status = ?, submitted_at = null, updated_at = ?
+     where id = ? and status = 'submitted'`,
+    [row.payload.reason === undefined ? 'draft' : 'reopened', at, row.entityId],
+  );
 }
 
 /** Marks changes as handed to the network, which ends folding later autosaves into them. */
@@ -1216,9 +1354,10 @@ async function reissue(
 export async function discardChange(context: ChangeContext, mutationId: string): Promise<void> {
   await context.db.write(OUTBOX_TABLES, async (sql) => {
     const row = await outboxRow(sql, mutationId);
+    const at = context.clock.now().toISOString();
     await requestRefresh(sql, row.workOrderId);
     await sql.run(`update outbox set state = 'done', done_at = ?, last_error = ? where seq = ?`, [
-      context.clock.now().toISOString(),
+      at,
       JSON.stringify({
         code: 'discarded',
         message: 'Discarded by the engineer.',
@@ -1226,6 +1365,36 @@ export async function discardChange(context: ChangeContext, mutationId: string):
       }),
       row.seq,
     ]);
+    // A dropped submit leaves the form a draft, as the server has it — unless the
+    // server has it submitted by someone else, whose version the refresh brings.
+    if (row.kind === 'submission.submit' && row.conflict?.kind !== 'already_submitted') {
+      await unsubmitLocally(sql, row, at);
+      if (row.state === 'failed') {
+        // Refused, not outvoted: the answers were never the problem, so what the
+        // engineer wrote goes on as the draft rather than vanishing with the submit.
+        const local = await sql.get<{
+          work_order_id: string | null;
+          answers: string;
+          server_answers: string | null;
+        }>('select work_order_id, answers, server_answers from submissions where id = ?', [
+          row.entityId,
+        ]);
+        if (local !== undefined) {
+          const answers = JSON.parse(local.answers) as Record<string, unknown>;
+          const known =
+            local.server_answers === null
+              ? {}
+              : (JSON.parse(local.server_answers) as Record<string, unknown>);
+          if (!sameJson(answers, known)) {
+            await saveAnswers(sql, context, {
+              submissionId: row.entityId,
+              workOrderId: local.work_order_id,
+              answers,
+            });
+          }
+        }
+      }
+    }
   });
 }
 
@@ -1243,8 +1412,57 @@ export async function retryChange(context: ChangeContext, mutationId: string): P
         base: { state: conflict.current.state, revision: conflict.current.revision },
       });
     }
+    if (row.lastError?.code === UPLOAD_FAILED && row.waitsFor.media.length > 0) {
+      // The change was fine; a file it names was not. Trying the change again
+      // means trying the file again, or it would only wait for ever.
+      await sql.run(
+        `update uploads set state = 'queued', attempts = 0, next_attempt_at = null, last_error = null
+         where state = 'failed' and media_id in (select value from json_each(?))`,
+        [JSON.stringify(row.waitsFor.media)],
+      );
+    }
     return reissue(sql, context, row, {});
   });
+}
+
+/** The error code on a change held up by a file that will not upload. */
+export const UPLOAD_FAILED = 'upload_failed';
+
+/**
+ * A file that will never arrive — gone from the phone, unusable, or given up on
+ * — strands every change waiting for it. Those changes fail with it, so they are
+ * shown to the engineer to try again or drop, instead of reading "not sent yet"
+ * for ever.
+ */
+export async function strandChangesWaitingFor(
+  sql: SqlConnection,
+  mediaId: string,
+  code: string,
+): Promise<number> {
+  const result = await sql.run(
+    `update outbox set state = 'failed', last_error = ?
+     where state = 'pending'
+       and exists (select 1 from json_each(waits_for, '$.media') where value = ?)`,
+    [
+      JSON.stringify({
+        code: UPLOAD_FAILED,
+        message: 'A file this change needs could not be uploaded.',
+        details: { mediaId, code },
+      }),
+      mediaId,
+    ],
+  );
+  return result.changes;
+}
+
+/** A file given another chance frees the changes that failed for want of it. */
+export async function releaseChangesWaitingFor(sql: SqlConnection, mediaId: string): Promise<void> {
+  await sql.run(
+    `update outbox set state = 'pending', attempts = 0, next_attempt_at = null, last_error = null
+     where state = 'failed' and json_extract(last_error, '$.code') = ?
+       and exists (select 1 from json_each(waits_for, '$.media') where value = ?)`,
+    [UPLOAD_FAILED, mediaId],
+  );
 }
 
 export type Choice = 'mine' | 'theirs';
@@ -1394,7 +1612,7 @@ export interface JobSyncState {
   safeToLeave: boolean;
   pendingChanges: number;
   pendingUploads: number;
-  /** Changes that need the engineer: conflicts, and refusals. */
+  /** Changes that need the engineer: conflicts, refusals, and files that will not upload. */
   needsAttention: number;
 }
 
@@ -1407,8 +1625,9 @@ export async function jobSyncState(sql: SqlConnection, workOrderId: string): Pro
   }>(
     `select
        (select count(*) from outbox where work_order_id = ?1 and state = 'pending') as pending,
-       (select count(*) from uploads where work_order_id = ?1 and state <> 'confirmed') as uploads,
-       (select count(*) from outbox where work_order_id = ?1 and state in ('conflict', 'failed')) as attention,
+       (select count(*) from uploads where work_order_id = ?1 and state = 'queued') as uploads,
+       (select count(*) from outbox where work_order_id = ?1 and state in ('conflict', 'failed'))
+       + (select count(*) from uploads where work_order_id = ?1 and state = 'failed') as attention,
        (select count(*) from submissions
         where work_order_id = ?1 and server_revision is null
           and id not in (select entity_id from outbox where kind like 'submission.%')) as unqueued`,

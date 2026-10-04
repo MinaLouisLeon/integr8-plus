@@ -1,4 +1,4 @@
-import { getPlatformDataSource, withTenant } from '@integr8/db';
+import { getPlatformDataSource, type SyncReportInput, withTenant } from '@integr8/db';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { purgeOne } from '../../../platform/purge.js';
@@ -423,6 +423,96 @@ describe('flags and announcements', () => {
       announcements: { id: string }[];
     };
     expect(gone.announcements.some((item) => item.id === announcementId)).toBe(false);
+  });
+});
+
+/** A phone's report of one sync run, with nothing remarkable unless said otherwise. */
+function syncReport(
+  userId: string,
+  overrides: Partial<SyncReportInput> & Pick<SyncReportInput, 'outcome'>,
+): SyncReportInput {
+  return {
+    reportId: randomUUID(),
+    userId,
+    startedAt: new Date(),
+    durationMs: 800,
+    trigger: 'manual',
+    pushed: 0,
+    conflicts: 0,
+    rejected: 0,
+    retried: 0,
+    pulled: 0,
+    uploadsCompleted: 0,
+    uploadsFailed: 0,
+    uploadedBytes: 0,
+    queueDepth: 0,
+    pendingUploads: 0,
+    networkType: null,
+    clockOffsetMs: null,
+    appVersion: '1.2.0',
+    ...overrides,
+  };
+}
+
+describe('what is failing quietly', () => {
+  it('shows a phone whose sync runs are in trouble, and the billing deliveries in the window', async () => {
+    const engineer = await api.member('engineer', 'troubled-phone');
+    await withTenant(api.tenantId, async (tx) => {
+      // A clean run, then one that failed with work still waiting on the phone.
+      await tx.sync.recordReport(
+        syncReport(engineer.userId, {
+          startedAt: new Date(Date.now() - 60_000),
+          outcome: 'complete',
+          pushed: 3,
+        }),
+      );
+      await tx.sync.recordReport(
+        syncReport(engineer.userId, {
+          outcome: 'failed',
+          rejected: 1,
+          queueDepth: 4,
+          pendingUploads: 2,
+        }),
+      );
+    });
+
+    const response = await api.call(admin.accessToken, {
+      method: 'GET',
+      url: '/v1/platform/health?days=1',
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    const body = JSON.parse(response.body) as {
+      sync: { items: Record<string, unknown>[] };
+      webhooks: { received: number; applied: number; items: unknown[] };
+      jobs: { deadLettered: number; retrying: number };
+    };
+
+    const phone = body.sync.items.find((item) => item.userId === engineer.userId);
+    expect(phone).toMatchObject({
+      runs: 2,
+      failedRuns: 1,
+      rejected: 1,
+      queueDepth: 4,
+      pendingUploads: 2,
+      lastOutcome: 'failed',
+      appVersion: '1.2.0',
+    });
+    expect(body.webhooks.received).toBeGreaterThanOrEqual(body.webhooks.applied);
+    expect(typeof body.jobs.deadLettered).toBe('number');
+  });
+
+  it('leaves out a phone whose every run got everything through', async () => {
+    const engineer = await api.member('engineer', 'healthy-phone');
+    await withTenant(api.tenantId, (tx) =>
+      tx.sync.recordReport(syncReport(engineer.userId, { outcome: 'complete', pushed: 2 })),
+    );
+
+    const response = await api.call(admin.accessToken, {
+      method: 'GET',
+      url: '/v1/platform/health?days=1',
+    });
+    const body = JSON.parse(response.body) as { sync: { items: { userId: string }[] } };
+    expect(body.sync.items.some((item) => item.userId === engineer.userId)).toBe(false);
   });
 });
 

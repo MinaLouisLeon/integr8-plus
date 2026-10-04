@@ -2,7 +2,12 @@ import { ApiRequestError } from '@integr8/api-client';
 import type { LocalDatabase } from '../database.js';
 import type { SqlConnection } from '../sql.js';
 import type { DeviceClock } from './clock.js';
-import { backoffSeconds, MAX_ATTEMPTS } from './outbox.js';
+import {
+  backoffSeconds,
+  MAX_ATTEMPTS,
+  releaseChangesWaitingFor,
+  strandChangesWaitingFor,
+} from './outbox.js';
 import type { ByteTransport, FileSource, SyncApi } from './transport.js';
 
 /**
@@ -17,6 +22,12 @@ import type { ByteTransport, FileSource, SyncApi } from './transport.js';
  * already holds and sends only the rest. The id is chosen on the phone, so asking
  * the server to start the same upload again is harmless: it answers where that
  * upload stands.
+ *
+ * **Failed is final, and says so.** A file that is gone from the phone, that the
+ * server will not take, or that has failed ten times stops being tried. The
+ * changes waiting for it — a submit, a photo, a sign-off — fail with it, so the
+ * engineer sees them under "needs attention" and can try the file again or drop
+ * the change, rather than a job reading "not sent yet" for ever.
  */
 
 export interface UploadRow {
@@ -96,7 +107,7 @@ export async function uploadOne(
   let bytesSent = 0;
   const finish = async (outcome: UploadOutcome): Promise<UploadOutcome> => {
     const now = clock.now();
-    await db.write(['uploads', 'files'], async (sql) => {
+    await db.write(['uploads', 'files', 'outbox'], async (sql) => {
       switch (outcome.outcome) {
         case 'confirmed':
           await sql.run(
@@ -115,22 +126,26 @@ export async function uploadOne(
             JSON.stringify({ code: outcome.code }),
             upload.mediaId,
           ]);
+          await strandChangesWaitingFor(sql, upload.mediaId, outcome.code);
           break;
         case 'retry': {
           const attempts = upload.attempts + 1;
+          const givenUp = attempts >= MAX_ATTEMPTS;
           await sql.run(
             `update uploads set attempts = ?, next_attempt_at = ?, last_error = ?,
-               state = case when ? >= ? then 'failed' else state end
+               state = case when ? then 'failed' else state end
              where media_id = ?`,
             [
               attempts,
               new Date(now.getTime() + backoffSeconds(attempts) * 1000).toISOString(),
               JSON.stringify({ code: outcome.code }),
-              attempts,
-              MAX_ATTEMPTS,
+              givenUp ? 1 : 0,
               upload.mediaId,
             ],
           );
+          if (givenUp) {
+            await strandChangesWaitingFor(sql, upload.mediaId, outcome.code);
+          }
           break;
         }
         case 'offline':
@@ -223,15 +238,21 @@ export async function uploadOne(
   }
 }
 
-/** A file that failed to upload is tried again from where it stands. */
+/**
+ * A file that failed to upload is tried again from where it stands, and the
+ * changes that failed for want of it go back to waiting for it.
+ */
 export async function retryUpload(db: LocalDatabase, mediaId: string): Promise<void> {
-  await db.write(['uploads'], (sql) =>
-    sql.run(
+  await db.write(['uploads', 'outbox'], async (sql) => {
+    const result = await sql.run(
       `update uploads set state = 'queued', attempts = 0, next_attempt_at = null, last_error = null
        where media_id = ? and state = 'failed'`,
       [mediaId],
-    ),
-  );
+    );
+    if (result.changes > 0) {
+      await releaseChangesWaitingFor(sql, mediaId);
+    }
+  });
 }
 
 /**

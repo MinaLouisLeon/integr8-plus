@@ -1,0 +1,130 @@
+# A complete Integr8 Plus stack on one machine: Postgres, the API, the worker,
+# and the web app, from the two images in apps/*/Dockerfile.
+#
+#   cp deploy/.env.example deploy/.env      # then fill it in
+#   docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
+#
+# This is the first production-for-testing shape, not the final one. The
+# database is a container with a volume; a real deployment points DATABASE_URL*
+# at Supabase (docs/database/runbook-supabase-setup.md) and drops the postgres,
+# bootstrap and migrate services' dependency on it. Everything else is the same.
+#
+# Startup order is enforced by health checks: migrations wait for Postgres to
+# answer, the API and worker wait for the migrations to finish, the web app
+# waits for the API to be ready.
+
+name: integr8
+
+x-api-image: &api-image
+  image: ${API_IMAGE:-integr8-api:local}
+  build:
+    context: ..
+    dockerfile: apps/api/Dockerfile
+
+# Everything the API and the worker read. One block, so they cannot disagree.
+x-api-env: &api-env
+  env_file:
+    - ${ENV_FILE:-.env}
+  environment:
+    HOST: 0.0.0.0
+    PORT: 3000
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: integr8
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d integr8']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Creates the two login roles the API connects as. Idempotent: run again and
+  # it resets their passwords to what the env file says.
+  bootstrap:
+    <<: [*api-image, *api-env]
+    command: ['node', 'node_modules/@integr8/db/dist/migrator/cli.js', 'bootstrap']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  # Applies every pending migration, then exits. The API refuses traffic until
+  # the schema matches its build, so this has to finish first.
+  migrate:
+    <<: [*api-image, *api-env]
+    command: ['node', 'node_modules/@integr8/db/dist/migrator/cli.js', 'up']
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    restart: 'no'
+
+  api:
+    <<: [*api-image, *api-env]
+    restart: unless-stopped
+    ports:
+      - '${API_PORT:-3000}:3000'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      # Only used with MEDIA_STORAGE=local (staging). Production uses R2 and
+      # refuses local storage at startup.
+      - media-local:/app/.data/media
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health/ready').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  # The same image as the API, running the job worker: thumbnails, geocoding,
+  # push, email, media maintenance, dunning, scheduled tasks. Scale separately.
+  worker:
+    <<: [*api-image, *api-env]
+    command: ['node', 'dist/jobs/worker-main.js']
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - media-local:/app/.data/media
+
+  web:
+    image: ${WEB_IMAGE:-integr8-web:local}
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Baked into the browser bundle: where a customer's browser reaches the API.
+        NEXT_PUBLIC_API_BASE_URL: ${PUBLIC_API_URL:?set PUBLIC_API_URL in deploy/.env}
+        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.1.0}
+        NEXT_PUBLIC_APP_ENV: ${APP_ENV:-staging}
+        NEXT_PUBLIC_SENTRY_DSN: ${WEB_PUBLIC_SENTRY_DSN:-}
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-3001}:3001'
+    environment:
+      # Server-side only: route handlers reach the API over the compose network.
+      API_BASE_URL: http://api:3000
+      APP_ENV: ${APP_ENV:-staging}
+      SENTRY_DSN: ${WEB_SENTRY_DSN:-}
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  media-local:

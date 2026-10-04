@@ -169,6 +169,66 @@ describe('SupabaseIdentityProvider — creating an identity', () => {
       email_confirm: true,
     });
   });
+
+  it('refuses an address that already has one, as GoTrue does', async () => {
+    const { provider } = supabase(() =>
+      jsonResponse(
+        { code: 422, msg: 'A user with this email address has already been registered' },
+        422,
+      ),
+    );
+
+    await expect(
+      provider.createIdentity('dana@northwind.example', 'a good password'),
+    ).rejects.toThrow(IdentityProviderError);
+  });
+});
+
+describe('SupabaseIdentityProvider — finding an identity', () => {
+  /**
+   * GoTrue's admin list has no exact-match parameter: `filter` is a substring
+   * `LIKE` over the address, so `a@northwind.example` also returns
+   * `dana@northwind.example`. The provider asks with the whole address and
+   * picks the exact match out itself.
+   */
+  it('asks the admin list with the address and picks the exact match', async () => {
+    const { provider, calls } = supabase(() =>
+      jsonResponse({
+        users: [
+          { id: '018f2b3c-4d5e-7f80-9a1b-2c3d4e5f6072', email: 'dana@northwind.example' },
+          { id: USER_ID, email: 'a@northwind.example', email_confirmed_at: '2026-01-01' },
+        ],
+      }),
+    );
+
+    const found = await provider.findByEmail(' A@Northwind.example ');
+
+    expect(calls[0]?.url).toBe(
+      'https://project.supabase.co/auth/v1/admin/users?filter=a%40northwind.example&page=1&per_page=100',
+    );
+    expect(calls[0]?.headers.authorization).toBe('Bearer service-role-key');
+    expect(found).toEqual({ userId: USER_ID, email: 'a@northwind.example', emailVerified: true });
+  });
+
+  it('answers undefined when only near-misses come back, or nothing does', async () => {
+    const nearMiss = supabase(() =>
+      jsonResponse({ users: [{ id: USER_ID, email: 'dana@northwind.example' }] }),
+    );
+    await expect(nearMiss.provider.findByEmail('a@northwind.example')).resolves.toBeUndefined();
+
+    const nobody = supabase(() => jsonResponse({ users: [] }));
+    await expect(nobody.provider.findByEmail('a@northwind.example')).resolves.toBeUndefined();
+  });
+
+  it('reports a provider failure rather than treating it as "no such address"', async () => {
+    // Undefined here would send the caller on to create a duplicate, which
+    // GoTrue refuses — a confusing failure in place of the real one.
+    const { provider } = supabase(() => jsonResponse({ msg: 'nope' }, 500));
+
+    await expect(provider.findByEmail('a@northwind.example')).rejects.toThrow(
+      IdentityProviderError,
+    );
+  });
 });
 
 describe('FakeIdentityProvider', () => {
@@ -216,13 +276,27 @@ describe('FakeIdentityProvider', () => {
     );
   });
 
-  it('creates an identity, and is idempotent for one that exists', async () => {
+  it('creates an identity, and refuses a duplicate the way GoTrue does', async () => {
     const provider = new FakeIdentityProvider(identities);
 
     const created = await provider.createIdentity('new@northwind.example', 'a good password');
     expect(created.email).toBe('new@northwind.example');
 
-    const again = await provider.createIdentity('dana@northwind.example', 'ignored');
-    expect(again.userId).toBe(USER_ID);
+    // It used to hand back the existing identity here, which let two callers
+    // that never looked before creating pass their suites and fail in
+    // production. A double kinder than the real thing passes the wrong tests.
+    await expect(provider.createIdentity('dana@northwind.example', 'ignored')).rejects.toThrow(
+      IdentityProviderError,
+    );
+  });
+
+  it('finds an identity by address, however it is cased, and nobody otherwise', async () => {
+    const provider = new FakeIdentityProvider(identities);
+
+    await expect(provider.findByEmail(' Dana@Northwind.example ')).resolves.toMatchObject({
+      userId: USER_ID,
+      email: 'dana@northwind.example',
+    });
+    await expect(provider.findByEmail('nobody@northwind.example')).resolves.toBeUndefined();
   });
 });

@@ -85,6 +85,13 @@ work, and otherwise parked as a conflict. Nothing is resolved by whose clock is 
 | Form answers | nobody else changed the same question                                                                     | `answers_changed`: each disputed question; other answers are kept                                                    |
 | Submitting   | —                                                                                                         | `already_submitted` from elsewhere; `incomplete` when completing without the forms, photos or sign-off the job needs |
 
+When the server merges a form's answers without a conflict, the merged answers come back with
+the `applied` result and replace the phone's copy — and any autosave still waiting — except for
+questions the engineer has changed here since, so the next autosave cannot undo the other
+device's work; an open fill screen takes them on the same way. A submit the server refuses, or
+the engineer drops, makes the form a draft again on the phone, with the engineer's answers kept
+as that draft; the refresh that follows fetches the job's forms as the server has them.
+
 The phone shows the server's version of a record with a change in conflict or refused, and lists
 that change on the Sync screen. The engineer keeps theirs (`discardChange`), makes theirs again
 (`retryChange`, from the job's real state), or chooses per note or question
@@ -127,6 +134,11 @@ Kept apart from changes, so a large video never holds up a completed job.
   `GET …/parts` for what arrived). The phone records each part as it lands; after a kill it asks
   which parts storage holds and sends the rest.
 - An unconfirmed upload is kept for 7 days; the sweeper aborts parts older than 8 days.
+- A file that will never arrive — gone from the phone, refused by the server, or failed ten
+  times — is `failed`, and every change waiting for it fails with it (`upload_failed`), so the
+  submit, photo or sign-off that names it is listed under _Needs your attention_ to try again
+  (which tries the file again too) or discard, instead of reading _Not sent yet_ for ever.
+  Trying the file again from the Uploads list puts those changes back to waiting for it.
 - Uploads pause below 15% battery unless charging or the engineer taps **Sync now**. Mobile
   data is used for everything.
 

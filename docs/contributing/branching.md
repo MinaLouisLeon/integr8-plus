@@ -203,14 +203,13 @@ gh variable set DESKTOP_BUILDS --body 'disabled'   # skip desktop builds entirel
 
 ## Secrets and variables
 
-| Name                                 | Kind     | Without it                                                |
-| ------------------------------------ | -------- | --------------------------------------------------------- |
-| `TAURI_SIGNING_PRIVATE_KEY`          | secret   | Installers build, but carry no update signature           |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | secret   | As above                                                  |
-| `EXPO_TOKEN`                         | secret   | Mobile builds cannot authenticate                         |
-| `EAS_BUILDS`                         | variable | Mobile builds are skipped. Set to `enabled` to run them   |
-| `DESKTOP_BUILDS`                     | variable | Set to `disabled` to skip desktop builds                  |
-| `DATABASE_TESTS`                     | variable | The integration suites are skipped (see `docs/database/`) |
+| Name                                 | Kind     | Without it                                              |
+| ------------------------------------ | -------- | ------------------------------------------------------- |
+| `TAURI_SIGNING_PRIVATE_KEY`          | secret   | Installers build, but carry no update signature         |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | secret   | As above                                                |
+| `EXPO_TOKEN`                         | secret   | Mobile builds cannot authenticate                       |
+| `EAS_BUILDS`                         | variable | Mobile builds are skipped. Set to `enabled` to run them |
+| `DESKTOP_BUILDS`                     | variable | Set to `disabled` to skip desktop builds                |
 
 The Tauri signing key is the private half of the updater keypair — the one in
 `apps/desktop/src-tauri/updater.key`, which is git-ignored. Whoever holds it can
