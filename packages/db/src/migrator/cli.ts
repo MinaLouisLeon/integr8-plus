@@ -20,6 +20,9 @@ Commands
   new <slug>             Scaffold the next up/down pair
   bootstrap              Create the integr8_app and integr8_auth roles
                          (needs INTEGR8_APP_PASSWORD and INTEGR8_AUTH_PASSWORD)
+  deploy                 bootstrap, then up: the one command a hosting
+                         platform's pre-deploy hook runs before a new build
+                         takes traffic
 
 All commands except "new" connect as DATABASE_URL_ADMIN, the schema owner.
 `.trim();
@@ -58,6 +61,18 @@ async function main(): Promise<number> {
     }
 
     const migrator = new Migrator(client, loadMigrations());
+
+    if (command === 'deploy') {
+      // One process rather than two commands joined by a shell, because a
+      // platform's pre-deploy field is one command and not every platform runs
+      // it through a shell. Bootstrap first: a fresh database has no roles for
+      // the API to connect as, and the grants the migrations write name them.
+      const created = await bootstrap(client, { thenMigrating: true });
+      if (created !== 0) {
+        return created;
+      }
+      return report(await migrator.up(), 'Nothing to apply.');
+    }
 
     switch (command) {
       case 'status':
@@ -139,7 +154,10 @@ function report(
  * migrations, so a table added later is invisible to both until somebody writes
  * its grant.
  */
-async function bootstrap(client: pg.Client): Promise<number> {
+async function bootstrap(
+  client: pg.Client,
+  { thenMigrating = false }: { thenMigrating?: boolean } = {},
+): Promise<number> {
   const roles = [
     {
       name: 'integr8_app',
@@ -200,7 +218,9 @@ async function bootstrap(client: pg.Client): Promise<number> {
   await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_password', '']);
   await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_role', '']);
 
-  console.log('Run "up" next to apply migrations and grants.');
+  if (!thenMigrating) {
+    console.log('Run "up" next to apply migrations and grants.');
+  }
   return 0;
 }
 
