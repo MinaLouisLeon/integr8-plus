@@ -27,6 +27,7 @@ configuration.
 | API image              | `apps/api/Dockerfile`                       | Also the worker (`node dist/jobs/worker-main.js`) and the migrator     |
 | Web image              | `apps/web/Dockerfile`                       | Next.js standalone server; `NEXT_PUBLIC_*` baked in at build time      |
 | Compose stack          | `deploy/compose.yml`, `deploy/.env.example` | Postgres + bootstrap + migrate + api + worker + web, on one machine    |
+| Railway services       | `deploy/railway/*.json`                     | The same three processes as managed services, no machine; see below    |
 | Images in the registry | `.github/workflows/publish-images.yml`      | `ghcr.io/<owner>/integr8-api` and `integr8-web`, tagged per branch/sha |
 | Database runbooks      | `docs/database/`                            | Supabase setup, migrations, backup and restore                         |
 
@@ -88,6 +89,64 @@ configuration.
    Stripe (`BILLING_PROVIDER=stripe`, point the Stripe webhook at
    `https://api.../v1/billing/webhook`), Sentry. Finally `APP_ENV=production`,
    which makes the API refuse to start if any of them is missing.
+
+## Running it on Railway instead of a machine
+
+The compose stack needs a server, Docker and a reverse proxy. Railway runs the
+same two images as managed services and takes care of the machine, TLS and
+restarts. This is the shape for someone who would rather not operate a server:
+
+```
+  browsers/phones ──TLS──▶ web.up.railway.app      api.up.railway.app
+                                  │ API_BASE_URL          │
+                           ┌──────▼──────┐     ┌──────────▼───────┐    ┌───────────────┐
+                           │  web        │     │  api             │    │  worker       │
+                           │  web.json   │     │  api.json        │    │  worker.json  │
+                           └─────────────┘     └──┬───────────────┘    └──┬────────────┘
+                                                  │   pre-deploy: migrator deploy
+                                                  ▼
+                                      Railway Postgres (then Supabase)
+```
+
+1. **A project with a Postgres database.** Railway → New Project → Deploy
+   PostgreSQL. It exposes `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE` and
+   the rest as variables other services can reference.
+2. **Three services from this repository.** For each: New → GitHub Repo →
+   this repository, then Settings → **Config-as-code** → the matching file:
+   `deploy/railway/api.json`, `deploy/railway/worker.json`,
+   `deploy/railway/web.json`. The file sets the Dockerfile, the start command,
+   the health check and, for the API, the pre-deploy command that runs
+   `migrator deploy` (roles, then migrations) before a new build takes traffic.
+   The API and the web service each need a public domain (Settings →
+   Networking → Generate Domain; the API listens on 3000, the web app on 3001).
+3. **Variables.** The API and the worker take the same set, `deploy/.env.example`
+   minus the compose-only lines (`POSTGRES_PASSWORD`, `API_PORT`, `WEB_PORT`,
+   `PUBLIC_API_URL`, `API_IMAGE`, `WEB_IMAGE`). The database strings reference
+   the Postgres service:
+
+   ```
+   DATABASE_URL_ADMIN=${{Postgres.DATABASE_URL}}
+   DATABASE_URL=postgresql://integr8_app:APP_PASSWORD@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
+   DATABASE_URL_AUTH=postgresql://integr8_auth:AUTH_PASSWORD@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
+   ```
+
+   The web service takes `NEXT_PUBLIC_API_BASE_URL` (the API's public URL; a
+   build argument, so set it before the first build), `API_BASE_URL` (the same
+   URL), `APP_ENV`, `NEXT_PUBLIC_APP_ENV` and `PORT=3001`. Changing a variable
+   redeploys the service.
+
+4. **One-off commands** (the super admin, storage provisioning) run inside the
+   API service with the Railway CLI: `railway ssh --service api`, then
+   `node dist/platform/admin-cli.js create you@example.com "Your Name"`.
+5. **Releases** are pushes to the branch each service is connected to. Pick
+   `main` for all three; Railway builds and deploys on every merge, the API's
+   pre-deploy command migrates first, and a rollback is "Redeploy" on the
+   previous deployment in the dashboard.
+
+Moving the database to Supabase later is the same as below: change the three
+`DATABASE_URL*` variables on the API and the worker, let the API redeploy
+(its pre-deploy command bootstraps and migrates the new database), then delete
+the Postgres service.
 
 ## Moving the database to Supabase
 
