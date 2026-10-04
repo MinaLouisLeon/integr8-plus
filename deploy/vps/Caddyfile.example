@@ -1,0 +1,16 @@
+# Two public names, one machine. Caddy obtains a certificate for each from
+# Let's Encrypt on first request and renews it; nothing else to configure.
+#
+#   sudo cp deploy/vps/Caddyfile.example /etc/caddy/Caddyfile
+#   sudo sed -i 's/YOUR-DOMAIN.com/example.com/' /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# The ports are the host ports from deploy/.env (WEB_PORT and API_PORT).
+
+app.YOUR-DOMAIN.com {
+    reverse_proxy localhost:3001
+}
+
+api.YOUR-DOMAIN.com {
+    reverse_proxy localhost:3000
+}
