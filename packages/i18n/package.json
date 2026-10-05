@@ -37,7 +37,7 @@
     "@integr8/eslint-config": "workspace:*",
     "@integr8/form-engine": "workspace:*",
     "@integr8/typescript-config": "workspace:*",
-    "@types/node": "22.20.2",
+    "@types/node": "26.6.4",
     "@types/react": "19.3.0",
     "eslint": "10.10.0",
     "react": "19.3.0",
