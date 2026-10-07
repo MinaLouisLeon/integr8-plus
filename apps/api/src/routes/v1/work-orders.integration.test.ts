@@ -17,7 +17,10 @@ import { type ApiHarness, type Member, startApi } from '../../testing/api-harnes
  */
 
 let api: ApiHarness;
-let tokens: Record<'owner' | 'dispatcher' | 'engineer' | 'bystander' | 'viewer', string>;
+let tokens: Record<
+  'owner' | 'builder' | 'dispatcher' | 'engineer' | 'bystander' | 'viewer',
+  string
+>;
 let people: Record<'owner' | 'dispatcher' | 'engineer' | 'bystander' | 'viewer', Member>;
 let requiredFormId: string;
 let optionalFormId: string;
@@ -69,19 +72,19 @@ async function call<T>(
 
 async function publishForm(title: string) {
   const { form } = await call<{ form: { id: string } }>(
-    tokens.owner,
+    tokens.builder,
     'POST',
     '/v1/forms',
     { title },
     201,
   );
   const detail = await call<{ draft: { revision: number } }>(
-    tokens.owner,
+    tokens.builder,
     'GET',
     `/v1/forms/${form.id}`,
   );
   const saved = await call<{ revision: number }>(
-    tokens.owner,
+    tokens.builder,
     'PUT',
     `/v1/forms/${form.id}/draft`,
     {
@@ -103,7 +106,7 @@ async function publishForm(title: string) {
       },
     },
   );
-  await call(tokens.owner, 'POST', `/v1/forms/${form.id}/draft/publish`, {
+  await call(tokens.builder, 'POST', `/v1/forms/${form.id}/draft/publish`, {
     expectedRevision: saved.revision,
   });
   return form.id;
@@ -171,6 +174,8 @@ beforeAll(async () => {
   };
   tokens = {
     owner: await api.signIn(people.owner),
+    // Integr8 staff acting as the owner: forms and job types are built here.
+    builder: await api.staff(people.owner),
     dispatcher: await api.signIn(people.dispatcher),
     engineer: await api.signIn(people.engineer),
     bystander: await api.signIn(people.bystander),
@@ -181,7 +186,7 @@ beforeAll(async () => {
   optionalFormId = await publishForm('Customer feedback');
   jobTypeId = (
     await call<{ id: string }>(
-      tokens.owner,
+      tokens.builder,
       'POST',
       '/v1/job-types',
       {
@@ -626,7 +631,7 @@ describe('lists, bulk changes and saved views', () => {
 describe('form settings', () => {
   it('say which job types require a form, as P07’s settings screen shows', async () => {
     const updated = await call<{ requiredByJobTypeIds: string[] }>(
-      tokens.owner,
+      tokens.builder,
       'PATCH',
       `/v1/forms/${optionalFormId}`,
       {
@@ -636,7 +641,9 @@ describe('form settings', () => {
     expect(updated.requiredByJobTypeIds).toEqual([jobTypeId]);
     const job = await newJob();
     expect(job.forms.find((form) => form.formId === optionalFormId)?.required).toBe(true);
-    await call(tokens.owner, 'PATCH', `/v1/forms/${optionalFormId}`, { requiredByJobTypeIds: [] });
+    await call(tokens.builder, 'PATCH', `/v1/forms/${optionalFormId}`, {
+      requiredByJobTypeIds: [],
+    });
   });
 });
 

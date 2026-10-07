@@ -31,6 +31,8 @@ import type { RecordingEmailSender } from '../email/sender.js';
 let api: ApiHarness;
 let owner: Member;
 let token: string;
+/** Integr8 staff acting as the owner, for the forms and job types the suite needs. */
+let builderToken: string;
 
 /**
  * What the plans allowed before this suite touched them.
@@ -68,6 +70,7 @@ beforeAll(async () => {
   });
   owner = await api.member('owner', 'billing-owner');
   token = await api.signIn(owner);
+  builderToken = await api.staff(owner);
   original = await getPlatformDataSource().metering.allowances();
 
   await getPlatformDataSource().metering.setAllowance('starter', {
@@ -548,7 +551,7 @@ describe('a payment that fails', () => {
     const platform = getPlatformDataSource();
 
     // Something of the company's to lose, made while everything was fine.
-    const created = await api.call(token, {
+    const created = await api.call(builderToken, {
       method: 'POST',
       url: '/v1/job-types',
       payload: { name: 'Before the trouble', code: `PAID${String(Date.now()).slice(-6)}` },
@@ -600,7 +603,7 @@ describe('a payment that fails', () => {
     expect(stopped.madeReadOnly).toBe(1);
 
     // Writes are refused — with 402, which says what is actually missing.
-    const refused = await api.call(token, {
+    const refused = await api.call(builderToken, {
       method: 'POST',
       url: '/v1/job-types',
       payload: { name: 'After the trouble', code: `LATE${String(Date.now()).slice(-6)}` },
@@ -636,7 +639,7 @@ describe('a payment that fails', () => {
     expect(state.status).toBe('active');
     expect(state.readOnly).toBe(false);
 
-    const allowed = await api.call(token, {
+    const allowed = await api.call(builderToken, {
       method: 'POST',
       url: '/v1/job-types',
       payload: { name: 'After paying', code: `OKAY${String(Date.now()).slice(-6)}` },
@@ -761,7 +764,7 @@ describe('plan limits', () => {
  * how many submissions a plan allows, not about what is in them.
  */
 async function publishedForm(): Promise<string> {
-  const created = await api.call(token, {
+  const created = await api.call(builderToken, {
     method: 'POST',
     url: '/v1/forms',
     payload: { title: `Billing limit ${RUN}` },
@@ -770,10 +773,10 @@ async function publishedForm(): Promise<string> {
   const formId = (JSON.parse(created.body) as { form: { id: string } }).form.id;
 
   const detail = JSON.parse(
-    (await api.call(token, { method: 'GET', url: `/v1/forms/${formId}` })).body,
+    (await api.call(builderToken, { method: 'GET', url: `/v1/forms/${formId}` })).body,
   ) as { draft: { revision: number } | null };
 
-  const saved = await api.call(token, {
+  const saved = await api.call(builderToken, {
     method: 'PUT',
     url: `/v1/forms/${formId}/draft`,
     payload: {
@@ -797,7 +800,7 @@ async function publishedForm(): Promise<string> {
   });
   expect(saved.statusCode, saved.body).toBe(200);
 
-  const published = await api.call(token, {
+  const published = await api.call(builderToken, {
     method: 'POST',
     url: `/v1/forms/${formId}/draft/publish`,
     payload: {

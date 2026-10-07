@@ -18,6 +18,12 @@ export {
   can,
   assertCan,
   permissionsFor,
+  permissionsHeld,
+  holds,
+  assertHolds,
+  isStaffSeat,
+  STAFF_ONLY_PERMISSIONS,
+  type Seat,
   PermissionDeniedError,
   type Permission,
 } from './permissions.js';

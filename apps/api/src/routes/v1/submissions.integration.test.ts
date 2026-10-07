@@ -22,7 +22,7 @@ let owner: Member;
 let engineer: Member;
 let colleague: Member;
 let viewer: Member;
-let tokens: Record<'owner' | 'engineer' | 'colleague' | 'viewer', string>;
+let tokens: Record<'owner' | 'builder' | 'engineer' | 'colleague' | 'viewer', string>;
 let formId: string;
 
 const json = <T>(response: { body: string }) => JSON.parse(response.body) as T;
@@ -115,16 +115,16 @@ const inspection = (extra: Record<string, unknown>[] = []) => ({
 
 async function publish(id: string, definition: unknown, acknowledge = false) {
   const detail = json<{ draft: { revision: number } | null }>(
-    await api.call(tokens.owner, { method: 'GET', url: `/v1/forms/${id}` }),
+    await api.call(tokens.builder, { method: 'GET', url: `/v1/forms/${id}` }),
   );
   const saved = json<{ revision: number }>(
-    await api.call(tokens.owner, {
+    await api.call(tokens.builder, {
       method: 'PUT',
       url: `/v1/forms/${id}/draft`,
       payload: { definition, expectedRevision: detail.draft?.revision ?? null },
     }),
   );
-  const published = await api.call(tokens.owner, {
+  const published = await api.call(tokens.builder, {
     method: 'POST',
     url: `/v1/forms/${id}/draft/publish`,
     payload: { expectedRevision: saved.revision, acknowledgeBreakingChanges: acknowledge },
@@ -133,7 +133,7 @@ async function publish(id: string, definition: unknown, acknowledge = false) {
 }
 
 async function newForm(title: string, definition: unknown) {
-  const created = await api.call(tokens.owner, {
+  const created = await api.call(tokens.builder, {
     method: 'POST',
     url: '/v1/forms',
     payload: { title },
@@ -202,6 +202,8 @@ beforeAll(async () => {
   viewer = await api.member('viewer', 'viewer');
   tokens = {
     owner: await api.signIn(owner),
+    // Integr8 staff acting as the owner: the only seat that builds forms.
+    builder: await api.staff(owner),
     engineer: await api.signIn(engineer),
     colleague: await api.signIn(colleague),
     viewer: await api.signIn(viewer),
@@ -540,7 +542,7 @@ describe('who may fill and who may see', () => {
 
   it('honours the form’s own fill roles', async () => {
     const officeOnly = await newForm('Office only', inspection());
-    await api.call(tokens.owner, {
+    await api.call(tokens.builder, {
       method: 'PATCH',
       url: `/v1/forms/${officeOnly}`,
       payload: { fillRoles: ['owner', 'admin'] },

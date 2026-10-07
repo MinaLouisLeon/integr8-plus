@@ -1,4 +1,4 @@
-import { can, type Principal } from '@integr8/core';
+import { holds, type Principal } from '@integr8/core';
 import type { Shift, Submission, TenantTransaction } from '@integr8/db';
 import { unprocessable } from '../http/errors.js';
 import { customerDetailBody } from '../routes/v1/customers.js';
@@ -137,7 +137,7 @@ export async function pullPage(
   const formIds = [
     ...new Set(workOrders.flatMap((detail) => detail.forms.map((form) => form.formId))),
   ];
-  const manage = can(principal.role, 'form.manage');
+  const manage = holds(principal, 'form.manage');
   const forms = (
     await Promise.all(
       formIds.map(async (formId) => {

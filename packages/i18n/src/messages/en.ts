@@ -359,10 +359,12 @@ export const en = {
       done: 'All set up. Nothing left on this list.',
       progress: '{{done}} of {{total}} done',
       steps: {
-        job_type: 'Set up the kinds of job you do',
-        job_typeHint: 'We have added five to start with. Rename them to match your work.',
-        form: 'Create your first form',
-        formHint: 'Start from one of ours and change it, or build your own.',
+        job_type: 'Your kinds of job are set up',
+        job_typeHint:
+          'Integr8 sets these up with you. Tell us the kinds of work you do and we will add them.',
+        form: 'Your first form is ready',
+        formHint:
+          'Integr8 builds your forms. Send us the paperwork you use today and we will turn it into a form.',
         member: 'Invite an engineer',
         memberHint: 'They get an email with a link. They need a phone and nothing else.',
         customer: 'Add a customer',
@@ -457,11 +459,12 @@ export const en = {
 
     list: {
       title: 'Forms',
-      subtitle: 'Build the forms your engineers fill in on site.',
+      subtitle: 'The forms your engineers fill in on site.',
       newForm: 'New form',
       emptyTitle: 'No forms yet',
       emptyBody: 'Start a new form, or begin from one of the templates below.',
-      emptyForFillers: 'No forms have been published yet.',
+      emptyForFillers:
+        'No forms have been published yet. Integr8 builds your forms for you — tell us what you need.',
       name: 'Name',
       status: 'Status',
       updated: 'Last changed',
@@ -1150,7 +1153,7 @@ export const en = {
       customers: 'Customers',
       customersHint: 'Customers, their contacts and sites.',
       jobTypes: 'Job types',
-      jobTypesHint: 'The kinds of job you do, and the forms each needs.',
+      jobTypesHint: 'The kinds of job you do, and the forms each needs. Set up with Integr8.',
       imports: 'Import from CSV',
       importsHint: 'Bring in customers, sites and jobs from a spreadsheet.',
       timesheets: 'Timesheets',

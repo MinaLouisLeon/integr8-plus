@@ -389,7 +389,11 @@ describe('the funnel', () => {
     const { tenantId } = JSON.parse(verified.body) as { tenantId: string };
 
     const token = await signInAs(to);
-    await submitFirstForm(token);
+    // Integr8 builds the form for the new company; the owner fills it in.
+    const me = JSON.parse((await api.call(token, { method: 'GET', url: '/v1/me' })).body) as {
+      userId: string;
+    };
+    await submitFirstForm(await api.staff(me, tenantId), token);
 
     const admin = await api.platformAdmin('funnel-reader');
     const response = await api.call(admin.accessToken, {
@@ -435,13 +439,14 @@ async function signInAs(to: string): Promise<string> {
 }
 
 /**
- * The emptiest form the engine accepts, published and submitted once.
+ * The emptiest form the engine accepts, published by Integr8 staff (`builder`)
+ * and submitted once by somebody in the company (`filler`).
  *
  * What is being measured is *that* a form was submitted and when, not what was
  * in it, so one optional question is the whole form.
  */
-async function submitFirstForm(token: string): Promise<void> {
-  const created = await api.call(token, {
+async function submitFirstForm(builder: string, filler: string): Promise<void> {
+  const created = await api.call(builder, {
     method: 'POST',
     url: '/v1/forms',
     payload: { title: 'First form' },
@@ -450,10 +455,10 @@ async function submitFirstForm(token: string): Promise<void> {
   const formId = (JSON.parse(created.body) as { form: { id: string } }).form.id;
 
   const detail = JSON.parse(
-    (await api.call(token, { method: 'GET', url: `/v1/forms/${formId}` })).body,
+    (await api.call(builder, { method: 'GET', url: `/v1/forms/${formId}` })).body,
   ) as { draft: { revision: number } | null };
 
-  const saved = await api.call(token, {
+  const saved = await api.call(builder, {
     method: 'PUT',
     url: `/v1/forms/${formId}/draft`,
     payload: {
@@ -477,7 +482,7 @@ async function submitFirstForm(token: string): Promise<void> {
   });
   expect(saved.statusCode, saved.body).toBe(200);
 
-  const published = await api.call(token, {
+  const published = await api.call(builder, {
     method: 'POST',
     url: `/v1/forms/${formId}/draft/publish`,
     payload: {
@@ -487,7 +492,7 @@ async function submitFirstForm(token: string): Promise<void> {
   });
   expect(published.statusCode, published.body).toBe(200);
 
-  const draft = await api.call(token, {
+  const draft = await api.call(filler, {
     method: 'POST',
     url: '/v1/submissions',
     payload: { formId },
@@ -495,7 +500,7 @@ async function submitFirstForm(token: string): Promise<void> {
   expect(draft.statusCode, draft.body).toBe(201);
   const started = JSON.parse(draft.body) as { submission: { id: string; revision: number } };
 
-  const submitted = await api.call(token, {
+  const submitted = await api.call(filler, {
     method: 'POST',
     url: `/v1/submissions/${started.submission.id}/submit`,
     payload: { answers: {}, expectedRevision: started.submission.revision },
