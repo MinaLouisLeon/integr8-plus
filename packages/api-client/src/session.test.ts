@@ -354,3 +354,32 @@ describe('signing out', () => {
     expect(signOuts).toEqual(['requested']);
   });
 });
+
+describe('adopting a session minted elsewhere', () => {
+  it('stores the pair and serves requests with it, refreshing like any other session', async () => {
+    const { manager, store, calls } = harness((request) => {
+      if (request.url.endsWith('/v1/me')) {
+        return request.headers.get('authorization') === 'Bearer adopted-access'
+          ? json({ userId: 'u' })
+          : unauthorised();
+      }
+      return json({}, 404);
+    });
+
+    expect(await manager.isSignedIn()).toBe(false);
+
+    await manager.adoptTokens({
+      accessToken: 'adopted-access',
+      accessTokenExpiresAt: new Date(NOW.getTime() + 15 * 60_000).toISOString(),
+      refreshToken: 'adopted-refresh',
+      refreshTokenExpiresAt: new Date(NOW.getTime() + 60 * 60_000).toISOString(),
+    });
+
+    expect(await manager.isSignedIn()).toBe(true);
+    expect((await store.read())?.refreshToken).toBe('adopted-refresh');
+
+    const { data } = await manager.client.GET('/v1/me');
+    expect(data).toEqual({ userId: 'u' });
+    expect(calls.filter((url) => url.endsWith('/v1/auth/refresh'))).toHaveLength(0);
+  });
+});

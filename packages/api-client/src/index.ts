@@ -262,4 +262,5 @@ export {
   type SignInInput,
   type SignInResult,
   type SignOutReason,
+  type TokenPayload,
 } from './session.js';
