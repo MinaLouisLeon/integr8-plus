@@ -52,7 +52,8 @@ configuration.
    reverse proxy with TLS in front (Caddy does this in four lines; any load
    balancer works). The API must be reachable from phones, so it needs its own
    public hostname. On a fresh Ubuntu or Oracle Linux machine,
-   `deploy/vps/setup.sh` opens the firewall, installs Docker and Caddy, and
+   `deploy/vps/setup.sh` (copied up with `scp`; the repository is private, so
+   a raw GitHub URL answers 404) opens the firewall, installs Docker and Caddy, and
    `deploy/vps/Caddyfile.example` is the proxy configuration; see **Oracle
    Cloud** below for the free machine this was written against.
 2. **A Supabase project for identity.** Only Auth is used at this stage. Copy

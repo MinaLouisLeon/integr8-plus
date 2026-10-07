@@ -2,11 +2,14 @@
 # Prepares a fresh Linux machine (x86 or ARM) to run the compose stack in
 # deploy/compose.yml behind Caddy. Supports the two families the cloud consoles
 # offer: Debian-based (Ubuntu 22.04/24.04, Debian 12) and Red Hat-based (Oracle
-# Linux 8/9, RHEL, Rocky, AlmaLinux). Run once, as a user with sudo:
+# Linux 8/9, RHEL, Rocky, AlmaLinux). Run once, as a user with sudo. The
+# repository is private, so raw.githubusercontent.com answers 404 without a
+# login; copy the file up from a laptop that has the repository instead:
 #
-#   curl -fsSL https://raw.githubusercontent.com/MinaLouisLeon/integr8-plus/main/deploy/vps/setup.sh | bash
+#   scp deploy/vps/setup.sh user@machine:        # then, on the machine:
+#   bash setup.sh
 #
-# or from a checkout: bash deploy/vps/setup.sh
+# or from a checkout on the machine: bash deploy/vps/setup.sh
 #
 # What it does, and why each part exists:
 #
