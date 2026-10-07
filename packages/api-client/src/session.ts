@@ -75,7 +75,7 @@ export interface SignInResult {
   memberships: Membership[];
 }
 
-interface TokenPayload {
+export interface TokenPayload {
   accessToken: string;
   accessTokenExpiresAt: string;
   refreshToken: string;
@@ -182,6 +182,19 @@ export class SessionManager {
   // -------------------------------------------------------------------------
   // State
   // -------------------------------------------------------------------------
+
+  /**
+   * Takes over a session minted somewhere else.
+   *
+   * The one caller is the desktop app's staff sign-in: a super admin signs in
+   * to the platform, asks to act as a company, and the API answers with a
+   * tenant session that carries the impersonation claim. From here on it is an
+   * ordinary session — refreshed, revoked and signed out like any other — and
+   * the banner comes from `/v1/me`, not from anything remembered here.
+   */
+  async adoptTokens(tokens: TokenPayload): Promise<void> {
+    await this.#options.store.write(toStoredTokens(tokens));
+  }
 
   async isSignedIn(): Promise<boolean> {
     const tokens = await this.#options.store.read();

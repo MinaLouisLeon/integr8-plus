@@ -63,6 +63,28 @@ export const en = {
     accountLocked: 'Too many attempts. Try again in a few minutes.',
     rateLimited: 'Too many requests. Slow down and try again shortly.',
 
+    // Integr8 staff signing in to a customer's desktop app to set it up: forms
+    // and job types are built by Integr8, not by the company (see the help
+    // centre). The company list and the reason box are the same ceremony as
+    // the dashboard's "act as a user", because that is what this is.
+    staff: {
+      tab: 'Integr8 staff',
+      companyTab: 'Company sign in',
+      title: 'Staff sign in',
+      subtitle: 'Your platform account, then the company you are setting up.',
+      code: 'Authentication code',
+      codeHint: 'Six digits from your authenticator app',
+      chooseCompany: 'Which company?',
+      search: 'Search companies',
+      noCompanies: 'No companies match.',
+      reason: 'Why are you opening it?',
+      reasonHint: 'At least ten characters. The company can read this.',
+      open: 'Open as this company',
+      opening: 'Opening…',
+      back: 'Back',
+      noOwnerYet: 'No owner has signed in yet',
+    },
+
     // Accepting an invitation (P18). Until this phase the API minted links to
     // a page that did not exist, so every invitation led to a 404.
     accept: {

@@ -257,6 +257,77 @@ describe('impersonation', () => {
     expect(record?.reason).toBe('Customer reported a missing job sheet on ticket 4182');
     expect(record?.durationSeconds).not.toBeNull();
   });
+
+  it('can act as a company that has no members yet, as its owner, without joining it', async () => {
+    // A company straight out of onboarding: an invitation, no people. Staff
+    // set up its forms before the owner ever signs in, and never become a
+    // member to do so (tenant_users would refuse a platform user anyway).
+    const name = slug();
+    const created = await api.call(admin.accessToken, {
+      method: 'POST',
+      url: '/v1/platform/companies',
+      payload: { slug: name, name: 'Empty Co', ownerEmail: `owner@${name}.example` },
+    });
+    expect(created.statusCode).toBe(201);
+    const company = (JSON.parse(created.body) as { company: { id: string } }).company;
+
+    const started = await api.call(admin.accessToken, {
+      method: 'POST',
+      url: `/v1/platform/companies/${company.id}/impersonate`,
+      payload: { reason: 'Setting up forms and job types before the handover' },
+    });
+    expect(started.statusCode, started.body).toBe(201);
+    const grant = JSON.parse(started.body) as {
+      grantId: string;
+      targetUserId: string | null;
+      actsAs: string;
+      tokens: { accessToken: string };
+    };
+    expect(grant.actsAs).toBe('company');
+    expect(grant.targetUserId).toBeNull();
+
+    // The seat is the owner role on the staff member's own id, and the apps
+    // can tell: /v1/me answers with their platform identity and the banner claim.
+    const asCompany = await api.call(grant.tokens.accessToken, { method: 'GET', url: '/v1/me' });
+    expect(asCompany.statusCode, asCompany.body).toBe(200);
+    const me = JSON.parse(asCompany.body) as {
+      userId: string;
+      tenantId: string;
+      role: string;
+      displayName: string;
+      permissions: string[];
+      impersonatedBy?: { platformUserId: string; grantId: string };
+    };
+    expect(me.userId).toBe(admin.id);
+    expect(me.tenantId).toBe(company.id);
+    expect(me.role).toBe('owner');
+    expect(me.displayName).toContain('(Integr8)');
+    expect(me.permissions).toContain('form.manage');
+    expect(me.impersonatedBy).toEqual({ platformUserId: admin.id, grantId: grant.grantId });
+
+    // And it can do the job it exists for.
+    const form = await api.call(grant.tokens.accessToken, {
+      method: 'POST',
+      url: '/v1/forms',
+      payload: { title: 'Boiler service' },
+    });
+    expect(form.statusCode, form.body).toBe(201);
+
+    const inside = await withTenant(company.id, async (tx) => ({
+      members: (await tx.tenantUsers.list()).length,
+    }));
+    expect(inside.members).toBe(0);
+
+    const ended = await api.call(admin.accessToken, {
+      method: 'POST',
+      url: `/v1/platform/companies/${company.id}/impersonate/${grant.grantId}/end`,
+      payload: {},
+    });
+    expect(ended.statusCode).toBe(200);
+    expect(
+      (await api.call(grant.tokens.accessToken, { method: 'GET', url: '/v1/me' })).statusCode,
+    ).toBe(403);
+  });
 });
 
 describe('exporting and deleting a company', () => {
