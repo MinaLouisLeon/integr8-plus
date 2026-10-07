@@ -75,6 +75,22 @@ export const meSchema = z.object({
     .describe('Present only while a super admin is acting as this user.'),
 
   /**
+   * The company this seat is in, as the apps should wear it.
+   *
+   * Each company's apps carry its own name, logo and accent colour rather than
+   * ours. Here rather than in `/v1/settings` because every client already
+   * calls this on launch, and because everybody in the company may see it,
+   * where the settings are the owner's to change.
+   */
+  company: z.object({
+    name: z.string(),
+    /** A stored image of the company's; `GET /v1/media/{mediaId}` gives a link to it. */
+    logoMediaId: z.uuid().nullable(),
+    /** `#rrggbb`, or null for the product's own accent. */
+    brandColour: z.string().nullable(),
+  }),
+
+  /**
    * The features this company has, resolved against the platform defaults
    * (P15). Same status as `permissions`: it is what to show, not what is
    * allowed — a flag a client ignores changes nothing the server will accept.

@@ -1,4 +1,5 @@
 import { useTranslation } from '@integr8/i18n';
+import { useBrand } from '~/components/brand';
 import { colours, fontSize, radii, spacing, type SemanticColours } from '@integr8/tokens';
 import type { ReactNode } from 'react';
 import {
@@ -30,7 +31,10 @@ import {
 export function useTheme(): SemanticColours {
   // Follows the operating system. An in-app override lands with the settings
   // screen; until then, matching the phone is the behaviour people expect.
-  return useColorScheme() === 'dark' ? colours.dark : colours.light;
+  const base = useColorScheme() === 'dark' ? colours.dark : colours.light;
+  // The company's own accent, when it has one: see `brand.tsx`.
+  const { accent } = useBrand();
+  return accent === null ? base : { ...base, ...accent, focus: accent.accent };
 }
 
 export function Screen({ children }: { children: ReactNode }) {

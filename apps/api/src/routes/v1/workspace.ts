@@ -43,10 +43,14 @@ export const meRoute = defineRoute({
     404: { description: 'The membership behind this token no longer exists.' },
   },
   handler: async (_input, context) => {
-    const { member, features } = await withTenant(context.principal.tenantId, async (tx) => ({
-      member: await tx.tenantUsers.findByUserId(context.principal.userId),
-      features: await tx.featureFlags.resolved(),
-    }));
+    const { member, features, settings } = await withTenant(
+      context.principal.tenantId,
+      async (tx) => ({
+        member: await tx.tenantUsers.findByUserId(context.principal.userId),
+        features: await tx.featureFlags.resolved(),
+        settings: await tx.settings.get(),
+      }),
+    );
 
     if (member === undefined) {
       // The token is valid but the membership has gone — removed while this
@@ -63,6 +67,11 @@ export const meRoute = defineRoute({
         displayName: member.displayName,
         role: member.role,
         permissions: permissionsFor(member.role),
+        company: {
+          name: (await getPlatformDataSource().tenants.findById(member.tenantId))?.name ?? '',
+          logoMediaId: settings.logoMediaId,
+          brandColour: settings.brandColour,
+        },
         features,
         announcements: (
           await getPlatformDataSource().settings.announcementsFor(member.tenantId)

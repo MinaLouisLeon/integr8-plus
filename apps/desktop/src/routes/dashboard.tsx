@@ -2,6 +2,7 @@ import { ApiRequestError } from '@integr8/api-client';
 import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router';
+import { CompanyMark } from '~/components/company-brand';
 import { Button, ErrorState, LoadingState, Shell } from '~/components/ui';
 import { isTauri } from '~/lib/platform';
 import { session } from '~/lib/session';
@@ -51,9 +52,7 @@ export function DashboardRoute() {
           <h1 className="text-2xl font-semibold text-content">
             {t('workspace.signedInAs', { name: me.data?.displayName ?? '' })}
           </h1>
-          <p className="text-sm text-content-muted">
-            {t('workspace.company')}: <code className="font-mono">{me.data?.tenantId}</code>
-          </p>
+          {me.data === undefined ? null : <CompanyMark company={me.data.company} />}
         </div>
 
         <Button

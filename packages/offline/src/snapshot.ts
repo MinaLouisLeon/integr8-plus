@@ -62,6 +62,11 @@ export async function applySnapshot(
     display_name: snapshot.me.displayName,
     email: snapshot.me.email,
     role: snapshot.me.role,
+    // The company's own brand, so the phone wears it offline too. An empty
+    // value is "none", which `identity` turns back into null.
+    company_name: snapshot.me.company.name,
+    brand_colour: snapshot.me.company.brandColour ?? '',
+    logo_media_id: snapshot.me.company.logoMediaId ?? '',
     last_download_at: at,
   })) {
     await sql.run(

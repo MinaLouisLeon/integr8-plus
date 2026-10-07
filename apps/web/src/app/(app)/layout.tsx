@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { AuthGuard } from '~/components/auth-guard';
+import { BrandAccent } from '~/components/company-brand';
 import { ImpersonationBanner } from '~/components/impersonation-banner';
 import { PreferenceBar } from '~/components/preference-bar';
 import { readPreferences } from '~/lib/preferences';
@@ -22,6 +23,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <div className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-6 px-6 py-8">
       <PreferenceBar locale={locale} theme={theme} forceRtl={forceRtl} />
       <AuthGuard>
+        {/* The company's accent colour, on every signed-in page and none of the public ones. */}
+        <BrandAccent />
         {/* Above everything, on every signed-in page: a support engineer who
             forgets they are impersonating causes the worst incidents. */}
         <ImpersonationBanner />
