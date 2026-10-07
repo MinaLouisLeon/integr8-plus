@@ -31,12 +31,26 @@ const EXPOSED_HEADERS = [
 
 const ALLOWED_METHODS = 'GET, POST, PUT, PATCH, DELETE';
 
-export function registerCors(app: FastifyInstance, origins: readonly string[]): void {
+export function registerCors(
+  app: FastifyInstance,
+  origins: readonly string[],
+  /**
+   * Called the first time each unknown origin is seen. The browser shows the
+   * person a CORS error and the API log would otherwise show nothing at all,
+   * which is how a mistyped API_CORS_ORIGINS costs an afternoon.
+   */
+  onRefused?: (origin: string) => void,
+): void {
   const allowed = new Set(origins);
+  const refused = new Set<string>();
 
   app.addHook('onRequest', (request, reply, done) => {
     const origin = request.headers.origin;
     if (origin === undefined || !allowed.has(origin)) {
+      if (origin !== undefined && !refused.has(origin)) {
+        refused.add(origin);
+        onRefused?.(origin);
+      }
       // No header at all: the browser blocks the response, and a non-browser
       // caller never cared.
       if (request.method === 'OPTIONS' && origin !== undefined) {
