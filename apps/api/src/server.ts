@@ -1,5 +1,5 @@
 import {
-  assertCan,
+  assertHolds,
   PermissionDeniedError,
   type PlatformPrincipal,
   type Principal,
@@ -313,11 +313,13 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
           // 6. Permission.
           if (route.permission !== undefined) {
             try {
-              assertCan(principal.role, route.permission);
+              assertHolds(principal, route.permission);
             } catch (error) {
               if (error instanceof PermissionDeniedError) {
                 throw forbidden(
-                  `This action requires the "${error.permission}" permission, which a ${error.role} does not hold.`,
+                  error.reason === 'staff_only'
+                    ? `This is set up for your company by Integr8. Ask us, and we will make the change for you.`
+                    : `This action requires the "${error.permission}" permission, which a ${error.role} does not hold.`,
                 );
               }
               throw error;

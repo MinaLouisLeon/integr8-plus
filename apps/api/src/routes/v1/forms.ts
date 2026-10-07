@@ -1,4 +1,4 @@
-import { can, roleSchema } from '@integr8/core';
+import { holds, roleSchema } from '@integr8/core';
 import {
   type Form,
   type FormVersion,
@@ -234,7 +234,7 @@ async function requireForm(tx: TenantTransaction, formId: string): Promise<Form>
   return form;
 }
 
-const mayManage = (context: RequestContext) => can(context.principal.role, 'form.manage');
+const mayManage = (context: RequestContext) => holds(context.principal, 'form.manage');
 
 /** A new form with a first draft, in one transaction, so there is never a form with nothing to open. */
 async function createFormWithDraft(
@@ -310,7 +310,7 @@ export const listFormsRoute = defineRoute({
               hasDraft: manage && own.some((version) => version.status === 'draft'),
               canFill:
                 latest !== undefined &&
-                can(context.principal.role, 'submission.fill') &&
+                holds(context.principal, 'submission.fill') &&
                 form.fillRoles.includes(context.principal.role),
             };
           })

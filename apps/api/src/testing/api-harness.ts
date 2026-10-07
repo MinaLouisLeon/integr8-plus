@@ -52,6 +52,14 @@ export interface ApiHarness {
   member(role: Role, label: string): Promise<Member>;
   /** A signed-in super admin, for the platform routes (P15). */
   platformAdmin(label?: string): Promise<PlatformAdmin>;
+  /**
+   * A token for Integr8 staff acting as `who`, through an audited impersonation
+   * grant. This is the only way to hold a staff-only permission such as
+   * `form.manage` or `job_type.manage`, so a suite that needs a form or a job
+   * type to exist builds it with this rather than with a member's own token.
+   * One super admin is created per harness and reused.
+   */
+  staff(who: Pick<Member, 'userId'>, tenantId?: string): Promise<string>;
   signIn(member: Member): Promise<string>;
   /** `app.inject` with a bearer token and the client headers every request needs. */
   call(token: string, options: InjectOptions): Promise<LightMyRequestResponse>;
@@ -187,6 +195,26 @@ export async function startApi(
     };
   };
 
+  let staffAdmin: PlatformAdmin | undefined;
+  const staff = async (who: Pick<Member, 'userId'>, tenantId = tenant.id): Promise<string> => {
+    staffAdmin ??= await platformAdmin('staff');
+    const response = await app.inject({
+      method: 'POST',
+      url: `/v1/platform/companies/${tenantId}/impersonate`,
+      remoteAddress,
+      headers: {
+        authorization: `Bearer ${staffAdmin.accessToken}`,
+        'x-client-version': '1.0.0',
+        'x-client-app': 'web',
+      },
+      payload: { targetUserId: who.userId, reason: 'Integration test: setting the company up' },
+    });
+    if (response.statusCode !== 201) {
+      throw new Error(`impersonation failed: ${response.statusCode} ${response.body}`);
+    }
+    return (JSON.parse(response.body) as { tokens: { accessToken: string } }).tokens.accessToken;
+  };
+
   const call = (token: string, options: InjectOptions) =>
     app.inject({
       remoteAddress,
@@ -208,6 +236,7 @@ export async function startApi(
     member,
     signIn,
     platformAdmin,
+    staff,
     call,
     close: async () => {
       await app.close();

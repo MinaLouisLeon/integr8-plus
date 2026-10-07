@@ -1,4 +1,4 @@
-import { can, type Principal } from '@integr8/core';
+import { holds, type Principal } from '@integr8/core';
 import {
   type AttachmentOwner,
   type Customer,
@@ -257,7 +257,7 @@ export async function customerDetailBody(
       customerId: customer.id,
       order: 'created',
       limit: 20,
-      ...(can(principal.role, 'work_order.read_all') ? {} : { assigneeId: principal.userId }),
+      ...(holds(principal, 'work_order.read_all') ? {} : { assigneeId: principal.userId }),
     }),
     peopleOf(tx),
   ]);
@@ -268,8 +268,8 @@ export async function customerDetailBody(
     attachments: await attachmentBodies(tx, attachments, people),
     recentWorkOrders: await workOrderSummaries(tx, jobs.items, people),
     can: {
-      edit: can(principal.role, 'customer.manage'),
-      createWorkOrder: can(principal.role, 'work_order.manage') && customer.status !== 'closed',
+      edit: holds(principal, 'customer.manage'),
+      createWorkOrder: holds(principal, 'work_order.manage') && customer.status !== 'closed',
     },
   };
 }
@@ -544,7 +544,7 @@ export const getSiteRoute = defineRoute({
           siteId: site.id,
           order: 'created',
           limit: 20,
-          ...(can(principal.role, 'work_order.read_all') ? {} : { assigneeId: principal.userId }),
+          ...(holds(principal, 'work_order.read_all') ? {} : { assigneeId: principal.userId }),
         }),
         peopleOf(tx),
       ]);
@@ -555,10 +555,10 @@ export const getSiteRoute = defineRoute({
         attachments: await attachmentBodies(tx, attachments, people),
         recentWorkOrders: await workOrderSummaries(tx, jobs.items, people),
         can: {
-          edit: can(principal.role, 'customer.manage'),
+          edit: holds(principal, 'customer.manage'),
           editAccess:
-            can(principal.role, 'customer.manage') ||
-            (can(principal.role, 'work_order.progress') && jobs.items.length > 0),
+            holds(principal, 'customer.manage') ||
+            (holds(principal, 'work_order.progress') && jobs.items.length > 0),
         },
       };
     });
@@ -668,9 +668,9 @@ export async function updateAccessNotes(
   access: Partial<Record<'gateCode' | 'parking' | 'askFor' | 'hazards' | 'notes', string | null>>,
 ): Promise<Site> {
   const { principal } = context;
-  if (!can(principal.role, 'customer.manage')) {
+  if (!holds(principal, 'customer.manage')) {
     const working =
-      can(principal.role, 'work_order.progress') &&
+      holds(principal, 'work_order.progress') &&
       (await tx.workOrders.list({ siteId: current.id, assigneeId: principal.userId, limit: 1 }))
         .items.length > 0;
     if (!working) {
@@ -732,7 +732,7 @@ async function requireAttachable(
     await requireWork(tx, principal, job);
     return;
   }
-  if (!can(principal.role, 'customer.manage')) {
+  if (!holds(principal, 'customer.manage')) {
     throw forbidden('Only the office can attach files to customers and sites.');
   }
   const exists =

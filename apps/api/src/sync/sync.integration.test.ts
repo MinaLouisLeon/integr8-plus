@@ -68,7 +68,8 @@ let office: Member;
 let engineer: Member;
 let crewmate: Member;
 let officeToken: string;
-let ownerToken: string;
+/** Integr8 staff acting as the owner: the seat that builds forms and job types. */
+let builderToken: string;
 let formId: string;
 let jobTypeId: string;
 let customerId: string;
@@ -166,11 +167,14 @@ beforeAll(async () => {
   office = await api.member('dispatcher', 'office');
   engineer = await api.member('engineer', 'ed');
   crewmate = await api.member('engineer', 'cara');
-  officeToken = await api.signIn(await api.member('owner', 'owner'));
+  const ownerMember = await api.member('owner', 'owner');
+  officeToken = await api.signIn(ownerMember);
+  // The form and the job type are Integr8's to build: staff acting as the owner.
+  builderToken = await api.staff(ownerMember);
   const dispatcherToken = await api.signIn(office);
 
   const { form } = await call<{ form: { id: string } }>(
-    officeToken,
+    builderToken,
     'POST',
     '/v1/forms',
     { title: 'Gas safety' },
@@ -178,11 +182,11 @@ beforeAll(async () => {
   );
   formId = form.id;
   const detail = await call<{ draft: { revision: number } }>(
-    officeToken,
+    builderToken,
     'GET',
     `/v1/forms/${formId}`,
   );
-  const saved = await call<{ revision: number }>(officeToken, 'PUT', `/v1/forms/${formId}/draft`, {
+  const saved = await call<{ revision: number }>(builderToken, 'PUT', `/v1/forms/${formId}/draft`, {
     expectedRevision: detail.draft.revision,
     definition: {
       schemaVersion: 1,
@@ -234,13 +238,13 @@ beforeAll(async () => {
       ],
     },
   });
-  await call(officeToken, 'POST', `/v1/forms/${formId}/draft/publish`, {
+  await call(builderToken, 'POST', `/v1/forms/${formId}/draft/publish`, {
     expectedRevision: saved.revision,
   });
 
   jobTypeId = (
     await call<{ id: string }>(
-      officeToken,
+      builderToken,
       'POST',
       '/v1/job-types',
       {
@@ -270,7 +274,6 @@ beforeAll(async () => {
       201,
     )
   ).id;
-  ownerToken = officeToken;
   officeToken = dispatcherToken;
 });
 
@@ -1063,7 +1066,7 @@ describe('the same form on the phone and on the desktop (P13)', () => {
   it('stores identical answers, whichever filled it', async () => {
     const formId = (
       await call<{ form: { id: string } }>(
-        ownerToken,
+        builderToken,
         'POST',
         '/v1/forms',
         { title: 'Every question' },
@@ -1071,20 +1074,25 @@ describe('the same form on the phone and on the desktop (P13)', () => {
       )
     ).form.id;
     const draft = await call<{ draft: { revision: number } }>(
-      ownerToken,
+      builderToken,
       'GET',
       `/v1/forms/${formId}`,
     );
-    const saved = await call<{ revision: number }>(ownerToken, 'PUT', `/v1/forms/${formId}/draft`, {
-      expectedRevision: draft.draft.revision,
-      definition: everyType,
-    });
-    await call(ownerToken, 'POST', `/v1/forms/${formId}/draft/publish`, {
+    const saved = await call<{ revision: number }>(
+      builderToken,
+      'PUT',
+      `/v1/forms/${formId}/draft`,
+      {
+        expectedRevision: draft.draft.revision,
+        definition: everyType,
+      },
+    );
+    await call(builderToken, 'POST', `/v1/forms/${formId}/draft/publish`, {
       expectedRevision: saved.revision,
     });
     const typeId = (
       await call<{ id: string }>(
-        ownerToken,
+        builderToken,
         'POST',
         '/v1/job-types',
         { name: 'Every question', code: 'every-question', forms: [{ formId, required: false }] },
@@ -1271,7 +1279,7 @@ describe('a working day on the phone (P14)', () => {
   it('arrives with its photos, sign-off, form and times intact, and the site plan was on the phone', async () => {
     const typeId = (
       await call<{ id: string }>(
-        ownerToken,
+        builderToken,
         'POST',
         '/v1/job-types',
         {

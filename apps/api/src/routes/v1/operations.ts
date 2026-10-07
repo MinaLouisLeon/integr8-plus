@@ -1,5 +1,5 @@
 import {
-  can,
+  holds,
   findTransition,
   formatWorkOrderReference,
   type Principal,
@@ -393,7 +393,7 @@ export async function readableWorkOrder(
     throw notFound('This work order does not exist.');
   }
   if (
-    can(principal.role, 'work_order.read_all') ||
+    holds(principal, 'work_order.read_all') ||
     (await tx.workOrders.isAssigned(job.id, principal.userId))
   ) {
     return job;
@@ -410,11 +410,11 @@ export async function mayWork(
   principal: Principal,
   job: WorkOrder,
 ): Promise<boolean> {
-  if (!can(principal.role, 'work_order.progress')) {
+  if (!holds(principal, 'work_order.progress')) {
     return false;
   }
   return (
-    can(principal.role, 'work_order.manage') || tx.workOrders.isAssigned(job.id, principal.userId)
+    holds(principal, 'work_order.manage') || tx.workOrders.isAssigned(job.id, principal.userId)
   );
 }
 
@@ -444,7 +444,7 @@ export async function allowedTransitions(
     const allowed =
       transition.permission === 'work_order.progress'
         ? working
-        : can(principal.role, transition.permission);
+        : holds(principal, transition.permission);
     if (allowed) {
       next.push({ to, requiresReason: transition.requiresReason });
     }

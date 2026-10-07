@@ -1,4 +1,4 @@
-import { can } from '@integr8/core';
+import { holds } from '@integr8/core';
 import { type FileRecord, withTenant } from '@integr8/db';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -328,7 +328,7 @@ export const getMediaRoute = defineRoute({
 /** Who may delete or restore a file: whoever uploaded it, or someone who corrects submissions. */
 function assertMayManage(file: FileRecord, context: RequestContext) {
   const { principal } = context;
-  if (file.uploadedBy !== principal.userId && !can(principal.role, 'submission.amend')) {
+  if (file.uploadedBy !== principal.userId && !holds(principal, 'submission.amend')) {
     throw forbidden('Only the person who uploaded this file, or an admin, can do that.');
   }
 }

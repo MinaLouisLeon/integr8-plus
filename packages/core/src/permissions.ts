@@ -44,6 +44,9 @@ export const PERMISSIONS = [
    * Build, edit, clone and publish forms, and change who may fill them. A
    * published version can never be changed by anyone (migration 0006); this is
    * the permission to create the next one.
+   *
+   * Staff-only (see {@link STAFF_ONLY_PERMISSIONS}): Integr8 builds each
+   * company's forms; the company's own owners and admins read and fill them.
    */
   'form.manage',
 
@@ -69,7 +72,10 @@ export const PERMISSIONS = [
   'customer.read',
   /** Create and change customers, contacts and sites, and attach files to them. */
   'customer.manage',
-  /** Configure job types: their forms, checklist, instructions and expected duration. */
+  /**
+   * Configure job types: their forms, checklist, instructions and expected
+   * duration. Staff-only, like `form.manage`, and for the same reason.
+   */
   'job_type.manage',
   /** Read every work order, not only those one is assigned to. */
   'work_order.read_all',
@@ -246,8 +252,17 @@ export class PermissionDeniedError extends Error {
   constructor(
     readonly role: Role,
     readonly permission: Permission,
+    /**
+     * `role`: the role never holds it. `staff_only`: the role's seat would,
+     * but only with Integr8 staff in it (see {@link STAFF_ONLY_PERMISSIONS}).
+     */
+    readonly reason: 'role' | 'staff_only' = 'role',
   ) {
-    super(`Role "${role}" does not hold permission "${permission}"`);
+    super(
+      reason === 'staff_only'
+        ? `Permission "${permission}" is held only by Integr8 staff acting for the company`
+        : `Role "${role}" does not hold permission "${permission}"`,
+    );
     this.name = 'PermissionDeniedError';
   }
 }
@@ -256,5 +271,74 @@ export class PermissionDeniedError extends Error {
 export function assertCan(role: Role, permission: Permission): void {
   if (!can(role, permission)) {
     throw new PermissionDeniedError(role, permission);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// What Integr8 does for a company, rather than the company for itself
+// ---------------------------------------------------------------------------
+
+/**
+ * Permissions that only Integr8 staff hold, however senior the seat.
+ *
+ * The product is sold with its forms and job types built by Integr8 for each
+ * company: a company's people fill forms and work jobs, and ask Integr8 when
+ * something about either needs to change. So an owner's `form.manage` in the
+ * matrix above is the *ceiling* for the seat, and this set says which of those
+ * capabilities are only reached when the seat is held by a staff member —
+ * which, in a token, is an impersonation claim (`imp`), since staff never
+ * become members of a company (`tenant_users_reject_platform_user`).
+ *
+ * Kept as an overlay rather than removed from the matrix so that the matrix
+ * still answers "what can this role's seat do when Integr8 sits in it", and
+ * so an impersonated engineer gains nothing: the ceiling still applies.
+ */
+export const STAFF_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
+  'form.manage',
+  'job_type.manage',
+]);
+
+/**
+ * The part of a principal that decides what it may actually do: the role
+ * (its ceiling) and whether Integr8 staff are behind it. Structurally a
+ * `Principal`, so one can be passed as is.
+ */
+export interface Seat {
+  readonly role: Role;
+  /** Present when a super admin is acting through this seat. */
+  readonly impersonatedBy?: object | undefined;
+}
+
+/** True when Integr8 staff hold the seat. */
+export function isStaffSeat(seat: Seat): boolean {
+  return seat.impersonatedBy !== undefined;
+}
+
+/**
+ * True when this seat may do this now: the role holds the permission, and the
+ * permission is either open to the company or the seat is held by staff.
+ *
+ * Call sites that have a principal use this rather than {@link can}; `can`
+ * remains the matrix lookup for code that only has a role in hand (such as a
+ * form's fill roles).
+ */
+export function holds(seat: Seat, permission: Permission): boolean {
+  return (
+    can(seat.role, permission) && (!STAFF_ONLY_PERMISSIONS.has(permission) || isStaffSeat(seat))
+  );
+}
+
+/** Every permission a seat holds right now, for `/v1/me` and the screens built on it. */
+export function permissionsHeld(seat: Seat): Permission[] {
+  return permissionsFor(seat.role).filter((permission) => holds(seat, permission));
+}
+
+/** {@link holds}, but throwing, with the reason for the denial attached. */
+export function assertHolds(seat: Seat, permission: Permission): void {
+  if (!can(seat.role, permission)) {
+    throw new PermissionDeniedError(seat.role, permission);
+  }
+  if (!holds(seat, permission)) {
+    throw new PermissionDeniedError(seat.role, permission, 'staff_only');
   }
 }

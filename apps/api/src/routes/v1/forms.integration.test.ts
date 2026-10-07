@@ -20,6 +20,7 @@ import { type ApiHarness, type Member, startApi } from '../../testing/api-harnes
 let api: ApiHarness;
 let owner: Member;
 let engineer: Member;
+let builderToken: string;
 let ownerToken: string;
 let engineerToken: string;
 
@@ -96,7 +97,7 @@ const inspection = (extra: Record<string, unknown>[] = []) => ({
 });
 
 async function createForm(title: string): Promise<Detail> {
-  const response = await api.call(ownerToken, {
+  const response = await api.call(builderToken, {
     method: 'POST',
     url: '/v1/forms',
     payload: { title },
@@ -106,7 +107,7 @@ async function createForm(title: string): Promise<Detail> {
 }
 
 async function save(formId: string, definition: unknown, expectedRevision: number | null) {
-  return api.call(ownerToken, {
+  return api.call(builderToken, {
     method: 'PUT',
     url: `/v1/forms/${formId}/draft`,
     payload: { definition, expectedRevision },
@@ -118,7 +119,7 @@ async function publish(
   expectedRevision: number,
   extra: Record<string, unknown> = {},
 ) {
-  return api.call(ownerToken, {
+  return api.call(builderToken, {
     method: 'POST',
     url: `/v1/forms/${formId}/draft/publish`,
     payload: { expectedRevision, ...extra },
@@ -130,6 +131,9 @@ beforeAll(async () => {
   owner = await api.member('owner', 'owner');
   engineer = await api.member('engineer', 'engineer');
   ownerToken = await api.signIn(owner);
+  // Forms are built by Integr8 for the company, so the builder is staff acting
+  // as the owner, not the owner. See `what the company itself may do` below.
+  builderToken = await api.staff(owner);
   engineerToken = await api.signIn(engineer);
 });
 
@@ -139,7 +143,7 @@ afterAll(async () => {
 
 describe('starting a form', () => {
   it('creates the form with an empty first draft titled in the builder’s language', async () => {
-    const response = await api.call(ownerToken, {
+    const response = await api.call(builderToken, {
       method: 'POST',
       url: '/v1/forms',
       payload: { title: 'صيانة', locale: 'ar' },
@@ -242,7 +246,7 @@ describe('checking and publishing — an invalid definition cannot be published'
     ]);
     await save(form.id, invalid, 1);
 
-    const check = await api.call(ownerToken, {
+    const check = await api.call(builderToken, {
       method: 'POST',
       url: `/v1/forms/${form.id}/draft/check`,
     });
@@ -297,7 +301,7 @@ describe('checking and publishing — an invalid definition cannot be published'
     ]);
 
     const after = json<Detail>(
-      await api.call(ownerToken, { method: 'GET', url: `/v1/forms/${form.id}` }),
+      await api.call(builderToken, { method: 'GET', url: `/v1/forms/${form.id}` }),
     );
     expect(after.live).toBeNull();
     expect(after.draft?.status).toBe('draft');
@@ -359,7 +363,7 @@ describe('republishing — existing submissions stay byte-identical', () => {
 
     // Version 2 removes "reason" and the "fail" option: both breaking.
     const detail = json<Detail>(
-      await api.call(ownerToken, { method: 'GET', url: `/v1/forms/${form.id}` }),
+      await api.call(builderToken, { method: 'GET', url: `/v1/forms/${form.id}` }),
     );
     expect(detail.draft).toBeNull();
     const edited = {
@@ -391,7 +395,7 @@ describe('republishing — existing submissions stay byte-identical', () => {
     expect(json<ErrorBody>(unacknowledged).error.code).toBe('breaking_changes_unacknowledged');
 
     const check = json<{ diff: { breaking: { field: string; reason: string }[] } }>(
-      await api.call(ownerToken, { method: 'POST', url: `/v1/forms/${form.id}/draft/check` }),
+      await api.call(builderToken, { method: 'POST', url: `/v1/forms/${form.id}/draft/check` }),
     );
     expect(check.diff.breaking.map((entry) => `${entry.field}:${entry.reason}`)).toEqual([
       'result:option_removed',
@@ -430,7 +434,7 @@ describe('who sees what', () => {
     expect(list.items.find((item) => item.id === published.form.id)?.hasDraft).toBe(false);
 
     const ownerList = json<{ items: { id: string; hasDraft: boolean }[] }>(
-      await api.call(ownerToken, { method: 'GET', url: '/v1/forms' }),
+      await api.call(builderToken, { method: 'GET', url: '/v1/forms' }),
     );
     expect(ownerList.items.find((item) => item.id === published.form.id)?.hasDraft).toBe(true);
 
@@ -446,7 +450,7 @@ describe('who sees what', () => {
     ).toBe(404);
 
     const ownerDetail = json<Detail>(
-      await api.call(ownerToken, { method: 'GET', url: `/v1/forms/${published.form.id}` }),
+      await api.call(builderToken, { method: 'GET', url: `/v1/forms/${published.form.id}` }),
     );
     const draftId = ownerDetail.draft?.id ?? '';
     expect(
@@ -459,7 +463,7 @@ describe('who sees what', () => {
     ).toBe(404);
     expect(
       (
-        await api.call(ownerToken, {
+        await api.call(builderToken, {
           method: 'GET',
           url: `/v1/forms/${published.form.id}/versions/${draftId}`,
         })
@@ -520,7 +524,7 @@ describe('history', () => {
 
     expect(
       (
-        await api.call(ownerToken, {
+        await api.call(builderToken, {
           method: 'GET',
           url: `/v1/forms/${form.id}/versions/00000000-0000-4000-8000-000000000000`,
         })
@@ -535,7 +539,7 @@ describe('test fill', () => {
     await save(form.id, inspection(), 1);
     const before = await withTenant(api.tenantId, (tx) => tx.submissions.listForVersion(form.id));
 
-    const invalid = await api.call(ownerToken, {
+    const invalid = await api.call(builderToken, {
       method: 'POST',
       url: `/v1/forms/${form.id}/draft/test-submission`,
       payload: { answers: { result: 'pass', reason: 'hidden, so refused', ghost: 1 } },
@@ -553,7 +557,7 @@ describe('test fill', () => {
     });
 
     const valid = json<{ valid: boolean }>(
-      await api.call(ownerToken, {
+      await api.call(builderToken, {
         method: 'POST',
         url: `/v1/forms/${form.id}/draft/test-submission`,
         payload: { answers: { result: 'fail', reason: 'x' } },
@@ -562,8 +566,8 @@ describe('test fill', () => {
     expect(valid.valid).toBe(true);
 
     const draftId =
-      json<Detail>(await api.call(ownerToken, { method: 'GET', url: `/v1/forms/${form.id}` })).draft
-        ?.id ?? '';
+      json<Detail>(await api.call(builderToken, { method: 'GET', url: `/v1/forms/${form.id}` }))
+        .draft?.id ?? '';
     const after = await withTenant(api.tenantId, (tx) => tx.submissions.listForVersion(draftId));
     expect(after).toEqual([]);
     expect(before).toEqual([]);
@@ -583,7 +587,7 @@ describe('test fill', () => {
       ]),
       1,
     );
-    const response = await api.call(ownerToken, {
+    const response = await api.call(builderToken, {
       method: 'POST',
       url: `/v1/forms/${form.id}/draft/test-submission`,
       payload: { answers: {} },
@@ -596,7 +600,7 @@ describe('test fill', () => {
 describe('settings and cloning', () => {
   it('changes who may fill a form and whether a signature is required', async () => {
     const { form } = await createForm('Settings');
-    const response = await api.call(ownerToken, {
+    const response = await api.call(builderToken, {
       method: 'PATCH',
       url: `/v1/forms/${form.id}`,
       payload: { fillRoles: ['engineer', 'dispatcher'], signatureRequired: true, title: 'Renamed' },
@@ -609,12 +613,12 @@ describe('settings and cloning', () => {
     });
 
     expect(
-      (await api.call(ownerToken, { method: 'PATCH', url: `/v1/forms/${form.id}`, payload: {} }))
+      (await api.call(builderToken, { method: 'PATCH', url: `/v1/forms/${form.id}`, payload: {} }))
         .statusCode,
     ).toBe(422);
     expect(
       (
-        await api.call(ownerToken, {
+        await api.call(builderToken, {
           method: 'PATCH',
           url: `/v1/forms/${form.id}`,
           payload: { fillRoles: [] },
@@ -623,7 +627,7 @@ describe('settings and cloning', () => {
     ).toBe(422);
     expect(
       (
-        await api.call(ownerToken, {
+        await api.call(builderToken, {
           method: 'PATCH',
           url: '/v1/forms/00000000-0000-4000-8000-000000000000',
           payload: { title: 'x' },
@@ -637,7 +641,7 @@ describe('settings and cloning', () => {
     await save(form.id, inspection(), 1);
     await publish(form.id, 2);
 
-    const response = await api.call(ownerToken, {
+    const response = await api.call(builderToken, {
       method: 'POST',
       url: `/v1/forms/${form.id}/clone`,
       payload: { title: 'Copy' },
@@ -688,7 +692,7 @@ describe('the template library', () => {
   });
 
   it('starts a new form from a template whose draft publishes as it stands', async () => {
-    const response = await api.call(ownerToken, {
+    const response = await api.call(builderToken, {
       method: 'POST',
       url: '/v1/form-templates/job_completion/clone',
       payload: {},
@@ -704,12 +708,56 @@ describe('the template library', () => {
     expect(published.statusCode, published.body).toBe(200);
     expect(
       (
-        await api.call(ownerToken, {
+        await api.call(builderToken, {
           method: 'POST',
           url: '/v1/form-templates/nope/clone',
           payload: {},
         })
       ).statusCode,
     ).toBe(404);
+  });
+});
+
+describe('what the company itself may do', () => {
+  /**
+   * Forms are built by Integr8 for each company. An owner's own session reads
+   * and fills them; building, editing and publishing need Integr8 staff in the
+   * seat, which is what `builderToken` is. The screens hide the builder from
+   * `/v1/me`, and this is the server refusing it regardless.
+   */
+  it('reads forms but does not build them, and is told who does', async () => {
+    const me = json<{ permissions: string[] }>(
+      await api.call(ownerToken, { method: 'GET', url: '/v1/me' }),
+    );
+    expect(me.permissions).toContain('form.read');
+    expect(me.permissions).not.toContain('form.manage');
+    expect(me.permissions).not.toContain('job_type.manage');
+
+    expect((await api.call(ownerToken, { method: 'GET', url: '/v1/forms' })).statusCode).toBe(200);
+
+    const refused = await api.call(ownerToken, {
+      method: 'POST',
+      url: '/v1/forms',
+      payload: { title: 'Not mine to build' },
+    });
+    expect(refused.statusCode).toBe(403);
+    expect(json<{ error: { message: string } }>(refused).error.message).toContain('Integr8');
+
+    const form = await createForm('Built by staff');
+    const edit = await api.call(ownerToken, {
+      method: 'PATCH',
+      url: `/v1/forms/${form.form.id}`,
+      payload: { fillRoles: ['owner'] },
+    });
+    expect(edit.statusCode).toBe(403);
+  });
+
+  it('shows staff acting as the owner every permission the seat has', async () => {
+    const me = json<{ permissions: string[]; impersonatedBy?: unknown }>(
+      await api.call(builderToken, { method: 'GET', url: '/v1/me' }),
+    );
+    expect(me.impersonatedBy).toBeDefined();
+    expect(me.permissions).toContain('form.manage');
+    expect(me.permissions).toContain('job_type.manage');
   });
 });

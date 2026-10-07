@@ -1,4 +1,4 @@
-import { permissionsFor, type Principal, type Role, roleSchema, toUserId } from '@integr8/core';
+import { permissionsHeld, type Principal, type Role, roleSchema, toUserId } from '@integr8/core';
 import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { notFound } from '../../http/errors.js';
@@ -79,7 +79,12 @@ export const meRoute = defineRoute({
         email: seat.email,
         displayName: seat.displayName,
         role: seat.role,
-        permissions: permissionsFor(seat.role),
+        // What this seat may do now, not the role's ceiling: form and job-type
+        // management are held only while Integr8 staff sit in the seat.
+        permissions: permissionsHeld({
+          role: seat.role,
+          impersonatedBy: context.principal.impersonatedBy,
+        }),
         company: {
           name:
             (await getPlatformDataSource().tenants.findById(context.principal.tenantId))?.name ??
