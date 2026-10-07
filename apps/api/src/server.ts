@@ -134,7 +134,10 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
 
   // Before anything that could refuse a request: a preflight carries none of
   // the headers the later checks look for.
-  registerCors(app, corsOrigins(config));
+  const allowedOrigins = corsOrigins(config);
+  registerCors(app, allowedOrigins, (origin) => {
+    logger.warn('CORS refused a browser origin', { origin, allowedOrigins });
+  });
 
   // ---------------------------------------------------------------------------
   // 1. Context, and the headers every response carries

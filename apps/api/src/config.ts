@@ -303,6 +303,26 @@ export function corsOrigins(config: ApiConfig): string[] {
     : [];
 }
 
+/**
+ * The one CORS mistake a deployment actually makes: the web app's own origin
+ * missing from the allow-list.
+ *
+ * Sign-in still works when this is wrong, because it goes through the web
+ * server, so the first symptom is every dashboard screen failing with a
+ * browser-side CORS error and nothing in the API log. Named here so production
+ * refuses to start and staging says so at startup.
+ */
+export function webOriginMissingFromCors(config: ApiConfig): string | undefined {
+  if (config.WEB_APP_URL === undefined) {
+    return undefined;
+  }
+  const webOrigin = new URL(config.WEB_APP_URL).origin;
+  if (corsOrigins(config).includes(webOrigin)) {
+    return undefined;
+  }
+  return `API_CORS_ORIGINS does not include ${webOrigin}, the origin of WEB_APP_URL: the web app's pages could not call this API from a browser.`;
+}
+
 /** Where this API is reached from outside, without a trailing slash. */
 export function publicUrl(config: ApiConfig): string {
   return (config.API_PUBLIC_URL ?? `http://localhost:${String(config.PORT)}`).replace(/\/+$/u, '');
@@ -434,6 +454,11 @@ export function assertProductionReady(config: ApiConfig): void {
   }
   if (config.API_CORS_ORIGINS.trim() === '') {
     problems.push('API_CORS_ORIGINS is not set: no browser client could call this API.');
+  } else {
+    const missing = webOriginMissingFromCors(config);
+    if (missing !== undefined) {
+      problems.push(missing);
+    }
   }
   if (config.API_RELEASE === 'development') {
     problems.push('API_RELEASE is not set: reported errors could not be tied to a build.');
