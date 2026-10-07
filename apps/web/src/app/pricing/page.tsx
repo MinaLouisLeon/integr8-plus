@@ -5,6 +5,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { MarketingShell } from '~/components/marketing-shell';
+import { getStartedHref, signupMode } from '~/lib/signup';
 import { ErrorState, LoadingState } from '~/components/ui';
 import { formatBytes } from '~/lib/platform-format';
 import { apiClient } from '~/lib/session';
@@ -103,10 +104,12 @@ export default function PricingPage() {
 
               {plan.purchasable ? (
                 <Link
-                  href="/sign-up"
+                  href={getStartedHref()}
                   className="inline-flex justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover"
                 >
-                  {t('marketing.pricing.choose', { plan: plan.plan })}
+                  {signupMode() === 'open'
+                    ? t('marketing.pricing.choose', { plan: plan.plan })
+                    : t('marketing.pricing.contact')}
                 </Link>
               ) : (
                 // Not hidden and not offered. Hiding it would make the page lie

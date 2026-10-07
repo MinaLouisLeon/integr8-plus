@@ -1,8 +1,7 @@
 'use client';
 
 import { useTranslation } from '@integr8/i18n';
-import Link from 'next/link';
-import { MarketingShell } from '~/components/marketing-shell';
+import { GetStartedLink, MarketingShell } from '~/components/marketing-shell';
 import { HELP_ARTICLES, HELP_CATEGORIES } from '~/lib/help-articles';
 
 /**
@@ -60,12 +59,7 @@ export default function HelpPage() {
       </div>
 
       <div className="pt-10">
-        <Link
-          href="/sign-up"
-          className="inline-flex rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-hover"
-        >
-          {t('marketing.hero.cta')}
-        </Link>
+        <GetStartedLink />
       </div>
     </MarketingShell>
   );

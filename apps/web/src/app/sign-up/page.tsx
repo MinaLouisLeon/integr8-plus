@@ -4,9 +4,11 @@ import { useTranslation } from '@integr8/i18n';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { MarketingShell } from '~/components/marketing-shell';
+import { SignupClosed } from '~/components/signup-closed';
 import { Button, Field } from '~/components/ui';
 import { messageForError } from '~/lib/errors';
 import { apiClient } from '~/lib/session';
+import { signupMode } from '~/lib/signup';
 
 /**
  * Signing up (P18).
@@ -59,6 +61,10 @@ export default function SignUpPage() {
       setResent(true);
     })();
   };
+
+  if (signupMode() !== 'open') {
+    return <SignupClosed />;
+  }
 
   if (sent) {
     return (

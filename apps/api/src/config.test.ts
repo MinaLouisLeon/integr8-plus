@@ -68,3 +68,13 @@ describe("the web app's origin and API_CORS_ORIGINS", () => {
     ).not.toThrow();
   });
 });
+
+describe('public sign-up', () => {
+  // Companies are set up by Integr8 from the dashboard; a deployment has to
+  // say so explicitly to let strangers make their own.
+  it('is off unless the deployment opens it', () => {
+    expect(loadApiConfig({}).PUBLIC_SIGNUP).toBe('off');
+    expect(loadApiConfig({ PUBLIC_SIGNUP: 'open' }).PUBLIC_SIGNUP).toBe('open');
+    expect(() => loadApiConfig({ PUBLIC_SIGNUP: 'yes' })).toThrow();
+  });
+});

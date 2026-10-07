@@ -206,6 +206,17 @@ export const apiConfigSchema = z.object({
   BILLING_GRACE_DAYS: positiveInt(14),
 
   /**
+   * Whether a stranger may make their own company (P18's self-serve signup).
+   *
+   * `off`, the default: companies are set up by Integr8 from the platform
+   * dashboard, which builds their forms and job types with them, and
+   * `/v1/signup`, `/verify` and `/resend` answer 403 `signup_closed`. `open`
+   * turns the public flow back on. The web app has its own copy of this switch
+   * (`NEXT_PUBLIC_SIGNUP`), baked into its bundle, so the pages say the same.
+   */
+  PUBLIC_SIGNUP: z.enum(['off', 'open']).default('off'),
+
+  /**
    * Sentry. Optional: unset means errors are logged and not reported, which is
    * the right default for a developer's machine and the wrong one for
    * production — `assertProductionReady` says so at startup.
