@@ -332,3 +332,27 @@ describe('the last owner', () => {
     expect(demote.statusCode, demote.body).toBe(200);
   });
 });
+
+describe('the company’s brand', () => {
+  it('reaches everybody through /v1/me, and follows the settings', async () => {
+    // The apps wear the company's name, logo and colour, and every client
+    // reads them from here on launch — so the owner changing the colour in
+    // settings is seen by an engineer's phone on its next download.
+    const before = JSON.parse(
+      (await api.call(ownerToken, { method: 'GET', url: '/v1/me' })).body,
+    ) as { company: { name: string; brandColour: string | null; logoMediaId: string | null } };
+    expect(before.company).toEqual({ name: 'API Test Ltd', brandColour: null, logoMediaId: null });
+
+    const changed = await api.call(ownerToken, {
+      method: 'PATCH',
+      url: '/v1/settings',
+      payload: { brandColour: '#1D4ED8' },
+    });
+    expect(changed.statusCode, changed.body).toBe(200);
+
+    const after = JSON.parse(
+      (await api.call(ownerToken, { method: 'GET', url: '/v1/me' })).body,
+    ) as { company: { brandColour: string | null } };
+    expect(after.company.brandColour).toBe('#1D4ED8');
+  });
+});

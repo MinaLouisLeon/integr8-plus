@@ -395,3 +395,15 @@ function indent(block: string): string {
     .map((line) => `  ${line}`)
     .join('\n');
 }
+
+// ---------------------------------------------------------------------------
+// A company's own accent
+// ---------------------------------------------------------------------------
+
+export {
+  brandAccent,
+  brandAccentVariables,
+  parseHexColour,
+  relativeLuminance,
+  type BrandAccent,
+} from './brand.js';

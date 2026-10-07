@@ -5,6 +5,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { CompanyMark } from '~/components/company-brand';
 import { Button, ErrorState, LoadingState } from '~/components/ui';
 import { apiClient, signOut } from '~/lib/session';
 
@@ -51,9 +52,7 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-semibold text-content">
             {t('workspace.signedInAs', { name: person?.displayName ?? '' })}
           </h1>
-          <p className="text-sm text-content-muted">
-            {t('workspace.company')}: <code className="font-mono">{person?.tenantId}</code>
-          </p>
+          {person === undefined ? null : <CompanyMark company={person.company} />}
         </div>
 
         <Button

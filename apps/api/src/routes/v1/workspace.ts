@@ -43,10 +43,14 @@ export const meRoute = defineRoute({
     404: { description: 'The membership behind this token no longer exists.' },
   },
   handler: async (_input, context) => {
-    const { member, features } = await withTenant(context.principal.tenantId, async (tx) => ({
-      member: await tx.tenantUsers.findByUserId(context.principal.userId),
-      features: await tx.featureFlags.resolved(),
-    }));
+    const { member, features, settings } = await withTenant(
+      context.principal.tenantId,
+      async (tx) => ({
+        member: await tx.tenantUsers.findByUserId(context.principal.userId),
+        features: await tx.featureFlags.resolved(),
+        settings: await tx.settings.get(),
+      }),
+    );
 
     // Integr8 staff acting as the company hold no membership: the seat is the
     // owner role on the platform user's own id. The answer is who they are, not
@@ -81,6 +85,13 @@ export const meRoute = defineRoute({
           role: seat.role,
           impersonatedBy: context.principal.impersonatedBy,
         }),
+        company: {
+          name:
+            (await getPlatformDataSource().tenants.findById(context.principal.tenantId))?.name ??
+            '',
+          logoMediaId: settings.logoMediaId,
+          brandColour: settings.brandColour,
+        },
         features,
         announcements: (
           await getPlatformDataSource().settings.announcementsFor(context.principal.tenantId)

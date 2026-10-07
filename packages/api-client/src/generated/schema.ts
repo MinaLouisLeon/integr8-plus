@@ -4748,6 +4748,12 @@ export interface operations {
                             /** Format: uuid */
                             grantId: string;
                         };
+                        company: {
+                            name: string;
+                            /** Format: uuid */
+                            logoMediaId: string | null;
+                            brandColour: string | null;
+                        };
                         features: {
                             [key: string]: boolean;
                         };

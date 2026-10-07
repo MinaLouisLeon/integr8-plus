@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { AppState, I18nManager } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppLock } from '~/components/app-lock';
+import { BrandProvider } from '~/components/brand';
 import { APP_ENV, SENTRY_DSN } from '~/lib/env';
 import { deviceLocale } from '~/lib/preferences';
 import { APP_VERSION, session, whenSignedOut } from '~/lib/session';
@@ -113,8 +114,10 @@ function RootLayout() {
       <I18nextProvider i18n={i18n}>
         <StatusBar style="auto" />
         <AppLock>
-          <RouteMemory />
-          <Stack screenOptions={{ headerShown: false }} />
+          <BrandProvider>
+            <RouteMemory />
+            <Stack screenOptions={{ headerShown: false }} />
+          </BrandProvider>
         </AppLock>
       </I18nextProvider>
     </SafeAreaProvider>

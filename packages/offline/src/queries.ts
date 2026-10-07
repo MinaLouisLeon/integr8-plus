@@ -202,7 +202,14 @@ export interface Identity {
   displayName: string;
   email: string;
   role: string;
+  /** The company's name, logo and accent, as the app should wear them. */
+  company: { name: string; brandColour: string | null; logoMediaId: string | null };
   lastDownloadAt: string | null;
+}
+
+/** The meta table stores strings; an empty one is the absence of a value. */
+function orNull(value: string | undefined): string | null {
+  return value === undefined || value === '' ? null : value;
 }
 
 export async function identity(sql: SqlConnection): Promise<Identity | undefined> {
@@ -219,6 +226,11 @@ export async function identity(sql: SqlConnection): Promise<Identity | undefined
     displayName: meta.get('display_name') ?? '',
     email: meta.get('email') ?? '',
     role: meta.get('role') ?? '',
+    company: {
+      name: meta.get('company_name') ?? '',
+      brandColour: orNull(meta.get('brand_colour')),
+      logoMediaId: orNull(meta.get('logo_media_id')),
+    },
     lastDownloadAt: meta.get('last_download_at') ?? null,
   };
 }

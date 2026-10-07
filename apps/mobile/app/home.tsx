@@ -59,6 +59,9 @@ function Jobs() {
     <ScrollScreen>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[3] }}>
         <View style={{ flex: 1, gap: spacing[1] }}>
+          {person === undefined || person.company.name === '' ? null : (
+            <Body muted>{person.company.name}</Body>
+          )}
           <Heading>{t('mobile.jobs.title')}</Heading>
           {person === undefined ? null : <Body muted>{person.displayName}</Body>}
         </View>

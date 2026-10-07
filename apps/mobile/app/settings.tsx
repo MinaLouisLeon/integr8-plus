@@ -83,6 +83,9 @@ function Settings() {
         <Section title={t('mobile.settings.account')}>
           <Body>{person.displayName}</Body>
           <Body muted>{person.email}</Body>
+          {person.company.name === '' ? null : (
+            <Detail label={t('workspace.company')}>{person.company.name}</Detail>
+          )}
           <Detail label={t('mobile.settings.role')}>
             {t(`workspace.role.${person.role as 'engineer'}`, { defaultValue: person.role })}
           </Detail>
