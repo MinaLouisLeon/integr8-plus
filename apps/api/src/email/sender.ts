@@ -31,6 +31,15 @@ export interface EmailMessage {
    * this domain can vouch for.
    */
   from?: string;
+  /**
+   * The one link the message exists to deliver, when there is one: the
+   * invitation, the signup confirmation, the billing page.
+   *
+   * Carried separately from the words so the recording sender can put it in
+   * the log. A staging deployment has no mailbox to read, and a confirmation
+   * link that reaches nowhere makes signing up impossible to test.
+   */
+  actionUrl?: string;
 }
 
 export type EmailResult =
@@ -57,8 +66,9 @@ export interface EmailSender {
  * Keeps what would have been sent, for development and tests.
  *
  * The addresses are deliberately not validated and nothing is rendered: this
- * exists so a test can assert that a message was produced, and so a developer
- * can read one in the log without owning a domain.
+ * exists so a test can assert that a message was produced. The link a message
+ * carries is written to the log by `deliver` when this sender is in use, so a
+ * developer or a staging deployment can follow it without owning a domain.
  */
 export class RecordingEmailSender implements EmailSender {
   readonly provider = 'recording';

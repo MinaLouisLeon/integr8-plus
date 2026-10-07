@@ -40,7 +40,19 @@ async function post(
     // The address is not logged. It is somebody's email, the log is read by
     // people who have no business reading it, and the id is enough to trace a
     // delivery at the provider.
-    logger.info('Email sent', { ...context, provider: sender.provider, messageId: result.id });
+    //
+    // The link is logged for the recording sender and no other. With the fake
+    // there is no mailbox, so the log is the only place a staging deployment
+    // can read its own confirmation link; with a real provider the same line
+    // would hand a token to anyone who reads the log.
+    logger.info('Email sent', {
+      ...context,
+      provider: sender.provider,
+      messageId: result.id,
+      ...(sender.provider === 'recording' && message.actionUrl !== undefined
+        ? { actionUrl: message.actionUrl }
+        : {}),
+    });
     return { sent: true, problem: null };
   }
 

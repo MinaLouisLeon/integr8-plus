@@ -95,6 +95,7 @@ function compose(input: {
     subject: input.subject,
     text: lines.join('\n\n'),
     html: layout(input.title, input.paragraphs, input.action),
+    ...(input.action === undefined ? {} : { actionUrl: input.action.url }),
   };
 }
 
