@@ -19060,7 +19060,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** Format: uuid */
-                    targetUserId: string;
+                    targetUserId?: string;
                     reason: string;
                 };
             };
@@ -19078,7 +19078,9 @@ export interface operations {
                         /** Format: uuid */
                         tenantId: string;
                         /** Format: uuid */
-                        targetUserId: string;
+                        targetUserId: string | null;
+                        /** @enum {string} */
+                        actsAs: "user" | "company";
                         reason: string;
                         /** Format: date-time */
                         expiresAt: string;

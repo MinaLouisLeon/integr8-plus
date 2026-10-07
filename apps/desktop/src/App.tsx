@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { HashRouter, Navigate, Route, Routes, useNavigate } from 'react-router';
 import { BrandAccent } from '~/components/company-brand';
+import { ImpersonationBanner } from '~/components/impersonation-banner';
 import { LoadingState } from '~/components/ui';
 import {
   applyPreferences,
@@ -262,13 +263,15 @@ function RequireSession({ children }: { children: ReactNode }) {
     };
   }, [navigate]);
 
-  // The company's accent is applied inside the guard, so it is only ever asked
-  // for when there is a session to describe, and lifted again on sign-out.
+  // The banner and the company's accent sit inside the guard, so they are only
+  // ever asked for when there is a session to describe; the banner is above the
+  // screen, so no screen can hide it, and the accent is lifted on sign-out.
   return state === 'checking' ? (
     <LoadingState />
   ) : (
     <>
       <BrandAccent />
+      <ImpersonationBanner />
       {children}
     </>
   );
