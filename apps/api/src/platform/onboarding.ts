@@ -1,6 +1,12 @@
 import { type PlatformUserId, type Role, toTenantId, toUserId } from '@integr8/core';
 import { mintInvitationToken } from '@integr8/auth';
-import { getPlatformDataSource, type Tenant, type TenantPlan, withTenant } from '@integr8/db';
+import {
+  getPlatformDataSource,
+  type Tenant,
+  type TenantPlan,
+  withTenant,
+  type BillingMode,
+} from '@integr8/db';
 import type { MediaStorage } from '../media/storage.js';
 import { provisionTenantStorage } from '../media/tenant-storage.js';
 
@@ -37,6 +43,12 @@ export interface OnboardCompanyInput {
   name: string;
   plan: TenantPlan;
   seats: number | null;
+  /**
+   * How they pay. `self_serve` starts the trial; `invoiced` starts them active
+   * on the plan with no trial, because Integr8 is taking the money (and the
+   * self-serve path never sends this: a stranger is not invoiced).
+   */
+  billingMode?: BillingMode;
   ownerEmail: string;
   /**
    * How the owner gets in.
@@ -75,8 +87,8 @@ export interface OnboardCompanyInput {
 
 export interface OnboardedCompany {
   tenant: Tenant;
-  /** When the trial this company starts on runs out. */
-  trialEndsAt: Date;
+  /** When the trial this company starts on runs out; null for an invoiced company, which has none. */
+  trialEndsAt: Date | null;
   /** Null when the owner was made directly, which is the self-serve path. */
   invitation: { id: string; email: string; expiresAt: Date; token: string } | null;
   jobTypes: number;
@@ -108,6 +120,7 @@ export async function onboardCompany(input: OnboardCompanyInput): Promise<Onboar
     name: input.name,
     plan: input.plan,
     seats: input.seats,
+    billingMode: input.billingMode ?? 'self_serve',
     onboardedBy: input.onboardedBy,
   });
 
@@ -201,12 +214,16 @@ export async function onboardCompany(input: OnboardCompanyInput): Promise<Onboar
 
   // After the transaction, because a failure in there takes the company row
   // back out and a subscription pointing at a deleted company would block it.
-  const trialEndsAt = new Date(Date.now() + input.billing.trialDays * 24 * 60 * 60 * 1000);
+  const invoiced = tenant.billingMode === 'invoiced';
+  const trialEndsAt = invoiced
+    ? null
+    : new Date(Date.now() + input.billing.trialDays * 24 * 60 * 60 * 1000);
   await platform.billing.start({
     tenantId: tenant.id,
     provider: input.billing.provider,
     plan: input.plan,
     trialEndsAt,
+    status: invoiced ? 'active' : 'trialing',
   });
 
   const storage = await provision(input.media, tenant.id);

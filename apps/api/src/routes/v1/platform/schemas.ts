@@ -1,6 +1,7 @@
 import {
   ANNOUNCEMENT_SEVERITIES,
   BILLING_INTERVALS,
+  BILLING_MODES,
   SUBSCRIPTION_STATUSES,
   TENANT_EXPORT_STATUSES,
   TENANT_PLANS,
@@ -42,6 +43,12 @@ export const platformSignInResponseSchema = z.object({
 
 export const planSchema = z.enum(TENANT_PLANS);
 export const statusSchema = z.enum(TENANT_STATUSES);
+/**
+ * How a company pays. `self_serve`: it subscribes in the app and the provider
+ * takes the money. `invoiced`: Integr8 invoices it directly and sets its plan
+ * here; the app shows it no checkout, no card portal and no provider invoices.
+ */
+export const billingModeSchema = z.enum(BILLING_MODES);
 
 /** One row of the company directory. */
 export const companySummarySchema = z.object({
@@ -52,6 +59,7 @@ export const companySummarySchema = z.object({
   plan: planSchema,
   /** How many seats the plan allows; null means uncapped. */
   seats: z.number().int().nullable(),
+  billingMode: billingModeSchema,
   members: z.number().int(),
   activeMembers: z.number().int(),
   storageBytes: z.number().int(),

@@ -9,6 +9,7 @@ import { iso, isoOrNull } from '../schemas.js';
 import { acceptInvitationUrl } from '../../../email/links.js';
 import { recordPlatformAction } from './audit.js';
 import {
+  billingModeSchema,
   companyDetailSchema,
   companySummarySchema,
   onboardResponseSchema,
@@ -167,6 +168,11 @@ export const onboardCompanyRoute = defineRoute({
     plan: z.enum(TENANT_PLANS).default('trial'),
     /** Null means uncapped. */
     seats: z.number().int().min(1).max(100_000).nullable().default(null),
+    /**
+     * `invoiced` starts the company active on its plan with no trial, since
+     * Integr8 is taking the money; `self_serve` starts the trial as before.
+     */
+    billingMode: billingModeSchema.default('self_serve'),
     // A real address check, not just a length: the invitations table has one
     // too, and reaching it would mean a 500 after the company row committed.
     ownerEmail: z.email().max(320),
@@ -196,6 +202,7 @@ export const onboardCompanyRoute = defineRoute({
       name: body.name,
       plan: body.plan,
       seats: body.seats,
+      billingMode: body.billingMode,
       ownerEmail: body.ownerEmail,
       ...(body.jobTypes === undefined ? {} : { jobTypes: body.jobTypes }),
       onboardedBy: toPlatformUserId(context.platform.platformUserId),
@@ -219,6 +226,7 @@ export const onboardCompanyRoute = defineRoute({
       metadata: {
         plan: body.plan,
         seats: body.seats,
+        billingMode: body.billingMode,
         ownerEmail: body.ownerEmail,
         jobTypes: onboarded.jobTypes,
         bucket: onboarded.storage.bucket,
@@ -328,7 +336,9 @@ export const setCompanyPlanRoute = defineRoute({
   method: 'patch',
   path: '/v1/platform/companies/:tenantId/plan',
   operationId: 'setCompanyPlan',
-  summary: 'Change a company’s plan or seat count',
+  summary: 'Change a company’s plan, seat count or billing mode',
+  description:
+    'Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it.',
   tags: ['platform'],
   security: 'platform',
   params: z.object({ tenantId: z.uuid() }),
@@ -336,18 +346,56 @@ export const setCompanyPlanRoute = defineRoute({
   body: z.object({
     plan: planSchema,
     seats: z.number().int().min(1).max(100_000).nullable(),
+    /** Left out: unchanged. */
+    billingMode: billingModeSchema.optional(),
   }),
   responses: {
     200: { description: 'Changed.', schema: companySummarySchema },
     404: { description: 'No such company.' },
   },
   handler: async ({ params, body }, context) => {
-    const tenant = await getPlatformDataSource().tenants.setPlan(params.tenantId, {
+    const platform = getPlatformDataSource();
+    const tenant = await platform.tenants.setPlan(params.tenantId, {
       plan: body.plan,
       seats: body.seats,
+      ...(body.billingMode === undefined ? {} : { billingMode: body.billingMode }),
     });
     if (tenant === undefined) {
       throw notFound(`No company with id ${params.tenantId}`);
+    }
+
+    // The subscription row is what `/v1/billing/subscription` shows the
+    // company, so it has to agree with the plan just set. For a self-serve
+    // company that is all this touches: status, period and dunning belong to
+    // the provider. For an invoiced one there is no provider to wait for.
+    const invoiced = tenant.billingMode === 'invoiced';
+    const subscription = await platform.billing.find(tenant.id);
+    if (subscription === undefined) {
+      await platform.billing.start({
+        tenantId: tenant.id,
+        provider: context.services.billing.provider,
+        plan: body.plan,
+        trialEndsAt: null,
+        status: invoiced ? 'active' : 'trialing',
+      });
+    } else {
+      await platform.billing.update(tenant.id, {
+        plan: body.plan,
+        ...(invoiced
+          ? {
+              status: 'active',
+              trialEndsAt: null,
+              pastDueSince: null,
+              graceEndsAt: null,
+              remindersSent: 0,
+            }
+          : {}),
+      });
+    }
+    if (invoiced && tenant.readOnlySince !== null) {
+      // Read-only is how non-payment ends under self-serve. Integr8 invoicing
+      // the company is the payment arrangement now, so writes come back.
+      await platform.tenants.setReadOnly(tenant.id, null);
     }
 
     // The plan decides the storage allowance (P16), and the door-check caches
@@ -362,7 +410,7 @@ export const setCompanyPlanRoute = defineRoute({
       tenantSlug: tenant.slug,
       targetKind: 'tenant',
       targetId: tenant.id,
-      metadata: { plan: body.plan, seats: body.seats },
+      metadata: { plan: body.plan, seats: body.seats, billingMode: tenant.billingMode },
     });
 
     return { status: 200, body: await summaryOf(tenant.id) };
@@ -387,6 +435,7 @@ function toSummary(
     status: company.status,
     plan: company.plan,
     seats: company.seats,
+    billingMode: company.billingMode,
     members: company.members,
     activeMembers: company.activeMembers,
     storageBytes: company.storageBytes,
@@ -416,6 +465,7 @@ function fallbackSummary(tenant: {
   status: TenantSummary['status'];
   plan: TenantSummary['plan'];
   seats: number | null;
+  billingMode: TenantSummary['billingMode'];
   createdAt: Date;
   suspendedAt: Date | null;
   suspendedReason: string | null;

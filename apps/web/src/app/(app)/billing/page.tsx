@@ -169,7 +169,9 @@ export default function BillingPage() {
             {t('workspace.billing.plan')}: {data.plan}
           </span>
           <span className="text-sm text-content-muted">
-            {t(`workspace.billing.status.${data.status}`)}
+            {data.billingMode === 'invoiced'
+              ? t('workspace.billing.invoiced')
+              : t(`workspace.billing.status.${data.status}`)}
           </span>
         </div>
 
@@ -193,7 +195,11 @@ export default function BillingPage() {
           Said on the screen, not only in a document. Somebody whose card has
           expired has no other way of learning that we will never email them.
         */}
-        <p className="text-sm text-content-muted">{t('workspace.billing.remindersInApp')}</p>
+        {data.billingMode === 'invoiced' ? (
+          <p className="text-sm text-content-muted">{t('workspace.billing.invoicedBody')}</p>
+        ) : (
+          <p className="text-sm text-content-muted">{t('workspace.billing.remindersInApp')}</p>
+        )}
       </section>
 
       <section className="flex flex-col gap-3">
@@ -234,54 +240,68 @@ export default function BillingPage() {
         </dl>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold text-content">{t('workspace.billing.invoices')}</h2>
-        <p className="text-sm text-content-muted">{t('workspace.billing.invoicesHint')}</p>
-        {invoices.isPending ? (
-          <LoadingState />
-        ) : invoices.isError ? (
-          <ErrorState
-            requestId={
-              invoices.error instanceof ApiRequestError ? invoices.error.requestId : undefined
-            }
-            onRetry={() => void invoices.refetch()}
-          />
-        ) : invoices.data.length === 0 ? (
-          <p className="text-sm text-content-muted">{t('workspace.billing.invoicesEmpty')}</p>
-        ) : (
-          <InvoiceTable invoices={invoices.data} locale={locale} />
-        )}
-      </section>
+      {/*
+        An invoiced company pays Integr8, not the provider: there are no
+        provider invoices to list and no checkout or card portal to open, and
+        the API refuses both (`billing_invoiced`). Hidden rather than disabled,
+        because a disabled "pay" button on a paid-up account asks a question.
+      */}
+      {data.billingMode === 'invoiced' ? null : (
+        <>
+          <section className="flex flex-col gap-3">
+            <h2 className="text-base font-semibold text-content">
+              {t('workspace.billing.invoices')}
+            </h2>
+            <p className="text-sm text-content-muted">{t('workspace.billing.invoicesHint')}</p>
+            {invoices.isPending ? (
+              <LoadingState />
+            ) : invoices.isError ? (
+              <ErrorState
+                requestId={
+                  invoices.error instanceof ApiRequestError ? invoices.error.requestId : undefined
+                }
+                onRetry={() => void invoices.refetch()}
+              />
+            ) : invoices.data.length === 0 ? (
+              <p className="text-sm text-content-muted">{t('workspace.billing.invoicesEmpty')}</p>
+            ) : (
+              <InvoiceTable invoices={invoices.data} locale={locale} />
+            )}
+          </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold text-content">{t('workspace.billing.manage')}</h2>
-        <p className="text-sm text-content-muted">{t('workspace.billing.manageHint')}</p>
-        <div className="flex flex-wrap gap-3">
-          <Button
-            busy={portal.isPending}
-            onClick={() => {
-              setProblem(null);
-              portal.mutate();
-            }}
-          >
-            {portal.isPending ? t('workspace.billing.opening') : t('workspace.billing.manage')}
-          </Button>
+          <section className="flex flex-col gap-3">
+            <h2 className="text-base font-semibold text-content">
+              {t('workspace.billing.manage')}
+            </h2>
+            <p className="text-sm text-content-muted">{t('workspace.billing.manageHint')}</p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                busy={portal.isPending}
+                onClick={() => {
+                  setProblem(null);
+                  portal.mutate();
+                }}
+              >
+                {portal.isPending ? t('workspace.billing.opening') : t('workspace.billing.manage')}
+              </Button>
 
-          {(['starter', 'standard', 'enterprise'] as const).map((plan) => (
-            <Button
-              key={plan}
-              variant="secondary"
-              busy={checkout.isPending}
-              onClick={() => {
-                setProblem(null);
-                checkout.mutate(plan);
-              }}
-            >
-              {plan}
-            </Button>
-          ))}
-        </div>
-      </section>
+              {(['starter', 'standard', 'enterprise'] as const).map((plan) => (
+                <Button
+                  key={plan}
+                  variant="secondary"
+                  busy={checkout.isPending}
+                  onClick={() => {
+                    setProblem(null);
+                    checkout.mutate(plan);
+                  }}
+                >
+                  {plan}
+                </Button>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
     </main>
   );
 }

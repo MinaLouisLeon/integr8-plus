@@ -91,6 +91,12 @@ export default function CompanyPage() {
         </dl>
       </Panel>
 
+      <PlanPanel
+        tenantId={tenantId}
+        plan={detail.plan}
+        seats={detail.seats}
+        billingMode={detail.billingMode}
+      />
       <BillingPanel billing={detail.billing} />
 
       <Panel title={t('platform.company.people')}>
@@ -158,6 +164,116 @@ export default function CompanyPage() {
       <SupportActions tenantId={tenantId} />
       <Lifecycle tenantId={tenantId} name={detail.name} status={detail.status} />
     </main>
+  );
+}
+
+/**
+ * The plan the API enforces, and how the company pays for it.
+ *
+ * Two modes. `invoiced`: Integr8 bills the company directly, so what is set
+ * here is the whole truth — no trial, no checkout, no card portal, and the
+ * company's billing screen says "invoiced by Integr8". `self_serve`: the
+ * company pays in the app, and the plan here is what they are entitled to
+ * while the provider owns status, period and dunning.
+ */
+function PlanPanel({
+  tenantId,
+  plan,
+  seats,
+  billingMode,
+}: {
+  tenantId: string;
+  plan: string;
+  seats: number | null;
+  billingMode: 'self_serve' | 'invoiced';
+}) {
+  const { t } = useTranslation();
+  const queries = useQueryClient();
+  const [draftPlan, setDraftPlan] = useState(plan);
+  const [draftSeats, setDraftSeats] = useState(seats === null ? '' : String(seats));
+  const [draftMode, setDraftMode] = useState<'self_serve' | 'invoiced'>(billingMode);
+  const [problem, setProblem] = useState<string | undefined>(undefined);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      await platformClient().PATCH('/v1/platform/companies/{tenantId}/plan', {
+        params: { path: { tenantId } },
+        body: {
+          plan: draftPlan as 'trial' | 'starter' | 'standard' | 'enterprise',
+          seats: draftSeats.trim() === '' ? null : Number(draftSeats),
+          billingMode: draftMode,
+        },
+      });
+    },
+    onSuccess: () => {
+      setProblem(undefined);
+      void queries.invalidateQueries({ queryKey: ['platform', 'company', tenantId] });
+      void queries.invalidateQueries({ queryKey: ['platform', 'companies'] });
+    },
+    onError: (error) => {
+      setProblem(messageForError(error, t));
+    },
+  });
+
+  const unchanged =
+    draftPlan === plan &&
+    draftMode === billingMode &&
+    (draftSeats.trim() === '' ? null : Number(draftSeats)) === seats;
+
+  return (
+    <Panel title={t('platform.plan.title')} description={t('platform.plan.description')}>
+      <form
+        className="flex flex-wrap items-end gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          save.mutate();
+        }}
+      >
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-content">{t('platform.plan.mode')}</span>
+          <select
+            value={draftMode}
+            onChange={(event) => setDraftMode(event.target.value as 'self_serve' | 'invoiced')}
+            className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-content"
+          >
+            <option value="invoiced">{t('platform.billingMode.invoiced')}</option>
+            <option value="self_serve">{t('platform.billingMode.self_serve')}</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-content">{t('platform.plan.plan')}</span>
+          <select
+            value={draftPlan}
+            onChange={(event) => setDraftPlan(event.target.value)}
+            className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-content"
+          >
+            <option value="trial">trial</option>
+            <option value="starter">starter</option>
+            <option value="standard">standard</option>
+            <option value="enterprise">enterprise</option>
+          </select>
+        </label>
+        <Field
+          label={t('platform.plan.seats')}
+          hint={t('platform.plan.seatsHint')}
+          type="number"
+          min={1}
+          value={draftSeats}
+          onChange={(event) => setDraftSeats(event.target.value)}
+        />
+        <Button type="submit" busy={save.isPending} disabled={unchanged}>
+          {save.isPending ? t('platform.plan.saving') : t('platform.plan.save')}
+        </Button>
+        {save.isSuccess && unchanged ? (
+          <span className="text-sm text-content-muted">{t('platform.plan.saved')}</span>
+        ) : null}
+        {problem === undefined ? null : (
+          <span role="alert" className="text-sm text-danger">
+            {problem}
+          </span>
+        )}
+      </form>
+    </Panel>
   );
 }
 

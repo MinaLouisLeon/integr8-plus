@@ -528,3 +528,93 @@ async function bringPurgeForward(tenantId: string): Promise<void> {
   expect(pending).toBeDefined();
   await platform.lifecycle.reschedule(tenantId, new Date(Date.now() - 1000));
 }
+
+describe('how a company pays', () => {
+  it('onboards an invoiced company active on its plan, with no trial', async () => {
+    const name = slug();
+    const response = await api.call(admin.accessToken, {
+      method: 'POST',
+      url: '/v1/platform/companies',
+      payload: {
+        slug: name,
+        name: 'Invoiced Ltd',
+        plan: 'standard',
+        seats: null,
+        billingMode: 'invoiced',
+        ownerEmail: `owner@${name}.example`,
+      },
+    });
+    expect(response.statusCode, response.body).toBe(201);
+    const { company } = JSON.parse(response.body) as {
+      company: { id: string; billingMode: string };
+    };
+    expect(company.billingMode).toBe('invoiced');
+
+    const detail = JSON.parse(
+      (
+        await api.call(admin.accessToken, {
+          method: 'GET',
+          url: `/v1/platform/companies/${company.id}`,
+        })
+      ).body,
+    ) as { billing: { status: string; plan: string; trialEndsAt: string | null } | null };
+    expect(detail.billing).toMatchObject({ status: 'active', plan: 'standard', trialEndsAt: null });
+  });
+
+  it('lets the dashboard switch a company to invoiced, which the company sees and the checkout honours', async () => {
+    const owner = await api.member('owner', 'paying-owner');
+    const token = await api.signIn(owner);
+
+    const switched = await api.call(admin.accessToken, {
+      method: 'PATCH',
+      url: `/v1/platform/companies/${api.tenantId}/plan`,
+      payload: { plan: 'standard', seats: 40, billingMode: 'invoiced' },
+    });
+    expect(switched.statusCode, switched.body).toBe(200);
+    expect((JSON.parse(switched.body) as { billingMode: string }).billingMode).toBe('invoiced');
+
+    // The company's own billing screen reads the plan the dashboard set, not
+    // the one the provider last mentioned, and says who is billing them.
+    const seen = JSON.parse(
+      (await api.call(token, { method: 'GET', url: '/v1/billing/subscription' })).body,
+    ) as { billingMode: string; plan: string; status: string; trialEndsAt: string | null };
+    expect(seen).toMatchObject({
+      billingMode: 'invoiced',
+      plan: 'standard',
+      status: 'active',
+      trialEndsAt: null,
+    });
+
+    // There is no card to take and no portal to open.
+    for (const url of ['/v1/billing/checkout', '/v1/billing/portal']) {
+      const refused = await api.call(token, {
+        method: 'POST',
+        url,
+        payload: url.endsWith('checkout') ? { plan: 'starter', interval: 'month' } : {},
+      });
+      expect(refused.statusCode, `${url}: ${refused.body}`).toBe(409);
+      expect((JSON.parse(refused.body) as { error: { code: string } }).error.code).toBe(
+        'billing_invoiced',
+      );
+    }
+
+    // And back: the checkout is theirs again (whatever else it may say about
+    // prices), and the mode is remembered on the directory row.
+    const back = await api.call(admin.accessToken, {
+      method: 'PATCH',
+      url: `/v1/platform/companies/${api.tenantId}/plan`,
+      payload: { plan: 'standard', seats: 40, billingMode: 'self_serve' },
+    });
+    expect((JSON.parse(back.body) as { billingMode: string }).billingMode).toBe('self_serve');
+    const again = await api.call(token, {
+      method: 'POST',
+      url: '/v1/billing/checkout',
+      payload: { plan: 'starter', interval: 'month' },
+    });
+    expect(
+      again.statusCode === 409
+        ? (JSON.parse(again.body) as { error: { code: string } }).error.code
+        : 'allowed',
+    ).not.toBe('billing_invoiced');
+  });
+});
