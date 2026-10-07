@@ -13,7 +13,7 @@ import { type ApiHarness, type Member, startApi } from '../../testing/api-harnes
  */
 
 let api: ApiHarness;
-let tokens: Record<'owner' | 'dispatcher' | 'engineer' | 'colleague', string>;
+let tokens: Record<'owner' | 'builder' | 'dispatcher' | 'engineer' | 'colleague', string>;
 let people: Record<'owner' | 'dispatcher' | 'engineer' | 'colleague', Member>;
 let jobTypeId: string;
 let customerId: string;
@@ -133,6 +133,7 @@ beforeAll(async () => {
   };
   tokens = {
     owner: await api.signIn(people.owner),
+    builder: await api.staff(people.owner),
     dispatcher: await api.signIn(people.dispatcher),
     engineer: await api.signIn(people.engineer),
     colleague: await api.signIn(people.colleague),
@@ -143,7 +144,7 @@ beforeAll(async () => {
     afterPhotos: number;
     signatureRequired: boolean;
   }>(
-    tokens.owner,
+    tokens.builder,
     'POST',
     '/v1/job-types',
     {

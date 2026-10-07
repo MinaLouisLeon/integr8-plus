@@ -1,5 +1,5 @@
 import {
-  can,
+  holds,
   type CompletionMissing,
   findTransition,
   formatWorkOrderReference,
@@ -194,7 +194,7 @@ export const detailSchema = z.object({
 });
 
 export async function detailBody(tx: TenantTransaction, principal: Principal, job: WorkOrder) {
-  const readAll = can(principal.role, 'work_order.read_all');
+  const readAll = holds(principal, 'work_order.read_all');
   const [
     site,
     customer,
@@ -327,9 +327,9 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     previousAtSite: await workOrderSummaries(tx, visiblePrevious, people),
     can: {
       edit:
-        can(principal.role, 'work_order.manage') &&
+        holds(principal, 'work_order.manage') &&
         !['complete', 'reviewed', 'cancelled'].includes(job.state),
-      assign: can(principal.role, 'work_order.manage'),
+      assign: holds(principal, 'work_order.manage'),
       work: working,
       comment: working,
       transitions: await allowedTransitions(tx, principal, job),
@@ -504,7 +504,7 @@ const listQuery = z.object({
 type ListQuery = z.infer<typeof listQuery>;
 
 function buildQuery(principal: Principal, query: ListQuery): WorkOrderQuery {
-  const readAll = can(principal.role, 'work_order.read_all');
+  const readAll = holds(principal, 'work_order.read_all');
   const asked = query.assigneeId === 'me' ? principal.userId : query.assigneeId;
   // Without read_all, a list is always of one's own jobs, whatever is asked.
   const assigneeId = readAll ? asked : principal.userId;
@@ -844,7 +844,7 @@ export const transitionWorkOrderRoute = defineRoute({
         const allowed =
           transition.permission === 'work_order.progress'
             ? await mayWork(tx, principal, job)
-            : can(principal.role, transition.permission);
+            : holds(principal, transition.permission);
         if (!allowed) {
           throw forbidden(
             transition.permission === 'work_order.review'

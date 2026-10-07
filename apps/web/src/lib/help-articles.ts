@@ -32,8 +32,8 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     category: 'getting-started',
     question: 'I have just signed up. What should I do first?',
     answer: [
-      'Rename the job types to match the work you actually do. We put five in to start with — installation, planned maintenance, repair, inspection and callout — and they are only a starting point.',
-      'Then create one form, invite one engineer, and fill the form in yourself on a phone. Doing the whole loop once, badly, teaches you more than setting everything up perfectly before anybody uses it.',
+      'Tell us the kinds of work you do and send us the paperwork you use today. We set up your job types and build your forms for you — that is part of what you are paying for, and it is usually done within a day or two.',
+      'Then invite one engineer and fill a form in yourself on a phone. Doing the whole loop once, badly, teaches you more than setting everything up perfectly before anybody uses it.',
       'The checklist on your dashboard tracks these. It is computed from what actually exists, so it is never out of date.',
     ],
   },
@@ -59,17 +59,18 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'build-a-form',
     category: 'forms',
-    question: 'How do I build a form?',
+    question: 'How do I get a form built or changed?',
     answer: [
-      'Start from one of the six templates and change it — that is almost always faster than starting from nothing, and the templates are built from forms that are genuinely used.',
-      'A form is pages, sections and questions. A question can be required, can have a numeric range, and can be shown only when an earlier answer says so, which is how you keep a routine job down to a few taps.',
-      'Nothing is live until you publish it.',
+      'You do not build forms yourself: Integr8 builds and maintains them for you, so the people in your company only ever see the forms they fill in.',
+      'Send us the form you want — a photo of the paper one, a spreadsheet, a description — and say which kinds of job it belongs to. We usually start from one of our templates, because they are built from forms that are genuinely used.',
+      'A form is pages, sections and questions. A question can be required, can have a numeric range, and can be shown only when an earlier answer says so, which is how we keep a routine job down to a few taps. Tell us about those rules and we build them in.',
+      'Nothing is live until we publish it, and we check it with you first.',
     ],
   },
   {
     slug: 'change-a-published-form',
     category: 'forms',
-    question: 'I changed a form. What happens to the jobs already filled in?',
+    question: 'A form has changed. What happens to the jobs already filled in?',
     answer: [
       'Nothing. A published version is frozen: a submission made against version 1 still shows version 1, with the questions as they were worded and the answers as they were given.',
       'New submissions use the latest published version. The two live alongside each other for as long as you keep the records.',
@@ -78,10 +79,10 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'breaking-changes',
     category: 'forms',
-    question: 'Why is it warning me about a breaking change?',
+    question: 'What is a breaking change to a form?',
     answer: [
-      'Because you have removed a question, or made an optional one required, or narrowed what an answer can be. Anything already saved as a draft against the old version may no longer be valid.',
-      'It is a warning, not a refusal. You can publish anyway once you have acknowledged it.',
+      'Removing a question, making an optional one required, or narrowing what an answer can be. Anything already saved as a draft against the old version may no longer be valid.',
+      'When you ask us for a change like that, we tell you before publishing it, so you can have engineers send in what they have first.',
     ],
   },
   {
@@ -125,7 +126,8 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     category: 'people',
     question: 'What can each role do?',
     answer: [
-      'An owner can do everything, including billing and closing the account. An admin can do everything except billing and company settings.',
+      'An owner can do everything in the company, including billing and closing the account. An admin can do everything except billing and company settings.',
+      'Forms and job types are the exception for both: Integr8 builds and maintains those for you, so nobody in the company needs to.',
       'A dispatcher manages jobs, customers and sites. An engineer does the work assigned to them and fills in forms. A viewer can read and nothing else.',
       'Nobody can give somebody a role above their own.',
     ],

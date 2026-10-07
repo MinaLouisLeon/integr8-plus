@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  assertCan,
+  assertHolds,
   can,
+  holds,
   PERMISSIONS,
   PermissionDeniedError,
-  assertCan,
   permissionSchema,
   permissionsFor,
+  permissionsHeld,
+  STAFF_ONLY_PERMISSIONS,
 } from './permissions.js';
 import { ROLES } from './roles.js';
 
@@ -104,10 +108,12 @@ describe('who can do what', () => {
     }
   });
 
-  it('lets everyone read forms, and only owners and admins build or publish them', () => {
-    // Filling a form needs the form. Building one is the company admin's job,
-    // which is the premise of P07 — and a dispatcher who could publish would be
-    // changing what every engineer is asked, from the day's schedule screen.
+  it('lets everyone read forms, and only owner and admin seats build or publish them', () => {
+    // Filling a form needs the form. Building one happens from an owner's or
+    // admin's seat — and, since Integr8 builds each company's forms, only with
+    // staff in that seat; see `what Integr8 does for a company` below. A
+    // dispatcher who could publish would be changing what every engineer is
+    // asked, from the day's schedule screen.
     for (const role of ROLES) {
       expect(can(role, 'form.read'), role).toBe(true);
     }
@@ -161,5 +167,55 @@ describe('the relationship to roleRank', () => {
   it('is not rank-monotone, so no call site may substitute a rank check for a permission', () => {
     expect(can('viewer', 'submission.read_all')).toBe(true);
     expect(can('engineer', 'submission.read_all')).toBe(false);
+  });
+});
+
+describe('what Integr8 does for a company', () => {
+  const owner = { role: 'owner' } as const;
+  const staffAsOwner = { role: 'owner', impersonatedBy: { pid: 'p', gid: 'g' } } as const;
+  const staffAsEngineer = { role: 'engineer', impersonatedBy: { pid: 'p', gid: 'g' } } as const;
+
+  it('names exactly the form and job-type configuration', () => {
+    expect([...STAFF_ONLY_PERMISSIONS].sort()).toEqual(['form.manage', 'job_type.manage']);
+  });
+
+  it('withholds those from the company\u2019s own owner, and nothing else', () => {
+    const withheld = PERMISSIONS.filter((permission) => !holds(owner, permission));
+    expect(withheld).toEqual(['form.manage', 'job_type.manage']);
+    expect(permissionsHeld(owner)).toEqual(
+      permissionsFor('owner').filter((permission) => !STAFF_ONLY_PERMISSIONS.has(permission)),
+    );
+  });
+
+  it('grants them to staff sitting in that seat', () => {
+    expect(holds(staffAsOwner, 'form.manage')).toBe(true);
+    expect(permissionsHeld(staffAsOwner)).toEqual(permissionsFor('owner'));
+  });
+
+  it('never lifts staff above the seat they sit in', () => {
+    // An impersonated engineer is still an engineer: the overlay only decides
+    // who reaches a role's ceiling, it never raises it.
+    expect(holds(staffAsEngineer, 'form.manage')).toBe(false);
+    expect(holds(staffAsEngineer, 'member.invite')).toBe(false);
+    expect(permissionsHeld(staffAsEngineer)).toEqual(permissionsFor('engineer'));
+  });
+
+  it('says why a denial happened, so the API can say who to ask', () => {
+    try {
+      assertHolds(owner, 'form.manage');
+      expect.unreachable('assertHolds should have thrown');
+    } catch (error) {
+      expect(error).toBeInstanceOf(PermissionDeniedError);
+      expect((error as PermissionDeniedError).reason).toBe('staff_only');
+    }
+    try {
+      assertHolds({ role: 'engineer' }, 'form.manage');
+      expect.unreachable('assertHolds should have thrown');
+    } catch (error) {
+      expect((error as PermissionDeniedError).reason).toBe('role');
+    }
+    expect(() => {
+      assertHolds(staffAsOwner, 'form.manage');
+    }).not.toThrow();
   });
 });

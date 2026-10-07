@@ -1,4 +1,4 @@
-import { can, formatWorkOrderReference, type Principal } from '@integr8/core';
+import { holds, formatWorkOrderReference, type Principal } from '@integr8/core';
 import {
   type Form,
   type FormVersion,
@@ -184,11 +184,11 @@ export function mayRead(principal: Principal, submission: Submission): boolean {
   if (submission.submittedBy === principal.userId) {
     return true;
   }
-  return submission.status !== 'draft' && can(principal.role, 'submission.read_all');
+  return submission.status !== 'draft' && holds(principal, 'submission.read_all');
 }
 
 export function mayFill(principal: Principal, form: Form): boolean {
-  return can(principal.role, 'submission.fill') && form.fillRoles.includes(principal.role);
+  return holds(principal, 'submission.fill') && form.fillRoles.includes(principal.role);
 }
 
 /** Whether this caller may change the answers now: their own draft, or a reopened submission they may correct. */
@@ -203,7 +203,7 @@ export function mayEdit(
     );
   }
   if (submission.status === 'reopened') {
-    return submission.submittedBy === principal.userId || can(principal.role, 'submission.amend');
+    return submission.submittedBy === principal.userId || holds(principal, 'submission.amend');
   }
   return false;
 }
@@ -320,7 +320,7 @@ export async function detailBody(
     can: {
       edit: editable,
       submit: editable,
-      reopen: submission.status === 'submitted' && can(principal.role, 'submission.amend'),
+      reopen: submission.status === 'submitted' && holds(principal, 'submission.amend'),
     },
   };
 }
@@ -492,7 +492,7 @@ async function buildQuery(
   principal: Principal,
   query: z.infer<typeof listQuery>,
 ): Promise<SubmissionQuery> {
-  const own = query.mine === 'true' || !can(principal.role, 'submission.read_all');
+  const own = query.mine === 'true' || !holds(principal, 'submission.read_all');
   const statuses: SubmissionStatus[] =
     query.status === undefined ? ['submitted', 'reopened'] : [query.status];
   const drafts = statuses.includes('draft');

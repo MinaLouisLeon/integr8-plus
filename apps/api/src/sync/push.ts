@@ -1,4 +1,4 @@
-import { can, findTransition, type Principal } from '@integr8/core';
+import { holds, findTransition, type Principal } from '@integr8/core';
 import { type Submission, type TenantTransaction, type WorkOrder, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { ApiError, type ErrorDetail } from '../http/errors.js';
@@ -543,7 +543,7 @@ async function stateChanged(
     transition !== undefined &&
     (transition.permission === 'work_order.progress'
       ? await mayWork(tx, principal, job)
-      : can(principal.role, transition.permission));
+      : holds(principal, transition.permission));
   return {
     outcome: 'conflict',
     code: 'state_changed',
@@ -588,7 +588,7 @@ async function transition(
   const permitted =
     allowed.permission === 'work_order.progress'
       ? await mayWork(tx, principal, job)
-      : can(principal.role, allowed.permission);
+      : holds(principal, allowed.permission);
   if (!permitted) {
     return rejected('forbidden', 'You may not make this change to this job.');
   }
@@ -994,7 +994,7 @@ async function startSubmission(
 
 async function ownSubmission(tx: TenantTransaction, principal: Principal, id: string) {
   const submission = await tx.submissions.findById(id);
-  const amendable = submission?.status === 'reopened' && can(principal.role, 'submission.amend');
+  const amendable = submission?.status === 'reopened' && holds(principal, 'submission.amend');
   return submission?.submittedBy === principal.userId || amendable ? submission : undefined;
 }
 

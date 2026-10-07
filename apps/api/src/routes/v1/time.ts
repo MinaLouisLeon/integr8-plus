@@ -1,4 +1,4 @@
-import { can, formatWorkOrderReference } from '@integr8/core';
+import { holds, formatWorkOrderReference } from '@integr8/core';
 import { withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { forbidden, unprocessable } from '../../http/errors.js';
@@ -87,7 +87,7 @@ export const timesheetRoute = defineRoute({
         { field: 'query.to', code: 'invalid_window', message: 'After from, and within 62 days.' },
       ]);
     }
-    const office = can(principal.role, 'work_order.manage');
+    const office = holds(principal, 'work_order.manage');
     const userId = query.userId ?? (office ? undefined : principal.userId);
     if (!office && userId !== principal.userId) {
       throw forbidden('Only the office can see someone else’s time.');
