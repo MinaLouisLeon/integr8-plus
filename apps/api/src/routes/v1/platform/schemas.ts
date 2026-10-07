@@ -213,7 +213,9 @@ export const deletionSchema = z.object({
 export const impersonationSchema = z.object({
   grantId: z.uuid(),
   tenantId: z.uuid(),
-  targetUserId: z.uuid(),
+  /** Null when acting as the company rather than as one of its members. */
+  targetUserId: z.uuid().nullable(),
+  actsAs: z.enum(['user', 'company']),
   reason: z.string(),
   expiresAt: timestamp,
   tokens: z.object({

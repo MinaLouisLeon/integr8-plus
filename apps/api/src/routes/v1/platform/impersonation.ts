@@ -49,7 +49,12 @@ export const startImpersonationRoute = defineRoute({
   params: z.object({ tenantId: z.uuid() }),
   query: noSchema,
   body: z.object({
-    targetUserId: z.uuid(),
+    /**
+     * A member to act as. Leave it out to act as the company itself, with the
+     * owner role and your own id: the way to set up a company that has no
+     * members yet, and the way staff build forms without joining anybody.
+     */
+    targetUserId: z.uuid().optional(),
     reason: z.string().min(10).max(500),
   }),
   responses: {
@@ -63,10 +68,11 @@ export const startImpersonationRoute = defineRoute({
       throw notFound(`No company with id ${params.tenantId}`);
     }
 
+    const asCompany = body.targetUserId === undefined;
     const started = await context.services.impersonation.start({
       platformUserId: toPlatformUserId(context.platform.platformUserId),
       tenantId: toTenantId(params.tenantId),
-      targetUserId: toUserId(body.targetUserId),
+      ...(body.targetUserId === undefined ? {} : { targetUserId: toUserId(body.targetUserId) }),
       reason: body.reason,
       clientApp: context.clientApp,
       ipAddress: context.ipAddress,
@@ -77,10 +83,14 @@ export const startImpersonationRoute = defineRoute({
       action: 'impersonation.started',
       tenantId: tenant.id,
       tenantSlug: tenant.slug,
-      targetKind: 'user',
-      targetId: body.targetUserId,
+      targetKind: asCompany ? 'tenant' : 'user',
+      targetId: body.targetUserId ?? tenant.id,
       reason: body.reason,
-      metadata: { grantId: started.grantId, expiresAt: iso(started.expiresAt) },
+      metadata: {
+        grantId: started.grantId,
+        expiresAt: iso(started.expiresAt),
+        actsAs: asCompany ? 'company' : 'user',
+      },
     });
 
     return {
@@ -88,7 +98,8 @@ export const startImpersonationRoute = defineRoute({
       body: {
         grantId: started.grantId,
         tenantId: tenant.id,
-        targetUserId: body.targetUserId,
+        targetUserId: body.targetUserId ?? null,
+        actsAs: asCompany ? ('company' as const) : ('user' as const),
         reason: body.reason,
         expiresAt: iso(started.expiresAt),
         tokens: {

@@ -8,6 +8,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { HashRouter, Navigate, Route, Routes, useNavigate } from 'react-router';
+import { ImpersonationBanner } from '~/components/impersonation-banner';
 import { LoadingState } from '~/components/ui';
 import {
   applyPreferences,
@@ -261,7 +262,16 @@ function RequireSession({ children }: { children: ReactNode }) {
     };
   }, [navigate]);
 
-  return state === 'checking' ? <LoadingState /> : <>{children}</>;
+  // The banner sits inside the guard, so it is only ever asked for when there
+  // is a session to describe, and above the screen, so no screen can hide it.
+  return state === 'checking' ? (
+    <LoadingState />
+  ) : (
+    <>
+      <ImpersonationBanner />
+      {children}
+    </>
+  );
 }
 
 function PreferenceBar({

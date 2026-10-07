@@ -1,4 +1,4 @@
-import { permissionsHeld, type Principal, roleSchema, toUserId } from '@integr8/core';
+import { permissionsHeld, type Principal, type Role, roleSchema, toUserId } from '@integr8/core';
 import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { notFound } from '../../http/errors.js';
@@ -48,7 +48,20 @@ export const meRoute = defineRoute({
       features: await tx.featureFlags.resolved(),
     }));
 
-    if (member === undefined) {
+    // Integr8 staff acting as the company hold no membership: the seat is the
+    // owner role on the platform user's own id. The answer is who they are, not
+    // a 404, because the apps read this to paint the banner that says so.
+    const seat =
+      member !== undefined
+        ? {
+            userId: member.userId,
+            email: member.email,
+            displayName: member.displayName,
+            role: member.role,
+          }
+        : await companySeat(context.principal);
+
+    if (seat === undefined) {
       // The token is valid but the membership has gone — removed while this
       // access token was still in its fifteen minutes.
       throw notFound('This membership no longer exists.');
@@ -57,20 +70,20 @@ export const meRoute = defineRoute({
     return {
       status: 200,
       body: {
-        userId: member.userId,
-        tenantId: member.tenantId,
-        email: member.email,
-        displayName: member.displayName,
-        role: member.role,
+        userId: seat.userId,
+        tenantId: context.principal.tenantId,
+        email: seat.email,
+        displayName: seat.displayName,
+        role: seat.role,
         // What this seat may do now, not the role's ceiling: form and job-type
         // management are held only while Integr8 staff sit in the seat.
         permissions: permissionsHeld({
-          role: member.role,
+          role: seat.role,
           impersonatedBy: context.principal.impersonatedBy,
         }),
         features,
         announcements: (
-          await getPlatformDataSource().settings.announcementsFor(member.tenantId)
+          await getPlatformDataSource().settings.announcementsFor(context.principal.tenantId)
         ).map((announcement) => ({
           id: announcement.id,
           severity: announcement.severity,
@@ -91,6 +104,32 @@ export const meRoute = defineRoute({
     };
   },
 });
+
+/**
+ * The seat behind an impersonation token that names no member.
+ *
+ * Only ever a platform user acting as the company (see ImpersonationService):
+ * the id on the token is theirs, so their own platform record supplies the
+ * name and address, and the role is what the grant minted — owner.
+ */
+async function companySeat(
+  principal: Principal,
+): Promise<{ userId: string; email: string; displayName: string; role: Role } | undefined> {
+  // The branded types differ on purpose; the equality is the whole point here.
+  if ((principal.impersonatedBy?.pid as string | undefined) !== (principal.userId as string)) {
+    return undefined;
+  }
+  const staff = await getPlatformDataSource().platformUsers.findById(principal.userId);
+  if (staff === undefined) {
+    return undefined;
+  }
+  return {
+    userId: principal.userId,
+    email: staff.email,
+    displayName: `${staff.displayName} (Integr8)`,
+    role: principal.role,
+  };
+}
 
 export const listSessionsRoute = defineRoute({
   method: 'get',
