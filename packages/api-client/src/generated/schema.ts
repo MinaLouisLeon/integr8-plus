@@ -1989,7 +1989,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Change a company’s plan or seat count */
+        /**
+         * Change a company’s plan, seat count or billing mode
+         * @description Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it.
+         */
         patch: operations["setCompanyPlan"];
         trace?: never;
     };
@@ -3102,6 +3105,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @enum {string} */
+                        billingMode: "self_serve" | "invoiced";
                         plan: string;
                         /** @enum {string} */
                         status: "trialing" | "active" | "past_due" | "canceled" | "incomplete";
@@ -3329,7 +3334,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description This plan has no price configured (`plan_not_purchasable`). */
+            /** @description This plan has no price configured (`plan_not_purchasable`), or Integr8 invoices this company directly (`billing_invoiced`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3413,7 +3418,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description This company has never paid, so there is no portal yet. */
+            /** @description This company has never paid, so there is no portal yet (`no_billing_account`), or Integr8 invoices it directly (`billing_invoiced`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -18432,6 +18437,8 @@ export interface operations {
                             /** @enum {string} */
                             plan: "trial" | "starter" | "standard" | "enterprise";
                             seats: number | null;
+                            /** @enum {string} */
+                            billingMode: "self_serve" | "invoiced";
                             members: number;
                             activeMembers: number;
                             storageBytes: number;
@@ -18514,6 +18521,11 @@ export interface operations {
                     plan?: "trial" | "starter" | "standard" | "enterprise";
                     /** @default null */
                     seats?: number | null;
+                    /**
+                     * @default self_serve
+                     * @enum {string}
+                     */
+                    billingMode?: "self_serve" | "invoiced";
                     /** Format: email */
                     ownerEmail: string;
                     jobTypes?: {
@@ -18541,6 +18553,8 @@ export interface operations {
                             /** @enum {string} */
                             plan: "trial" | "starter" | "standard" | "enterprise";
                             seats: number | null;
+                            /** @enum {string} */
+                            billingMode: "self_serve" | "invoiced";
                             members: number;
                             activeMembers: number;
                             storageBytes: number;
@@ -18650,6 +18664,8 @@ export interface operations {
                         /** @enum {string} */
                         plan: "trial" | "starter" | "standard" | "enterprise";
                         seats: number | null;
+                        /** @enum {string} */
+                        billingMode: "self_serve" | "invoiced";
                         members: number;
                         activeMembers: number;
                         storageBytes: number;
@@ -18793,6 +18809,8 @@ export interface operations {
                         /** @enum {string} */
                         plan: "trial" | "starter" | "standard" | "enterprise";
                         seats: number | null;
+                        /** @enum {string} */
+                        billingMode: "self_serve" | "invoiced";
                         members: number;
                         activeMembers: number;
                         storageBytes: number;
@@ -18889,6 +18907,8 @@ export interface operations {
                         /** @enum {string} */
                         plan: "trial" | "starter" | "standard" | "enterprise";
                         seats: number | null;
+                        /** @enum {string} */
+                        billingMode: "self_serve" | "invoiced";
                         members: number;
                         activeMembers: number;
                         storageBytes: number;
@@ -18973,6 +18993,8 @@ export interface operations {
                     /** @enum {string} */
                     plan: "trial" | "starter" | "standard" | "enterprise";
                     seats: number | null;
+                    /** @enum {string} */
+                    billingMode?: "self_serve" | "invoiced";
                 };
             };
         };
@@ -18993,6 +19015,8 @@ export interface operations {
                         /** @enum {string} */
                         plan: "trial" | "starter" | "standard" | "enterprise";
                         seats: number | null;
+                        /** @enum {string} */
+                        billingMode: "self_serve" | "invoiced";
                         members: number;
                         activeMembers: number;
                         storageBytes: number;

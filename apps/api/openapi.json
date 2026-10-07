@@ -1013,6 +1013,13 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "billingMode": {
+                      "type": "string",
+                      "enum": [
+                        "self_serve",
+                        "invoiced"
+                      ]
+                    },
                     "plan": {
                       "type": "string"
                     },
@@ -1119,6 +1126,7 @@
                     }
                   },
                   "required": [
+                    "billingMode",
                     "plan",
                     "status",
                     "interval",
@@ -1459,7 +1467,7 @@
             }
           },
           "409": {
-            "description": "This plan has no price configured (`plan_not_purchasable`)."
+            "description": "This plan has no price configured (`plan_not_purchasable`), or Integr8 invoices this company directly (`billing_invoiced`)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -1562,7 +1570,7 @@
             }
           },
           "409": {
-            "description": "This company has never paid, so there is no portal yet."
+            "description": "This company has never paid, so there is no portal yet (`no_billing_account`), or Integr8 invoices it directly (`billing_invoiced`)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -40947,6 +40955,13 @@
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
                           },
+                          "billingMode": {
+                            "type": "string",
+                            "enum": [
+                              "self_serve",
+                              "invoiced"
+                            ]
+                          },
                           "members": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -40997,6 +41012,7 @@
                           "status",
                           "plan",
                           "seats",
+                          "billingMode",
                           "members",
                           "activeMembers",
                           "storageBytes",
@@ -41117,6 +41133,14 @@
                     "minimum": 1,
                     "maximum": 100000
                   },
+                  "billingMode": {
+                    "default": "self_serve",
+                    "type": "string",
+                    "enum": [
+                      "self_serve",
+                      "invoiced"
+                    ]
+                  },
                   "ownerEmail": {
                     "type": "string",
                     "maxLength": 320,
@@ -41201,6 +41225,13 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
+                        "billingMode": {
+                          "type": "string",
+                          "enum": [
+                            "self_serve",
+                            "invoiced"
+                          ]
+                        },
                         "members": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -41251,6 +41282,7 @@
                         "status",
                         "plan",
                         "seats",
+                        "billingMode",
                         "members",
                         "activeMembers",
                         "storageBytes",
@@ -41439,6 +41471,13 @@
                       "type": "integer",
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
+                    },
+                    "billingMode": {
+                      "type": "string",
+                      "enum": [
+                        "self_serve",
+                        "invoiced"
+                      ]
                     },
                     "members": {
                       "type": "integer",
@@ -41667,6 +41706,7 @@
                     "status",
                     "plan",
                     "seats",
+                    "billingMode",
                     "members",
                     "activeMembers",
                     "storageBytes",
@@ -41828,6 +41868,13 @@
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
+                    "billingMode": {
+                      "type": "string",
+                      "enum": [
+                        "self_serve",
+                        "invoiced"
+                      ]
+                    },
                     "members": {
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -41878,6 +41925,7 @@
                     "status",
                     "plan",
                     "seats",
+                    "billingMode",
                     "members",
                     "activeMembers",
                     "storageBytes",
@@ -42014,6 +42062,13 @@
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
+                    "billingMode": {
+                      "type": "string",
+                      "enum": [
+                        "self_serve",
+                        "invoiced"
+                      ]
+                    },
                     "members": {
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -42064,6 +42119,7 @@
                     "status",
                     "plan",
                     "seats",
+                    "billingMode",
                     "members",
                     "activeMembers",
                     "storageBytes",
@@ -42142,7 +42198,8 @@
     "/v1/platform/companies/{tenantId}/plan": {
       "patch": {
         "operationId": "setCompanyPlan",
-        "summary": "Change a company’s plan or seat count",
+        "summary": "Change a company’s plan, seat count or billing mode",
+        "description": "Sets the plan the API enforces and, for a company Integr8 invoices, the plan its people see on the billing screen. Switching a company to `invoiced` makes its subscription active with no trial and lifts a read-only state that non-payment caused: Integr8 is taking the money now. Switching back to `self_serve` leaves the subscription as the provider last described it.",
         "tags": [
           "platform"
         ],
@@ -42179,6 +42236,13 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 100000
+                  },
+                  "billingMode": {
+                    "type": "string",
+                    "enum": [
+                      "self_serve",
+                      "invoiced"
+                    ]
                   }
                 },
                 "required": [
@@ -42231,6 +42295,13 @@
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
+                    "billingMode": {
+                      "type": "string",
+                      "enum": [
+                        "self_serve",
+                        "invoiced"
+                      ]
+                    },
                     "members": {
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -42281,6 +42352,7 @@
                     "status",
                     "plan",
                     "seats",
+                    "billingMode",
                     "members",
                     "activeMembers",
                     "storageBytes",

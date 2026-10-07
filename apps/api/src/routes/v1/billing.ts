@@ -16,6 +16,12 @@ import { iso, isoOrNull } from './schemas.js';
  */
 
 const subscriptionSchema = z.object({
+  /**
+   * `self_serve`: the company pays in the app and may check out, open the card
+   * portal and see the provider's invoices. `invoiced`: Integr8 invoices the
+   * company directly and sets its plan; those three are refused (`billing_invoiced`).
+   */
+  billingMode: z.enum(['self_serve', 'invoiced']),
   plan: z.string(),
   status: z.enum(['trialing', 'active', 'past_due', 'canceled', 'incomplete']),
   interval: z.enum(['month', 'year']).nullable(),
@@ -38,6 +44,23 @@ const subscriptionSchema = z.object({
     submissionsThisMonth: z.number().int(),
   }),
 });
+
+/**
+ * The provider's pages are for companies that pay through the provider.
+ *
+ * An invoiced company has no card on file and no provider customer; sending it
+ * to a checkout would start a second, parallel way of paying for the same
+ * thing. The billing screen hides the buttons; this is the API saying no when
+ * something else presses them.
+ */
+function assertSelfServe(tenant: { billingMode: 'self_serve' | 'invoiced' }): void {
+  if (tenant.billingMode === 'invoiced') {
+    throw conflict(
+      'billing_invoiced',
+      'Integr8 invoices this company directly. To change the plan, contact Integr8.',
+    );
+  }
+}
 
 export const getSubscriptionRoute = defineRoute({
   method: 'get',
@@ -70,6 +93,7 @@ export const getSubscriptionRoute = defineRoute({
     return {
       status: 200,
       body: {
+        billingMode: tenant?.billingMode ?? 'self_serve',
         plan,
         status: subscription?.status ?? 'trialing',
         interval: subscription?.interval ?? null,
@@ -114,7 +138,10 @@ export const startCheckoutRoute = defineRoute({
       description: 'Where to send the browser.',
       schema: z.object({ url: z.string(), provider: z.string() }),
     },
-    409: { description: 'This plan has no price configured (`plan_not_purchasable`).' },
+    409: {
+      description:
+        'This plan has no price configured (`plan_not_purchasable`), or Integr8 invoices this company directly (`billing_invoiced`).',
+    },
   },
   handler: async ({ body }, context) => {
     const tenantId = context.principal.tenantId;
@@ -132,6 +159,7 @@ export const startCheckoutRoute = defineRoute({
     if (tenant === undefined) {
       throw notFound('No such company');
     }
+    assertSelfServe(tenant);
 
     const priceId =
       body.interval === 'year' ? allowance?.providerPriceYearly : allowance?.providerPriceMonthly;
@@ -194,11 +222,21 @@ export const openPortalRoute = defineRoute({
       description: 'Where to send the browser.',
       schema: z.object({ url: z.string(), provider: z.string() }),
     },
-    409: { description: 'This company has never paid, so there is no portal yet.' },
+    409: {
+      description:
+        'This company has never paid, so there is no portal yet (`no_billing_account`), or Integr8 invoices it directly (`billing_invoiced`).',
+    },
   },
   handler: async (_input, context) => {
     const tenantId = context.principal.tenantId;
-    const subscription = await getPlatformDataSource().billing.find(tenantId);
+    const platform = getPlatformDataSource();
+    const [tenant, subscription] = await Promise.all([
+      platform.tenants.findById(tenantId),
+      platform.billing.find(tenantId),
+    ]);
+    if (tenant !== undefined) {
+      assertSelfServe(tenant);
+    }
 
     const customerId = subscription?.providerCustomerId;
     if (customerId == null || customerId === '') {

@@ -177,6 +177,9 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
   const [slugTouched, setSlugTouched] = useState(false);
   const [plan, setPlan] = useState('trial');
   const [seats, setSeats] = useState('');
+  // Invoiced by default: the people onboarded here are customers Integr8 has
+  // already agreed terms with. Self-serve is the exception, chosen on purpose.
+  const [billingMode, setBillingMode] = useState<'self_serve' | 'invoiced'>('invoiced');
   const [ownerEmail, setOwnerEmail] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -190,6 +193,7 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
           slug: effectiveSlug,
           plan: plan as 'trial' | 'starter' | 'standard' | 'enterprise',
           seats: seats.trim() === '' ? null : Number(seats),
+          billingMode,
           ownerEmail: ownerEmail.trim(),
         },
       });
@@ -291,6 +295,18 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
             <option value="standard">standard</option>
             <option value="enterprise">enterprise</option>
           </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-content">{t('platform.onboard.billingMode')}</span>
+          <select
+            value={billingMode}
+            onChange={(event) => setBillingMode(event.target.value as 'self_serve' | 'invoiced')}
+            className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-content"
+          >
+            <option value="invoiced">{t('platform.billingMode.invoiced')}</option>
+            <option value="self_serve">{t('platform.billingMode.self_serve')}</option>
+          </select>
+          <span className="text-content-muted">{t('platform.onboard.billingModeHint')}</span>
         </label>
         <Field
           label={t('platform.onboard.seats')}

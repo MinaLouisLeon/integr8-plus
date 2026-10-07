@@ -79,6 +79,8 @@ export {
   SUBSCRIPTION_STATUSES,
   TENANT_EXPORT_STATUSES,
   TENANT_PLANS,
+  BILLING_MODES,
+  type BillingMode,
   type AnnouncementSeverity,
   type PlatformSessionRevocationReason,
   type BillingInterval,

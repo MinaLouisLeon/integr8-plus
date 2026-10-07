@@ -93,6 +93,8 @@ export class BillingRepository {
     provider: string;
     plan: TenantPlan;
     trialEndsAt: Date | null;
+    /** `trialing` unless said otherwise; an invoiced company starts `active`. */
+    status?: SubscriptionStatus;
   }): Promise<Subscription> {
     const row = await this.db
       .insertInto('subscriptions')
@@ -100,7 +102,7 @@ export class BillingRepository {
         tenant_id: input.tenantId,
         provider: input.provider,
         plan: input.plan,
-        status: 'trialing',
+        status: input.status ?? 'trialing',
         trial_ends_at: input.trialEndsAt,
       })
       .onConflict((conflict) => conflict.column('tenant_id').doNothing())

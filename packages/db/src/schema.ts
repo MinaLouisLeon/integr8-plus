@@ -60,10 +60,19 @@ export interface TenantsTable {
   read_only_reason: string | null;
   suspended_reason: string | null;
   onboarded_by: string | null;
+  /**
+   * How the company pays (0021). `self_serve` subscribes in the app through the
+   * billing provider; `invoiced` is billed by Integr8 directly, its plan set
+   * from the platform dashboard.
+   */
+  billing_mode: Generated<BillingMode>;
 }
 
 export const TENANT_PLANS = ['trial', 'starter', 'standard', 'enterprise'] as const;
 export type TenantPlan = (typeof TENANT_PLANS)[number];
+
+export const BILLING_MODES = ['self_serve', 'invoiced'] as const;
+export type BillingMode = (typeof BILLING_MODES)[number];
 
 export const PLATFORM_SESSION_REVOCATION_REASONS = [
   'signed_out',

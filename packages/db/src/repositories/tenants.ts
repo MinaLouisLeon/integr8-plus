@@ -1,6 +1,7 @@
 import { type PlatformUserId, type TenantId, toTenantId } from '@integr8/core';
 import { type Kysely, type Selectable, sql } from 'kysely';
 import {
+  type BillingMode,
   type Database,
   type TenantPlan,
   type TenantStatus,
@@ -15,6 +16,12 @@ export interface Tenant {
   status: TenantStatus;
   plan: TenantPlan;
   seats: number | null;
+  /**
+   * How the company pays (P17, revised): `self_serve` through the billing
+   * provider in the app, `invoiced` by Integr8 directly with the plan set from
+   * the dashboard.
+   */
+  billingMode: BillingMode;
   suspendedAt: Date | null;
   /** Why the company was stopped, in words its own people are shown. */
   suspendedReason: string | null;
@@ -56,6 +63,7 @@ export interface CreateTenantInput {
   status?: TenantStatus;
   plan?: TenantPlan;
   seats?: number | null;
+  billingMode?: BillingMode;
   onboardedBy?: PlatformUserId | string | null;
 }
 
@@ -83,6 +91,7 @@ export class TenantsRepository {
         ...(input.status === undefined ? {} : { status: tenantStatusSchema.parse(input.status) }),
         ...(input.plan === undefined ? {} : { plan: input.plan }),
         ...(input.seats === undefined ? {} : { seats: input.seats }),
+        ...(input.billingMode === undefined ? {} : { billing_mode: input.billingMode }),
         ...(input.onboardedBy === undefined ? {} : { onboarded_by: input.onboardedBy }),
       })
       .returningAll()
@@ -196,13 +205,14 @@ export class TenantsRepository {
 
   async setPlan(
     tenantId: TenantId | string,
-    input: { plan?: TenantPlan; seats?: number | null },
+    input: { plan?: TenantPlan; seats?: number | null; billingMode?: BillingMode },
   ): Promise<Tenant | undefined> {
     const row = await this.db
       .updateTable('tenants')
       .set({
         ...(input.plan === undefined ? {} : { plan: input.plan }),
         ...(input.seats === undefined ? {} : { seats: input.seats }),
+        ...(input.billingMode === undefined ? {} : { billing_mode: input.billingMode }),
       })
       .where('id', '=', toTenantId(tenantId))
       .returningAll()
@@ -377,6 +387,7 @@ function toDomain(row: Selectable<TenantsTable>): Tenant {
     status: tenantStatusSchema.parse(row.status),
     plan: row.plan,
     seats: row.seats,
+    billingMode: row.billing_mode,
     suspendedAt: row.suspended_at,
     suspendedReason: row.suspended_reason,
     readOnlySince: row.read_only_since,

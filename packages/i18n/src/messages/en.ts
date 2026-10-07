@@ -283,6 +283,11 @@ export const en = {
         'This account is read-only because a payment is outstanding. Nothing has been deleted and nothing will be: everything can still be read and exported. Paying restores writing straight away.',
       remindersInApp:
         'If a payment fails we tell you here and email the owners and admins. Keep an eye on whichever you read.',
+      // An invoiced company: Integr8 bills it directly, so there is no card,
+      // no checkout and no provider portal to show.
+      invoiced: 'Invoiced by Integr8',
+      invoicedBody:
+        'Integr8 invoices your company directly for this plan. There is nothing to pay for here: to change your plan, add people or ask about an invoice, contact Integr8.',
       limits: 'What your plan allows',
       seats: 'People',
       seatsUsed: '{{used}} of {{allowance}}',
@@ -2187,6 +2192,9 @@ export const en = {
       plan: 'Plan',
       seats: 'Seats',
       seatsHint: 'Leave empty for no limit.',
+      billingMode: 'Billing',
+      billingModeHint:
+        'Invoiced: you bill them and set their plan here; no trial, no checkout. Pays in the app: they start a trial and subscribe with a card.',
       ownerEmail: 'Owner email',
       submit: 'Onboard',
       busy: 'Onboarding...',
@@ -2414,6 +2422,22 @@ export const en = {
       lastRun: 'Last started',
       lastFinished: 'Last finished',
       neverFinished: 'Did not finish',
+    },
+    billingMode: {
+      self_serve: 'Pays in the app',
+      invoiced: 'Invoiced by Integr8',
+    },
+    plan: {
+      title: 'Plan and billing',
+      description:
+        'The plan the API enforces and the company sees. An invoiced company has no trial, no checkout and no card portal; its plan is whatever is set here.',
+      mode: 'Billing',
+      plan: 'Plan',
+      seats: 'Seats',
+      seatsHint: 'Leave empty for no limit.',
+      save: 'Save',
+      saving: 'Saving\u2026',
+      saved: 'Saved.',
     },
     billing: {
       title: 'Billing',
