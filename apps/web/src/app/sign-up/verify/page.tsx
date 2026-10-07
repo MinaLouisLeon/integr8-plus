@@ -4,8 +4,10 @@ import { useTranslation } from '@integr8/i18n';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, type FormEvent } from 'react';
 import { MarketingShell } from '~/components/marketing-shell';
+import { SignupClosed } from '~/components/signup-closed';
 import { Button, Field, LoadingState } from '~/components/ui';
 import { apiClient, signIn } from '~/lib/session';
+import { signupMode } from '~/lib/signup';
 
 /**
  * Where the company is actually created (P18).
@@ -19,6 +21,10 @@ import { apiClient, signIn } from '~/lib/session';
  * them would tell a stranger which addresses have signed up.
  */
 export default function VerifySignupPage() {
+  if (signupMode() !== 'open') {
+    return <SignupClosed />;
+  }
+
   return (
     <Suspense fallback={<LoadingState />}>
       <VerifySignupForm />

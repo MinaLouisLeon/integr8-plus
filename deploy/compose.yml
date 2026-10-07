@@ -124,6 +124,8 @@ services:
         NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.1.0}
         NEXT_PUBLIC_APP_ENV: ${APP_ENV:-staging}
         NEXT_PUBLIC_SENTRY_DSN: ${WEB_PUBLIC_SENTRY_DSN:-}
+        NEXT_PUBLIC_SIGNUP: ${PUBLIC_SIGNUP:-off}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${CONTACT_EMAIL:-}
     restart: unless-stopped
     ports:
       - '${WEB_PORT:-3001}:3001'

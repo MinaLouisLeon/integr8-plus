@@ -25,7 +25,9 @@ let email: RecordingEmailSender;
 const WEB = 'https://app.test.integr8.example';
 
 beforeAll(async () => {
-  api = await startApi({ env: { WEB_APP_URL: WEB } });
+  // This suite is about the self-serve flow, so it opens it; the default is
+  // off, and `signup-closed.integration.test.ts` covers that.
+  api = await startApi({ env: { WEB_APP_URL: WEB, PUBLIC_SIGNUP: 'open' } });
   email = api.services.email as RecordingEmailSender;
 });
 

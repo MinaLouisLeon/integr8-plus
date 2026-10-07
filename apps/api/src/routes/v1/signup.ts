@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import type { ApiConfig } from '../../config.js';
+import { ApiError } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { recordStep, resendSignup, startSignup, verifySignup } from '../../signup/service.js';
 
@@ -21,6 +23,29 @@ import { recordStep, resendSignup, startSignup, verifySignup } from '../../signu
  */
 
 const TAGS = ['signup'];
+
+/**
+ * Public sign-up is off unless the deployment opens it (`PUBLIC_SIGNUP=open`).
+ *
+ * Companies are set up by Integr8 from the platform dashboard, because the
+ * product is sold with its forms and job types built for each company; a
+ * company that made itself would have nothing to fill in. The routes stay, so a
+ * deployment can open them again by configuration rather than by a release.
+ */
+function assertSignupOpen(config: ApiConfig): void {
+  if (config.PUBLIC_SIGNUP !== 'open') {
+    throw new ApiError(
+      403,
+      'signup_closed',
+      'Companies are set up by Integr8. Get in touch and we will set yours up with you.',
+    );
+  }
+}
+
+const CLOSED = {
+  description:
+    'Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up.',
+};
 
 const acceptedSchema = z.object({
   /**
@@ -50,9 +75,11 @@ export const startSignupRoute = defineRoute({
   }),
   responses: {
     202: { description: 'Taken. Check the inbox.', schema: acceptedSchema },
+    403: CLOSED,
     503: { description: 'Signing up is not configured on this deployment.' },
   },
   handler: async ({ body }, context) => {
+    assertSignupOpen(context.config);
     await startSignup(
       {
         email: body.email,
@@ -94,12 +121,14 @@ export const verifySignupRoute = defineRoute({
       description: 'The company exists.',
       schema: z.object({ tenantId: z.uuid(), email: z.string() }),
     },
+    403: CLOSED,
     422: {
       description:
         'The link is spent, expired or unknown (`invalid_signup_token`), or the password is too weak (`auth.weak_password`).',
     },
   },
   handler: async ({ body }, context) => {
+    assertSignupOpen(context.config);
     const result = await verifySignup(
       { token: body.token, displayName: body.displayName, password: body.password },
       {
@@ -134,8 +163,10 @@ export const resendSignupRoute = defineRoute({
   body: z.object({ email: z.string().min(3).max(320) }),
   responses: {
     202: { description: 'Taken.', schema: acceptedSchema },
+    403: CLOSED,
   },
   handler: async ({ body }, context) => {
+    assertSignupOpen(context.config);
     await resendSignup(body.email, {
       config: context.config,
       logger: context.logger,

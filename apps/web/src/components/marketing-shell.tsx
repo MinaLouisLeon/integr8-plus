@@ -4,6 +4,7 @@ import { useTranslation } from '@integr8/i18n';
 import Link from 'next/link';
 import { useEffect, type ReactNode } from 'react';
 import { recordFunnelStep } from '~/lib/funnel';
+import { getStartedHref, signupMode } from '~/lib/signup';
 
 /**
  * The public surface's shell (P18).
@@ -53,10 +54,10 @@ export function MarketingShell({
               {t('marketing.nav.signIn')}
             </Link>
             <Link
-              href="/sign-up"
+              href={getStartedHref()}
               className="rounded-md bg-accent px-3 py-1.5 font-medium text-on-accent hover:bg-accent-hover"
             >
-              {t('marketing.nav.signUp')}
+              {signupMode() === 'open' ? t('marketing.nav.signUp') : t('marketing.nav.contact')}
             </Link>
           </div>
         </nav>
@@ -76,5 +77,29 @@ export function MarketingShell({
         </div>
       </footer>
     </div>
+  );
+}
+
+/**
+ * The one button every public page ends with.
+ *
+ * With public sign-up open it starts a trial; with it off — the default, since
+ * Integr8 sets companies up — it goes to the contact page. One component, so
+ * no page can keep offering a form the API refuses.
+ */
+export function GetStartedLink({ className }: { className?: string }) {
+  const { t } = useTranslation();
+  const open = signupMode() === 'open';
+
+  return (
+    <Link
+      href={getStartedHref()}
+      className={
+        className ??
+        'inline-flex rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-hover'
+      }
+    >
+      {open ? t('marketing.hero.cta') : t('marketing.hero.ctaClosed')}
+    </Link>
   );
 }

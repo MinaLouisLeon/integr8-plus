@@ -3953,6 +3953,13 @@ export interface operations {
                     };
                 };
             };
+            /** @description Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description The request failed validation. */
             422: {
                 headers: {
@@ -4019,6 +4026,13 @@ export interface operations {
                     };
                 };
             };
+            /** @description Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description The link is spent, expired or unknown (`invalid_signup_token`), or the password is too weak (`auth.weak_password`). */
             422: {
                 headers: {
@@ -4080,6 +4094,13 @@ export interface operations {
                         accepted: boolean;
                     };
                 };
+            };
+            /** @description Public sign-up is off on this deployment (`signup_closed`). Integr8 sets companies up. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed validation. */
             422: {

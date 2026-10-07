@@ -1,8 +1,8 @@
 'use client';
 
 import { useTranslation } from '@integr8/i18n';
-import Link from 'next/link';
-import { MarketingShell } from '~/components/marketing-shell';
+import { GetStartedLink, MarketingShell } from '~/components/marketing-shell';
+import { signupMode } from '~/lib/signup';
 
 /**
  * The landing page (P18).
@@ -33,13 +33,10 @@ export default function HomePage() {
         </h1>
         <p className="max-w-prose text-lg text-content-muted">{t('marketing.hero.subtitle')}</p>
         <div className="flex flex-wrap items-center gap-4">
-          <Link
-            href="/sign-up"
-            className="inline-flex rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-hover"
-          >
-            {t('marketing.hero.cta')}
-          </Link>
-          <span className="text-sm text-content-muted">{t('marketing.hero.note')}</span>
+          <GetStartedLink />
+          <span className="text-sm text-content-muted">
+            {signupMode() === 'open' ? t('marketing.hero.note') : t('marketing.hero.noteClosed')}
+          </span>
         </div>
       </section>
 

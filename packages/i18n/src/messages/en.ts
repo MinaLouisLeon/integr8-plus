@@ -95,6 +95,7 @@ export const en = {
       help: 'Help',
       signIn: 'Sign in',
       signUp: 'Start free',
+      contact: 'Talk to us',
     },
     hero: {
       title: 'Paperwork that finishes itself',
@@ -102,6 +103,9 @@ export const en = {
         'Job sheets, safety checks and certificates, filled in on a phone — including in a basement with no signal. Your office sees them the moment the engineer has a bar again.',
       cta: 'Start a free trial',
       note: 'Fourteen days. No card needed.',
+      // When public sign-up is off: companies are set up by Integr8.
+      ctaClosed: 'Talk to us about getting set up',
+      noteClosed: 'We set your company up with you: forms, job types and the apps.',
     },
     // Three claims, each one a thing the product actually does. If a line here
     // stops being true, it is a bug in the product or a lie on the page.
@@ -111,7 +115,7 @@ export const en = {
         'Forms are filled in on the device and sent when there is signal. Nothing is lost in a plant room, a loft or a lift shaft.',
       formsTitle: 'Your forms, not ours',
       formsBody:
-        'Build the form you already use on paper. Published versions are frozen, so a job filled in last March still reads the way it was signed.',
+        'We turn the forms you already use on paper into the app, for you. Published versions are frozen, so a job filled in last March still reads the way it was signed.',
       evidenceTitle: 'Evidence that stands up',
       evidenceBody:
         'Photos, signatures and timestamps attached to the job, kept for as long as your plan says, and exportable whenever you ask.',
@@ -141,6 +145,17 @@ export const en = {
       choose: 'Start with {{plan}}',
       notPurchasable: 'Contact us to buy this plan',
     },
+    contact: {
+      title: 'Getting set up',
+      subtitle:
+        'There is no sign-up form. We set each company up ourselves, so the app is ready to use on day one.',
+      step1: 'Tell us about your company and the kinds of work you do.',
+      step2:
+        'Send us the paperwork your engineers fill in today. We build it into forms and job types.',
+      step3: 'We hand you the apps, with your people invited and everything ready to fill in.',
+      email: 'Email us',
+      haveAccount: 'Already set up?',
+    },
     help: {
       title: 'Help',
       subtitle: 'How the product works, written as questions people actually ask.',
@@ -168,6 +183,13 @@ export const en = {
     resend: 'Send it again',
     resent: 'Sent again, if there was anything to send.',
     haveAccount: 'Already have an account?',
+    // Shown instead of the form when public sign-up is off on this deployment.
+    closed: {
+      title: 'Companies are set up by Integr8',
+      body: 'There is no self-serve sign-up. Get in touch and we will set your company up with you, forms and job types included.',
+      contact: 'Talk to us',
+      signIn: 'Already set up? Sign in',
+    },
     verify: {
       title: 'Create your company',
       subtitle: 'Last step. Choose a name and a password and it is yours.',

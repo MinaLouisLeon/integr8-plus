@@ -30,7 +30,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'what-do-i-do-first',
     category: 'getting-started',
-    question: 'I have just signed up. What should I do first?',
+    question: 'My company has just been set up. What should I do first?',
     answer: [
       'Rename the job types to match the work you actually do. We put five in to start with — installation, planned maintenance, repair, inspection and callout — and they are only a starting point.',
       'Then create one form, invite one engineer, and fill the form in yourself on a phone. Doing the whole loop once, badly, teaches you more than setting everything up perfectly before anybody uses it.',

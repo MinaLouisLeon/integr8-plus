@@ -136,5 +136,7 @@ jobs:
             NEXT_PUBLIC_APP_VERSION=${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
             NEXT_PUBLIC_APP_ENV=${{ github.ref == 'refs/heads/staging' && 'staging' || 'production' }}
             NEXT_PUBLIC_SENTRY_DSN=${{ vars.WEB_PUBLIC_SENTRY_DSN }}
+            NEXT_PUBLIC_SIGNUP=${{ vars.PUBLIC_SIGNUP || 'off' }}
+            NEXT_PUBLIC_CONTACT_EMAIL=${{ vars.CONTACT_EMAIL }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,scope=web,mode=max
