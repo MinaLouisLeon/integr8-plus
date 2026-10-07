@@ -1,4 +1,11 @@
-import type { PlatformUserId, Principal, TenantId, UserId } from '@integr8/core';
+import {
+  type PlatformUserId,
+  type Principal,
+  type Role,
+  type TenantId,
+  toUserId,
+  type UserId,
+} from '@integr8/core';
 import { type ClientApp, getPlatformDataSource, withTenant } from '@integr8/db';
 import type { AuthConfig } from '../config.js';
 import { ImpersonationDeniedError } from '../errors.js';
@@ -24,7 +31,14 @@ import type { IssuedSession, SessionService } from './session-service.js';
 export interface StartImpersonationInput {
   platformUserId: PlatformUserId;
   tenantId: TenantId;
-  targetUserId: UserId;
+  /**
+   * Whose seat to take. Absent means the company itself: the session carries
+   * the owner role and the platform user's own id, and no member is involved.
+   * That is how Integr8 staff set up a company that has no people in it yet —
+   * forms, job types, branding — and how they do it without ever becoming a
+   * member, which `tenant_users_reject_platform_user` would refuse anyway.
+   */
+  targetUserId?: UserId | undefined;
   /** Free text, at least ten characters. A check constraint enforces it. */
   reason: string;
   clientApp: ClientApp;
@@ -78,9 +92,28 @@ export class ImpersonationService {
     const expiresAt = new Date(now.getTime() + this.#config.AUTH_IMPERSONATION_TTL_SECONDS * 1000);
 
     const { tokens, grantId } = await withTenant(input.tenantId, async (tx) => {
-      const target = await tx.tenantUsers.findByUserId(input.targetUserId);
-      if (target === undefined) {
-        throw new ImpersonationDeniedError('Target is not a member of that company');
+      // Acting as a member takes their role and their id. Acting as the company
+      // takes the owner role and the platform user's own id, so every row this
+      // session writes is attributed to the person who really wrote it.
+      let seat: { userId: UserId; role: Role; resourceType: string; resourceId: string };
+      if (input.targetUserId === undefined) {
+        seat = {
+          userId: toUserId(actor.id),
+          role: 'owner',
+          resourceType: 'tenant',
+          resourceId: input.tenantId,
+        };
+      } else {
+        const target = await tx.tenantUsers.findByUserId(input.targetUserId);
+        if (target === undefined) {
+          throw new ImpersonationDeniedError('Target is not a member of that company');
+        }
+        seat = {
+          userId: input.targetUserId,
+          role: target.role,
+          resourceType: 'tenant_user',
+          resourceId: input.targetUserId,
+        };
       }
 
       // Step one, and it is a step rather than a line: everything below depends
@@ -90,20 +123,21 @@ export class ImpersonationService {
         actorId: actor.id,
         actorLabel: actor.email,
         action: 'impersonation.started',
-        resourceType: 'tenant_user',
-        resourceId: input.targetUserId,
+        resourceType: seat.resourceType,
+        resourceId: seat.resourceId,
         ipAddress: input.ipAddress ?? null,
         userAgent: input.userAgent ?? null,
         metadata: {
           reason,
-          targetRole: target.role,
+          targetRole: seat.role,
+          actsAs: input.targetUserId === undefined ? 'company' : 'user',
           expiresAt: expiresAt.toISOString(),
         },
       });
 
       const grant = await tx.impersonation.create({
         platformUserId: actor.id,
-        targetUserId: input.targetUserId,
+        targetUserId: seat.userId,
         reason,
         auditLogId: entry.id,
         expiresAt,
@@ -111,8 +145,8 @@ export class ImpersonationService {
 
       const issued = await this.#sessions.issue(tx, {
         tenantId: input.tenantId,
-        userId: input.targetUserId,
-        role: target.role,
+        userId: seat.userId,
+        role: seat.role,
         clientApp: input.clientApp,
         deviceLabel: `impersonation by ${actor.email}`,
         userAgent: input.userAgent ?? null,
