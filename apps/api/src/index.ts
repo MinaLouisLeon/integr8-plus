@@ -1,7 +1,12 @@
 import { closeDatabase } from '@integr8/db';
 import { buildAppInfo } from './app-info.js';
 import { buildServices } from './composition.js';
-import { assertProductionReady, loadApiConfig } from './config.js';
+import {
+  assertProductionReady,
+  corsOrigins,
+  loadApiConfig,
+  webOriginMissingFromCors,
+} from './config.js';
 import { createLogger } from './http/logger.js';
 import { flushSentry, initialiseSentry } from './observability/sentry.js';
 import { allRoutes } from './routes/index.js';
@@ -39,7 +44,16 @@ async function main(): Promise<void> {
     environment: config.APP_ENV,
     port: config.PORT,
     minSupportedClient: config.API_MIN_SUPPORTED_CLIENT,
+    corsOrigins: corsOrigins(config),
   });
+
+  // Production refuses to start over this (assertProductionReady); staging
+  // starts, because a staging API with no browser client is a legitimate way
+  // to test, but it says so where the person deploying will read it.
+  const corsGap = webOriginMissingFromCors(config);
+  if (corsGap !== undefined) {
+    logger.warn(corsGap);
+  }
 
   /**
    * Shutdown, in the order that loses nothing.
