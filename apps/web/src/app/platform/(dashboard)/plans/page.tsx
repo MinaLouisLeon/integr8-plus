@@ -1,13 +1,14 @@
 'use client';
 
 import { ApiRequestError } from '@integr8/api-client';
-import { useTranslation } from '@integr8/i18n';
+import { formatCurrency, formatPercent, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Badge, Panel } from '~/components/platform-bits';
 import { Button, ErrorState, Field, LoadingState } from '~/components/ui';
 import { messageForError } from '~/lib/errors';
 import { formatBytes } from '~/lib/platform-format';
+import { planLabel } from '~/lib/plans';
 import { platformClient } from '~/lib/platform-session';
 
 type Plan = 'trial' | 'starter' | 'standard' | 'enterprise';
@@ -78,7 +79,8 @@ interface Allowance {
 }
 
 function PlanRow({ plan }: { plan: Allowance }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language;
   const queries = useQueryClient();
   const [editing, setEditing] = useState(false);
 
@@ -137,7 +139,7 @@ function PlanRow({ plan }: { plan: Allowance }) {
   if (!editing) {
     return (
       <Panel
-        title={plan.plan}
+        title={planLabel(t, plan.plan)}
         actions={
           <Button variant="secondary" onClick={() => setEditing(true)}>
             {t('platform.plans.edit')}
@@ -171,7 +173,10 @@ function PlanRow({ plan }: { plan: Allowance }) {
               </Badge>
             </dd>
           </div>
-          <Fact label={t('platform.plans.warnAt')} value={`${String(plan.warnAtPercent)}%`} />
+          <Fact
+            label={t('platform.plans.warnAt')}
+            value={formatPercent(plan.warnAtPercent / 100, { locale })}
+          />
           <Fact
             label={t('platform.plans.seats')}
             value={plan.seats === null ? t('platform.plans.uncapped') : String(plan.seats)}
@@ -189,7 +194,9 @@ function PlanRow({ plan }: { plan: Allowance }) {
             value={
               plan.priceCents === null
                 ? t('platform.plans.unpriced')
-                : `${String(plan.priceCents / 100)} ${plan.currency ?? ''}`
+                : plan.currency === null
+                  ? String(plan.priceCents / 100)
+                  : formatCurrency(plan.priceCents / 100, plan.currency, { locale })
             }
           />
           {/*
@@ -207,11 +214,11 @@ function PlanRow({ plan }: { plan: Allowance }) {
   }
 
   return (
-    <Panel title={plan.plan}>
+    <Panel title={planLabel(t, plan.plan)}>
       <form onSubmit={submit} noValidate className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
-            label={`${t('platform.plans.storage')} (GB)`}
+            label={t('platform.plans.storageGb')}
             hint={t('platform.plans.uncappedHint')}
             type="number"
             min={1}
@@ -238,7 +245,7 @@ function PlanRow({ plan }: { plan: Allowance }) {
             </select>
           </label>
           <Field
-            label={`${t('platform.plans.warnAt')} (%)`}
+            label={t('platform.plans.warnAtPercent')}
             type="number"
             min={1}
             max={100}

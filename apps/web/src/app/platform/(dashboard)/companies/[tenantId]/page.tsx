@@ -725,9 +725,9 @@ function RecentErrors({ tenantId }: { tenantId: string }) {
                 {failure.deadLettered ? (
                   <Badge tone="danger">{t('platform.company.deadLettered')}</Badge>
                 ) : null}
-                <span className="text-content-muted">
-                  {t('platform.company.attempts')} {failure.attempts} ·{' '}
-                  {formatWhen(failure.failedAt)}
+                <span className="flex flex-wrap gap-2 text-content-muted">
+                  <span>{t('platform.company.attemptsMade', { count: failure.attempts })}</span>
+                  <span>{formatWhen(failure.failedAt)}</span>
                 </span>
               </span>
               {failure.lastError === null ? null : (

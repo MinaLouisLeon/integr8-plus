@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { APP_ENV, APP_VERSION, SENTRY_DSN } from './lib/env';
+import { applyRememberedTheme } from './lib/company-theme';
 import { applyPreferences, readPreferences } from './lib/preferences';
 import './styles.css';
 
@@ -10,7 +11,9 @@ import './styles.css';
  * Entry point.
  *
  * Preferences are applied to `<html>` before React renders, so a right-to-left
- * layout is right in the first paint rather than snapping into place. Sentry is
+ * layout is right in the first paint rather than snapping into place; the
+ * company's theme, remembered from the last launch, is painted the same way so
+ * a dark company's app does not flash light while `/v1/me` is asked. Sentry is
  * initialised first, so an error thrown during startup is still reported.
  */
 
@@ -27,6 +30,7 @@ if (SENTRY_DSN !== undefined && SENTRY_DSN !== '') {
 }
 
 applyPreferences(readPreferences());
+applyRememberedTheme();
 
 const container = document.getElementById('root');
 if (container === null) {

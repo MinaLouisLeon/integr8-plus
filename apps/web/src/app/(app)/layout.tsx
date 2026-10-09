@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react';
 import { AuthGuard } from '~/components/auth-guard';
-import { BrandAccent } from '~/components/company-brand';
-import { ImpersonationBanner } from '~/components/impersonation-banner';
-import { PreferenceBar } from '~/components/preference-bar';
+import { WorkspaceShell } from '~/components/workspace-shell';
 import { readPreferences } from '~/lib/preferences';
 
 /**
@@ -11,25 +9,18 @@ import { readPreferences } from '~/lib/preferences';
  * A route group, so the guard runs for everything signed-in and for nothing
  * public — a visitor reading the home page never pays for it.
  *
- * This layout is a server component. It reads the locale, theme and
- * right-to-left preference and hands them to the controls as props, so nothing
- * has to re-read them from `document.cookie` after hydration and then correct
- * itself on screen.
+ * This layout is a server component. It reads the menu's remembered state and
+ * hands it to the shell as a prop, so the first paint is already the right
+ * width rather than snapping shut after hydration. Locale and theme are read
+ * by the root layout; the theme is the company's and is applied by the shell
+ * once `/v1/me` says what it is.
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const { locale, theme, forceRtl } = await readPreferences();
+  const { sidebar } = await readPreferences();
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-6 px-6 py-8">
-      <PreferenceBar locale={locale} theme={theme} forceRtl={forceRtl} />
-      <AuthGuard>
-        {/* The company's accent colour, on every signed-in page and none of the public ones. */}
-        <BrandAccent />
-        {/* Above everything, on every signed-in page: a support engineer who
-            forgets they are impersonating causes the worst incidents. */}
-        <ImpersonationBanner />
-        {children}
-      </AuthGuard>
-    </div>
+    <AuthGuard>
+      <WorkspaceShell initialCollapsed={sidebar === 'collapsed'}>{children}</WorkspaceShell>
+    </AuthGuard>
   );
 }

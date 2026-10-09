@@ -4,10 +4,9 @@ import { ApiRequestError } from '@integr8/api-client';
 import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { CompanyMark } from '~/components/company-brand';
-import { Button, ErrorState, LoadingState } from '~/components/ui';
-import { apiClient, signOut } from '~/lib/session';
+import { ErrorState, LoadingState } from '~/components/ui';
+import { apiClient } from '~/lib/session';
 
 /**
  * The dashboard.
@@ -19,7 +18,6 @@ import { apiClient, signOut } from '~/lib/session';
  */
 export default function DashboardPage() {
   const { t } = useTranslation();
-  const router = useRouter();
 
   const me = useQuery({
     queryKey: ['me'],
@@ -47,25 +45,11 @@ export default function DashboardPage() {
 
   return (
     <main className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-col gap-1 text-start">
-          <h1 className="text-2xl font-semibold text-content">
-            {t('workspace.signedInAs', { name: person?.displayName ?? '' })}
-          </h1>
-          {person === undefined ? null : <CompanyMark company={person.company} />}
-        </div>
-
-        <Button
-          variant="secondary"
-          onClick={() => {
-            void (async () => {
-              await signOut();
-              router.replace('/sign-in');
-            })();
-          }}
-        >
-          {t('common.signOut')}
-        </Button>
+      <header className="flex flex-col gap-1 text-start">
+        <h1 className="text-2xl font-semibold text-content">
+          {t('workspace.signedInAs', { name: person?.displayName ?? '' })}
+        </h1>
+        {person === undefined ? null : <CompanyMark company={person.company} />}
       </header>
 
       <nav aria-label={t('submissions.nav')} className="grid gap-4 sm:grid-cols-2">

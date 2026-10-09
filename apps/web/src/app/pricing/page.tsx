@@ -8,6 +8,7 @@ import { MarketingShell } from '~/components/marketing-shell';
 import { getStartedHref, signupMode } from '~/lib/signup';
 import { ErrorState, LoadingState } from '~/components/ui';
 import { formatBytes } from '~/lib/platform-format';
+import { planLabel } from '~/lib/plans';
 import { apiClient } from '~/lib/session';
 
 /**
@@ -25,7 +26,7 @@ import { apiClient } from '~/lib/session';
  * offering it sends somebody to a checkout that refuses them.
  */
 export default function PricingPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const plans = useQuery({
     queryKey: ['public', 'plans'],
@@ -59,14 +60,14 @@ export default function PricingPage() {
               key={plan.plan}
               className="flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-6"
             >
-              <h2 className="text-lg font-semibold capitalize text-content">{plan.plan}</h2>
+              <h2 className="text-lg font-semibold text-content">{planLabel(t, plan.plan)}</h2>
 
               <p className="text-2xl font-bold text-content">
                 {plan.priceCents === null ? (
                   t('marketing.pricing.free')
                 ) : (
                   <>
-                    {new Intl.NumberFormat('en-GB', {
+                    {new Intl.NumberFormat(i18n.language, {
                       style: 'currency',
                       currency: plan.currency ?? 'GBP',
                       maximumFractionDigits: 0,

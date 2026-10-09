@@ -1,9 +1,18 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { useTranslation, type TFunction } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
+import { useResolvedTheme } from '~/components/company-brand';
 import { Button, EmptyState, ErrorState, Field, LoadingState, Shell } from '~/components/ui';
+import {
+  applyBrandVariables,
+  applyTheme,
+  brandVariables,
+  readRememberedBrand,
+  type RememberedBrand,
+} from '~/lib/company-theme';
+import { API_BASE_URL, APP_FLAVOR, COMPANY_SLUG } from '~/lib/env';
 import { session } from '~/lib/session';
 import {
   type CompanyChoice,
@@ -22,32 +31,113 @@ import {
  * are setting up, because forms and job types are built by Integr8 rather than
  * by the company, and staff must be able to do that without becoming members
  * or knowing anybody's password. See `~/lib/staff`.
+ *
+ * From the second launch on, the screen already looks like the company's: the
+ * last session left the company's name, logo and colours in storage (see
+ * `~/lib/company-theme`), and they are worn here before anybody signs in.
+ *
+ * Which doors are open depends on the build (`APP_FLAVOR`): Integr8's own
+ * staff build shows only the staff door, a company's build only the company
+ * door — pinned to that company, so the API refuses anybody from another —
+ * and a development build both, as tabs.
  */
 export function SignInRoute() {
   const { t } = useTranslation();
   const [mode, setMode] = useState<'company' | 'staff'>('company');
+  const brand = useRememberedBrand();
 
   return (
     <Shell>
-      <div className="mx-auto flex w-full max-w-sm flex-col justify-center gap-6">
-        <div role="tablist" aria-label={t('auth.signInTitle')} className="flex gap-1">
-          <ModeTab
-            selected={mode === 'company'}
-            onSelect={() => {
-              forgetPlatformSession();
-              setMode('company');
-            }}
-          >
-            {t('auth.staff.companyTab')}
-          </ModeTab>
-          <ModeTab selected={mode === 'staff'} onSelect={() => setMode('staff')}>
-            {t('auth.staff.tab')}
-          </ModeTab>
-        </div>
+      <div className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-6 py-8">
+        {brand === undefined ? null : <RememberedBrandMark brand={brand} />}
 
-        {mode === 'company' ? <CompanySignIn /> : <StaffSignIn />}
+        {APP_FLAVOR === 'staff' ? (
+          <StaffSignIn />
+        ) : APP_FLAVOR === 'company' ? (
+          <CompanySignIn companyName={brand?.name ?? COMPANY_SLUG ?? ''} />
+        ) : (
+          <>
+            <div role="tablist" aria-label={t('auth.signInTitle')} className="flex gap-1">
+              <ModeTab
+                selected={mode === 'company'}
+                onSelect={() => {
+                  forgetPlatformSession();
+                  setMode('company');
+                }}
+              >
+                {t('auth.staff.companyTab')}
+              </ModeTab>
+              <ModeTab selected={mode === 'staff'} onSelect={() => setMode('staff')}>
+                {t('auth.staff.tab')}
+              </ModeTab>
+            </div>
+
+            {mode === 'company' ? (
+              <CompanySignIn companyName={brand?.name ?? ''} />
+            ) : (
+              <StaffSignIn />
+            )}
+          </>
+        )}
       </div>
     </Shell>
+  );
+}
+
+/**
+ * The brand the last session left behind, worn while this screen is on show.
+ * The variables are lifted when it goes, so a different company signing in
+ * does not inherit the previous one's colours for a frame.
+ */
+function useRememberedBrand(): RememberedBrand | undefined {
+  const [brand] = useState(() => {
+    // Integr8's own build wears no company's brand; a company's build wears
+    // only its own, never one left behind by a different company's session.
+    if (APP_FLAVOR === 'staff') {
+      return undefined;
+    }
+    const remembered = readRememberedBrand();
+    if (
+      remembered !== undefined &&
+      COMPANY_SLUG !== undefined &&
+      remembered.slug !== COMPANY_SLUG
+    ) {
+      return undefined;
+    }
+    return remembered;
+  });
+  const theme = useResolvedTheme();
+
+  useEffect(() => {
+    if (brand !== undefined) {
+      applyTheme(brand.defaultTheme);
+    }
+  }, [brand]);
+
+  useEffect(() => {
+    if (brand === undefined) {
+      return;
+    }
+    return applyBrandVariables(brandVariables(brand.brandColour, brand.shellColour, theme));
+  }, [brand, theme]);
+
+  return brand;
+}
+
+/** The company's name and logo above the form. The logo is the public route; the browser follows its redirect. */
+function RememberedBrandMark({ brand }: { brand: RememberedBrand }) {
+  return (
+    <div className="flex items-center gap-3 text-start">
+      {brand.logoPath === undefined ? null : (
+        // Decorative beside the name, which carries the meaning.
+        <img
+          src={`${API_BASE_URL}${brand.logoPath}`}
+          alt=""
+          className="h-12 w-auto max-w-40 object-contain"
+        />
+      )}
+      <span className="text-xl font-semibold text-content">{brand.name}</span>
+    </div>
   );
 }
 
@@ -81,7 +171,7 @@ function ModeTab({
 // A company's own person
 // ---------------------------------------------------------------------------
 
-function CompanySignIn() {
+function CompanySignIn({ companyName }: { companyName: string }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -97,10 +187,15 @@ function CompanySignIn() {
 
     void (async () => {
       try {
-        await session().signInWithPassword({ email, password, deviceLabel: 'Desktop' });
+        await session().signInWithPassword({
+          email,
+          password,
+          deviceLabel: 'Desktop',
+          ...(COMPANY_SLUG === undefined ? {} : { companySlug: COMPANY_SLUG }),
+        });
         void navigate('/dashboard', { replace: true });
       } catch (failure) {
-        setError(messageFor(failure, t));
+        setError(messageFor(failure, t, companyName));
       } finally {
         setBusy(false);
       }
@@ -346,7 +441,7 @@ function CompanyPicker({ staff, onBack }: { staff: StaffUser; onBack: () => void
 }
 
 /** The server's message is for a log; this is the one a person reads. */
-function messageFor(failure: unknown, t: TFunction): string {
+function messageFor(failure: unknown, t: TFunction, companyName = ''): string {
   if (!(failure instanceof ApiRequestError)) {
     // No response at all: the API is unreachable, or the window was not
     // allowed to call it. Either way, not a wrong password.
@@ -354,6 +449,11 @@ function messageFor(failure: unknown, t: TFunction): string {
   }
 
   switch (failure.code) {
+    // A company's build signs in to that company only; an account elsewhere
+    // is told so, rather than that its password is wrong.
+    case 'wrong_company':
+    case 'auth.wrong_company':
+      return t('auth.wrongCompany', { company: companyName });
     case 'auth.invalid_credentials':
       return t('auth.invalidCredentials');
     case 'auth.account_locked':

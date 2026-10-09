@@ -16,6 +16,7 @@ import {
   suggestSlug,
 } from '~/lib/platform-format';
 import { platformClient } from '~/lib/platform-session';
+import { planLabel } from '~/lib/plans';
 
 /**
  * The company directory, and onboarding (P15).
@@ -139,7 +140,7 @@ export default function CompaniesPage() {
                       deletionScheduledFor={company.deletionScheduledFor}
                     />
                   </td>
-                  <td className="py-2">{company.plan}</td>
+                  <td className="py-2">{planLabel(t, company.plan)}</td>
                   <td className="py-2 text-end tabular-nums">
                     {company.seats === null
                       ? company.activeMembers
@@ -299,10 +300,10 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
             onChange={(event) => setPlan(event.target.value)}
             className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-content"
           >
-            <option value="trial">trial</option>
-            <option value="starter">starter</option>
-            <option value="standard">standard</option>
-            <option value="enterprise">enterprise</option>
+            <option value="trial">{t('common.plan.trial')}</option>
+            <option value="starter">{t('common.plan.starter')}</option>
+            <option value="standard">{t('common.plan.standard')}</option>
+            <option value="enterprise">{t('common.plan.enterprise')}</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">

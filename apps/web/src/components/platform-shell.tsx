@@ -1,42 +1,37 @@
 'use client';
 
+import { PLATFORM_NAV_SECTIONS } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Button, ErrorState, LoadingState } from '~/components/ui';
+import { DashboardShell, type ShellNavGroup } from '~/components/dashboard-shell';
+import { LocaleSelect } from '~/components/locale-select';
+import { SignOutIcon } from '~/components/nav-icon';
+import { ErrorState, LoadingState } from '~/components/ui';
+import { PLATFORM_NAV_ALIASES, PLATFORM_NAV_PATHS } from '~/lib/navigation';
 import { ensurePlatformToken, signOutOfPlatform } from '~/lib/platform-session';
 
 /**
- * The dashboard's shell and its guard (P15).
+ * The platform dashboard's shell and its guard (P15).
  *
  * The guard is the same idea as `AuthGuard` and deliberately not the same
  * component: it exchanges the *platform* cookie, and it sends a stranger to the
  * platform sign-in rather than the customer one. Sharing one guard with a
  * parameter would put the two sessions one wrong argument apart.
  *
- * The bar across the top is permanent, unlike the customer app's grid of cards,
- * because somebody running the business moves between these screens constantly
- * and a dashboard you have to go back to is a dashboard nobody uses.
+ * The shell is the customer app's, drawn with the platform's sections: one
+ * group, the product's own mark, and no company colours — this is Integr8's
+ * screen, not a customer's.
  */
-
-const LINKS = [
-  { href: '/platform', key: 'companies' },
-  { href: '/platform/funnel', key: 'funnel' },
-  { href: '/platform/storage', key: 'storage' },
-  { href: '/platform/plans', key: 'plans' },
-  { href: '/platform/audit', key: 'audit' },
-  { href: '/platform/flags', key: 'flags' },
-  { href: '/platform/announcements', key: 'announcements' },
-  { href: '/platform/templates', key: 'templates' },
-  { href: '/platform/releases', key: 'releases' },
-  { href: '/platform/health', key: 'health' },
-] as const;
-
-export function PlatformShell({ children }: { children: ReactNode }) {
+export function PlatformShell({
+  initialCollapsed,
+  children,
+}: {
+  initialCollapsed: boolean;
+  children: ReactNode;
+}) {
   const { t } = useTranslation();
   const router = useRouter();
-  const pathname = usePathname();
   const [state, setState] = useState<'checking' | 'signed-in' | 'failed'>('checking');
   const [attempt, setAttempt] = useState(0);
 
@@ -91,45 +86,78 @@ export function PlatformShell({ children }: { children: ReactNode }) {
     );
   }
 
+  const groups: ShellNavGroup[] = [
+    {
+      key: 'platform',
+      items: PLATFORM_NAV_SECTIONS.map((section) => {
+        const aliases = PLATFORM_NAV_ALIASES[section.key];
+        return {
+          key: section.key,
+          href: PLATFORM_NAV_PATHS[section.key],
+          // `/platform` would otherwise look current on every page under it.
+          ...(section.key === 'companies' ? { exact: true } : {}),
+          ...(aliases === undefined ? {} : { aliases }),
+          label: t(`platform.nav.${section.key}`),
+          icon: section.icon,
+        };
+      }),
+    },
+  ];
+
   return (
-    <div className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-6 px-6 py-8">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border-subtle pb-4">
-        <nav aria-label={t('platform.title')} className="flex flex-wrap items-center gap-1">
-          {LINKS.map((link) => {
-            // `/platform` would otherwise look current on every page under it.
-            const current =
-              link.href === '/platform' ? pathname === link.href : pathname.startsWith(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                aria-current={current ? 'page' : undefined}
-                className={`rounded-md px-3 py-1.5 text-sm ${
-                  current
-                    ? 'bg-accent text-on-accent'
-                    : 'text-content-muted hover:bg-surface-muted hover:text-content'
-                }`}
-              >
-                {t(`platform.nav.${link.key}`)}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <Button
-          variant="secondary"
-          onClick={() => {
-            void (async () => {
-              await signOutOfPlatform();
-              router.replace('/platform/sign-in');
-            })();
-          }}
-        >
-          {t('platform.nav.signOut')}
-        </Button>
-      </header>
-
+    <DashboardShell
+      navLabel={t('platform.title')}
+      groups={groups}
+      initialCollapsed={initialCollapsed}
+      fallbackTitle={t('platform.title')}
+      brand={(collapsed) => (
+        <span className="flex min-w-0 items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-accent text-base font-semibold text-on-accent"
+          >
+            {t('common.appName').slice(0, 1)}
+          </span>
+          {collapsed ? (
+            <span className="sr-only">{t('platform.title')}</span>
+          ) : (
+            <span className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate text-sm font-semibold text-shell-text">
+                {t('common.appName')}
+              </span>
+              <span className="truncate text-xs text-shell-text-muted">{t('platform.title')}</span>
+            </span>
+          )}
+        </span>
+      )}
+      footer={(collapsed) => (
+        <>
+          <LocaleSelect compact={collapsed} />
+          <button
+            type="button"
+            title={collapsed ? t('platform.nav.signOut') : undefined}
+            onClick={() => {
+              void (async () => {
+                await signOutOfPlatform();
+                router.replace('/platform/sign-in');
+              })();
+            }}
+            className={[
+              'flex items-center gap-3 rounded-md py-2 text-sm text-shell-text-muted hover:bg-shell-hover hover:text-shell-text',
+              collapsed ? 'justify-center px-0' : 'px-3',
+            ].join(' ')}
+          >
+            <SignOutIcon className="size-5 shrink-0 rtl:rotate-180" />
+            {collapsed ? (
+              <span className="sr-only">{t('platform.nav.signOut')}</span>
+            ) : (
+              t('platform.nav.signOut')
+            )}
+          </button>
+        </>
+      )}
+    >
       {children}
-    </div>
+    </DashboardShell>
   );
 }

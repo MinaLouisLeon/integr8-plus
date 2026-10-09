@@ -6,6 +6,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Button, ErrorState, LoadingState } from '~/components/ui';
 import { formatBytes } from '~/lib/platform-format';
+import { planLabel } from '~/lib/plans';
 import { apiClient } from '~/lib/session';
 
 /**
@@ -166,7 +167,7 @@ export default function BillingPage() {
       <section className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-surface p-6">
         <div className="flex flex-wrap items-baseline gap-3">
           <span className="text-lg font-semibold text-content">
-            {t('workspace.billing.plan')}: {data.plan}
+            {t('workspace.billing.planNamed', { plan: planLabel(t, data.plan) })}
           </span>
           <span className="text-sm text-content-muted">
             {data.billingMode === 'invoiced'
@@ -295,7 +296,7 @@ export default function BillingPage() {
                     checkout.mutate(plan);
                   }}
                 >
-                  {plan}
+                  {planLabel(t, plan)}
                 </Button>
               ))}
             </div>
