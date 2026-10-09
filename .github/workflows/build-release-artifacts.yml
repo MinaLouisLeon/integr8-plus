@@ -35,6 +35,23 @@ on:
         description: The eas.json build profile to use, when EAS builds are enabled.
         type: string
         required: true
+      api-url:
+        description: >
+          The API the desktop installer talks to, e.g. https://api.example.com. Vite inlines
+          it at build time, so there is one installer per API hostname; the nightly points at
+          the staging API and the release at production's. Empty refuses the desktop build
+          rather than shipping an installer that talks to localhost.
+        type: string
+        required: true
+      app-env:
+        description: staging | production, inlined as VITE_APP_ENV.
+        type: string
+        required: true
+      desktop-sentry-dsn:
+        description: The desktop app's Sentry DSN. Optional; empty means errors are not reported.
+        type: string
+        required: false
+        default: ''
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
@@ -146,6 +163,24 @@ jobs:
             patchelf \
             file
 
+      # An installer is built for exactly one API, baked in. Without an address
+      # the app falls back to http://localhost:3000, which is right for a
+      # developer's laptop and wrong for every installer a customer runs.
+      - name: Refuse an installer that would point at localhost
+        shell: bash
+        env:
+          API_URL: ${{ inputs.api-url }}
+        run: |
+          set -euo pipefail
+          if [ -z "$API_URL" ]; then
+            echo "::error::No API address for the desktop installer. Set the PUBLIC_API_URL repository variable (STAGING_PUBLIC_API_URL for the nightly) to the API's https address."
+            exit 1
+          fi
+          case "$API_URL" in
+            https://*) echo "Installer will talk to $API_URL" ;;
+            *) echo "::error::The desktop API address must start with https:// (got $API_URL)."; exit 1 ;;
+          esac
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -176,10 +211,16 @@ jobs:
       - name: Build the workspace packages the app imports
         run: pnpm build
 
+      # Vite reads VITE_* from the environment at build time and inlines them;
+      # apps/desktop/.env.example lists them. None may be a secret.
       - name: Build the installer
         id: tauri
         uses: tauri-apps/tauri-action@v0
         env:
+          VITE_API_BASE_URL: ${{ inputs.api-url }}
+          VITE_APP_ENV: ${{ inputs.app-env }}
+          VITE_APP_VERSION: ${{ inputs.version }}
+          VITE_SENTRY_DSN: ${{ inputs.desktop-sentry-dsn }}
           # Absent on a fork or before the key is stored: the build still runs
           # and produces an installer, it just carries no update signature.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
