@@ -26,14 +26,6 @@ export const DEFAULT_NAMESPACE = 'translation';
 export interface CreateI18nOptions {
   locale?: Locale;
   /**
-   * Whether to force a right-to-left layout regardless of the locale.
-   *
-   * The development toggle behind P05's RTL exit criterion. It changes the
-   * direction and nothing else, so a screen can be checked for mirrored layout
-   * while still reading in English.
-   */
-  forceRtl?: boolean;
-  /**
    * Messages to add or override, per locale. English and Arabic are built in;
    * a catalogue passed here for either replaces the built-in one.
    */

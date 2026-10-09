@@ -33,15 +33,23 @@ export const en = {
       system: 'Match my system',
     },
     language: 'Language',
-    // Development-only, and named so it is obvious in a translation file why
-    // it exists: forcing right-to-left is how the layout is checked before any
-    // Arabic copy exists.
-    forceRtl: 'Preview right-to-left',
+    // The plans, by their keys: the API names them and the screens translate them.
+    plan: {
+      trial: 'Trial',
+      starter: 'Starter',
+      standard: 'Standard',
+      enterprise: 'Enterprise',
+    },
+    // A part of a page that did not load, under the part that did; the button beside it tries again.
+    loadFailed: 'This part could not be loaded.',
+    copyId: 'Copy ID',
     // Also development-only: the desktop app shows whether it is a Tauri window
     // or a browser tab, so P05's "identical in both" criterion can be checked
     // by eye. Translated anyway, because a string on screen is a string on
     // screen.
     runtime: 'Runtime',
+    runtimeTauri: 'Tauri window',
+    runtimeBrowser: 'Browser tab',
   },
 
   auth: {
@@ -50,6 +58,7 @@ export const en = {
     email: 'Email address',
     password: 'Password',
     signIn: 'Sign in',
+    signInTo: 'Sign in to {{company}}',
     signingIn: 'Signing in…',
     magicLink: 'Email me a sign-in link',
     magicLinkSent: 'If that address has an account, a sign-in link is on its way.',
@@ -62,6 +71,8 @@ export const en = {
     invalidCredentials: 'That email address and password did not match.',
     accountLocked: 'Too many attempts. Try again in a few minutes.',
     rateLimited: 'Too many requests. Slow down and try again shortly.',
+    // A company's own phone app refuses an account from another company.
+    wrongCompany: 'This account belongs to another company. This app is for {{company}}.',
 
     // Integr8 staff signing in to a customer's desktop app to set it up: forms
     // and job types are built by Integr8, not by the company (see the help
@@ -264,6 +275,7 @@ export const en = {
       title: 'Billing',
       subtitle: 'What you are on, what it allows, and what you are using.',
       plan: 'Plan',
+      planNamed: 'Plan: {{plan}}',
       status: {
         trialing: 'Trial',
         active: 'Active',
@@ -359,10 +371,71 @@ export const en = {
       status: { invited: 'Invited', active: 'Active', suspended: 'Suspended' },
     },
 
+    // The desktop app's branding screen (0022). Staff only: the apps a
+    // company's people open are built for that company by Integr8.
+    branding: {
+      title: 'Company branding',
+      subtitle:
+        'The logo, colours, theme and website this company’s apps show. Changes apply the next time an app opens.',
+      logo: 'Logo',
+      logoHint: 'Shown in the menu and on documents. PNG, JPEG or WebP, up to 2 MB.',
+      logoNone: 'No logo yet',
+      logoAlt: 'Company logo',
+      appIcon: 'App icon',
+      appIconHint:
+        'The icon of this company’s installers and phone apps. A square PNG, JPEG or WebP of at least 512 × 512 pixels, up to 2 MB.',
+      appIconNone: 'No icon yet',
+      appIconAlt: 'App icon',
+      choose: 'Choose an image',
+      replace: 'Replace',
+      remove: 'Remove',
+      uploading: 'Uploading…',
+      wrongType: 'That is not an image we can use. Choose a PNG, JPEG or WebP file.',
+      tooLarge: 'That image is larger than 2 MB. Choose a smaller one.',
+      notSquare: 'An app icon must be square: the same width and height.',
+      tooSmall: 'An app icon must be at least 512 × 512 pixels.',
+      unreadable: 'That file could not be read as an image.',
+      uploadFailed: 'The upload did not finish. Try again.',
+      accent: 'Accent colour',
+      accentHint: 'Buttons, links and highlights.',
+      shell: 'Shell colour',
+      shellHint: 'The side menu and the title bar.',
+      hex: 'Hex value',
+      picker: 'Pick a colour',
+      invalidColour: 'Enter a colour as #rrggbb.',
+      useDefault: 'Use the product’s own colour',
+      theme: 'Default theme',
+      themeHint: 'What every app in this company opens in.',
+      themeLight: 'Light',
+      themeDark: 'Dark',
+      themeSystem: 'Follow the device',
+      website: 'Website',
+      websiteHint: 'Shown on documents. It must start with https://.',
+      invalidWebsite: 'Enter an address that starts with https://.',
+      appsEnabled: 'Build apps for this company',
+      appsEnabledHint:
+        'The release pipeline then builds this company’s installers and phone apps, wearing this brand.',
+      preview: 'Preview',
+      previewHint: 'How the menu, title bar and buttons will look, before you save.',
+      previewButton: 'New work order',
+      previewBody: 'Sample content',
+      save: 'Save branding',
+      saving: 'Saving…',
+      saved: 'Saved. Every app shows the new brand the next time it opens.',
+      failed: 'Could not save. Try again.',
+      invalid: 'This value was refused.',
+      integr8Sets: 'Integr8 sets this for your company. Ask your contact there to change it.',
+    },
+
     settings: {
       title: 'Company settings',
       subtitle: 'How your company works. These apply to everybody.',
       branding: 'Branding',
+      brandingByIntegr8:
+        'Integr8 sets how your company looks in its apps. To change the logo, colours or theme, contact Integr8.',
+      shellColour: 'Menu colour',
+      defaultTheme: 'Theme',
+      notSet: 'Not set',
       brandColour: 'Brand colour',
       brandColourHint: 'Used on documents you send out. Six hex digits, like #1D4ED8.',
       logo: 'Logo',
@@ -1142,6 +1215,8 @@ export const en = {
   submissions: {
     nav: 'Submissions',
     fillNav: 'Fill in a form',
+    backToJob: 'Back to job {{reference}}',
+    backToJobPlain: 'Back to the job',
     start: {
       title: 'Fill in a form',
       subtitle: 'Choose a form to start. Your answers are saved as you go.',
@@ -1184,6 +1259,7 @@ export const en = {
       workOrder: 'For job {{reference}}',
       thisWorkOrder: 'For one job',
       removeWorkOrder: 'Show submissions for every job',
+      openNamed: 'Open {{form}} by {{name}}',
     },
     status: {
       draft: 'Draft',
@@ -1369,6 +1445,7 @@ export const en = {
       crew: 'Crew',
       noCrew: 'Unassigned',
       noDue: 'No date',
+      leadMember: '{{name}} (lead)',
       selectAll: 'Select every job shown',
       select: 'Select {{reference}}',
       selected_one: '{{count}} job selected',
@@ -1383,6 +1460,7 @@ export const en = {
         share: 'Share with colleagues',
         delete: 'Delete view',
         sharedBy: 'shared by {{name}}',
+        sharedOption: '{{name}} — shared by {{owner}}',
       },
       bulk: {
         reassign: 'Reassign',
@@ -1431,6 +1509,13 @@ export const en = {
       addForm: 'Add a form',
       removeForm: 'Remove',
       submissionsForJob: 'All submissions for this job',
+      // The forms attached to a job, each a task for the crew.
+      attached: {
+        removeNamed: 'Remove {{title}} from this job',
+        allAttached: 'Every form is already on this job.',
+        openNamed: 'Open {{title}}: {{status}}',
+        startNamed: 'Start {{title}}',
+      },
       checklist: 'Checklist',
       addChecklistItem: 'Add an item',
       checklistDone: 'Done by {{name}} {{when}}',
@@ -1529,6 +1614,7 @@ export const en = {
       create: 'Create work order',
       onHold: '{{name}} is on hold. Create the job anyway?',
       onHoldConfirm: 'Create anyway',
+      customerOnHold: '{{name}} — on hold',
     },
     customers: {
       title: 'Customers',
@@ -1565,6 +1651,7 @@ export const en = {
       contactName: 'Name',
       jobTitle: 'Job title',
       primary: 'Primary contact',
+      primaryContact: '{{name}} · Primary contact',
       archiveContact: 'Archive',
       sites: 'Sites',
       noSites: 'No sites yet.',
@@ -1687,6 +1774,15 @@ export const en = {
       working: 'Working',
       noJobs: 'No time on jobs.',
     },
+    // The desktop app's right-click menu on a row: the same actions as the row's own buttons.
+    rowActions: {
+      open: 'Open',
+      edit: 'Edit',
+      copyId: 'Copy ID',
+      cancelJob: 'Cancel job',
+      newJob: 'New job for this customer',
+      remove: 'Remove',
+    },
     common: {
       optional: 'optional',
       edit: 'Edit',
@@ -1702,6 +1798,17 @@ export const en = {
   // The mobile app (P11): everything it shows is read from the phone.
   mobile: {
     back: 'Back',
+    readFailed:
+      'This could not be read from the phone. Restart the app, and contact support if it happens again.',
+    // A company's own phone app, before anybody has signed in: its website
+    // behind a slim branded header, or a welcome when it has no website.
+    welcome: {
+      login: 'Login',
+      title: 'Welcome to {{company}}',
+      body: 'Sign in to see your jobs, fill in forms and send your work from this phone.',
+      website: 'Website',
+      loadFailed: 'The website could not be loaded. Check the connection and try again.',
+    },
     sync: {
       updating: 'Updating your jobs…',
       updatedAt: 'Updated {{when}}',
@@ -1832,6 +1939,7 @@ export const en = {
       title: 'Your jobs',
       signedInAs: '{{name}}',
       settings: 'Settings',
+      website: 'Website',
       searchLabel: 'Search jobs and customers',
       searchPlaceholder: 'Name, address or job number',
       overdue: 'Overdue',
@@ -2016,6 +2124,8 @@ export const en = {
       appUpdate: 'App version',
       appUpdateEmbedded: '{{version}}',
       appUpdateId: '{{version}} · update {{update}} ({{channel}})',
+      website: 'Company website',
+      openWebsite: 'Open in the browser',
     },
     // P12: whether the phone and the office agree, in words an engineer acts on.
     syncState: {
@@ -2346,6 +2456,8 @@ export const en = {
       noErrors: 'Nothing has failed recently.',
       queue: 'Queue',
       attempts: 'Attempts',
+      attemptsMade_one: '{{count}} attempt',
+      attemptsMade_other: '{{count}} attempts',
       failedAt: 'Failed',
       deadLettered: 'Given up',
     },
@@ -2511,6 +2623,7 @@ export const en = {
       storageCost: 'Storage',
       classA: 'Class A operations',
       classB: 'Class B operations',
+      totalCost: 'Total',
       allowance: 'Allowance',
       used: 'Used',
       uncapped: 'Uncapped',
@@ -2592,6 +2705,8 @@ export const en = {
       overageBlock: 'Refuse uploads',
       overageAllow: 'Keep accepting, and bill',
       warnAt: 'Warn at',
+      storageGb: 'Storage (GB)',
+      warnAtPercent: 'Warn at (%)',
       edit: 'Change',
       save: 'Save',
       saved: 'Saved.',

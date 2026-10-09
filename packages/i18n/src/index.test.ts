@@ -77,24 +77,13 @@ describe('negotiation', () => {
   });
 });
 
-describe('direction, and the development override', () => {
-  /**
-   * P05's third exit criterion depends on this. Forcing right-to-left while
-   * still reading English is how a screen is checked for hardcoded `left` and
-   * `right` before any Arabic copy exists — and checking each screen as it is
-   * built costs nothing, where retrofitting is a rewrite.
-   */
-  it('follows the locale by default', () => {
+describe('direction', () => {
+  // Direction follows the locale and nothing else: Arabic reads right to left,
+  // English left to right. The development preview that forced right-to-left
+  // over English is gone now that there is Arabic copy to read.
+  it('follows the locale', () => {
     expect(resolveDirection('en')).toBe('ltr');
     expect(resolveDirection('ar')).toBe('rtl');
-  });
-
-  it('can be forced right-to-left without pretending the language changed', () => {
-    expect(resolveDirection('en', true)).toBe('rtl');
-  });
-
-  it('does not force left-to-right on a right-to-left locale', () => {
-    expect(resolveDirection('ar', false)).toBe('rtl');
   });
 });
 

@@ -330,18 +330,25 @@ jobs:
       # submitted. Each company has its own update channel, so an over-the-air
       # fix reaches only that company's phones; the channel lives in eas.json,
       # so the profile is rewritten for this run (the file is not committed).
+      #
+      # The profile follows where the app is going: `production` is a store
+      # bundle (.aab) for when STORE_SUBMIT is enabled; otherwise
+      # `production-internal`, the same app as an .apk a phone installs from
+      # the release's download link.
       - name: Build on Expo
         working-directory: apps/mobile
         env:
           PLATFORMS: ${{ needs.resolve.outputs.mobile_platforms }}
           SLUG: ${{ matrix.company }}
           ASC_APP_IDS: ${{ vars.ASC_APP_IDS }}
+          PROFILE: ${{ vars.STORE_SUBMIT == 'enabled' && 'production' || 'production-internal' }}
         run: |
           set -euo pipefail
           node -e '
             const fs = require("node:fs");
             const eas = JSON.parse(fs.readFileSync("eas.json", "utf8"));
             eas.build.production.channel = `production-${process.env.SLUG}`;
+            eas.build["production-internal"].channel = `production-${process.env.SLUG}`;
             let ids = {};
             try { ids = JSON.parse(process.env.ASC_APP_IDS || "{}"); } catch {}
             const ascAppId = ids[process.env.SLUG];
@@ -349,7 +356,8 @@ jobs:
             fs.writeFileSync("eas.json", JSON.stringify(eas, null, 2) + "\n");
             console.log("channel:", eas.build.production.channel, "ascAppId:", ascAppId ?? "(none)");
           '
-          eas build --platform "$PLATFORMS" --profile production --non-interactive --json > builds.json
+          echo "profile: $PROFILE"
+          eas build --platform "$PLATFORMS" --profile "$PROFILE" --non-interactive --json > builds.json
           node -e '
             for (const b of require("./builds.json")) {
               console.log(b.platform, b.status, b.artifacts?.buildUrl ?? "", b.artifacts?.applicationArchiveUrl ?? "");

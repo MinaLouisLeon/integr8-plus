@@ -18,12 +18,9 @@ export { ar, type Catalogue } from './messages/ar.js';
 import { directionFor, type Direction, type Locale } from './locales.js';
 
 /**
- * The direction a document should use.
- *
- * Separate from the locale so the development toggle can force `rtl` without
- * pretending the language changed — which is how a screen is checked for
- * hardcoded `left`/`right` before any Arabic copy exists.
+ * The direction a document should use: the locale's own. Arabic reads right
+ * to left, English left to right, and nothing else decides it.
  */
-export function resolveDirection(locale: Locale, forceRtl = false): Direction {
-  return forceRtl ? 'rtl' : directionFor(locale);
+export function resolveDirection(locale: Locale): Direction {
+  return directionFor(locale);
 }
