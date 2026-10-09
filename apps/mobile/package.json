@@ -25,7 +25,7 @@
     "@integr8/tokens": "workspace:*",
     "@react-native-community/datetimepicker": "9.1.0",
     "@sentry/react-native": "7.11.0",
-    "expo": "57.0.21",
+    "expo": "57.0.27",
     "expo-background-task": "57.0.17",
     "expo-battery": "57.0.3",
     "expo-camera": "57.0.5",
