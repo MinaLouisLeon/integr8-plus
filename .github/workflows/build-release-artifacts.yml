@@ -228,6 +228,10 @@ jobs:
         with:
           projectPath: apps/desktop
 
+      # Tauri lists everything it bundled. On macOS that includes the bare
+      # `.app` folder beside the `.dmg` that contains it; the dmg is the
+      # installer, and a folder cannot be attached to a release, so only
+      # regular files are kept.
       - name: Collect the installers
         shell: bash
         env:
@@ -239,6 +243,10 @@ jobs:
             const fs = require("node:fs");
             const path = require("node:path");
             for (const from of JSON.parse(process.env.PATHS)) {
+              if (!fs.statSync(from).isFile()) {
+                console.log("skipped (not a file)", path.basename(from));
+                continue;
+              }
               fs.copyFileSync(from, path.join("collected", path.basename(from)));
               console.log("collected", path.basename(from));
             }
