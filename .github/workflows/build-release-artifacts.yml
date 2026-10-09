@@ -100,8 +100,12 @@ jobs:
           tar -czf "artifacts/integr8-api-${VERSION}.tar.gz" \
             -C apps/api dist package.json openapi.json
 
+          # `public` exists only once the web app has static files to serve;
+          # tar refuses a missing member, so it is listed only when present.
+          web_members=(.next package.json next.config.ts)
+          if [ -d apps/web/public ]; then web_members+=(public); fi
           tar -czf "artifacts/integr8-web-${VERSION}.tar.gz" \
-            -C apps/web .next public package.json next.config.ts
+            -C apps/web "${web_members[@]}"
 
           cp apps/api/openapi.json "artifacts/openapi-${VERSION}.json"
           ls -la artifacts
