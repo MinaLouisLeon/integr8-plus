@@ -209,6 +209,7 @@ gh variable set DESKTOP_BUILDS --body 'disabled'   # skip desktop builds entirel
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | secret   | As above                                                                                            |
 | `EXPO_TOKEN`                         | secret   | Mobile builds cannot authenticate                                                                   |
 | `EAS_BUILDS`                         | variable | Mobile builds are skipped. Set to `enabled` to run them                                             |
+| `EAS_PLATFORMS`                      | variable | Android only. Set to `all` once Apple credentials exist on Expo                                     |
 | `DESKTOP_BUILDS`                     | variable | Set to `disabled` to skip desktop builds                                                            |
 | `PUBLIC_API_URL`                     | variable | The release desktop build refuses to run: an installer must know its API. Shared with the web image |
 | `STAGING_PUBLIC_API_URL`             | variable | As above, for the nightly's installer and the staging web image                                     |
