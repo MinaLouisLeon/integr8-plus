@@ -4819,8 +4819,8 @@ export interface operations {
                     };
                 };
             };
-            /** @description The token is missing or wrong. */
-            401: {
+            /** @description The build token is missing or wrong (`build_token_rejected`). */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

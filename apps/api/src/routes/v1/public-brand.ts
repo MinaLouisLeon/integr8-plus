@@ -158,7 +158,7 @@ export const buildCompaniesRoute = defineRoute({
         items: z.array(z.object({ slug: z.string(), name: z.string() })),
       }),
     },
-    401: { description: 'The token is missing or wrong.' },
+    403: { description: 'The build token is missing or wrong (`build_token_rejected`).' },
     404: { description: 'This deployment builds no company apps.' },
   },
   handler: async (_input, context) => {
@@ -168,7 +168,7 @@ export const buildCompaniesRoute = defineRoute({
     }
     const presented = context.bearerToken ?? '';
     if (!sameSecret(presented, expected)) {
-      throw new ApiError(401, 'build_token_rejected', 'The build token was not accepted.');
+      throw new ApiError(403, 'build_token_rejected', 'The build token was not accepted.');
     }
     const companies = await getPlatformDataSource().tenantSettings.companiesWithApps();
     return {

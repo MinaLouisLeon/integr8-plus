@@ -3562,8 +3562,8 @@
               }
             }
           },
-          "401": {
-            "description": "The token is missing or wrong."
+          "403": {
+            "description": "The build token is missing or wrong (`build_token_rejected`)."
           },
           "404": {
             "description": "This deployment builds no company apps."

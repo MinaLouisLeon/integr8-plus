@@ -233,7 +233,7 @@ describe('the pipeline’s list of companies to build for', () => {
       url: '/v1/build/companies',
       headers: { 'x-client-version': '1.0.0', 'x-client-app': 'web' },
     });
-    expect(missing.statusCode).toBe(401);
+    expect(missing.statusCode).toBe(403);
     const wrong = await api.app.inject({
       method: 'GET',
       url: '/v1/build/companies',
@@ -243,7 +243,7 @@ describe('the pipeline’s list of companies to build for', () => {
         authorization: 'Bearer not-the-token-at-all-but-just-as-long-as-one',
       },
     });
-    expect(wrong.statusCode).toBe(401);
+    expect(wrong.statusCode).toBe(403);
   });
 
   it('lists the companies with apps switched on, by slug', async () => {
