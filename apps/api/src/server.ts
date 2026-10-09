@@ -163,6 +163,7 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
       ipAddress: request.ip === '' ? null : request.ip,
       userAgent: header(request, 'user-agent'),
       idempotencyKey: header(request, 'idempotency-key'),
+      bearerToken: bearer(header(request, 'authorization')),
       // Whichever provider signed it. One header per provider, and only a
       // route that asked for the raw body ever reads it (P17).
       signatureHeader:
@@ -422,6 +423,15 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** The token in an `Authorization: Bearer …` header, or null when there is none. */
+function bearer(authorization: string | null): string | null {
+  if (!authorization?.toLowerCase().startsWith('bearer ')) {
+    return null;
+  }
+  const token = authorization.slice(7).trim();
+  return token === '' ? null : token;
+}
 
 function header(request: FastifyRequest, name: string): string | null {
   const value = request.headers[name];

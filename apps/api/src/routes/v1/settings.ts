@@ -1,6 +1,7 @@
-import { getPlatformDataSource, TENANT_PLANS, withTenant } from '@integr8/db';
+import { assertHolds, PermissionDeniedError } from '@integr8/core';
+import { companyThemeSchema, getPlatformDataSource, TENANT_PLANS, withTenant } from '@integr8/db';
 import { z } from 'zod';
-import { unprocessable } from '../../http/errors.js';
+import { forbidden, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 
 /**
@@ -19,9 +20,21 @@ import { defineRoute, noSchema } from '../../http/routes.js';
 
 const TAGS = ['workspace'];
 
+const colourSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/u);
+
 const settingsSchema = z.object({
   logoMediaId: z.uuid().nullable(),
   brandColour: z.string().nullable(),
+  /** The dashboard shell (sidebar, top bar) colour, `#RRGGBB`, or null for the product's own. */
+  shellColour: z.string().nullable(),
+  /** The theme every app of this company opens in. */
+  defaultTheme: companyThemeSchema,
+  /** The company's own website, https only. */
+  websiteUrl: z.string().nullable(),
+  /** A square image for installer and phone icons, or null for the product's own. */
+  appIconMediaId: z.uuid().nullable(),
+  /** Whether the release pipeline builds this company's own desktop and phone apps. */
+  appsEnabled: z.boolean(),
   timezone: z.string(),
   currency: z.string(),
   locale: z.string(),
@@ -57,7 +70,7 @@ export const updateSettingsRoute = defineRoute({
   operationId: 'updateSettings',
   summary: 'Change how this company works',
   description:
-    'Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed.',
+    'Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'tenant.update',
@@ -66,11 +79,18 @@ export const updateSettingsRoute = defineRoute({
   body: z.object({
     logoMediaId: z.uuid().nullable().optional(),
     /** `#RRGGBB`. The database refuses anything else. */
-    brandColour: z
+    brandColour: colourSchema.nullable().optional(),
+    shellColour: colourSchema.nullable().optional(),
+    defaultTheme: companyThemeSchema.optional(),
+    /** https only; the phone app shows this page in a web view. */
+    websiteUrl: z
       .string()
-      .regex(/^#[0-9A-Fa-f]{6}$/u)
+      .max(2048)
+      .regex(/^https:\/\/\S+$/u)
       .nullable()
       .optional(),
+    appIconMediaId: z.uuid().nullable().optional(),
+    appsEnabled: z.boolean().optional(),
     /** An IANA name. Validated against the runtime's own tz database. */
     timezone: z.string().min(1).max(64).optional(),
     currency: z
@@ -84,14 +104,28 @@ export const updateSettingsRoute = defineRoute({
   }),
   responses: {
     200: { description: 'The settings, as they now are.', schema: settingsSchema },
+    403: { description: 'A branding field was sent by somebody other than Integr8 staff.' },
     422: {
       description:
-        'An unknown timezone (`unknown_timezone`), or a logo that is not a stored image of this company’s (`logo_not_found`).',
+        'An unknown timezone (`unknown_timezone`), or a logo or app icon that is not a stored image of this company’s (`logo_not_found`, `app_icon_not_found`).',
     },
   },
   handler: async ({ body }, context) => {
     if (body.timezone !== undefined && !isKnownTimezone(body.timezone)) {
       throw unprocessableTimezone(body.timezone);
+    }
+
+    if (BRANDING_FIELDS.some((field) => body[field] !== undefined)) {
+      try {
+        assertHolds(context.principal, 'branding.manage');
+      } catch (error) {
+        if (error instanceof PermissionDeniedError) {
+          throw forbidden(
+            'Your company’s look — logo, colours, theme and website — is set up by Integr8. Ask us, and we will make the change for you.',
+          );
+        }
+        throw error;
+      }
     }
 
     const settings = await withTenant(context.principal.tenantId, async (tx) => {
@@ -101,16 +135,16 @@ export const updateSettingsRoute = defineRoute({
         // that would surface as a 500. Checked here so a crafted request gets
         // a 422 that names the field, and so a deleted file or a PDF cannot
         // become the logo: the key does not know what kind of file it is.
-        const file = await tx.files.find(body.logoMediaId);
-        // Missing, deleted, or not an image: `deletedAt` is `undefined` for a
-        // missing file, which is `!== null` and so is refused with the rest.
-        if (file?.deletedAt !== null || file.category !== 'image') {
-          throw unprocessable(
-            'logo_not_found',
-            'The logo must be an image uploaded by this company.',
-            [{ field: 'body.logoMediaId', code: 'logo_not_found', message: 'Not a stored image.' }],
-          );
-        }
+        await assertStoredImage(tx, body.logoMediaId, 'logoMediaId', 'logo_not_found', 'logo');
+      }
+      if (body.appIconMediaId != null) {
+        await assertStoredImage(
+          tx,
+          body.appIconMediaId,
+          'appIconMediaId',
+          'app_icon_not_found',
+          'app icon',
+        );
       }
       const updated = await tx.settings.update(body);
       await tx.auditLog.append({
@@ -194,9 +228,48 @@ export const publicPlansRoute = defineRoute({
   },
 });
 
+/** What `branding.manage` guards: the look of the company's apps, and whether they are built. */
+const BRANDING_FIELDS = [
+  'logoMediaId',
+  'brandColour',
+  'shellColour',
+  'defaultTheme',
+  'websiteUrl',
+  'appIconMediaId',
+  'appsEnabled',
+] as const;
+
+/**
+ * Refuses a media id that is not a live image of this company's, with a 422
+ * that names the field rather than the constraint error the key would raise.
+ */
+async function assertStoredImage(
+  tx: {
+    files: { find(id: string): Promise<{ deletedAt: Date | null; category: string } | undefined> };
+  },
+  mediaId: string,
+  field: string,
+  code: string,
+  what: string,
+): Promise<void> {
+  const file = await tx.files.find(mediaId);
+  // Missing, deleted, or not an image: `deletedAt` is `undefined` for a
+  // missing file, which is `!== null` and so is refused with the rest.
+  if (file?.deletedAt !== null || file.category !== 'image') {
+    throw unprocessable(code, `The ${what} must be an image uploaded by this company.`, [
+      { field: `body.${field}`, code, message: 'Not a stored image.' },
+    ]);
+  }
+}
+
 function toBody(settings: {
   logoMediaId: string | null;
   brandColour: string | null;
+  shellColour: string | null;
+  defaultTheme: 'light' | 'dark' | 'system';
+  websiteUrl: string | null;
+  appIconMediaId: string | null;
+  appsEnabled: boolean;
   timezone: string;
   currency: string;
   locale: string;
@@ -207,6 +280,11 @@ function toBody(settings: {
   return {
     logoMediaId: settings.logoMediaId,
     brandColour: settings.brandColour,
+    shellColour: settings.shellColour,
+    defaultTheme: settings.defaultTheme,
+    websiteUrl: settings.websiteUrl,
+    appIconMediaId: settings.appIconMediaId,
+    appsEnabled: settings.appsEnabled,
     timezone: settings.timezone,
     currency: settings.currency,
     locale: settings.locale,

@@ -1,6 +1,8 @@
-import { toTenantId } from '@integr8/core';
-import { withTenant } from '@integr8/db';
+import { NotAMemberError } from '@integr8/auth';
+import { toTenantId, type TenantId } from '@integr8/core';
+import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { z } from 'zod';
+import { ApiError } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { iso, signInResponseSchema, tokensSchema } from './schemas.js';
 
@@ -19,8 +21,61 @@ const signInBody = z.object({
   clientApp: z.enum(['web', 'desktop', 'mobile']).default('web'),
   /** Which company to sign in to. Omitted means the only one, or the first. */
   tenantId: z.uuid().optional(),
+  /**
+   * The company this app was built for, by short name. An app built for one
+   * company only signs its own people in: an account from any other company
+   * is refused with 403 `wrong_company`, so one company's app can never show
+   * another's data. Takes precedence over `tenantId`.
+   */
+  companySlug: z
+    .string()
+    .min(2)
+    .max(63)
+    .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/u)
+    .optional(),
   deviceLabel: z.string().max(120).optional(),
 });
+
+/**
+ * The company an app was built for, or 403 when the slug names none: the app
+ * is wrong about the world, and signing somebody into whichever company they
+ * happen to belong to would be exactly the leak the slug exists to prevent.
+ */
+async function lockedCompany(
+  slug: string | undefined,
+): Promise<{ tenantId: TenantId; name: string } | undefined> {
+  if (slug === undefined) {
+    return undefined;
+  }
+  const tenant = await getPlatformDataSource().tenants.findBySlug(slug);
+  if (tenant?.deletedAt !== null) {
+    throw wrongCompany(slug);
+  }
+  return { tenantId: toTenantId(tenant.id), name: tenant.name };
+}
+
+function wrongCompany(name: string): ApiError {
+  return new ApiError(
+    403,
+    'wrong_company',
+    `This app is for ${name}. Your account does not belong to that company.`,
+  );
+}
+
+/** Runs a sign-in; a membership refusal becomes `wrong_company` when the app named one. */
+async function signInLocked<T>(
+  company: { tenantId: TenantId; name: string } | undefined,
+  run: (tenantId: TenantId | undefined) => Promise<T>,
+): Promise<T> {
+  try {
+    return await run(company?.tenantId);
+  } catch (error) {
+    if (company !== undefined && error instanceof NotAMemberError) {
+      throw wrongCompany(company.name);
+    }
+    throw error;
+  }
+}
 
 export const signInRoute = defineRoute({
   method: 'post',
@@ -37,18 +92,27 @@ export const signInRoute = defineRoute({
   responses: {
     200: { description: 'Signed in.', schema: signInResponseSchema },
     401: { description: 'The credentials were not accepted.' },
+    403: {
+      description:
+        'The app was built for one company and this account is not in it (`wrong_company`).',
+    },
     423: { description: 'Too many failed attempts; the address is locked.' },
   },
   handler: async ({ body }, context) => {
-    const result = await context.services.signIn.signInWithPassword({
-      email: body.email,
-      password: body.password,
-      clientApp: body.clientApp,
-      ...(body.tenantId === undefined ? {} : { tenantId: toTenantId(body.tenantId) }),
-      deviceLabel: body.deviceLabel ?? null,
-      userAgent: context.userAgent,
-      ipAddress: context.ipAddress,
-    });
+    const company = await lockedCompany(body.companySlug);
+    const chosen =
+      company?.tenantId ?? (body.tenantId === undefined ? undefined : toTenantId(body.tenantId));
+    const result = await signInLocked(company, () =>
+      context.services.signIn.signInWithPassword({
+        email: body.email,
+        password: body.password,
+        clientApp: body.clientApp,
+        ...(chosen === undefined ? {} : { tenantId: chosen }),
+        deviceLabel: body.deviceLabel ?? null,
+        userAgent: context.userAgent,
+        ipAddress: context.ipAddress,
+      }),
+    );
 
     return { status: 200, body: toSignInResponse(result) };
   },
@@ -91,22 +155,32 @@ export const completeMagicLinkRoute = defineRoute({
     token: z.string().min(1).max(512),
     clientApp: z.enum(['web', 'desktop', 'mobile']).default('web'),
     tenantId: z.uuid().optional(),
+    companySlug: signInBody.shape.companySlug,
     deviceLabel: z.string().max(120).optional(),
   }),
   responses: {
     200: { description: 'Signed in.', schema: signInResponseSchema },
     401: { description: 'The link is invalid or has expired.' },
+    403: {
+      description:
+        'The app was built for one company and this account is not in it (`wrong_company`).',
+    },
   },
   handler: async ({ body }, context) => {
-    const result = await context.services.signIn.completeMagicLink({
-      email: body.email,
-      token: body.token,
-      clientApp: body.clientApp,
-      ...(body.tenantId === undefined ? {} : { tenantId: toTenantId(body.tenantId) }),
-      deviceLabel: body.deviceLabel ?? null,
-      userAgent: context.userAgent,
-      ipAddress: context.ipAddress,
-    });
+    const company = await lockedCompany(body.companySlug);
+    const chosen =
+      company?.tenantId ?? (body.tenantId === undefined ? undefined : toTenantId(body.tenantId));
+    const result = await signInLocked(company, () =>
+      context.services.signIn.completeMagicLink({
+        email: body.email,
+        token: body.token,
+        clientApp: body.clientApp,
+        ...(chosen === undefined ? {} : { tenantId: chosen }),
+        deviceLabel: body.deviceLabel ?? null,
+        userAgent: context.userAgent,
+        ipAddress: context.ipAddress,
+      }),
+    );
 
     return { status: 200, body: toSignInResponse(result) };
   },

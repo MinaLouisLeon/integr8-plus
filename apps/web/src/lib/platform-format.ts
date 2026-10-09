@@ -128,3 +128,8 @@ export function pickMessage(message: Record<string, string>, locale: string): st
   const base = locale.split('-')[0] ?? locale;
   return message[base] ?? message.en ?? Object.values(message)[0] ?? '';
 }
+
+/** The API's own rule for a company website: https only, no spaces, at most 2048 characters. */
+export function isValidWebsite(value: string): boolean {
+  return /^https:\/\/\S+$/u.test(value) && value.length <= 2048;
+}

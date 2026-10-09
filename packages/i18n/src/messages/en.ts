@@ -2196,6 +2196,10 @@ export const en = {
       billingModeHint:
         'Invoiced: you bill them and set their plan here; no trial, no checkout. Pays in the app: they start a trial and subscribe with a card.',
       ownerEmail: 'Owner email',
+      website: 'Company website',
+      websiteHint:
+        'Starts with https://. Their phone app opens on this page before sign-in. Optional; it can be added later.',
+      websiteInvalid: 'Enter a full address starting with https://',
       submit: 'Onboard',
       busy: 'Onboarding...',
       done: '{{name}} is ready.',
@@ -2204,6 +2208,22 @@ export const en = {
       copied: 'Copied.',
       storageMissing:
         'The company was created, but its storage could not be. It will be created automatically within the hour.',
+    },
+    apps: {
+      title: 'Website and apps',
+      description:
+        'Their own desktop installers and phone apps are built from a GitHub Actions workflow and carry their name, icon and colours. The logo, icon, colours and theme are set from the desktop app while acting as this company.',
+      website: 'Company website',
+      websiteHint: 'Starts with https://. Shown in their phone app before sign-in.',
+      buildApps: 'Build apps for this company',
+      buildAppsHint:
+        'When on, every release also builds this company’s installers and phone apps, and the “Build company apps” workflow accepts its short name.',
+      save: 'Save',
+      saving: 'Saving...',
+      saved: 'Saved.',
+      brandSummary: 'Brand',
+      brandSet: 'Set from the desktop app',
+      brandUnset: 'Not set yet: the apps use the product’s own look',
     },
     company: {
       overview: 'Overview',

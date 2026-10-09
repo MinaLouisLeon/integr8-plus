@@ -28,6 +28,12 @@ export interface BaseRequestContext {
   userAgent: string | null;
   /** The `Idempotency-Key` header, if the caller sent one. */
   idempotencyKey: string | null;
+  /**
+   * The bearer token as sent, for the few public routes guarded by a shared
+   * secret rather than a session (the build pipeline's list of companies).
+   * Session routes never read this: authentication has already verified it.
+   */
+  bearerToken: string | null;
   /** The body exactly as it arrived, for a route that declared `rawBody`. */
   rawBody?: string | undefined;
   /**

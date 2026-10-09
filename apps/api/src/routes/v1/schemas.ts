@@ -1,3 +1,4 @@
+import { companyThemeSchema } from '@integr8/db';
 import { PERMISSIONS, ROLES } from '@integr8/core';
 import { z } from 'zod';
 
@@ -84,10 +85,20 @@ export const meSchema = z.object({
    */
   company: z.object({
     name: z.string(),
+    /** The company's short name: what a build of its apps is stamped with. */
+    slug: z.string(),
     /** A stored image of the company's; `GET /v1/media/{mediaId}` gives a link to it. */
     logoMediaId: z.uuid().nullable(),
+    /** A square image for app icons, or null for the product's own. */
+    appIconMediaId: z.uuid().nullable(),
     /** `#rrggbb`, or null for the product's own accent. */
     brandColour: z.string().nullable(),
+    /** `#rrggbb` for the dashboard shell (sidebar, top bar), or null for the product's own. */
+    shellColour: z.string().nullable(),
+    /** The theme every app of this company opens in. People do not choose. */
+    defaultTheme: companyThemeSchema,
+    /** The company's own website, https only, or null. */
+    websiteUrl: z.string().nullable(),
   }),
 
   /**

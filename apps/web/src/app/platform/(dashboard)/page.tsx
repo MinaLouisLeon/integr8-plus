@@ -8,7 +8,13 @@ import { useState, type FormEvent } from 'react';
 import { Button, EmptyState, ErrorState, Field, LoadingState } from '~/components/ui';
 import { StatusBadge } from '~/components/platform-bits';
 import { messageForError } from '~/lib/errors';
-import { formatBytes, formatDate, isValidSlug, suggestSlug } from '~/lib/platform-format';
+import {
+  formatBytes,
+  formatDate,
+  isValidSlug,
+  isValidWebsite,
+  suggestSlug,
+} from '~/lib/platform-format';
 import { platformClient } from '~/lib/platform-session';
 
 /**
@@ -181,6 +187,7 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
   // already agreed terms with. Self-serve is the exception, chosen on purpose.
   const [billingMode, setBillingMode] = useState<'self_serve' | 'invoiced'>('invoiced');
   const [ownerEmail, setOwnerEmail] = useState('');
+  const [website, setWebsite] = useState('');
   const [copied, setCopied] = useState(false);
 
   const effectiveSlug = slugTouched ? slug : suggestSlug(name);
@@ -195,6 +202,7 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
           seats: seats.trim() === '' ? null : Number(seats),
           billingMode,
           ownerEmail: ownerEmail.trim(),
+          websiteUrl: website.trim() === '' ? null : website.trim(),
         },
       });
       return data;
@@ -253,6 +261,7 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
     effectiveSlug !== '' && !isValidSlug(effectiveSlug)
       ? t('platform.onboard.slugHint')
       : undefined;
+  const websiteOk = website.trim() === '' || isValidWebsite(website.trim());
 
   return (
     <form
@@ -324,13 +333,21 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
           onChange={(event) => setOwnerEmail(event.target.value)}
           {...(onboard.isError ? { error: messageForError(onboard.error, t) } : {})}
         />
+        <Field
+          label={t('platform.onboard.website')}
+          hint={t('platform.onboard.websiteHint')}
+          type="url"
+          value={website}
+          onChange={(event) => setWebsite(event.target.value)}
+          {...(websiteOk ? {} : { error: t('platform.onboard.websiteInvalid') })}
+        />
       </div>
 
       <div className="flex gap-2">
         <Button
           type="submit"
           busy={onboard.isPending}
-          disabled={!isValidSlug(effectiveSlug) || ownerEmail.trim() === ''}
+          disabled={!isValidSlug(effectiveSlug) || ownerEmail.trim() === '' || !websiteOk}
         >
           {onboard.isPending ? t('platform.onboard.busy') : t('platform.onboard.submit')}
         </Button>

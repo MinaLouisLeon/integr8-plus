@@ -31,7 +31,16 @@ export function me(overrides: Partial<Me> = {}): Me {
     displayName: 'Ed Engineer',
     role: 'engineer',
     permissions: [],
-    company: { name: 'Northwind Facilities', logoMediaId: null, brandColour: null },
+    company: {
+      name: 'Northwind Facilities',
+      slug: 'northwind',
+      logoMediaId: null,
+      appIconMediaId: null,
+      brandColour: null,
+      shellColour: null,
+      defaultTheme: 'system',
+      websiteUrl: null,
+    },
     // Both arrive from the platform (P15) and both are empty for a company
     // nobody has flagged or announced anything to, which is most of them.
     features: {},

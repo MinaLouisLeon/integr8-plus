@@ -759,10 +759,24 @@ export interface SignupEventsTable {
   occurred_at: CreatedAt;
 }
 
+/** The theme a company's apps open in (0022). People in the company do not choose. */
+export const COMPANY_THEMES = ['light', 'dark', 'system'] as const;
+export const companyThemeSchema = z.enum(COMPANY_THEMES);
+export type CompanyTheme = z.infer<typeof companyThemeSchema>;
+
 export interface TenantSettingsTable {
   tenant_id: string;
   logo_media_id: string | null;
   brand_colour: string | null;
+  /** The dashboard shell colour, `#RRGGBB` (0022). Null means the product default. */
+  shell_colour: string | null;
+  default_theme: Generated<CompanyTheme>;
+  /** The company's own website, https only (0022). */
+  website_url: string | null;
+  /** A square image for the installer and phone icons (0022). */
+  app_icon_media_id: string | null;
+  /** Whether the release pipeline builds this company's own apps (0022). */
+  apps_enabled: Generated<boolean>;
   /** An IANA name. What a working day means for this company. */
   timezone: Generated<string>;
   currency: Generated<string>;

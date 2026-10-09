@@ -64,7 +64,7 @@ describe('who can do what', () => {
     const withheld = PERMISSIONS.filter((permission) => !can('admin', permission));
     // An admin may read the billing state — "why did uploads stop" reaches
     // them first — but may not start or end a recurring charge (P17).
-    expect(withheld).toEqual(['tenant.update', 'billing.manage']);
+    expect(withheld).toEqual(['tenant.update', 'branding.manage', 'billing.manage']);
   });
 
   it('does not let a dispatcher manage members despite outranking an engineer', () => {
@@ -175,13 +175,17 @@ describe('what Integr8 does for a company', () => {
   const staffAsOwner = { role: 'owner', impersonatedBy: { pid: 'p', gid: 'g' } } as const;
   const staffAsEngineer = { role: 'engineer', impersonatedBy: { pid: 'p', gid: 'g' } } as const;
 
-  it('names exactly the form and job-type configuration', () => {
-    expect([...STAFF_ONLY_PERMISSIONS].sort()).toEqual(['form.manage', 'job_type.manage']);
+  it('names exactly the form, job-type and branding configuration', () => {
+    expect([...STAFF_ONLY_PERMISSIONS].sort()).toEqual([
+      'branding.manage',
+      'form.manage',
+      'job_type.manage',
+    ]);
   });
 
   it('withholds those from the company\u2019s own owner, and nothing else', () => {
     const withheld = PERMISSIONS.filter((permission) => !holds(owner, permission));
-    expect(withheld).toEqual(['form.manage', 'job_type.manage']);
+    expect(withheld).toEqual(['branding.manage', 'form.manage', 'job_type.manage']);
     expect(permissionsHeld(owner)).toEqual(
       permissionsFor('owner').filter((permission) => !STAFF_ONLY_PERMISSIONS.has(permission)),
     );

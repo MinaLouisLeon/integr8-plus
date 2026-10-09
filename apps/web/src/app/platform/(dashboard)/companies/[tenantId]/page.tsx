@@ -97,6 +97,7 @@ export default function CompanyPage() {
         seats={detail.seats}
         billingMode={detail.billingMode}
       />
+      <AppsPanel tenantId={tenantId} settings={detail.settings} />
       <BillingPanel billing={detail.billing} />
 
       <Panel title={t('platform.company.people')}>
@@ -272,6 +273,112 @@ function PlanPanel({
             {problem}
           </span>
         )}
+      </form>
+    </Panel>
+  );
+}
+
+/**
+ * The company's website and whether its own apps are built (0022).
+ *
+ * The two brand facts the dashboard owns. The rest of the look is set from the
+ * desktop app while acting as the company, where it can be previewed on the
+ * real screens; here it is only reported, so whoever onboards a company can see
+ * whether that step has been done.
+ */
+function AppsPanel({
+  tenantId,
+  settings,
+}: {
+  tenantId: string;
+  settings: {
+    websiteUrl: string | null;
+    appsEnabled: boolean;
+    brandColour: string | null;
+    logoMediaId: string | null;
+  };
+}) {
+  const { t } = useTranslation();
+  const queries = useQueryClient();
+  const [website, setWebsite] = useState(settings.websiteUrl ?? '');
+  const [appsEnabled, setAppsEnabled] = useState(settings.appsEnabled);
+  const [problem, setProblem] = useState<string | undefined>(undefined);
+
+  const websiteOk = website.trim() === '' || /^https:\/\/\S+$/u.test(website.trim());
+  const unchanged =
+    (website.trim() === '' ? null : website.trim()) === settings.websiteUrl &&
+    appsEnabled === settings.appsEnabled;
+
+  const save = useMutation({
+    mutationFn: async () => {
+      await platformClient().PATCH('/v1/platform/companies/{tenantId}/settings', {
+        params: { path: { tenantId } },
+        body: {
+          websiteUrl: website.trim() === '' ? null : website.trim(),
+          appsEnabled,
+        },
+      });
+    },
+    onSuccess: () => {
+      setProblem(undefined);
+      void queries.invalidateQueries({ queryKey: ['platform', 'company', tenantId] });
+    },
+    onError: (error) => {
+      setProblem(messageForError(error, t));
+    },
+  });
+
+  return (
+    <Panel title={t('platform.apps.title')} description={t('platform.apps.description')}>
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          save.mutate();
+        }}
+      >
+        <div className="flex flex-wrap items-end gap-4">
+          <Field
+            label={t('platform.apps.website')}
+            hint={t('platform.apps.websiteHint')}
+            type="url"
+            value={website}
+            onChange={(event) => setWebsite(event.target.value)}
+            {...(websiteOk ? {} : { error: t('platform.onboard.websiteInvalid') })}
+          />
+          <label className="flex items-center gap-2 pb-2 text-sm text-content">
+            <input
+              type="checkbox"
+              checked={appsEnabled}
+              onChange={(event) => setAppsEnabled(event.target.checked)}
+            />
+            {t('platform.apps.buildApps')}
+          </label>
+        </div>
+        <p className="text-xs text-content-muted">{t('platform.apps.buildAppsHint')}</p>
+        <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+          <Fact
+            label={t('platform.apps.brandSummary')}
+            value={
+              settings.brandColour === null && settings.logoMediaId === null
+                ? t('platform.apps.brandUnset')
+                : t('platform.apps.brandSet')
+            }
+          />
+        </dl>
+        <div className="flex items-center gap-3">
+          <Button type="submit" busy={save.isPending} disabled={unchanged || !websiteOk}>
+            {save.isPending ? t('platform.apps.saving') : t('platform.apps.save')}
+          </Button>
+          {save.isSuccess && unchanged ? (
+            <span className="text-sm text-content-muted">{t('platform.apps.saved')}</span>
+          ) : null}
+          {problem === undefined ? null : (
+            <span role="alert" className="text-sm text-danger">
+              {problem}
+            </span>
+          )}
+        </div>
       </form>
     </Panel>
   );

@@ -23,6 +23,14 @@ export const PERMISSIONS = [
   'tenant.read',
   /** Change company settings. Owner only — billing hangs off this in P17. */
   'tenant.update',
+  /**
+   * Set the company's look: logo, app icon, colours, default theme, website,
+   * and whether its own apps are built. Staff-only (see
+   * {@link STAFF_ONLY_PERMISSIONS}): the apps a company's people open are
+   * built for that company by Integr8 and arrive wearing its brand, so nobody
+   * in the company changes it, any more than they change their forms.
+   */
+  'branding.manage',
 
   'member.read',
   'member.invite',
@@ -120,6 +128,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
   owner: [
     'tenant.read',
     'tenant.update',
+    'branding.manage',
     'billing.read',
     'billing.manage',
     'member.read',
@@ -296,6 +305,7 @@ export function assertCan(role: Role, permission: Permission): void {
 export const STAFF_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
   'form.manage',
   'job_type.manage',
+  'branding.manage',
 ]);
 
 /**

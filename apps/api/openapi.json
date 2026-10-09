@@ -125,6 +125,12 @@
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   },
+                  "companySlug": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 63,
+                    "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+                  },
                   "deviceLabel": {
                     "type": "string",
                     "maxLength": 120
@@ -241,6 +247,9 @@
           },
           "401": {
             "description": "The credentials were not accepted."
+          },
+          "403": {
+            "description": "The app was built for one company and this account is not in it (`wrong_company`)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -406,6 +415,12 @@
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   },
+                  "companySlug": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 63,
+                    "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+                  },
                   "deviceLabel": {
                     "type": "string",
                     "maxLength": 120
@@ -522,6 +537,9 @@
           },
           "401": {
             "description": "The link is invalid or has expired."
+          },
+          "403": {
+            "description": "The app was built for one company and this account is not in it (`wrong_company`)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -2724,6 +2742,31 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "shellColour": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "defaultTheme": {
+                      "type": "string",
+                      "enum": [
+                        "light",
+                        "dark",
+                        "system"
+                      ]
+                    },
+                    "websiteUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "appIconMediaId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "appsEnabled": {
+                      "type": "boolean"
+                    },
                     "timezone": {
                       "type": "string"
                     },
@@ -2755,6 +2798,11 @@
                   "required": [
                     "logoMediaId",
                     "brandColour",
+                    "shellColour",
+                    "defaultTheme",
+                    "websiteUrl",
+                    "appIconMediaId",
+                    "appsEnabled",
                     "timezone",
                     "currency",
                     "locale",
@@ -2837,7 +2885,7 @@
       "patch": {
         "operationId": "updateSettings",
         "summary": "Change how this company works",
-        "description": "Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed.",
+        "description": "Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s.",
         "tags": [
           "workspace"
         ],
@@ -2858,6 +2906,34 @@
                     "nullable": true,
                     "type": "string",
                     "pattern": "^#[0-9A-Fa-f]{6}$"
+                  },
+                  "shellColour": {
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                  },
+                  "defaultTheme": {
+                    "type": "string",
+                    "enum": [
+                      "light",
+                      "dark",
+                      "system"
+                    ]
+                  },
+                  "websiteUrl": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 2048,
+                    "pattern": "^https:\\/\\/\\S+$"
+                  },
+                  "appIconMediaId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "appsEnabled": {
+                    "type": "boolean"
                   },
                   "timezone": {
                     "type": "string",
@@ -2915,6 +2991,31 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "shellColour": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "defaultTheme": {
+                      "type": "string",
+                      "enum": [
+                        "light",
+                        "dark",
+                        "system"
+                      ]
+                    },
+                    "websiteUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "appIconMediaId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "appsEnabled": {
+                      "type": "boolean"
+                    },
                     "timezone": {
                       "type": "string"
                     },
@@ -2946,6 +3047,11 @@
                   "required": [
                     "logoMediaId",
                     "brandColour",
+                    "shellColour",
+                    "defaultTheme",
+                    "websiteUrl",
+                    "appIconMediaId",
+                    "appsEnabled",
                     "timezone",
                     "currency",
                     "locale",
@@ -2969,17 +3075,10 @@
             }
           },
           "403": {
-            "description": "The caller lacks the required permission.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "description": "A branding field was sent by somebody other than Integr8 staff."
           },
           "422": {
-            "description": "An unknown timezone (`unknown_timezone`), or a logo that is not a stored image of this company’s (`logo_not_found`)."
+            "description": "An unknown timezone (`unknown_timezone`), or a logo or app icon that is not a stored image of this company’s (`logo_not_found`, `app_icon_not_found`)."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -3108,6 +3207,366 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/companies/{slug}/brand": {
+      "get": {
+        "operationId": "getPublicBrand",
+        "summary": "A company’s brand, by its short name",
+        "description": "Name, colours, default theme, website and where to fetch the logo and app icon. Public: a company’s app is built with this before anybody signs in. Nothing else about the company is exposed.",
+        "tags": [
+          "brand"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 63,
+              "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The brand.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "brandColour": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "shellColour": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "defaultTheme": {
+                      "type": "string",
+                      "enum": [
+                        "light",
+                        "dark",
+                        "system"
+                      ]
+                    },
+                    "websiteUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "logoPath": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "appIconPath": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "name",
+                    "brandColour",
+                    "shellColour",
+                    "defaultTheme",
+                    "websiteUrl",
+                    "logoPath",
+                    "appIconPath"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No company has this short name."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/companies/{slug}/logo": {
+      "get": {
+        "operationId": "getPublicLogo",
+        "summary": "A company’s logo",
+        "description": "Redirects to a short-lived link to the image. 404 when the company has no logo.",
+        "tags": [
+          "brand"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 63,
+              "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "A link to the image, valid for a few minutes."
+          },
+          "404": {
+            "description": "No such company, or it has no logo."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/companies/{slug}/app-icon": {
+      "get": {
+        "operationId": "getPublicAppIcon",
+        "summary": "A company’s app icon",
+        "description": "Redirects to a short-lived link to the square image its installers and phone apps use. 404 when the company has none; the build then uses the product’s own icon.",
+        "tags": [
+          "brand"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 63,
+              "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "A link to the image, valid for a few minutes."
+          },
+          "404": {
+            "description": "No such company, or it has no app icon."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/build/companies": {
+      "get": {
+        "operationId": "listBuildCompanies",
+        "summary": "The companies whose own apps are built",
+        "description": "Every active company with “build apps” switched on, for the release pipeline. Needs `Authorization: Bearer <BUILD_TOKEN>`; answers 404 when the deployment has no such token.",
+        "tags": [
+          "brand"
+        ],
+        "responses": {
+          "200": {
+            "description": "The companies, by slug.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "slug",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The token is missing or wrong."
+          },
+          "404": {
+            "description": "This deployment builds no company apps."
           },
           "422": {
             "description": "The request failed validation.",
@@ -3601,6 +4060,7 @@
                         "enum": [
                           "tenant.read",
                           "tenant.update",
+                          "branding.manage",
                           "member.read",
                           "member.invite",
                           "member.update_role",
@@ -3657,7 +4117,16 @@
                         "name": {
                           "type": "string"
                         },
+                        "slug": {
+                          "type": "string"
+                        },
                         "logoMediaId": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "appIconMediaId": {
                           "nullable": true,
                           "type": "string",
                           "format": "uuid",
@@ -3666,12 +4135,33 @@
                         "brandColour": {
                           "nullable": true,
                           "type": "string"
+                        },
+                        "shellColour": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "defaultTheme": {
+                          "type": "string",
+                          "enum": [
+                            "light",
+                            "dark",
+                            "system"
+                          ]
+                        },
+                        "websiteUrl": {
+                          "nullable": true,
+                          "type": "string"
                         }
                       },
                       "required": [
                         "name",
+                        "slug",
                         "logoMediaId",
-                        "brandColour"
+                        "appIconMediaId",
+                        "brandColour",
+                        "shellColour",
+                        "defaultTheme",
+                        "websiteUrl"
                       ],
                       "additionalProperties": false
                     },
@@ -41172,6 +41662,12 @@
                     "format": "email",
                     "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
                   },
+                  "websiteUrl": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 2048,
+                    "pattern": "^https:\\/\\/\\S+$"
+                  },
                   "jobTypes": {
                     "maxItems": 50,
                     "type": "array",
@@ -41546,6 +42042,56 @@
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                     },
+                    "settings": {
+                      "type": "object",
+                      "properties": {
+                        "logoMediaId": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "appIconMediaId": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "brandColour": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "shellColour": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "defaultTheme": {
+                          "type": "string",
+                          "enum": [
+                            "light",
+                            "dark",
+                            "system"
+                          ]
+                        },
+                        "websiteUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "appsEnabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "logoMediaId",
+                        "appIconMediaId",
+                        "brandColour",
+                        "shellColour",
+                        "defaultTheme",
+                        "websiteUrl",
+                        "appsEnabled"
+                      ],
+                      "additionalProperties": false
+                    },
                     "activity": {
                       "type": "array",
                       "items": {
@@ -41740,6 +42286,7 @@
                     "suspendedAt",
                     "suspendedReason",
                     "deletionScheduledFor",
+                    "settings",
                     "activity",
                     "billing",
                     "featureFlags",
@@ -42386,6 +42933,166 @@
                     "suspendedAt",
                     "suspendedReason",
                     "deletionScheduledFor"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such company."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/platform/companies/{tenantId}/settings": {
+      "patch": {
+        "operationId": "updateCompanySettings",
+        "summary": "Change a company’s website, or whether its own apps are built",
+        "description": "The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "websiteUrl": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 2048,
+                    "pattern": "^https:\\/\\/\\S+$"
+                  },
+                  "appsEnabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "logoMediaId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "appIconMediaId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "brandColour": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "shellColour": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "defaultTheme": {
+                      "type": "string",
+                      "enum": [
+                        "light",
+                        "dark",
+                        "system"
+                      ]
+                    },
+                    "websiteUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "appsEnabled": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "logoMediaId",
+                    "appIconMediaId",
+                    "brandColour",
+                    "shellColour",
+                    "defaultTheme",
+                    "websiteUrl",
+                    "appsEnabled"
                   ],
                   "additionalProperties": false
                 }
