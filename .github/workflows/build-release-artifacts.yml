@@ -226,7 +226,7 @@ jobs:
       # apps/desktop/.env.example lists them. None may be a secret.
       - name: Build the installer
         id: tauri
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           VITE_API_BASE_URL: ${{ inputs.api-url }}
           VITE_APP_ENV: ${{ inputs.app-env }}
