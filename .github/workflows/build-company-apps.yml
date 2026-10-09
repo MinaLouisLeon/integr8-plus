@@ -78,7 +78,7 @@ jobs:
       mobile_platforms: ${{ steps.inputs.outputs.mobile_platforms }}
       build_mobile: ${{ steps.inputs.outputs.build_mobile }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - id: inputs
         env:
@@ -160,7 +160,7 @@ jobs:
         company: ${{ fromJSON(needs.resolve.outputs.companies) }}
         platform: ${{ fromJSON(needs.resolve.outputs.desktop_platforms) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -287,7 +287,7 @@ jobs:
       matrix:
         company: ${{ fromJSON(needs.resolve.outputs.companies) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -456,7 +456,7 @@ jobs:
       matrix:
         company: ${{ fromJSON(needs.resolve.outputs.companies) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v4
         with:
