@@ -203,17 +203,23 @@ gh variable set DESKTOP_BUILDS --body 'disabled'   # skip desktop builds entirel
 
 ## Secrets and variables
 
-| Name                                 | Kind     | Without it                                                                                          |
-| ------------------------------------ | -------- | --------------------------------------------------------------------------------------------------- |
-| `TAURI_SIGNING_PRIVATE_KEY`          | secret   | Installers build, but carry no update signature                                                     |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | secret   | As above                                                                                            |
-| `EXPO_TOKEN`                         | secret   | Mobile builds cannot authenticate                                                                   |
-| `EAS_BUILDS`                         | variable | Mobile builds are skipped. Set to `enabled` to run them                                             |
-| `EAS_PLATFORMS`                      | variable | Android only. Set to `all` once Apple credentials exist on Expo                                     |
-| `DESKTOP_BUILDS`                     | variable | Set to `disabled` to skip desktop builds                                                            |
-| `PUBLIC_API_URL`                     | variable | The release desktop build refuses to run: an installer must know its API. Shared with the web image |
-| `STAGING_PUBLIC_API_URL`             | variable | As above, for the nightly's installer and the staging web image                                     |
-| `DESKTOP_PUBLIC_SENTRY_DSN`          | variable | Desktop installers report no errors to Sentry                                                       |
+| Name                                         | Kind     | Without it                                                                                                |
+| -------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------- |
+| `TAURI_SIGNING_PRIVATE_KEY`                  | secret   | Installers build, but carry no update signature                                                           |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`         | secret   | As above                                                                                                  |
+| `EXPO_TOKEN`                                 | secret   | Mobile builds cannot authenticate                                                                         |
+| `EAS_BUILDS`                                 | variable | Mobile builds are skipped. Set to `enabled` to run them                                                   |
+| `EAS_PLATFORMS`                              | variable | Android only. Set to `all` once Apple credentials exist on Expo                                           |
+| `DESKTOP_BUILDS`                             | variable | Set to `disabled` to skip desktop builds                                                                  |
+| `PUBLIC_API_URL`                             | variable | The release desktop build refuses to run: an installer must know its API. Shared with the web image       |
+| `STAGING_PUBLIC_API_URL`                     | variable | As above, for the nightly's installer and the staging web image                                           |
+| `DESKTOP_PUBLIC_SENTRY_DSN`                  | variable | Desktop installers report no errors to Sentry                                                             |
+| `BUILD_TOKEN`                                | secret   | "Build company apps" for `all` cannot list the companies; the API's `BUILD_TOKEN` must be the same        |
+| `COMPANY_APPS`                               | variable | Set to `disabled` to stop the version release building every company's apps                               |
+| `STORE_SUBMIT`                               | variable | Company phone builds are not sent to the stores. Set to `enabled` once the store accounts exist           |
+| `GOOGLE_SERVICE_ACCOUNT_KEY`                 | secret   | With `STORE_SUBMIT`, Android is not submitted. The Play Console service account's JSON key                |
+| `ASC_API_KEY`, `ASC_KEY_ID`, `ASC_ISSUER_ID` | secret   | With `STORE_SUBMIT`, iOS is not submitted. An App Store Connect API key (.p8 contents, key id, issuer id) |
+| `ASC_APP_IDS`                                | variable | iOS submission needs each company's App Store Connect app id: `{"acme":"1234567890"}`                     |
 
 The desktop installer inlines its API address at build time, so the nightly
 is built against `STAGING_PUBLIC_API_URL` and the release against
@@ -231,8 +237,19 @@ sign an update that every installed copy will accept and run, so it belongs in
 the repository secrets and a password manager and nowhere else.
 
 `EAS_BUILDS` stays off until `eas init` replaces the placeholder `projectId` in
-`apps/mobile/app.json`. A job cannot branch on whether a secret exists, which is
-why these are variables rather than inferred from the secrets.
+`apps/mobile/app.config.ts`. A job cannot branch on whether a secret exists,
+which is why these are variables rather than inferred from the secrets.
+
+### Company apps
+
+The desktop installer a release attaches is the **staff** flavour: the one
+Integr8's own people install, with only the staff sign-in. Each customer gets
+apps of their own from `build-company-apps.yml`: desktop installers and phone
+apps stamped with the company's name, icon and colours, signing in only that
+company's people, published as the release `company-<slug>-v<version>`. The
+version release runs it for every company with "Build apps" switched on (the
+toggle on the company's page in the platform dashboard); it also runs by hand
+from the Actions tab for one company. See `docs/deployment/company-apps.md`.
 
 ## The first promotion
 

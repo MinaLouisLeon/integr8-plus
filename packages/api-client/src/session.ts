@@ -60,6 +60,12 @@ export interface SignInInput {
   email: string;
   password: string;
   tenantId?: string;
+  /**
+   * The company this app was built for, by short name. The API then signs in
+   * only that company's people and answers 403 `wrong_company` to anybody
+   * else, so one company's app can never show another's data.
+   */
+  companySlug?: string;
   deviceLabel?: string;
 }
 
@@ -118,6 +124,7 @@ export class SessionManager {
       password: input.password,
       clientApp: this.#options.clientApp,
       ...(input.tenantId === undefined ? {} : { tenantId: input.tenantId }),
+      ...(input.companySlug === undefined ? {} : { companySlug: input.companySlug }),
       ...(input.deviceLabel === undefined ? {} : { deviceLabel: input.deviceLabel }),
     });
 

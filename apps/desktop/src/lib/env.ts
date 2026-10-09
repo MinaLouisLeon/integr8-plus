@@ -24,6 +24,42 @@ export const APP_ENV: string =
 export const SENTRY_DSN: string | undefined = import.meta.env.VITE_SENTRY_DSN as string | undefined;
 
 /**
+ * Which build this is (0022).
+ *
+ * One codebase, two installers. `staff` is the one Integr8's own people
+ * install: it shows only the staff sign-in, then the company picker.
+ * `company` is built once per company with `VITE_COMPANY_SLUG` set: it wears
+ * that company's name, icon and colours, shows only the company sign-in, and
+ * the API refuses anybody from another company. `development`, the default
+ * when nothing is set, shows both doors so a developer can try either.
+ *
+ * Stamped by CI (`scripts/stamp.mjs` for the native side, these variables for
+ * the bundle); never a runtime switch, because the whole point is that a
+ * company's installer cannot be turned into anything else.
+ */
+export type AppFlavor = 'staff' | 'company' | 'development';
+
+export const APP_FLAVOR: AppFlavor = readFlavor(
+  import.meta.env.VITE_APP_FLAVOR as string | undefined,
+);
+
+/** The company this build is for, by short name. Only set in a `company` build. */
+export const COMPANY_SLUG: string | undefined =
+  APP_FLAVOR === 'company'
+    ? ((import.meta.env.VITE_COMPANY_SLUG as string | undefined) ?? undefined)
+    : undefined;
+
+function readFlavor(value: string | undefined): AppFlavor {
+  if (value === 'staff' || value === 'company') {
+    if (value === 'company' && !(import.meta.env.VITE_COMPANY_SLUG as string | undefined)) {
+      throw new Error('A company build needs VITE_COMPANY_SLUG');
+    }
+    return value;
+  }
+  return 'development';
+}
+
+/**
  * Where site maps load tiles from: `VITE_MAP_TILES_URL` with
  * `VITE_MAP_TILES_ATTRIBUTION`, such as a Mapbox raster style. In development
  * only, OpenStreetMap's own tiles stand in; their usage policy does not allow a
