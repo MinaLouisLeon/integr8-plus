@@ -197,10 +197,16 @@ jobs:
       # three numbers and reject a prerelease suffix outright. Which nightly an
       # installer came from is recorded by the release it is attached to. Giving
       # the updater a way to tell nightlies apart is P20.
-      - name: Stamp the version into the bundle
+      #
+      # The same step points the window's content-security policy at the API.
+      # The policy in tauri.conf.json names a placeholder host; an installer
+      # built without this would be forbidden from calling the real API and
+      # every sign-in would fail inside the window before a request left it.
+      - name: Stamp the version and the API origin into the bundle
         shell: bash
         env:
           BASE_VERSION: ${{ inputs.base-version }}
+          API_URL: ${{ inputs.api-url }}
         run: |
           set -euo pipefail
           node -e '
@@ -208,9 +214,15 @@ jobs:
             const path = "apps/desktop/src-tauri/tauri.conf.json";
             const config = JSON.parse(fs.readFileSync(path, "utf8"));
             config.version = process.env.BASE_VERSION;
+            const origin = new URL(process.env.API_URL).origin;
+            const csp = config.app.security.csp;
+            if (!csp.includes("https://api.integr8.example")) {
+              throw new Error("tauri.conf.json csp no longer carries the placeholder API host");
+            }
+            config.app.security.csp = csp.replaceAll("https://api.integr8.example", origin);
             fs.writeFileSync(path, JSON.stringify(config, null, 2) + "\n");
           '
-          node -e 'console.log("tauri version:", require("./apps/desktop/src-tauri/tauri.conf.json").version)'
+          node -e 'const c = require("./apps/desktop/src-tauri/tauri.conf.json"); console.log("tauri version:", c.version); console.log("csp:", c.app.security.csp)'
 
       - name: Build the workspace packages the app imports
         run: pnpm build

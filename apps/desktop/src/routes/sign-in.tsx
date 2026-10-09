@@ -348,7 +348,9 @@ function CompanyPicker({ staff, onBack }: { staff: StaffUser; onBack: () => void
 /** The server's message is for a log; this is the one a person reads. */
 function messageFor(failure: unknown, t: TFunction): string {
   if (!(failure instanceof ApiRequestError)) {
-    return t('errors.unexpected');
+    // No response at all: the API is unreachable, or the window was not
+    // allowed to call it. Either way, not a wrong password.
+    return failure instanceof TypeError ? t('errors.offline') : t('errors.unexpected');
   }
 
   switch (failure.code) {
@@ -362,6 +364,14 @@ function messageFor(failure: unknown, t: TFunction): string {
     case 'client_too_old':
       return t('errors.clientTooOld');
     default:
+      // The platform sign-in answers a wrong email, password or code with a
+      // plain 401, and says no more on purpose.
+      if (failure.status === 401) {
+        return t('auth.invalidCredentials');
+      }
+      if (failure.status === 429) {
+        return t('auth.rateLimited');
+      }
       return t('errors.unexpected');
   }
 }
