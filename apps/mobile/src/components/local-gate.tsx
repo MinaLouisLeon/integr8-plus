@@ -1,8 +1,9 @@
 import { useTranslation } from '@integr8/i18n';
+import { router } from 'expo-router';
 import { useEffect, type ReactNode } from 'react';
 import { localData } from '~/local/local-data';
 import { useLocalStatus } from '~/local/react';
-import { Body, Heading, Screen } from './ui';
+import { BackButton, Body, Heading, Screen } from './ui';
 
 /**
  * Renders its screen once the phone's database is open.
@@ -23,14 +24,18 @@ export function LocalGate({ children }: { children: ReactNode }) {
     }
   }, [status.phase]);
 
+  // Back stays reachable on a screen opened from another, whatever the database is doing.
+  const back = router.canGoBack() ? <BackButton /> : null;
+
   if (status.phase === 'failed') {
     return (
       <Screen>
+        {back}
         <Heading>{t('mobile.unavailable.title')}</Heading>
         <Body>{t(`mobile.unavailable.${status.reason}`)}</Body>
       </Screen>
     );
   }
 
-  return status.phase === 'open' ? children : <Screen>{null}</Screen>;
+  return status.phase === 'open' ? children : <Screen>{back}</Screen>;
 }

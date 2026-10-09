@@ -1,0 +1,4 @@
+
+# One company's build, written by CI before `eas build` (see company.example.json).
+company.json
+company/

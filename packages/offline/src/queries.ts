@@ -202,14 +202,29 @@ export interface Identity {
   displayName: string;
   email: string;
   role: string;
-  /** The company's name, logo and accent, as the app should wear them. */
-  company: { name: string; brandColour: string | null; logoMediaId: string | null };
+  /** The company's name, logo and colours, as the app should wear them. */
+  company: {
+    name: string;
+    /** Empty until a download made after the slug joined the snapshot. */
+    slug: string;
+    brandColour: string | null;
+    shellColour: string | null;
+    defaultTheme: 'light' | 'dark' | 'system';
+    websiteUrl: string | null;
+    logoMediaId: string | null;
+    appIconMediaId: string | null;
+  };
   lastDownloadAt: string | null;
 }
 
 /** The meta table stores strings; an empty one is the absence of a value. */
 function orNull(value: string | undefined): string | null {
   return value === undefined || value === '' ? null : value;
+}
+
+/** A theme the app knows; anything else — or a download older than the setting — follows the phone. */
+function themeOf(value: string | undefined): Identity['company']['defaultTheme'] {
+  return value === 'light' || value === 'dark' ? value : 'system';
 }
 
 export async function identity(sql: SqlConnection): Promise<Identity | undefined> {
@@ -228,8 +243,13 @@ export async function identity(sql: SqlConnection): Promise<Identity | undefined
     role: meta.get('role') ?? '',
     company: {
       name: meta.get('company_name') ?? '',
+      slug: meta.get('company_slug') ?? '',
       brandColour: orNull(meta.get('brand_colour')),
+      shellColour: orNull(meta.get('shell_colour')),
+      defaultTheme: themeOf(meta.get('default_theme')),
+      websiteUrl: orNull(meta.get('website_url')),
       logoMediaId: orNull(meta.get('logo_media_id')),
+      appIconMediaId: orNull(meta.get('app_icon_media_id')),
     },
     lastDownloadAt: meta.get('last_download_at') ?? null,
   };

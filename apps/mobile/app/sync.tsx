@@ -11,7 +11,16 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 import { LocalGate } from '~/components/local-gate';
 import { SyncBanner } from '~/components/sync-banner';
-import { Body, Button, Detail, Heading, Row, ScrollScreen, Section } from '~/components/ui';
+import {
+  Body,
+  Button,
+  Detail,
+  Heading,
+  LocalReadError,
+  Row,
+  ScrollScreen,
+  Section,
+} from '~/components/ui';
 import { describeChange, describeRefusal } from '~/lib/describe-change';
 import { formatBytes, formatWhen } from '~/lib/format';
 import { localData } from '~/local/local-data';
@@ -48,6 +57,10 @@ function Sync() {
       </View>
       <Heading>{t('mobile.syncScreen.title')}</Heading>
       <SyncBanner />
+
+      {[status, attention, uploads].some((query) => query.status === 'error') ? (
+        <LocalReadError />
+      ) : null}
 
       {status.status !== 'ready' ? null : (
         <Section title={t('mobile.syncScreen.title')}>

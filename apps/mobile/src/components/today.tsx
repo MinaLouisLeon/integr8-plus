@@ -17,7 +17,7 @@ import { useNow } from '~/lib/use-now';
 import { clockIn, clockOut } from '~/local/job-actions';
 import { useLocalQuery } from '~/local/react';
 import { jobStatusLine, navigateTo, useJobStep } from './job-work';
-import { Body, Button, Heading, useTheme } from './ui';
+import { Body, Button, Heading, LocalReadError, useTheme } from './ui';
 
 /**
  * The top of the engineer's day (P14): clocked in or not and for how long, the
@@ -36,6 +36,9 @@ export function Today({ open }: { open: readonly JobListItem[] }) {
   const { busy, take } = useJobStep();
   const day = dayJobs(open, now);
 
+  if (shift.status === 'error' || nextDetail.status === 'error') {
+    return <LocalReadError />;
+  }
   if (shift.status !== 'ready') {
     return null;
   }

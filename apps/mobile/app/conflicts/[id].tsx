@@ -17,8 +17,10 @@ import { LocalGate } from '~/components/local-gate';
 import {
   Body,
   Button,
+  BackButton,
   EmptyState,
   Heading,
+  NotReadyScreen,
   ScrollScreen,
   Section,
   useTheme,
@@ -59,7 +61,7 @@ function Conflict() {
   );
 
   if (state.status !== 'ready') {
-    return <ScrollScreen>{null}</ScrollScreen>;
+    return <NotReadyScreen failed={state.status === 'error'} />;
   }
   const change = state.data;
   if (change === undefined) {
@@ -83,7 +85,11 @@ function Conflict() {
   };
   const context = localData.changeContext();
   if (context === undefined) {
-    return <ScrollScreen>{null}</ScrollScreen>;
+    return (
+      <ScrollScreen>
+        <BackButton />
+      </ScrollScreen>
+    );
   }
   const keepTheirs = () =>
     Alert.alert(t('mobile.syncScreen.discardTitle'), t('mobile.syncScreen.discardBody'), [

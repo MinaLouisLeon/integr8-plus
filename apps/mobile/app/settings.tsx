@@ -5,12 +5,23 @@ import { spacing } from '@integr8/tokens';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import * as Updates from 'expo-updates';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { canLock } from '~/components/app-lock';
+import { useBrand } from '~/components/brand';
 import { LocalGate } from '~/components/local-gate';
 import { SyncBanner } from '~/components/sync-banner';
-import { Body, Button, Detail, Heading, ScrollScreen, Section } from '~/components/ui';
+import {
+  Body,
+  Button,
+  Detail,
+  Heading,
+  LocalReadError,
+  Row,
+  ScrollScreen,
+  Section,
+} from '~/components/ui';
 import { formatBytes, formatWhen } from '~/lib/format';
 import { APP_VERSION, session } from '~/lib/session';
 import { localData } from '~/local/local-data';
@@ -27,6 +38,7 @@ export default function SettingsScreen() {
 
 function Settings() {
   const { t, i18n } = useTranslation();
+  const { websiteUrl } = useBrand();
   const [signingOut, setSigningOut] = useState(false);
   const status = useLocalStatus();
   const cipherVersion = status.phase === 'open' ? status.cipherVersion : '';
@@ -79,6 +91,8 @@ function Settings() {
       </View>
       <Heading>{t('mobile.settings.title')}</Heading>
 
+      {me.status === 'error' || storage.status === 'error' ? <LocalReadError /> : null}
+
       {person === undefined ? null : (
         <Section title={t('mobile.settings.account')}>
           <Body>{person.displayName}</Body>
@@ -90,6 +104,14 @@ function Settings() {
             {t(`workspace.role.${person.role as 'engineer'}`, { defaultValue: person.role })}
           </Detail>
         </Section>
+      )}
+
+      {websiteUrl === null ? null : (
+        <Row
+          title={t('mobile.settings.website')}
+          lines={[t('mobile.settings.openWebsite'), websiteUrl]}
+          onPress={() => void WebBrowser.openBrowserAsync(websiteUrl)}
+        />
       )}
 
       <SyncBanner />

@@ -28,7 +28,7 @@ import {
 import { localData } from '~/local/local-data';
 import { useLocalQuery } from '~/local/react';
 import { useNow } from '~/lib/use-now';
-import { Body, Button, Detail, Row, Section, useTheme } from './ui';
+import { Body, Button, Detail, LocalReadError, Row, Section, useTheme } from './ui';
 
 /**
  * The parts of a job the engineer works through on the phone (P14): the next
@@ -288,6 +288,7 @@ function PhotoStage({
           ? t(`mobile.photos.${stage}Needed`, { taken: photos.length, needed })
           : t(`mobile.photos.${stage}`, { count: photos.length })}
       </Body>
+      {local.status === 'error' ? <LocalReadError /> : null}
       <View style={styles.thumbs}>
         {photos.map((photo) => {
           const uri = local.status === 'ready' ? imageUri(local.data.get(photo.fileId)) : undefined;

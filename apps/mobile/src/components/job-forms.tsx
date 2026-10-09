@@ -7,7 +7,7 @@ import { type EarlierOffer, earlierOffer, startForm } from '~/forms/session';
 import { formatWhen } from '~/lib/format';
 import { localData } from '~/local/local-data';
 import { useLocalQuery } from '~/local/react';
-import { Row, Section } from './ui';
+import { LocalReadError, Row, Section } from './ui';
 
 /**
  * Opening one of a job's forms: a form already started opens where it is; one
@@ -83,6 +83,9 @@ export function JobForms({
   );
   const { open, opening } = useOpenForm(workOrderId, siteId);
 
+  if (forms.status === 'error') {
+    return <LocalReadError />;
+  }
   const shown =
     forms.status !== 'ready'
       ? []
