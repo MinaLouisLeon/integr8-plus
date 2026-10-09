@@ -2,7 +2,7 @@ import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { buttonClass } from '../widgets/types.js';
 import { keys, useScreens } from './api.js';
-import { Failure, Loading } from './parts.js';
+import { DashboardBackLink, Failure, Loading } from './parts.js';
 
 /**
  * Where filling starts: the forms this person may fill, and the ones they left
@@ -37,6 +37,7 @@ export function FillStartScreen() {
 
   return (
     <div className="flex flex-col gap-8 text-start">
+      <DashboardBackLink />
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold text-content">{t('submissions.start.title')}</h1>
         <p className="text-sm text-content-muted">{t('submissions.start.subtitle')}</p>

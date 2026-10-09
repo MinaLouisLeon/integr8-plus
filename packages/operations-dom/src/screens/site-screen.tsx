@@ -7,6 +7,7 @@ import { keys, useOperations } from '../api.js';
 import { SiteLocation } from '../site-location.js';
 import {
   addressText,
+  BackLink,
   buttonClass,
   cardClass,
   Dialog,
@@ -55,29 +56,27 @@ export function SiteScreen({ siteId }: { siteId: string }) {
     },
   });
 
-  if (detail.isPending) {
-    return <Loading />;
-  }
-  if (detail.isError) {
-    return <Failure error={detail.error} onRetry={() => void detail.refetch()} />;
+  // Until the site is known, its customer is not: back to every customer.
+  if (detail.isPending || detail.isError) {
+    return (
+      <div className="flex flex-col gap-6 text-start">
+        <BackLink to={paths.customers} label={t('operations.customer.back')} />
+        {detail.isPending ? (
+          <Loading />
+        ) : (
+          <Failure error={detail.error} onRetry={() => void detail.refetch()} />
+        )}
+      </div>
+    );
   }
   const { site, customer, contact, recentWorkOrders, can } = detail.data;
 
   return (
     <div className="flex flex-col gap-6 text-start">
-      <a
-        href={paths.customer(customer.id)}
-        className="text-sm text-accent underline-offset-4 hover:underline"
-        onClick={(event) => {
-          event.preventDefault();
-          navigate(paths.customer(customer.id));
-        }}
-      >
-        <span aria-hidden="true" className="inline-block rtl:-scale-x-100">
-          ←
-        </span>{' '}
-        {t('operations.site.back', { name: customer.name })}
-      </a>
+      <BackLink
+        to={paths.customer(customer.id)}
+        label={t('operations.site.back', { name: customer.name })}
+      />
 
       <AccessNotesPanel
         access={site.access}

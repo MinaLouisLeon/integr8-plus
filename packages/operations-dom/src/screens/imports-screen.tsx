@@ -2,7 +2,17 @@ import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { keys, useOperations } from '../api.js';
-import { buttonClass, cardClass, Failure, Field, inputClass, Loading, when } from '../ui.js';
+import {
+  buttonClass,
+  cardClass,
+  DashboardBackLink,
+  Failure,
+  Field,
+  InlineError,
+  inputClass,
+  Loading,
+  when,
+} from '../ui.js';
 
 type Kind = 'customers' | 'sites' | 'work_orders';
 
@@ -68,6 +78,7 @@ export function ImportsScreen() {
 
   return (
     <div className="flex flex-col gap-6 text-start">
+      <DashboardBackLink />
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold text-content">{t('operations.imports.title')}</h1>
         <p className="text-sm text-content-muted">{t('operations.imports.intro')}</p>
@@ -133,6 +144,11 @@ export function ImportsScreen() {
           <summary className="cursor-pointer text-sm font-medium text-content">
             {t('operations.imports.columns')}
           </summary>
+          {columns.isError ? (
+            <div className="mt-2">
+              <InlineError onRetry={() => void columns.refetch()} />
+            </div>
+          ) : null}
           {columns.data === undefined ? null : (
             <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
               {columns.data.map((column) => (
@@ -162,7 +178,7 @@ export function ImportsScreen() {
         {recent.isPending ? (
           <Loading />
         ) : recent.isError ? (
-          <Failure error={recent.error} />
+          <Failure error={recent.error} onRetry={() => void recent.refetch()} />
         ) : recent.data.length === 0 ? (
           <p className="text-sm text-content-muted">{t('operations.imports.noImports')}</p>
         ) : (
@@ -217,7 +233,7 @@ function ImportReport({ importId }: { importId: string }) {
     return <Loading />;
   }
   if (report.isError) {
-    return <Failure error={report.error} />;
+    return <Failure error={report.error} onRetry={() => void report.refetch()} />;
   }
   const data = report.data;
   const done = data.succeededRows + data.failedRows;

@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { type CustomerDetail, keys, useOperations } from '../api.js';
 import {
   addressText,
+  BackLink,
   buttonClass,
+  copyText,
   cardClass,
   Dialog,
   Failure,
@@ -12,6 +14,7 @@ import {
   inputClass,
   Loading,
   StateBadge,
+  useRowMenu,
   when,
 } from '../ui.js';
 import {
@@ -32,6 +35,7 @@ export function CustomerScreen({ customerId }: { customerId: string }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<CustomerDraft | undefined>(undefined);
   const [addingSite, setAddingSite] = useState(false);
+  const rowMenu = useRowMenu();
 
   const detail = useQuery({
     queryKey: keys.customer(customerId),
@@ -52,29 +56,25 @@ export function CustomerScreen({ customerId }: { customerId: string }) {
     },
   });
 
-  if (detail.isPending) {
-    return <Loading />;
-  }
-  if (detail.isError) {
-    return <Failure error={detail.error} onRetry={() => void detail.refetch()} />;
+  const back = <BackLink to={paths.customers} label={t('operations.customer.back')} />;
+
+  if (detail.isPending || detail.isError) {
+    return (
+      <div className="flex flex-col gap-6 text-start">
+        {back}
+        {detail.isPending ? (
+          <Loading />
+        ) : (
+          <Failure error={detail.error} onRetry={() => void detail.refetch()} />
+        )}
+      </div>
+    );
   }
   const { customer, contacts, sites, recentWorkOrders, can } = detail.data;
 
   return (
     <div className="flex flex-col gap-6 text-start">
-      <a
-        href={paths.customers}
-        className="text-sm text-accent underline-offset-4 hover:underline"
-        onClick={(event) => {
-          event.preventDefault();
-          navigate(paths.customers);
-        }}
-      >
-        <span aria-hidden="true" className="inline-block rtl:-scale-x-100">
-          ←
-        </span>{' '}
-        {t('operations.customer.back')}
-      </a>
+      {back}
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
@@ -149,7 +149,8 @@ export function CustomerScreen({ customerId }: { customerId: string }) {
           </h2>
           {can.edit ? (
             <button type="button" className={buttonClass.ghost} onClick={() => setAddingSite(true)}>
-              + {t('operations.customer.addSite')}
+              <span aria-hidden="true">+</span>
+              {t('operations.customer.addSite')}
             </button>
           ) : null}
         </div>
@@ -158,7 +159,22 @@ export function CustomerScreen({ customerId }: { customerId: string }) {
         ) : (
           <ul className="flex flex-col divide-y divide-border-subtle text-sm">
             {sites.map((site) => (
-              <li key={site.id} className="flex flex-col gap-0.5 py-2">
+              <li
+                key={site.id}
+                className="flex flex-col gap-0.5 py-2"
+                onContextMenu={rowMenu({ kind: 'site', id: site.id, label: site.name }, () => [
+                  {
+                    key: 'open',
+                    label: t('operations.rowActions.open'),
+                    onSelect: () => navigate(paths.site(site.id)),
+                  },
+                  {
+                    key: 'copyId',
+                    label: t('operations.rowActions.copyId'),
+                    onSelect: () => copyText(site.id),
+                  },
+                ])}
+              >
                 <a
                   href={paths.site(site.id)}
                   className="font-medium text-accent underline-offset-4 hover:underline"
@@ -300,7 +316,8 @@ function Contacts({ detail, onChanged }: { detail: CustomerDetail; onChanged: ()
         </h2>
         {detail.can.edit ? (
           <button type="button" className={buttonClass.ghost} onClick={() => setAdding(true)}>
-            + {t('operations.customer.addContact')}
+            <span aria-hidden="true">+</span>
+            {t('operations.customer.addContact')}
           </button>
         ) : null}
       </div>
@@ -312,8 +329,9 @@ function Contacts({ detail, onChanged }: { detail: CustomerDetail; onChanged: ()
             <li key={contact.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <div className="flex flex-col">
                 <span className="font-medium text-content">
-                  {contact.name}
-                  {contact.isPrimary ? ` · ${t('operations.customer.primary')}` : ''}
+                  {contact.isPrimary
+                    ? t('operations.customer.primaryContact', { name: contact.name })
+                    : contact.name}
                 </span>
                 <span className="text-content-muted">
                   {[contact.jobTitle, contact.phone, contact.email].filter(Boolean).join(' · ')}

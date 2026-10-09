@@ -1217,6 +1217,7 @@ export const en = {
     fillNav: 'Fill in a form',
     backToJob: 'Back to job {{reference}}',
     backToJobPlain: 'Back to the job',
+    openJob: 'Open job {{reference}}',
     start: {
       title: 'Fill in a form',
       subtitle: 'Choose a form to start. Your answers are saved as you go.',

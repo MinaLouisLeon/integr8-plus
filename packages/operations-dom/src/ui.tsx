@@ -1,7 +1,15 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { formatDateTime, formatNumber, useTranslation } from '@integr8/i18n';
-import { useEffect, useId, useRef, type ReactNode } from 'react';
-import type { Priority, WorkOrderState } from './api.js';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useId, useRef, type MouseEvent, type ReactNode } from 'react';
+import {
+  keys,
+  type Priority,
+  type RowAction,
+  type RowTarget,
+  useOperations,
+  type WorkOrderState,
+} from './api.js';
 
 /**
  * The small pieces every operational screen is built from. Logical properties
@@ -55,6 +63,121 @@ export function Failure({ error, onRetry }: { error: unknown; onRetry?: () => vo
       )}
     </div>
   );
+}
+
+/**
+ * A secondary part of a page that did not load — a filter's choices, a
+ * history, a picker — said in one line under the part that did, with a retry.
+ */
+export function InlineError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <p
+      role="alert"
+      className="flex flex-wrap items-center gap-2 rounded-md border border-danger bg-danger-subtle px-3 py-1.5 text-start text-sm text-content"
+    >
+      <span>{t('common.loadFailed')}</span>
+      <button
+        type="button"
+        className="text-sm font-medium text-accent underline-offset-4 hover:underline"
+        onClick={onRetry}
+      >
+        {t('common.retry')}
+      </button>
+    </p>
+  );
+}
+
+/** An arrow pointing back: left in English, right in Arabic. */
+export function BackArrow() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4 shrink-0 rtl:rotate-180"
+    >
+      <path d="M16 10H4m5-5-5 5 5 5" />
+    </svg>
+  );
+}
+
+/**
+ * The way back from a screen. A real link, so it can be opened in a new tab,
+ * that otherwise goes through the app's own `navigate`.
+ */
+export function BackLink({ to, label }: { to: string; label: string }) {
+  const { navigate } = useOperations();
+  return (
+    <a
+      href={to}
+      className="inline-flex items-center gap-1.5 self-start text-sm text-accent underline-offset-4 hover:underline"
+      onClick={(event) => {
+        event.preventDefault();
+        navigate(to);
+      }}
+    >
+      <BackArrow />
+      <span>{label}</span>
+    </a>
+  );
+}
+
+/** Back to the dashboard from a list screen, when the app says where that is; otherwise nothing. */
+export function DashboardBackLink() {
+  const { t } = useTranslation();
+  const { paths } = useOperations();
+  if (paths.dashboard === undefined) {
+    return null;
+  }
+  return (
+    <BackLink to={paths.dashboard} label={t('nav.backTo', { title: t('nav.section.dashboard') })} />
+  );
+}
+
+/**
+ * The signed-in seat's permissions: the app's, when it supplied them, or read
+ * from `/v1/me`. Empty until known, so an action that needs one stays hidden
+ * rather than flashing up and being refused.
+ */
+export function usePermissions(): readonly string[] {
+  const { client, permissions } = useOperations();
+  const me = useQuery({
+    queryKey: keys.me,
+    queryFn: async () => (await client.GET('/v1/me')).data!,
+    enabled: permissions === undefined,
+  });
+  return permissions ?? me.data?.permissions ?? [];
+}
+
+/** Puts text on the clipboard, where the platform offers one. */
+export function copyText(text: string): void {
+  if (typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function') {
+    void navigator.clipboard.writeText(text).catch(() => undefined);
+  }
+}
+
+/**
+ * A row's context menu, when the app has one (`rowActions`). Returns the
+ * `onContextMenu` handler for a row, or `undefined` so the browser keeps its
+ * own menu. The actions are built only when the menu opens.
+ */
+export function useRowMenu(): (
+  target: RowTarget,
+  actions: () => readonly RowAction[],
+) => ((event: MouseEvent) => void) | undefined {
+  const { rowActions } = useOperations();
+  return (target, actions) =>
+    rowActions === undefined
+      ? undefined
+      : (event) => {
+          event.preventDefault();
+          rowActions(target, actions(), event);
+        };
 }
 
 export function Loading() {

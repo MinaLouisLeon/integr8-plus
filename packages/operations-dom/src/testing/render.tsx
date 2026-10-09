@@ -96,11 +96,15 @@ export function apiError(
 export function renderScreen(
   element: ReactElement,
   client: OperationsConfig['client'],
+  overrides: Partial<Omit<OperationsConfig, 'paths'>> & {
+    paths?: Partial<OperationsConfig['paths']>;
+  } = {},
 ): RenderResult & { navigate: ReturnType<typeof vi.fn> } {
   const navigate = vi.fn();
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+  const { paths: pathOverrides, ...rest } = overrides;
   const config: OperationsConfig = {
     client,
     locale: 'en',
@@ -118,7 +122,9 @@ export function renderScreen(
       imports: '/imports',
       submission: (id) => `/submissions/${id}`,
       submissionsForWorkOrder: (id) => `/submissions?workOrderId=${id}`,
+      ...pathOverrides,
     },
+    ...rest,
   };
   const result = render(
     <I18nextProvider i18n={createI18n({ locale: 'en' })}>

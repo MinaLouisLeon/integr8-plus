@@ -1188,6 +1188,7 @@ export const ar: Catalogue<Messages> = {
     fillNav: 'ملء نموذج',
     backToJob: 'رجوع إلى المهمة {{reference}}',
     backToJobPlain: 'رجوع إلى المهمة',
+    openJob: 'فتح المهمة {{reference}}',
     start: {
       title: 'ملء نموذج',
       subtitle: 'اختر نموذجًا للبدء. تُحفظ إجاباتك أثناء الملء.',

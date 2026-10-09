@@ -10,7 +10,17 @@
  * API and should stay usable without it.
  */
 
-export { apiMediaAdapter, localToday, type ScreensConfig, ScreensContext } from './api.js';
+export {
+  apiMediaAdapter,
+  localToday,
+  type RowAction,
+  type RowActionsEvent,
+  type ScreensConfig,
+  ScreensContext,
+  type SubmissionRowActionsHandler,
+  type SubmissionRowTarget,
+} from './api.js';
+export { BackArrow, BackLink, InlineError } from './parts.js';
 export { FillStartScreen } from './fill-start.js';
 export { SubmissionListScreen } from './submission-list.js';
 export { SubmissionScreen } from './submission-screen.js';
