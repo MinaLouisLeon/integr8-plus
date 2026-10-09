@@ -1,5 +1,5 @@
 import type { Kysely, Selectable } from 'kysely';
-import type { Database, TenantSettingsTable } from '../schema.js';
+import type { CompanyTheme, Database, TenantSettingsTable } from '../schema.js';
 
 /**
  * How one company works (P18).
@@ -18,6 +18,16 @@ export interface TenantSettings {
   tenantId: string;
   logoMediaId: string | null;
   brandColour: string | null;
+  /** The dashboard shell colour, `#RRGGBB`. Null means the product default (0022). */
+  shellColour: string | null;
+  /** The theme every app of this company opens in (0022). */
+  defaultTheme: CompanyTheme;
+  /** The company's own website, https only (0022). */
+  websiteUrl: string | null;
+  /** A square image for the installer and phone icons; Integr8's when null (0022). */
+  appIconMediaId: string | null;
+  /** Whether the release pipeline builds this company's own apps (0022). */
+  appsEnabled: boolean;
   /** An IANA name, e.g. `Europe/London`. */
   timezone: string;
   currency: string;
@@ -32,6 +42,11 @@ export interface TenantSettings {
 export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
   logoMediaId: null,
   brandColour: null,
+  shellColour: null,
+  defaultTheme: 'system',
+  websiteUrl: null,
+  appIconMediaId: null,
+  appsEnabled: false,
   timezone: 'UTC',
   currency: 'GBP',
   locale: 'en',
@@ -65,6 +80,11 @@ export class TenantSettingsRepository {
   async update(input: {
     logoMediaId?: string | null | undefined;
     brandColour?: string | null | undefined;
+    shellColour?: string | null | undefined;
+    defaultTheme?: CompanyTheme | undefined;
+    websiteUrl?: string | null | undefined;
+    appIconMediaId?: string | null | undefined;
+    appsEnabled?: boolean | undefined;
     timezone?: string | undefined;
     currency?: string | undefined;
     locale?: string | undefined;
@@ -75,6 +95,11 @@ export class TenantSettingsRepository {
     const values = {
       ...(input.logoMediaId === undefined ? {} : { logo_media_id: input.logoMediaId }),
       ...(input.brandColour === undefined ? {} : { brand_colour: input.brandColour }),
+      ...(input.shellColour === undefined ? {} : { shell_colour: input.shellColour }),
+      ...(input.defaultTheme === undefined ? {} : { default_theme: input.defaultTheme }),
+      ...(input.websiteUrl === undefined ? {} : { website_url: input.websiteUrl }),
+      ...(input.appIconMediaId === undefined ? {} : { app_icon_media_id: input.appIconMediaId }),
+      ...(input.appsEnabled === undefined ? {} : { apps_enabled: input.appsEnabled }),
       ...(input.timezone === undefined ? {} : { timezone: input.timezone }),
       ...(input.currency === undefined ? {} : { currency: input.currency.toUpperCase() }),
       ...(input.locale === undefined ? {} : { locale: input.locale }),
@@ -98,12 +123,55 @@ export class TenantSettingsRepository {
 export class TenantSettingsWriter {
   constructor(private readonly db: Kysely<Database>) {}
 
-  async ensure(tenantId: string): Promise<void> {
+  async ensure(tenantId: string, input: { websiteUrl?: string | null } = {}): Promise<void> {
     await this.db
       .insertInto('tenant_settings')
-      .values({ tenant_id: tenantId })
+      .values({
+        tenant_id: tenantId,
+        ...(input.websiteUrl === undefined ? {} : { website_url: input.websiteUrl }),
+      })
       .onConflict((conflict) => conflict.column('tenant_id').doNothing())
       .execute();
+  }
+
+  /**
+   * The brand of one company, by its slug, for the public brand endpoint and
+   * the build pipeline. Platform connection: there is no session behind the
+   * request, so there is no tenant connection to ask.
+   */
+  async brandBySlug(slug: string): Promise<(TenantSettings & { name: string }) | undefined> {
+    const row = await this.db
+      .selectFrom('tenants')
+      .leftJoin('tenant_settings', 'tenant_settings.tenant_id', 'tenants.id')
+      .select(['tenants.id as tenant_id', 'tenants.name'])
+      .selectAll('tenant_settings')
+      .where('tenants.slug', '=', slug.trim().toLowerCase())
+      .where('tenants.deleted_at', 'is', null)
+      .executeTakeFirst();
+
+    if (row === undefined) {
+      return undefined;
+    }
+    const { name, ...rest } = row;
+    const settings =
+      rest.tenant_id === null || rest.default_theme === null
+        ? { tenantId: row.tenant_id, ...DEFAULT_SETTINGS }
+        : toSettings(rest as Selectable<TenantSettingsTable>);
+    return { ...settings, tenantId: row.tenant_id, name };
+  }
+
+  /** Every live company whose apps the pipeline builds (0022). */
+  async companiesWithApps(): Promise<{ tenantId: string; slug: string; name: string }[]> {
+    const rows = await this.db
+      .selectFrom('tenant_settings')
+      .innerJoin('tenants', 'tenants.id', 'tenant_settings.tenant_id')
+      .select(['tenants.id', 'tenants.slug', 'tenants.name'])
+      .where('tenant_settings.apps_enabled', '=', true)
+      .where('tenants.deleted_at', 'is', null)
+      .where('tenants.status', '=', 'active')
+      .orderBy('tenants.slug', 'asc')
+      .execute();
+    return rows.map((row) => ({ tenantId: row.id, slug: row.slug, name: row.name }));
   }
 }
 
@@ -112,6 +180,11 @@ function toSettings(row: Selectable<TenantSettingsTable>): TenantSettings {
     tenantId: row.tenant_id,
     logoMediaId: row.logo_media_id,
     brandColour: row.brand_colour,
+    shellColour: row.shell_colour,
+    defaultTheme: row.default_theme,
+    websiteUrl: row.website_url,
+    appIconMediaId: row.app_icon_media_id,
+    appsEnabled: row.apps_enabled,
     timezone: row.timezone,
     currency: row.currency,
     locale: row.locale,

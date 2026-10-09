@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { formatWhen } from '~/lib/format';
 import { localData } from '~/local/local-data';
 import { useLocalQuery, useSyncActivity, useSyncState } from '~/local/react';
-import { useTheme } from './ui';
+import { LocalReadError, useTheme } from './ui';
 
 /**
  * Whether the phone and the office agree, in one line (P12). It never covers
@@ -20,6 +20,9 @@ export function SyncBanner() {
   const activity = useSyncActivity();
   const status = useLocalQuery('sync-status', ['outbox', 'uploads', 'meta'], syncStatus);
 
+  if (status.status === 'error') {
+    return <LocalReadError />;
+  }
   if (status.status !== 'ready') {
     return null;
   }

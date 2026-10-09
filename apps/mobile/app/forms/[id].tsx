@@ -6,7 +6,15 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
 import { LocalGate } from '~/components/local-gate';
-import { Body, Button, EmptyState, Heading, ScrollScreen, useTheme } from '~/components/ui';
+import {
+  Body,
+  Button,
+  EmptyState,
+  Heading,
+  NotReadyScreen,
+  ScrollScreen,
+  useTheme,
+} from '~/components/ui';
 import { AnswerList } from '~/forms/answer-list';
 import { submitLocation } from '~/forms/capture';
 import { FillModel } from '~/forms/fill-model';
@@ -53,7 +61,7 @@ function Fill() {
   }
 
   if (state.status !== 'ready') {
-    return <ScrollScreen>{null}</ScrollScreen>;
+    return <NotReadyScreen failed={state.status === 'error'} />;
   }
   if (opened?.definition === undefined) {
     return (
@@ -252,7 +260,13 @@ function Submitting({
   return (
     <>
       {children(locate)}
-      <Modal visible={locating} transparent animationType="fade">
+      <Modal
+        visible={locating}
+        transparent
+        animationType="fade"
+        // Android's back button submits without the location, as Skip does.
+        onRequestClose={() => skip.now()}
+      >
         <View style={styles.backdrop}>
           <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
             <Text accessibilityRole="header" style={[styles.title, { color: theme.text }]}>

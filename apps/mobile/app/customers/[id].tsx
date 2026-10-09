@@ -5,7 +5,16 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
 import { JobRow } from '~/components/job-row';
 import { LocalGate } from '~/components/local-gate';
-import { Body, Button, EmptyState, Heading, Row, ScrollScreen, Section } from '~/components/ui';
+import {
+  Body,
+  Button,
+  EmptyState,
+  Heading,
+  NotReadyScreen,
+  Row,
+  ScrollScreen,
+  Section,
+} from '~/components/ui';
 import { useLocalQuery } from '~/local/react';
 
 /** A customer, as far as this phone knows them: contacts, sites, and the jobs downloaded for them. */
@@ -25,7 +34,7 @@ function Customer() {
   );
 
   if (state.status !== 'ready') {
-    return <ScrollScreen>{null}</ScrollScreen>;
+    return <NotReadyScreen failed={state.status === 'error'} />;
   }
   if (state.data === undefined) {
     return (

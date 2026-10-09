@@ -9,7 +9,16 @@ import { JobForms } from '~/components/job-forms';
 import { JobSyncCard } from '~/components/job-sync';
 import { JobPhotos, SignoffSummary } from '~/components/job-work';
 import { LocalGate } from '~/components/local-gate';
-import { Body, Button, Field, Heading, ScrollScreen, Section, useTheme } from '~/components/ui';
+import {
+  Body,
+  Button,
+  Field,
+  Heading,
+  NotReadyScreen,
+  ScrollScreen,
+  Section,
+  useTheme,
+} from '~/components/ui';
 import { SignaturePad } from '~/forms/widgets/signature';
 import { missingLines } from '~/lib/describe-change';
 import { moveJob, recordNobodyToSign, signOffJob } from '~/local/job-actions';
@@ -49,7 +58,7 @@ function Complete() {
   const [completing, setCompleting] = useState(false);
 
   if (state.status !== 'ready') {
-    return <ScrollScreen>{null}</ScrollScreen>;
+    return <NotReadyScreen failed={state.status === 'error'} />;
   }
   if (state.data?.completion === undefined) {
     return (

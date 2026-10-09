@@ -397,7 +397,7 @@ export interface paths {
         head?: never;
         /**
          * Change how this company works
-         * @description Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed.
+         * @description Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s.
          */
         patch: operations["updateSettings"];
         trace?: never;
@@ -414,6 +414,86 @@ export interface paths {
          * @description The same rows the API enforces its limits from. A pricing page that reads this cannot disagree with a refusal, which is exactly what it would do if the numbers were written into the copy.
          */
         get: operations["listPublicPlans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/companies/{slug}/brand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A company’s brand, by its short name
+         * @description Name, colours, default theme, website and where to fetch the logo and app icon. Public: a company’s app is built with this before anybody signs in. Nothing else about the company is exposed.
+         */
+        get: operations["getPublicBrand"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/companies/{slug}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A company’s logo
+         * @description Redirects to a short-lived link to the image. 404 when the company has no logo.
+         */
+        get: operations["getPublicLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/companies/{slug}/app-icon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A company’s app icon
+         * @description Redirects to a short-lived link to the square image its installers and phone apps use. 404 when the company has none; the build then uses the product’s own icon.
+         */
+        get: operations["getPublicAppIcon"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/build/companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The companies whose own apps are built
+         * @description Every active company with “build apps” switched on, for the release pipeline. Needs `Authorization: Bearer <BUILD_TOKEN>`; answers 404 when the deployment has no such token.
+         */
+        get: operations["listBuildCompanies"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1996,6 +2076,26 @@ export interface paths {
         patch: operations["setCompanyPlan"];
         trace?: never;
     };
+    "/v1/platform/companies/{tenantId}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a company’s website, or whether its own apps are built
+         * @description The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for.
+         */
+        patch: operations["updateCompanySettings"];
+        trace?: never;
+    };
     "/v1/platform/companies/{tenantId}/impersonate": {
         parameters: {
             query?: never;
@@ -2565,6 +2665,7 @@ export interface operations {
                     clientApp?: "web" | "desktop" | "mobile";
                     /** Format: uuid */
                     tenantId?: string;
+                    companySlug?: string;
                     deviceLabel?: string;
                 };
             };
@@ -2604,6 +2705,13 @@ export interface operations {
             };
             /** @description The credentials were not accepted. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The app was built for one company and this account is not in it (`wrong_company`). */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2735,6 +2843,7 @@ export interface operations {
                     clientApp?: "web" | "desktop" | "mobile";
                     /** Format: uuid */
                     tenantId?: string;
+                    companySlug?: string;
                     deviceLabel?: string;
                 };
             };
@@ -2774,6 +2883,13 @@ export interface operations {
             };
             /** @description The link is invalid or has expired. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The app was built for one company and this account is not in it (`wrong_company`). */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4231,6 +4347,13 @@ export interface operations {
                         /** Format: uuid */
                         logoMediaId: string | null;
                         brandColour: string | null;
+                        shellColour: string | null;
+                        /** @enum {string} */
+                        defaultTheme: "light" | "dark" | "system";
+                        websiteUrl: string | null;
+                        /** Format: uuid */
+                        appIconMediaId: string | null;
+                        appsEnabled: boolean;
                         timezone: string;
                         currency: string;
                         locale: string;
@@ -4309,6 +4432,13 @@ export interface operations {
                     /** Format: uuid */
                     logoMediaId?: string | null;
                     brandColour?: string | null;
+                    shellColour?: string | null;
+                    /** @enum {string} */
+                    defaultTheme?: "light" | "dark" | "system";
+                    websiteUrl?: string | null;
+                    /** Format: uuid */
+                    appIconMediaId?: string | null;
+                    appsEnabled?: boolean;
                     timezone?: string;
                     currency?: string;
                     locale?: string;
@@ -4329,6 +4459,13 @@ export interface operations {
                         /** Format: uuid */
                         logoMediaId: string | null;
                         brandColour: string | null;
+                        shellColour: string | null;
+                        /** @enum {string} */
+                        defaultTheme: "light" | "dark" | "system";
+                        websiteUrl: string | null;
+                        /** Format: uuid */
+                        appIconMediaId: string | null;
+                        appsEnabled: boolean;
                         timezone: string;
                         currency: string;
                         locale: string;
@@ -4347,16 +4484,14 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description The caller lacks the required permission. */
+            /** @description A branding field was sent by somebody other than Integr8 staff. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
-            /** @description An unknown timezone (`unknown_timezone`), or a logo that is not a stored image of this company’s (`logo_not_found`). */
+            /** @description An unknown timezone (`unknown_timezone`), or a logo or app icon that is not a stored image of this company’s (`logo_not_found`, `app_icon_not_found`). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4421,6 +4556,282 @@ export interface operations {
                         }[];
                     };
                 };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPublicBrand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The brand. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        slug: string;
+                        name: string;
+                        brandColour: string | null;
+                        shellColour: string | null;
+                        /** @enum {string} */
+                        defaultTheme: "light" | "dark" | "system";
+                        websiteUrl: string | null;
+                        logoPath: string | null;
+                        appIconPath: string | null;
+                    };
+                };
+            };
+            /** @description No company has this short name. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPublicLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A link to the image, valid for a few minutes. */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such company, or it has no logo. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPublicAppIcon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A link to the image, valid for a few minutes. */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such company, or it has no app icon. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listBuildCompanies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The companies, by slug. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            slug: string;
+                            name: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description The build token is missing or wrong (`build_token_rejected`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This deployment builds no company apps. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed validation. */
             422: {
@@ -4740,7 +5151,7 @@ export interface operations {
                         displayName: string;
                         /** @enum {string} */
                         role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
-                        permissions: ("tenant.read" | "tenant.update" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage")[];
+                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -4750,9 +5161,16 @@ export interface operations {
                         };
                         company: {
                             name: string;
+                            slug: string;
                             /** Format: uuid */
                             logoMediaId: string | null;
+                            /** Format: uuid */
+                            appIconMediaId: string | null;
                             brandColour: string | null;
+                            shellColour: string | null;
+                            /** @enum {string} */
+                            defaultTheme: "light" | "dark" | "system";
+                            websiteUrl: string | null;
                         };
                         features: {
                             [key: string]: boolean;
@@ -18534,6 +18952,7 @@ export interface operations {
                     billingMode?: "self_serve" | "invoiced";
                     /** Format: email */
                     ownerEmail: string;
+                    websiteUrl?: string | null;
                     jobTypes?: {
                         name: string;
                         code: string;
@@ -18684,6 +19103,18 @@ export interface operations {
                         suspendedReason: string | null;
                         /** Format: date-time */
                         deletionScheduledFor: string | null;
+                        settings: {
+                            /** Format: uuid */
+                            logoMediaId: string | null;
+                            /** Format: uuid */
+                            appIconMediaId: string | null;
+                            brandColour: string | null;
+                            shellColour: string | null;
+                            /** @enum {string} */
+                            defaultTheme: "light" | "dark" | "system";
+                            websiteUrl: string | null;
+                            appsEnabled: boolean;
+                        };
                         activity: {
                             month: string;
                             jobs: number;
@@ -19035,6 +19466,98 @@ export interface operations {
                         suspendedReason: string | null;
                         /** Format: date-time */
                         deletionScheduledFor: string | null;
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateCompanySettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    websiteUrl?: string | null;
+                    appsEnabled?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        logoMediaId: string | null;
+                        /** Format: uuid */
+                        appIconMediaId: string | null;
+                        brandColour: string | null;
+                        shellColour: string | null;
+                        /** @enum {string} */
+                        defaultTheme: "light" | "dark" | "system";
+                        websiteUrl: string | null;
+                        appsEnabled: boolean;
                     };
                 };
             };

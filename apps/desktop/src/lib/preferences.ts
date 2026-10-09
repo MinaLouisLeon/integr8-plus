@@ -1,7 +1,12 @@
 import { DEFAULT_LOCALE, isLocale, resolveDirection, type Locale } from '@integr8/i18n/core';
 
 /**
- * Locale, theme and the right-to-left preview.
+ * The person's own preferences: today, the language alone.
+ *
+ * The theme used to live here too. It is the company's now — see
+ * `company-theme.ts` — because a company's app wears the company's look, and
+ * the direction follows the locale alone, because a right-to-left preview was
+ * a development toggle and Arabic is now a real locale.
  *
  * `localStorage` is fine here — and only here. These are display preferences,
  * not credentials: the worst an attacker gains by reading or writing them is a
@@ -9,37 +14,22 @@ import { DEFAULT_LOCALE, isLocale, resolveDirection, type Locale } from '@integr
  */
 
 const LOCALE_KEY = 'integr8.locale';
-const THEME_KEY = 'integr8.theme';
-const RTL_KEY = 'integr8.forceRtl';
-
-export type ThemePreference = 'light' | 'dark' | 'system';
 
 export interface Preferences {
   locale: Locale;
-  theme: ThemePreference;
-  forceRtl: boolean;
 }
 
 export function readPreferences(): Preferences {
-  const stored = safeRead(LOCALE_KEY);
-  const theme = safeRead(THEME_KEY);
+  const stored = readStorage(LOCALE_KEY);
 
   return {
     locale: stored !== undefined && isLocale(stored) ? stored : DEFAULT_LOCALE,
-    theme: theme === 'light' || theme === 'dark' ? theme : 'system',
-    forceRtl: safeRead(RTL_KEY) === 'true',
   };
 }
 
 export function writePreferences(next: Partial<Preferences>): void {
   if (next.locale !== undefined) {
-    safeWrite(LOCALE_KEY, next.locale);
-  }
-  if (next.theme !== undefined) {
-    safeWrite(THEME_KEY, next.theme);
-  }
-  if (next.forceRtl !== undefined) {
-    safeWrite(RTL_KEY, String(next.forceRtl));
+    writeStorage(LOCALE_KEY, next.locale);
   }
 }
 
@@ -54,16 +44,11 @@ export function applyPreferences(preferences: Preferences): void {
   const root = document.documentElement;
 
   root.lang = preferences.locale;
-  root.dir = resolveDirection(preferences.locale, preferences.forceRtl);
-
-  if (preferences.theme === 'system') {
-    root.removeAttribute('data-theme');
-  } else {
-    root.dataset.theme = preferences.theme;
-  }
+  root.dir = resolveDirection(preferences.locale);
 }
 
-function safeRead(key: string): string | undefined {
+/** A `localStorage` read that treats a blocked store as an empty one. */
+export function readStorage(key: string): string | undefined {
   try {
     return localStorage.getItem(key) ?? undefined;
   } catch {
@@ -73,10 +58,19 @@ function safeRead(key: string): string | undefined {
   }
 }
 
-function safeWrite(key: string, value: string): void {
+/** A `localStorage` write that treats a blocked store as a value that does not persist. */
+export function writeStorage(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
   } catch {
     // As above: the preference simply does not persist.
+  }
+}
+
+export function removeStorage(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Nothing to remove, or nowhere to remove it from.
   }
 }

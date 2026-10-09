@@ -13,6 +13,11 @@ export interface OperationsConfig {
   locale: string;
   navigate: (to: string) => void;
   paths: {
+    /**
+     * The app's home. When set, every list screen offers a way back to it;
+     * when not, the app's own shell owns that navigation.
+     */
+    dashboard?: string;
     workOrders: string;
     newWorkOrder: (options?: { customerId?: string }) => string;
     workOrder: (id: string) => string;
@@ -35,7 +40,48 @@ export interface OperationsConfig {
   mapTiles?: { url: string; attribution: string; maxZoom?: number };
   /** The browser's IANA time zone, for reading dates in imports. Defaults to the runtime's. */
   timeZone?: string;
+  /**
+   * The signed-in seat's permissions, when the app already has them. Without
+   * it, a screen that needs one reads `/v1/me` itself.
+   */
+  permissions?: readonly string[];
+  /**
+   * A row's own menu, such as the desktop app's right-click menu. When set,
+   * right-clicking a row calls it with the same actions the row's buttons and
+   * links offer, and the browser's menu is not shown. When not set, rows keep
+   * the browser's menu.
+   */
+  rowActions?: RowActionsHandler;
 }
+
+/** What a row is about, for a row menu. */
+export interface RowTarget {
+  kind: 'workOrder' | 'customer' | 'site' | 'jobType' | 'timesheetShift';
+  id: string;
+  label: string;
+}
+
+/** One entry of a row menu: already translated, and doing what the row's own control does. */
+export interface RowAction {
+  key: string;
+  label: string;
+  onSelect: () => void;
+  destructive?: boolean;
+  disabled?: boolean;
+}
+
+/** The pointer event that opened a row menu: where, and how to stop the browser's own. */
+export interface RowActionsEvent {
+  clientX: number;
+  clientY: number;
+  preventDefault(): void;
+}
+
+export type RowActionsHandler = (
+  target: RowTarget,
+  actions: readonly RowAction[],
+  event: RowActionsEvent,
+) => void;
 
 export const OperationsContext = createContext<OperationsConfig | undefined>(undefined);
 

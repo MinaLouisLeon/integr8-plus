@@ -26,6 +26,7 @@ export function FormScreens({ children }: { children: ReactNode }) {
         fill: '/fill',
         submissions: '/submissions',
         submission: (id) => `/submissions/${id}`,
+        workOrder: (id) => `/work-orders/${id}`,
       },
       download: saveFile,
     }),

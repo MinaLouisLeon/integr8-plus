@@ -2,7 +2,19 @@ import { useTranslation } from '@integr8/i18n';
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { keys, useOperations } from '../api.js';
-import { addressText, buttonClass, Dialog, Failure, Field, inputClass, Loading } from '../ui.js';
+import {
+  addressText,
+  buttonClass,
+  copyText,
+  DashboardBackLink,
+  Dialog,
+  Failure,
+  Field,
+  InlineError,
+  inputClass,
+  Loading,
+  useRowMenu,
+} from '../ui.js';
 import {
   CustomerFields,
   emptyCustomer,
@@ -69,10 +81,13 @@ export function CustomerListScreen() {
   });
 
   const manage = me.data?.permissions.includes('customer.manage') ?? false;
+  const createJobs = me.data?.permissions.includes('work_order.manage') ?? false;
   const items = list.data?.pages.flatMap((page) => page.items) ?? [];
+  const rowMenu = useRowMenu();
 
   return (
     <div className="flex flex-col gap-6 text-start">
+      <DashboardBackLink />
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold text-content">{t('operations.customers.title')}</h1>
         {manage ? (
@@ -142,6 +157,20 @@ export function CustomerListScreen() {
             </select>
           )}
         </Field>
+        {me.isError || tags.isError ? (
+          <div className="sm:col-span-4">
+            <InlineError
+              onRetry={() => {
+                if (me.isError) {
+                  void me.refetch();
+                }
+                if (tags.isError) {
+                  void tags.refetch();
+                }
+              }}
+            />
+          </div>
+        ) : null}
         <div className="sm:col-span-4">
           <button type="submit" className={buttonClass.primary}>
             {t('operations.workOrders.apply')}
@@ -163,6 +192,30 @@ export function CustomerListScreen() {
             <li
               key={customer.id}
               className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+              onContextMenu={rowMenu(
+                { kind: 'customer', id: customer.id, label: customer.name },
+                () => [
+                  {
+                    key: 'open',
+                    label: t('operations.rowActions.open'),
+                    onSelect: () => navigate(paths.customer(customer.id)),
+                  },
+                  ...(createJobs && customer.status !== 'closed'
+                    ? [
+                        {
+                          key: 'newJob',
+                          label: t('operations.rowActions.newJob'),
+                          onSelect: () => navigate(paths.newWorkOrder({ customerId: customer.id })),
+                        },
+                      ]
+                    : []),
+                  {
+                    key: 'copyId',
+                    label: t('operations.rowActions.copyId'),
+                    onSelect: () => copyText(customer.id),
+                  },
+                ],
+              )}
             >
               <div className="flex flex-col">
                 <a

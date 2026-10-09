@@ -9,6 +9,7 @@ import { iso, isoOrNull } from '../schemas.js';
 import { acceptInvitationUrl } from '../../../email/links.js';
 import { recordPlatformAction } from './audit.js';
 import {
+  companySettingsSchema,
   billingModeSchema,
   companyDetailSchema,
   companySummarySchema,
@@ -26,6 +27,12 @@ import {
  * deletion. Each writes to the platform audit log first-class, because these
  * are the actions somebody will one day need to account for.
  */
+
+/** https only, bounded; the phone app hands it to a web view. */
+const websiteUrlSchema = z
+  .string()
+  .max(2048)
+  .regex(/^https:\/\/\S+$/u);
 
 export const listCompaniesRoute = defineRoute({
   method: 'get',
@@ -107,11 +114,13 @@ export const getCompanyRoute = defineRoute({
 
     const subscription = await platform.billing.find(params.tenantId);
     const tenant = await platform.tenants.findById(params.tenantId);
+    const settings = await withTenant(toTenantId(params.tenantId), (tx) => tx.settings.get());
 
     return {
       status: 200,
       body: {
         ...toSummary(summary, scheduled),
+        settings: toCompanySettings(settings),
         activity: await platform.tenants.monthlyActivity(params.tenantId),
         billing:
           subscription === undefined
@@ -176,6 +185,8 @@ export const onboardCompanyRoute = defineRoute({
     // A real address check, not just a length: the invitations table has one
     // too, and reaching it would mean a 500 after the company row committed.
     ownerEmail: z.email().max(320),
+    /** The company's own website, https only. Its phone app opens on this page. */
+    websiteUrl: websiteUrlSchema.nullable().optional(),
     /** Overrides the default starter set; an empty array seeds none. */
     jobTypes: z
       .array(
@@ -204,6 +215,7 @@ export const onboardCompanyRoute = defineRoute({
       seats: body.seats,
       billingMode: body.billingMode,
       ownerEmail: body.ownerEmail,
+      websiteUrl: body.websiteUrl ?? null,
       ...(body.jobTypes === undefined ? {} : { jobTypes: body.jobTypes }),
       onboardedBy: toPlatformUserId(context.platform.platformUserId),
       // The platform path always invites: whoever is onboarding this company is
@@ -417,9 +429,70 @@ export const setCompanyPlanRoute = defineRoute({
   },
 });
 
+export const updateCompanySettingsRoute = defineRoute({
+  method: 'patch',
+  path: '/v1/platform/companies/:tenantId/settings',
+  operationId: 'updateCompanySettings',
+  summary: 'Change a company’s website, or whether its own apps are built',
+  description:
+    'The two branding facts the dashboard owns. The rest of the look — logo, icon, colours, theme — is set from the desktop app while acting as the company, where it can be previewed. Switching `appsEnabled` on puts the company in the list the release pipeline builds for.',
+  tags: ['platform'],
+  security: 'platform',
+  params: z.object({ tenantId: z.uuid() }),
+  query: noSchema,
+  body: z.object({
+    websiteUrl: websiteUrlSchema.nullable().optional(),
+    appsEnabled: z.boolean().optional(),
+  }),
+  responses: {
+    200: { description: 'Changed.', schema: companySettingsSchema },
+    404: { description: 'No such company.' },
+  },
+  handler: async ({ params, body }, context) => {
+    const platform = getPlatformDataSource();
+    const tenant = await platform.tenants.findById(params.tenantId);
+    if (tenant?.deletedAt !== null) {
+      throw notFound(`No company with id ${params.tenantId}`);
+    }
+
+    const settings = await withTenant(toTenantId(tenant.id), (tx) => tx.settings.update(body));
+
+    await recordPlatformAction(context, {
+      action: 'tenant.settings_changed',
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      targetKind: 'tenant',
+      targetId: tenant.id,
+      metadata: { fields: Object.keys(body), appsEnabled: settings.appsEnabled },
+    });
+
+    return { status: 200, body: toCompanySettings(settings) };
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function toCompanySettings(settings: {
+  logoMediaId: string | null;
+  appIconMediaId: string | null;
+  brandColour: string | null;
+  shellColour: string | null;
+  defaultTheme: 'light' | 'dark' | 'system';
+  websiteUrl: string | null;
+  appsEnabled: boolean;
+}): z.infer<typeof companySettingsSchema> {
+  return {
+    logoMediaId: settings.logoMediaId,
+    appIconMediaId: settings.appIconMediaId,
+    brandColour: settings.brandColour,
+    shellColour: settings.shellColour,
+    defaultTheme: settings.defaultTheme,
+    websiteUrl: settings.websiteUrl,
+    appsEnabled: settings.appsEnabled,
+  };
+}
 
 /** Long enough to survive a holiday, matching the tenant-side invitation TTL. */
 const INVITATION_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -498,4 +571,5 @@ export const platformCompanyRoutes = [
   suspendCompanyRoute,
   reactivateCompanyRoute,
   setCompanyPlanRoute,
+  updateCompanySettingsRoute,
 ];

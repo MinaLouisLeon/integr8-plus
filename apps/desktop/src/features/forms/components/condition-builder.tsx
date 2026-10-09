@@ -492,12 +492,23 @@ function ValueInput({
   }
 }
 
+/** The three things a condition editor says: when there is no rule, how to start one, and how a rule reads. */
+export interface ConditionWording {
+  /** "Always shown" */
+  always: string;
+  /** "Show only when…" */
+  addFirst: string;
+  /** "Show this when" */
+  lead: string;
+}
+
 /**
- * "When to show" for a question, section or page.
+ * "When to show" for a question, section or page — and, with other wording,
+ * "when it must be answered" for a question.
  *
  * Holds the clauses being edited, and writes the complete ones back as the
- * element's `visibleWhen`. Keyed by element id in the parent, so selecting
- * something else starts fresh from what that element has.
+ * element's `visibleWhen` (or `requiredWhen`). Keyed by element id in the
+ * parent, so selecting something else starts fresh from what that element has.
  */
 export function VisibilityEditor({
   definition,
@@ -505,14 +516,21 @@ export function VisibilityEditor({
   expression,
   locale,
   onChange,
+  wording,
 }: {
   definition: FormDefinition;
   elementId: string;
   expression: Expression | undefined;
   locale: string;
   onChange: (expression: Expression | undefined) => void;
+  wording?: ConditionWording | undefined;
 }) {
   const { t } = useTranslation();
+  const words: ConditionWording = wording ?? {
+    always: t('forms.conditions.always'),
+    addFirst: t('forms.conditions.addFirst'),
+    lead: t('forms.conditions.showWhen'),
+  };
   const lookup = lookupIn(definition);
   const [model, setModel] = useState<ConditionModel | undefined>(() =>
     fromExpression(expression, lookup),
@@ -548,13 +566,13 @@ export function VisibilityEditor({
   if (model.clauses.length === 0) {
     return (
       <div className="flex flex-col items-start gap-2">
-        <p className="text-sm text-content-muted">{t('forms.conditions.always')}</p>
+        <p className="text-sm text-content-muted">{words.always}</p>
         {subjects.length === 0 ? null : (
           <Button
             variant="secondary"
             onClick={() => setModel({ match: 'all', clauses: [clauseFor(subjects[0]!)] })}
           >
-            {t('forms.conditions.addFirst')}
+            {words.addFirst}
           </Button>
         )}
       </div>
@@ -567,7 +585,7 @@ export function VisibilityEditor({
       subjects={subjects}
       lookup={lookup}
       locale={locale}
-      lead={t('forms.conditions.showWhen')}
+      lead={words.lead}
       onChange={(next) => {
         setModel(next);
         onChange(completeExpression(next, lookup, subjects));

@@ -20,6 +20,14 @@
 export const en = {
   common: {
     appName: 'Integr8 Plus',
+    // The desktop window's own right-click menu, over text.
+    contextMenu: {
+      label: 'Actions',
+      cut: 'Cut',
+      copy: 'Copy',
+      paste: 'Paste',
+      selectAll: 'Select all',
+    },
     loading: 'Loading…',
     retry: 'Try again',
     cancel: 'Cancel',
@@ -33,15 +41,23 @@ export const en = {
       system: 'Match my system',
     },
     language: 'Language',
-    // Development-only, and named so it is obvious in a translation file why
-    // it exists: forcing right-to-left is how the layout is checked before any
-    // Arabic copy exists.
-    forceRtl: 'Preview right-to-left',
+    // The plans, by their keys: the API names them and the screens translate them.
+    plan: {
+      trial: 'Trial',
+      starter: 'Starter',
+      standard: 'Standard',
+      enterprise: 'Enterprise',
+    },
+    // A part of a page that did not load, under the part that did; the button beside it tries again.
+    loadFailed: 'This part could not be loaded.',
+    copyId: 'Copy ID',
     // Also development-only: the desktop app shows whether it is a Tauri window
     // or a browser tab, so P05's "identical in both" criterion can be checked
     // by eye. Translated anyway, because a string on screen is a string on
     // screen.
     runtime: 'Runtime',
+    runtimeTauri: 'Tauri window',
+    runtimeBrowser: 'Browser tab',
   },
 
   auth: {
@@ -50,6 +66,7 @@ export const en = {
     email: 'Email address',
     password: 'Password',
     signIn: 'Sign in',
+    signInTo: 'Sign in to {{company}}',
     signingIn: 'Signing in…',
     magicLink: 'Email me a sign-in link',
     magicLinkSent: 'If that address has an account, a sign-in link is on its way.',
@@ -62,6 +79,8 @@ export const en = {
     invalidCredentials: 'That email address and password did not match.',
     accountLocked: 'Too many attempts. Try again in a few minutes.',
     rateLimited: 'Too many requests. Slow down and try again shortly.',
+    // A company's own phone app refuses an account from another company.
+    wrongCompany: 'This account belongs to another company. This app is for {{company}}.',
 
     // Integr8 staff signing in to a customer's desktop app to set it up: forms
     // and job types are built by Integr8, not by the company (see the help
@@ -264,6 +283,7 @@ export const en = {
       title: 'Billing',
       subtitle: 'What you are on, what it allows, and what you are using.',
       plan: 'Plan',
+      planNamed: 'Plan: {{plan}}',
       status: {
         trialing: 'Trial',
         active: 'Active',
@@ -359,10 +379,71 @@ export const en = {
       status: { invited: 'Invited', active: 'Active', suspended: 'Suspended' },
     },
 
+    // The desktop app's branding screen (0022). Staff only: the apps a
+    // company's people open are built for that company by Integr8.
+    branding: {
+      title: 'Company branding',
+      subtitle:
+        'The logo, colours, theme and website this company’s apps show. Changes apply the next time an app opens.',
+      logo: 'Logo',
+      logoHint: 'Shown in the menu and on documents. PNG, JPEG or WebP, up to 2 MB.',
+      logoNone: 'No logo yet',
+      logoAlt: 'Company logo',
+      appIcon: 'App icon',
+      appIconHint:
+        'The icon of this company’s installers and phone apps. A square PNG, JPEG or WebP of at least 512 × 512 pixels, up to 2 MB.',
+      appIconNone: 'No icon yet',
+      appIconAlt: 'App icon',
+      choose: 'Choose an image',
+      replace: 'Replace',
+      remove: 'Remove',
+      uploading: 'Uploading…',
+      wrongType: 'That is not an image we can use. Choose a PNG, JPEG or WebP file.',
+      tooLarge: 'That image is larger than 2 MB. Choose a smaller one.',
+      notSquare: 'An app icon must be square: the same width and height.',
+      tooSmall: 'An app icon must be at least 512 × 512 pixels.',
+      unreadable: 'That file could not be read as an image.',
+      uploadFailed: 'The upload did not finish. Try again.',
+      accent: 'Accent colour',
+      accentHint: 'Buttons, links and highlights.',
+      shell: 'Shell colour',
+      shellHint: 'The side menu and the title bar.',
+      hex: 'Hex value',
+      picker: 'Pick a colour',
+      invalidColour: 'Enter a colour as #rrggbb.',
+      useDefault: 'Use the product’s own colour',
+      theme: 'Default theme',
+      themeHint: 'What every app in this company opens in.',
+      themeLight: 'Light',
+      themeDark: 'Dark',
+      themeSystem: 'Follow the device',
+      website: 'Website',
+      websiteHint: 'Shown on documents. It must start with https://.',
+      invalidWebsite: 'Enter an address that starts with https://.',
+      appsEnabled: 'Build apps for this company',
+      appsEnabledHint:
+        'The release pipeline then builds this company’s installers and phone apps, wearing this brand.',
+      preview: 'Preview',
+      previewHint: 'How the menu, title bar and buttons will look, before you save.',
+      previewButton: 'New work order',
+      previewBody: 'Sample content',
+      save: 'Save branding',
+      saving: 'Saving…',
+      saved: 'Saved. Every app shows the new brand the next time it opens.',
+      failed: 'Could not save. Try again.',
+      invalid: 'This value was refused.',
+      integr8Sets: 'Integr8 sets this for your company. Ask your contact there to change it.',
+    },
+
     settings: {
       title: 'Company settings',
       subtitle: 'How your company works. These apply to everybody.',
       branding: 'Branding',
+      brandingByIntegr8:
+        'Integr8 sets how your company looks in its apps. To change the logo, colours or theme, contact Integr8.',
+      shellColour: 'Menu colour',
+      defaultTheme: 'Theme',
+      notSet: 'Not set',
       brandColour: 'Brand colour',
       brandColourHint: 'Used on documents you send out. Six hex digits, like #1D4ED8.',
       logo: 'Logo',
@@ -477,6 +558,9 @@ export const en = {
       before_earliest: 'Must be {{earliest}} or later.',
       after_latest: 'Must be {{latest}} or earlier.',
       unknown_option: 'Choose one of the options given.',
+      // A dependent choice (cascading list): the option exists, but not for the
+      // answer now given to the question it depends on.
+      option_unavailable: 'This choice no longer applies. Choose from the options now offered.',
       duplicate_option: 'Each option can only be chosen once.',
       too_few_selected: 'Choose at least {{minimum}}.',
       too_many_selected: 'Choose no more than {{maximum}}.',
@@ -649,6 +733,21 @@ export const en = {
       calculated: 'Worked out automatically',
       checks_one: '{{count}} check',
       checks_other: '{{count}} checks',
+      // Each question card reads its rules out as sentences, so a condition is
+      // found without opening the panel: "Shown when Result is Fail".
+      rules: {
+        shown: 'Shown when {{condition}}',
+        required: 'Required when {{condition}}',
+        choices: 'Choices depend on {{question}}',
+        and: ' and ',
+        or: ' or ',
+        advanced: 'a rule written outside the builder',
+        inAnyEntry: 'any {{question}}',
+        inEveryEntry: 'every {{question}}',
+      },
+      showWhen: 'Show when…',
+      showWhenTitle: 'Show “{{name}}” when…',
+      done: 'Done',
     },
 
     remove: {
@@ -656,8 +755,10 @@ export const en = {
       kept: 'Answers already submitted keep it. It leaves the form when you next publish.',
       references: 'These rules read it, and will need fixing before you can publish:',
       visibleWhen: '{{from}} — when to show',
+      requiredWhen: '{{from}} — when it must be answered',
       calculation: '{{from}} — calculation',
       rule: '{{from}} — check',
+      dependsOn: '{{from}} — which choices are offered',
       confirm: 'Delete',
     },
 
@@ -670,8 +771,28 @@ export const en = {
         basics: 'Basics',
         answer: 'Answer',
         visibility: 'When to show',
+        required: 'When it must be answered',
         checks: 'Checks',
         repeat: 'Repeating',
+      },
+      // "Must be answered" is fixed; "Required only when…" follows other answers.
+      // The two are exclusive: the rule is greyed out while the toggle is on.
+      requiredWhen: {
+        optional: 'Optional',
+        addFirst: 'Required only when…',
+        lead: 'Required when',
+        fixed: 'Always required.',
+        fixedHint:
+          'Turn off “Must be answered” to require this only when other answers call for it.',
+      },
+      // Dependent choices: which of this question's options are offered depends
+      // on the answer to another choice question — "Area" narrows "Room".
+      dependsOn: {
+        none: 'Nothing — offer every option',
+        hint: 'Offer each option only for certain answers to another question.',
+        noParents: 'Add another question with options first.',
+        forOption: 'Offer “{{option}}” when {{question}} is',
+        alwaysHint: 'An option with nothing ticked is offered whatever the answer.',
       },
       repeat: {
         toggle: 'Repeat this section',
@@ -720,6 +841,8 @@ export const en = {
         maxFileBytes: 'Largest file, in MB',
         acceptedTypes: 'File types accepted',
         maxAccuracyMeters: 'Accuracy needed, in metres',
+        requiredWhen: 'Required only when',
+        dependsOn: 'Depends on',
       },
       options: {
         add: 'Add an option',
@@ -1006,6 +1129,11 @@ export const en = {
     notTicked: 'Not ticked',
     rating: '{{value}} out of {{scale}}',
     unanswered: 'Not answered',
+    // A dependent choice: nothing is offered until the question it depends on is answered.
+    dependsOn: {
+      chooseFirst: 'Choose “{{parent}}” first.',
+      none: 'No options apply to the answer to “{{parent}}”.',
+    },
     actions: {
       back: 'Back',
       next: 'Next',
@@ -1095,6 +1223,9 @@ export const en = {
   submissions: {
     nav: 'Submissions',
     fillNav: 'Fill in a form',
+    backToJob: 'Back to job {{reference}}',
+    backToJobPlain: 'Back to the job',
+    openJob: 'Open job {{reference}}',
     start: {
       title: 'Fill in a form',
       subtitle: 'Choose a form to start. Your answers are saved as you go.',
@@ -1137,6 +1268,7 @@ export const en = {
       workOrder: 'For job {{reference}}',
       thisWorkOrder: 'For one job',
       removeWorkOrder: 'Show submissions for every job',
+      openNamed: 'Open {{form}} by {{name}}',
     },
     status: {
       draft: 'Draft',
@@ -1322,6 +1454,7 @@ export const en = {
       crew: 'Crew',
       noCrew: 'Unassigned',
       noDue: 'No date',
+      leadMember: '{{name}} (lead)',
       selectAll: 'Select every job shown',
       select: 'Select {{reference}}',
       selected_one: '{{count}} job selected',
@@ -1336,6 +1469,7 @@ export const en = {
         share: 'Share with colleagues',
         delete: 'Delete view',
         sharedBy: 'shared by {{name}}',
+        sharedOption: '{{name}} — shared by {{owner}}',
       },
       bulk: {
         reassign: 'Reassign',
@@ -1384,6 +1518,13 @@ export const en = {
       addForm: 'Add a form',
       removeForm: 'Remove',
       submissionsForJob: 'All submissions for this job',
+      // The forms attached to a job, each a task for the crew.
+      attached: {
+        removeNamed: 'Remove {{title}} from this job',
+        allAttached: 'Every form is already on this job.',
+        openNamed: 'Open {{title}}: {{status}}',
+        startNamed: 'Start {{title}}',
+      },
       checklist: 'Checklist',
       addChecklistItem: 'Add an item',
       checklistDone: 'Done by {{name}} {{when}}',
@@ -1482,6 +1623,7 @@ export const en = {
       create: 'Create work order',
       onHold: '{{name}} is on hold. Create the job anyway?',
       onHoldConfirm: 'Create anyway',
+      customerOnHold: '{{name}} — on hold',
     },
     customers: {
       title: 'Customers',
@@ -1518,6 +1660,7 @@ export const en = {
       contactName: 'Name',
       jobTitle: 'Job title',
       primary: 'Primary contact',
+      primaryContact: '{{name}} · Primary contact',
       archiveContact: 'Archive',
       sites: 'Sites',
       noSites: 'No sites yet.',
@@ -1640,6 +1783,15 @@ export const en = {
       working: 'Working',
       noJobs: 'No time on jobs.',
     },
+    // The desktop app's right-click menu on a row: the same actions as the row's own buttons.
+    rowActions: {
+      open: 'Open',
+      edit: 'Edit',
+      copyId: 'Copy ID',
+      cancelJob: 'Cancel job',
+      newJob: 'New job for this customer',
+      remove: 'Remove',
+    },
     common: {
       optional: 'optional',
       edit: 'Edit',
@@ -1655,6 +1807,17 @@ export const en = {
   // The mobile app (P11): everything it shows is read from the phone.
   mobile: {
     back: 'Back',
+    readFailed:
+      'This could not be read from the phone. Restart the app, and contact support if it happens again.',
+    // A company's own phone app, before anybody has signed in: its website
+    // behind a slim branded header, or a welcome when it has no website.
+    welcome: {
+      login: 'Login',
+      title: 'Welcome to {{company}}',
+      body: 'Sign in to see your jobs, fill in forms and send your work from this phone.',
+      website: 'Website',
+      loadFailed: 'The website could not be loaded. Check the connection and try again.',
+    },
     sync: {
       updating: 'Updating your jobs…',
       updatedAt: 'Updated {{when}}',
@@ -1785,6 +1948,7 @@ export const en = {
       title: 'Your jobs',
       signedInAs: '{{name}}',
       settings: 'Settings',
+      website: 'Website',
       searchLabel: 'Search jobs and customers',
       searchPlaceholder: 'Name, address or job number',
       overdue: 'Overdue',
@@ -1969,6 +2133,8 @@ export const en = {
       appUpdate: 'App version',
       appUpdateEmbedded: '{{version}}',
       appUpdateId: '{{version}} · update {{update}} ({{channel}})',
+      website: 'Company website',
+      openWebsite: 'Open in the browser',
     },
     // P12: whether the phone and the office agree, in words an engineer acts on.
     syncState: {
@@ -2094,6 +2260,62 @@ export const en = {
   // The super admin dashboard (P15). Not a customer-facing surface: these
   // strings are read by the handful of people who run the business, so they say
   // plainly what an action does rather than softening it.
+  /**
+   * The dashboard shell: the side menu, its groups, and the top bar. The
+   * sections come from `@integr8/core`'s navigation model; the words live here.
+   */
+  nav: {
+    menu: 'Menu',
+    openMenu: 'Open the menu',
+    closeMenu: 'Close the menu',
+    collapse: 'Collapse the menu',
+    expand: 'Expand the menu',
+    back: 'Back',
+    backTo: 'Back to {{title}}',
+    actingAs: 'Acting as {{company}}',
+    group: {
+      overview: 'Overview',
+      work: 'Work',
+      operations: 'Operations',
+      setup: 'Set-up',
+      company: 'Company',
+    },
+    section: {
+      dashboard: 'Dashboard',
+      fill: 'Fill in a form',
+      submissions: 'Submissions',
+      workOrders: 'Work orders',
+      timesheets: 'Timesheets',
+      customers: 'Customers',
+      imports: 'Import from CSV',
+      forms: 'Forms',
+      jobTypes: 'Job types',
+      branding: 'Company branding',
+      getStarted: 'Get set up',
+      people: 'People',
+      companySettings: 'Company settings',
+      storage: 'Storage',
+      billing: 'Billing',
+    },
+    hint: {
+      dashboard: 'Where you are, and what needs doing.',
+      fill: 'Start a form for a job.',
+      submissions: 'Forms filled in, and their status.',
+      workOrders: 'Jobs to schedule, dispatch, work and sign off.',
+      timesheets: 'Shifts, travel and time on jobs, week by week.',
+      customers: 'Customers, their contacts and sites.',
+      imports: 'Bring in customers, sites and jobs from a spreadsheet.',
+      forms: 'The forms your engineers fill in on site.',
+      jobTypes: 'The kinds of job you do, and the forms each needs.',
+      branding: 'Logo, colours, theme and website, as this company’s apps show them.',
+      getStarted: 'Five things to do, and sample data to look around with.',
+      people: 'Invite engineers, change roles, remove somebody.',
+      companySettings: 'Timezone, currency and working hours.',
+      storage: 'What you are using, and how much is left.',
+      billing: 'Your plan, your limits and your card.',
+    },
+  },
+
   platform: {
     funnel: {
       title: 'Signup funnel',
@@ -2196,6 +2418,10 @@ export const en = {
       billingModeHint:
         'Invoiced: you bill them and set their plan here; no trial, no checkout. Pays in the app: they start a trial and subscribe with a card.',
       ownerEmail: 'Owner email',
+      website: 'Company website',
+      websiteHint:
+        'Starts with https://. Their phone app opens on this page before sign-in. Optional; it can be added later.',
+      websiteInvalid: 'Enter a full address starting with https://',
       submit: 'Onboard',
       busy: 'Onboarding...',
       done: '{{name}} is ready.',
@@ -2204,6 +2430,22 @@ export const en = {
       copied: 'Copied.',
       storageMissing:
         'The company was created, but its storage could not be. It will be created automatically within the hour.',
+    },
+    apps: {
+      title: 'Website and apps',
+      description:
+        'Their own desktop installers and phone apps are built from a GitHub Actions workflow and carry their name, icon and colours. The logo, icon, colours and theme are set from the desktop app while acting as this company.',
+      website: 'Company website',
+      websiteHint: 'Starts with https://. Shown in their phone app before sign-in.',
+      buildApps: 'Build apps for this company',
+      buildAppsHint:
+        'When on, every release also builds this company’s installers and phone apps, and the “Build company apps” workflow accepts its short name.',
+      save: 'Save',
+      saving: 'Saving...',
+      saved: 'Saved.',
+      brandSummary: 'Brand',
+      brandSet: 'Set from the desktop app',
+      brandUnset: 'Not set yet: the apps use the product’s own look',
     },
     company: {
       overview: 'Overview',
@@ -2223,6 +2465,8 @@ export const en = {
       noErrors: 'Nothing has failed recently.',
       queue: 'Queue',
       attempts: 'Attempts',
+      attemptsMade_one: '{{count}} attempt',
+      attemptsMade_other: '{{count}} attempts',
       failedAt: 'Failed',
       deadLettered: 'Given up',
     },
@@ -2388,6 +2632,7 @@ export const en = {
       storageCost: 'Storage',
       classA: 'Class A operations',
       classB: 'Class B operations',
+      totalCost: 'Total',
       allowance: 'Allowance',
       used: 'Used',
       uncapped: 'Uncapped',
@@ -2469,6 +2714,8 @@ export const en = {
       overageBlock: 'Refuse uploads',
       overageAllow: 'Keep accepting, and bill',
       warnAt: 'Warn at',
+      storageGb: 'Storage (GB)',
+      warnAtPercent: 'Warn at (%)',
       edit: 'Change',
       save: 'Save',
       saved: 'Saved.',

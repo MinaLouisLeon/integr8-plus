@@ -20,6 +20,8 @@ export interface WidgetProps<T extends FieldType = FieldType> {
   /** The question as shown, for naming controls to a screen reader. */
   label: string;
   invalid: boolean;
+  /** For a choice whose options depend on another answer: the values on offer. `undefined` offers all. */
+  available: readonly string[] | undefined;
   disabled: boolean;
   locale: string;
   onAnswer: (value: unknown) => void;

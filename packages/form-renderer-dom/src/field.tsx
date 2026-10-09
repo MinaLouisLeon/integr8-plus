@@ -5,7 +5,7 @@ import {
   isCalculated,
   parseDecimal,
 } from '@integr8/form-engine';
-import { errorMessage } from '@integr8/form-input';
+import { type DependentChoices, errorMessage } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import type { ReactNode } from 'react';
 import type { MediaAdapter } from './media.js';
@@ -39,6 +39,13 @@ export interface FieldBlockProps {
   locale: string;
   media: MediaAdapter | undefined;
   disabled: boolean;
+  /**
+   * Whether it must be answered right now, from the view — `required`, or a
+   * `requiredWhen` that holds. Defaults to the definition's fixed `required`.
+   */
+  required?: boolean | undefined;
+  /** For a choice whose options depend on another answer: what is on offer, and which question decides. */
+  choices?: DependentChoices | undefined;
   onAnswer: (value: unknown) => void;
   onClear: () => void;
   onBlur: () => void;
@@ -54,30 +61,52 @@ export interface FieldBlockProps {
  * "Pressure, edit text, must be no more than 10" in one breath.
  */
 export function FieldBlock(props: FieldBlockProps) {
-  const { field, value, errors, prefix, locale, media, disabled, onAnswer, onClear, onBlur } =
-    props;
+  const {
+    field,
+    value,
+    errors,
+    prefix,
+    locale,
+    media,
+    disabled,
+    choices,
+    onAnswer,
+    onClear,
+    onBlur,
+  } = props;
+  const isRequired = props.required ?? field.required === true;
   const { t } = useTranslation();
   const id = controlId(prefix, field.id);
   const label = say(field.label, locale) || field.id;
   const helpId = field.help === undefined ? undefined : `${id}-help`;
   const errorsId = errors.length === 0 ? undefined : `${id}-errors`;
+  // Nothing to choose from until the question this one depends on is answered.
+  const choicesId = choices?.options.length === 0 ? `${id}-choices` : undefined;
   const describedBy =
-    [helpId, errorsId].filter((part) => part !== undefined).join(' ') || undefined;
+    [helpId, choicesId, errorsId].filter((part) => part !== undefined).join(' ') || undefined;
 
-  const required =
-    field.required === true ? (
-      <>
-        <span aria-hidden="true" className="text-danger">
-          {' *'}
-        </span>
-        <span className="sr-only">{` (${t('fill.required')})`}</span>
-      </>
-    ) : null;
+  const required = isRequired ? (
+    <>
+      <span aria-hidden="true" className="text-danger">
+        {' *'}
+      </span>
+      <span className="sr-only">{` (${t('fill.required')})`}</span>
+    </>
+  ) : null;
 
   const help =
     field.help === undefined ? null : (
       <p id={helpId} className="text-xs text-content-muted">
         {say(field.help, locale)}
+      </p>
+    );
+
+  const noChoices =
+    choices === undefined || choicesId === undefined ? null : (
+      <p id={choicesId} className="text-xs text-content-muted">
+        {choices.parentAnswered
+          ? t('fill.dependsOn.none', { parent: choices.parentLabel })
+          : t('fill.dependsOn.chooseFirst', { parent: choices.parentLabel })}
       </p>
     );
 
@@ -125,6 +154,8 @@ export function FieldBlock(props: FieldBlockProps) {
     label,
     describedBy,
     invalid: errors.length > 0,
+    required: isRequired,
+    available: choices?.options,
     disabled: disabled || field.readOnly === true,
     locale,
     media,
@@ -165,6 +196,7 @@ export function FieldBlock(props: FieldBlockProps) {
         </legend>
         {help}
         {control}
+        {noChoices}
         {messages}
       </fieldset>
     );
@@ -178,6 +210,7 @@ export function FieldBlock(props: FieldBlockProps) {
       </label>
       {help}
       {control}
+      {noChoices}
       {messages}
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import { ApiRequestError } from '@integr8/api-client';
-import { useTranslation } from '@integr8/i18n';
+import { formatCurrency, useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Badge, Panel } from '~/components/platform-bits';
@@ -18,7 +18,8 @@ import { platformClient } from '~/lib/platform-session';
  * Cloudflare is a company we are billing incorrectly.
  */
 export default function StoragePage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const money = (value: number) => formatCurrency(value, 'USD', { locale: i18n.language });
 
   const overview = useQuery({
     queryKey: ['platform', 'storage'],
@@ -43,6 +44,7 @@ export default function StoragePage() {
 
   const data = overview.data;
   const cost = data.projectedMonthlyCost;
+  // Dollars, because that is what Cloudflare bills in; written the reader's way.
 
   return (
     <main className="flex flex-col gap-6">
@@ -67,7 +69,7 @@ export default function StoragePage() {
           <Fact label={t('platform.storage.storageCost')} value={money(cost.storage)} />
           <Fact label={t('platform.storage.classA')} value={money(cost.classA)} />
           <Fact label={t('platform.storage.classB')} value={money(cost.classB)} />
-          <Fact label="Total" value={money(cost.total)} />
+          <Fact label={t('platform.storage.totalCost')} value={money(cost.total)} />
         </dl>
       </Panel>
 
@@ -158,9 +160,4 @@ function Fact({ label, value }: { label: string; value: string }) {
       <dd className="font-medium text-content">{value}</dd>
     </div>
   );
-}
-
-/** Dollars, because that is what Cloudflare bills in. */
-function money(value: number): string {
-  return `$${value.toFixed(2)}`;
 }

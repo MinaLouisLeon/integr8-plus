@@ -41,7 +41,10 @@ export type BreakingReason =
   | 'option_removed'
   /** A field becomes typed by the engine; values typed before are no longer used. */
   | 'now_calculated'
-  /** Drafts that left it blank will not submit. */
+  /**
+   * Drafts that left it blank will not submit — outright, or in the cases a
+   * new or changed `requiredWhen` names.
+   */
   | 'now_required'
   /** Drafts holding a value that was fine may no longer be. */
   | 'constraint_tightened'
@@ -232,8 +235,17 @@ function breakingBetween(before: Field, after: Field): BreakingChange[] {
     push('now_calculated', 'reporting', ['calculation']);
   }
 
-  if (before.required !== true && after.required === true) {
-    push('now_required', 'drafts', ['required']);
+  if (before.required !== true) {
+    if (after.required === true) {
+      push('now_required', 'drafts', ['required']);
+    } else if (
+      after.requiredWhen !== undefined &&
+      canonical(before.requiredWhen) !== canonical(after.requiredWhen)
+    ) {
+      // A rule where there was none, or a different rule: either way some
+      // drafts that were fine may now be missing an answer.
+      push('now_required', 'drafts', ['requiredWhen']);
+    }
   }
 
   const tightened = tightenedConstraints(before, after);

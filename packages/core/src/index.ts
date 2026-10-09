@@ -29,6 +29,20 @@ export {
 } from './permissions.js';
 
 export {
+  NAV_GROUPS,
+  NAV_SECTIONS,
+  PLATFORM_NAV_SECTIONS,
+  visibleNavigation,
+  type NavApp,
+  type NavGroup,
+  type NavIcon,
+  type NavPath,
+  type NavSection,
+  type PlatformNavPath,
+  type PlatformNavSection,
+} from './navigation.js';
+
+export {
   TOKEN_TYPES,
   tokenTypeSchema,
   impersonationClaimSchema,

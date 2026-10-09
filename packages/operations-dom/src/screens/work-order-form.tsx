@@ -5,12 +5,14 @@ import { useState } from 'react';
 import { keys, type Priority, useOperations } from '../api.js';
 import { CrewPicker, type CrewMember } from '../crew.js';
 import {
+  BackLink,
   buttonClass,
   cardClass,
   Dialog,
   Failure,
   Field,
   fromLocalInput,
+  InlineError,
   inputClass,
 } from '../ui.js';
 
@@ -104,6 +106,7 @@ export function WorkOrderFormScreen({ customerId: initialCustomerId }: { custome
         }
       }}
     >
+      <BackLink to={paths.workOrders} label={t('operations.workOrder.back')} />
       <h1 className="text-2xl font-semibold text-content">{t('operations.workOrderForm.title')}</h1>
 
       <section className={cardClass}>
@@ -136,15 +139,19 @@ export function WorkOrderFormScreen({ customerId: initialCustomerId }: { custome
                 !(customers.data ?? []).some((entry) => entry.id === customerId) ? (
                   <option value={customer.data.customer.id}>{customer.data.customer.name}</option>
                 ) : null}
-                {customers.data?.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.name}
-                    {entry.accountNumber === null ? '' : ` (${entry.accountNumber})`}
-                    {entry.status === 'on_hold'
-                      ? ` — ${t('operations.customers.status.on_hold')}`
-                      : ''}
-                  </option>
-                ))}
+                {customers.data?.map((entry) => {
+                  const name =
+                    entry.accountNumber === null
+                      ? entry.name
+                      : `${entry.name} (${entry.accountNumber})`;
+                  return (
+                    <option key={entry.id} value={entry.id}>
+                      {entry.status === 'on_hold'
+                        ? t('operations.workOrderForm.customerOnHold', { name })
+                        : name}
+                    </option>
+                  );
+                })}
               </select>
             )}
           </Field>
@@ -186,6 +193,9 @@ export function WorkOrderFormScreen({ customerId: initialCustomerId }: { custome
             )}
           </Field>
         </div>
+        {customers.isError ? <InlineError onRetry={() => void customers.refetch()} /> : null}
+        {customer.isError ? <InlineError onRetry={() => void customer.refetch()} /> : null}
+        {jobTypes.isError ? <InlineError onRetry={() => void jobTypes.refetch()} /> : null}
       </section>
 
       <section className={cardClass}>

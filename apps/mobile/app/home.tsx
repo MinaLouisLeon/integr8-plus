@@ -2,8 +2,10 @@ import { useTranslation } from '@integr8/i18n';
 import { identity, openJobs, recentlyClosedJobs, searchLocal, sectionJobs } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { View } from 'react-native';
+import { useBrand } from '~/components/brand';
 import { JobRow } from '~/components/job-row';
 import { LocalGate } from '~/components/local-gate';
 import { SyncBanner } from '~/components/sync-banner';
@@ -14,6 +16,7 @@ import {
   EmptyState,
   Field,
   Heading,
+  LocalReadError,
   Row,
   ScrollScreen,
   Section,
@@ -40,6 +43,7 @@ export default function HomeScreen() {
 
 function Jobs() {
   const { t } = useTranslation();
+  const { websiteUrl } = useBrand();
   const [text, setText] = useState('');
   const searching = text.trim() !== '';
 
@@ -54,6 +58,7 @@ function Jobs() {
 
   const person = me.status === 'ready' ? me.data : undefined;
   const sections = sectionJobs(open.status === 'ready' ? open.data : [], new Date());
+  const failed = [me, open, closed, results].some((query) => query.status === 'error');
 
   return (
     <ScrollScreen>
@@ -65,6 +70,13 @@ function Jobs() {
           <Heading>{t('mobile.jobs.title')}</Heading>
           {person === undefined ? null : <Body muted>{person.displayName}</Body>}
         </View>
+        {websiteUrl === null ? null : (
+          <Button
+            label={t('mobile.jobs.website')}
+            variant="secondary"
+            onPress={() => void WebBrowser.openBrowserAsync(websiteUrl)}
+          />
+        )}
         <Button
           label={t('mobile.jobs.settings')}
           variant="secondary"
@@ -73,6 +85,8 @@ function Jobs() {
       </View>
 
       <SyncBanner />
+
+      {failed ? <LocalReadError /> : null}
 
       {searching || open.status !== 'ready' ? null : <Today open={open.data} />}
 

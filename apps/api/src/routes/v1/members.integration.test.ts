@@ -341,9 +341,15 @@ describe('the company’s brand', () => {
     const before = JSON.parse(
       (await api.call(ownerToken, { method: 'GET', url: '/v1/me' })).body,
     ) as { company: { name: string; brandColour: string | null; logoMediaId: string | null } };
-    expect(before.company).toEqual({ name: 'API Test Ltd', brandColour: null, logoMediaId: null });
+    expect(before.company).toMatchObject({
+      name: 'API Test Ltd',
+      brandColour: null,
+      logoMediaId: null,
+    });
 
-    const changed = await api.call(ownerToken, {
+    // The look is Integr8's to set (0022): staff acting as the company change
+    // it, and the owner's phone sees the new colour on its next download.
+    const changed = await api.call(await api.staff(owner), {
       method: 'PATCH',
       url: '/v1/settings',
       payload: { brandColour: '#1D4ED8' },

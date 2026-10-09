@@ -14,6 +14,8 @@ import {
 } from '@integr8/operations-dom';
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { useContextMenu } from '~/components/context-menu';
+import { useCustomerChrome, useSiteChrome, useWorkOrderChrome } from '~/components/record-chrome';
 import { MAP_TILES } from '~/lib/env';
 import { session } from '~/lib/session';
 
@@ -25,6 +27,7 @@ import { session } from '~/lib/session';
 function OperationsScreens({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
+  const menu = useContextMenu();
   const config = useMemo<OperationsConfig>(
     () => ({
       client: session().client,
@@ -47,8 +50,15 @@ function OperationsScreens({ children }: { children: ReactNode }) {
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
+      // Right-click on a row offers that row's own actions, in the desktop
+      // window only; a browser tab keeps its own menu.
+      ...(menu.enabled
+        ? {
+            rowActions: (target, actions, event) => menu.open(event, actions, target.label),
+          }
+        : {}),
     }),
-    [navigate, i18n.language],
+    [navigate, i18n.language, menu],
   );
   return (
     <OperationsContext.Provider value={config}>
@@ -88,6 +98,7 @@ export function NewWorkOrderRoute() {
 
 export function WorkOrderRoute() {
   const { workOrderId = '' } = useParams();
+  useWorkOrderChrome(workOrderId);
   return (
     <OperationsScreens>
       <WorkOrderScreen key={workOrderId} workOrderId={workOrderId} />
@@ -105,6 +116,7 @@ export function CustomersRoute() {
 
 export function CustomerRoute() {
   const { customerId = '' } = useParams();
+  useCustomerChrome(customerId);
   return (
     <OperationsScreens>
       <CustomerScreen key={customerId} customerId={customerId} />
@@ -114,6 +126,7 @@ export function CustomerRoute() {
 
 export function SiteRoute() {
   const { siteId = '' } = useParams();
+  useSiteChrome(siteId);
   return (
     <OperationsScreens>
       <SiteScreen key={siteId} siteId={siteId} />

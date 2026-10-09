@@ -12,7 +12,19 @@ import {
   type TimesheetPerson,
   type Totals,
 } from '../timesheets.js';
-import { buttonClass, cardClass, Failure, Field, inputClass, Loading, useDuration } from '../ui.js';
+import {
+  buttonClass,
+  cardClass,
+  copyText,
+  DashboardBackLink,
+  Failure,
+  Field,
+  InlineError,
+  inputClass,
+  Loading,
+  useDuration,
+  useRowMenu,
+} from '../ui.js';
 
 /**
  * Who worked when, a week at a time: each person's shifts, and the time they
@@ -74,6 +86,7 @@ export function TimesheetsScreen() {
 
   return (
     <div className="flex flex-col gap-6 text-start">
+      <DashboardBackLink />
       <header className="flex flex-col gap-4">
         <h1 className="text-2xl font-semibold text-content">{t('operations.timesheets.title')}</h1>
         <div className="flex flex-wrap items-end gap-3">
@@ -137,6 +150,8 @@ export function TimesheetsScreen() {
             </Field>
           ) : null}
         </div>
+        {me.isError ? <InlineError onRetry={() => void me.refetch()} /> : null}
+        {members.isError ? <InlineError onRetry={() => void members.refetch()} /> : null}
         <p className="text-sm text-content-muted">
           {t('operations.timesheets.range', {
             from: formatDate(from, { locale }),
@@ -189,6 +204,7 @@ function Day({ day }: { day: TimesheetDay }) {
   const { t } = useTranslation();
   const { locale, navigate, paths } = useOperations();
   const duration = useDuration();
+  const rowMenu = useRowMenu();
   const date = formatDate(day.day, { locale });
   const sameDay = (value: string) => dayKey(new Date(value)) === dayKey(day.day);
   const clock = (value: string) =>
@@ -202,24 +218,36 @@ function Day({ day }: { day: TimesheetDay }) {
         <p className="text-sm text-content-muted">{t('operations.timesheets.noShifts')}</p>
       ) : (
         <ul className="flex flex-col gap-1 text-sm">
-          {day.shifts.map((shift) => (
-            <li key={shift.id} className="flex flex-wrap items-center gap-2 text-content">
-              <span>
-                {shift.endedAt === null
-                  ? t('operations.timesheets.shiftOpen', { start: clock(shift.startedAt) })
-                  : t('operations.timesheets.shift', {
-                      start: clock(shift.startedAt),
-                      end: clock(shift.endedAt),
-                    })}
-              </span>
-              {shift.endedAt === null ? (
-                <span className="rounded-full border border-accent px-2 text-xs text-content">
-                  {t('operations.timesheets.clockedIn')}
-                </span>
-              ) : null}
-              <span className="text-content-muted">{duration(shift.durationMs)}</span>
-            </li>
-          ))}
+          {day.shifts.map((shift) => {
+            const label =
+              shift.endedAt === null
+                ? t('operations.timesheets.shiftOpen', { start: clock(shift.startedAt) })
+                : t('operations.timesheets.shift', {
+                    start: clock(shift.startedAt),
+                    end: clock(shift.endedAt),
+                  });
+            return (
+              <li
+                key={shift.id}
+                className="flex flex-wrap items-center gap-2 text-content"
+                onContextMenu={rowMenu({ kind: 'timesheetShift', id: shift.id, label }, () => [
+                  {
+                    key: 'copyId',
+                    label: t('operations.rowActions.copyId'),
+                    onSelect: () => copyText(shift.id),
+                  },
+                ])}
+              >
+                <span>{label}</span>
+                {shift.endedAt === null ? (
+                  <span className="rounded-full border border-accent px-2 text-xs text-content">
+                    {t('operations.timesheets.clockedIn')}
+                  </span>
+                ) : null}
+                <span className="text-content-muted">{duration(shift.durationMs)}</span>
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -247,7 +275,28 @@ function Day({ day }: { day: TimesheetDay }) {
             </thead>
             <tbody className="divide-y divide-border-subtle">
               {day.jobs.map((job) => (
-                <tr key={job.workOrderId}>
+                <tr
+                  key={job.workOrderId}
+                  onContextMenu={rowMenu(
+                    {
+                      kind: 'workOrder',
+                      id: job.workOrderId,
+                      label: `${job.referenceLabel} · ${job.title}`,
+                    },
+                    () => [
+                      {
+                        key: 'open',
+                        label: t('operations.rowActions.open'),
+                        onSelect: () => navigate(paths.workOrder(job.workOrderId)),
+                      },
+                      {
+                        key: 'copyId',
+                        label: t('operations.rowActions.copyId'),
+                        onSelect: () => copyText(job.workOrderId),
+                      },
+                    ],
+                  )}
+                >
                   <th scope="row" className="px-3 py-2 text-start font-normal">
                     <a
                       href={paths.workOrder(job.workOrderId)}

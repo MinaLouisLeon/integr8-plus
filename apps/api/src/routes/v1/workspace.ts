@@ -85,13 +85,7 @@ export const meRoute = defineRoute({
           role: seat.role,
           impersonatedBy: context.principal.impersonatedBy,
         }),
-        company: {
-          name:
-            (await getPlatformDataSource().tenants.findById(context.principal.tenantId))?.name ??
-            '',
-          logoMediaId: settings.logoMediaId,
-          brandColour: settings.brandColour,
-        },
+        company: await companyBrand(context.principal.tenantId, settings),
         features,
         announcements: (
           await getPlatformDataSource().settings.announcementsFor(context.principal.tenantId)
@@ -115,6 +109,31 @@ export const meRoute = defineRoute({
     };
   },
 });
+
+/** The brand the apps wear, from the company row and its settings. */
+async function companyBrand(
+  tenantId: string,
+  settings: {
+    logoMediaId: string | null;
+    appIconMediaId: string | null;
+    brandColour: string | null;
+    shellColour: string | null;
+    defaultTheme: 'light' | 'dark' | 'system';
+    websiteUrl: string | null;
+  },
+) {
+  const tenant = await getPlatformDataSource().tenants.findById(tenantId);
+  return {
+    name: tenant?.name ?? '',
+    slug: tenant?.slug ?? '',
+    logoMediaId: settings.logoMediaId,
+    appIconMediaId: settings.appIconMediaId,
+    brandColour: settings.brandColour,
+    shellColour: settings.shellColour,
+    defaultTheme: settings.defaultTheme,
+    websiteUrl: settings.websiteUrl,
+  };
+}
 
 /**
  * The seat behind an impersonation token that names no member.

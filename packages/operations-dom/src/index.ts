@@ -1,4 +1,12 @@
-export { OperationsContext, type OperationsConfig } from './api.js';
+export {
+  OperationsContext,
+  type OperationsConfig,
+  type RowAction,
+  type RowActionsEvent,
+  type RowActionsHandler,
+  type RowTarget,
+} from './api.js';
+export { BackLink, InlineError } from './ui.js';
 export { WorkOrderScreen } from './screens/work-order-screen.js';
 export { WorkOrderListScreen, type WorkOrderFilters } from './screens/work-order-list.js';
 export { WorkOrderFormScreen } from './screens/work-order-form.js';

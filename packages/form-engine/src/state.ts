@@ -1,3 +1,4 @@
+import type { AvailableOptions } from './choices.js';
 import type { CompiledForm } from './compile.js';
 import { ENTRY_ID, type Entry } from './definition.js';
 import { type Answers, type EvaluationContext, ownAnswer, storedEntries } from './evaluate.js';
@@ -9,7 +10,7 @@ import {
   isCalculated,
 } from './field-types.js';
 import type { ElementId } from './ids.js';
-import { validateForm } from './validation.js';
+import { answerKey, validateForm } from './validation.js';
 
 /**
  * A form being filled in, as a pure state machine.
@@ -77,9 +78,9 @@ export type Transition =
   | { accepted: true; state: FormState }
   | { accepted: false; state: FormState; reason: RejectionReason };
 
-/** How `touched` names a field, or one entry's field. */
+/** How `touched`, `required` and `availableOptions` name a field, or one entry's field. */
 export function touchKey(field: ElementId, entry?: string): string {
-  return entry === undefined ? field : `${entry}/${field}`;
+  return answerKey(field, entry);
 }
 
 export interface FormStateOptions {
@@ -331,6 +332,18 @@ export interface FormView {
   readonly shownErrors: readonly FieldError[];
   readonly valid: boolean;
   readonly progress: FormProgress;
+  /**
+   * Whether each visible typed field must be answered right now, by `touchKey`:
+   * `required`, or `requiredWhen` definitely true. A renderer shows the mark
+   * from this, so it follows the answers rather than the definition.
+   */
+  readonly required: ReadonlyMap<string, boolean>;
+  /**
+   * For each visible choice field whose options depend on another answer, what
+   * it offers right now, by `touchKey`. A field that depends on nothing is
+   * absent, and offers every option.
+   */
+  readonly availableOptions: ReadonlyMap<string, AvailableOptions>;
 }
 
 type FormValidationEntries = ReturnType<typeof validateForm>['evaluation']['entries'];
@@ -361,7 +374,7 @@ export function viewForm(
     if (isAnswered(field, value)) {
       answered += 1;
     }
-    if (field.required === true) {
+    if (validation.required.get(touchKey(field.id, entry)) === true) {
       requiredTotal += 1;
       if (!failing.has(touchKey(field.id, entry))) {
         requiredAnswered += 1;
@@ -402,6 +415,8 @@ export function viewForm(
     shownErrors,
     valid: validation.valid,
     progress: { requiredAnswered, requiredTotal, answered, total },
+    required: validation.required,
+    availableOptions: validation.availableOptions,
   };
 }
 

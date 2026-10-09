@@ -18,7 +18,7 @@ src/local/sync-device   files, fetch, network and battery for the engine
 The data layer and the sync engine live in `packages/offline`, with no React Native in them, so
 the API's integration suite can run the phone's own engine against the real server. How
 changes reach the server: [offline sync](../sync/README.md). How forms are filled:
-[forms on the phone](forms.md).
+[forms on the phone](forms.md). How one company's own app is built: [company builds](company-builds.md).
 
 ---
 

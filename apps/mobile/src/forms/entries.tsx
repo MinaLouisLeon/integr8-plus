@@ -7,17 +7,19 @@ import {
 } from '@integr8/form-engine';
 import {
   canAddEntry,
+  dependentChoices,
   entriesOf,
   entryErrors,
   entryTitle,
   firstPerField,
+  isRequiredNow,
   say,
   sectionErrors,
 } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
 import type { View as ViewType } from 'react-native';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, I18nManager, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '~/components/ui';
 import { FieldBlock } from './field-block';
 import type { FillModel, FillSnapshot } from './fill-model';
@@ -90,7 +92,10 @@ export function EntryList({
                 {t('fill.nav.problems', { count: problems })}
               </Text>
             )}
-            <Text style={[styles.chevron, { color: theme.textMuted }]}>›</Text>
+            {/* The arrow points the way the list reads: into the entry. */}
+            <Text style={[styles.chevron, { color: theme.textMuted }]}>
+              {I18nManager.isRTL ? '‹' : '›'}
+            </Text>
           </Pressable>
         );
       })}
@@ -206,6 +211,8 @@ export function EntryView({
               errors={errorsFor(field.id)}
               locale={locale}
               disabled={false}
+              required={isRequiredNow(view, field, entryId)}
+              choices={dependentChoices(model.form, view, field, locale, entryId)}
               onAnswer={(value) => model.answer(field.id, value, entryId)}
               onClear={() => model.clear(field.id, entryId)}
               onBlur={() => model.touch(field.id, entryId)}

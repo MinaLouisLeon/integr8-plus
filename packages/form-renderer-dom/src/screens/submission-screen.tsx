@@ -14,7 +14,7 @@ import {
   type SubmissionDetail,
   useScreens,
 } from './api.js';
-import { Dialog, Failure, Loading } from './parts.js';
+import { BackLink, Dialog, Failure, Loading } from './parts.js';
 
 /**
  * One submission: filled in, read back, or corrected — and its history.
@@ -26,7 +26,7 @@ import { Dialog, Failure, Loading } from './parts.js';
  */
 export function SubmissionScreen({ submissionId }: { submissionId: string }) {
   const { t } = useTranslation();
-  const { client, locale, navigate, paths } = useScreens();
+  const { client, locale, paths } = useScreens();
   const queries = useQueryClient();
   const media = useMemo(() => apiMediaAdapter(client), [client]);
   const [reopening, setReopening] = useState(false);
@@ -47,17 +47,25 @@ export function SubmissionScreen({ submissionId }: { submissionId: string }) {
     [detail.data],
   );
 
-  if (detail.isPending) {
-    return <Loading />;
-  }
-  if (detail.isError) {
-    return <Failure error={detail.error} onRetry={() => void detail.refetch()} />;
-  }
-  if (!compiled?.ok) {
-    return <Failure error={undefined} />;
+  const back = <BackLink to={paths.submissions} label={t('submissions.detail.back')} />;
+
+  if (detail.isPending || detail.isError || !compiled?.ok) {
+    return (
+      <div className="flex flex-col gap-6 text-start">
+        <nav aria-label={t('nav.back')}>{back}</nav>
+        {detail.isPending ? (
+          <Loading />
+        ) : detail.isError ? (
+          <Failure error={detail.error} onRetry={() => void detail.refetch()} />
+        ) : (
+          <Failure error={undefined} />
+        )}
+      </div>
+    );
   }
 
   const { submission, version, events } = detail.data;
+  const job = submission.workOrder;
   const refresh = (next: SubmissionDetail) => {
     queries.setQueryData(keys.submission(submissionId), next);
     void queries.invalidateQueries({ queryKey: ['submissions', 'list'] });
@@ -66,14 +74,14 @@ export function SubmissionScreen({ submissionId }: { submissionId: string }) {
 
   return (
     <div className="flex flex-col gap-6 text-start">
-      <nav>
-        <button
-          type="button"
-          className="text-sm text-content-muted hover:underline"
-          onClick={() => navigate(paths.submissions)}
-        >
-          {t('submissions.detail.back')}
-        </button>
+      <nav aria-label={t('nav.back')} className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        {job === null || paths.workOrder === undefined ? null : (
+          <BackLink
+            to={paths.workOrder(job.id)}
+            label={t('submissions.backToJob', { reference: job.referenceLabel })}
+          />
+        )}
+        {back}
       </nav>
 
       <header className="flex flex-wrap items-start justify-between gap-4">

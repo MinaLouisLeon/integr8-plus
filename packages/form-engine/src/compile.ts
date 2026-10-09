@@ -4,6 +4,8 @@ import { type FormDefinition, formDefinitionSchema, LIMITS, type Repeat } from '
 import { type Expression, measure, referencedFields, referencedSections } from './expression.js';
 import {
   choiceValues,
+  type DependsOn,
+  dependsOnOf,
   describeFieldType,
   type Field,
   fieldConfigIssues,
@@ -28,6 +30,8 @@ import { parseDate, parseDatetime, parseTime } from './temporal.js';
  * - each field's own configuration is coherent
  * - a repeatable section's limits make sense, and a rule reads an entry's
  *   answers only from inside that entry, or across entries (P13b)
+ * - a field whose choices depend on another answer names a choice field it can
+ *   read, and only options that exist on both sides
  *
  * A compiled form also fixes the order evaluation happens in, so no runtime
  * ever has to discover it — or discover it differently.
@@ -277,6 +281,23 @@ function checkElement(
     });
   }
 
+  if (field.requiredWhen !== undefined) {
+    checkExpression(
+      field.requiredWhen,
+      'boolean',
+      `${path}.requiredWhen`,
+      field.id,
+      elements,
+      issues,
+      scopes,
+    );
+  }
+
+  const dependsOn = dependsOnOf(field);
+  if (dependsOn !== undefined) {
+    checkDependsOn(element, field, dependsOn, elements, issues, scopes);
+  }
+
   if (
     isCalculated(field) &&
     (field.type === 'number' || field.type === 'decimal') &&
@@ -349,6 +370,71 @@ function checkRepeat(
       report(
         'titleField',
         `"${repeat.titleField}" is a ${titled.field.type} question, which cannot name an entry`,
+      );
+    }
+  }
+}
+
+/**
+ * Dependent choices: the parent must be a choice field this field can read —
+ * the same scoping as a rule — and every parent value named must be one of its
+ * options. A field depending on itself, or two depending on each other, is a
+ * cycle, and the graph below names it.
+ */
+function checkDependsOn(
+  element: ElementInfo,
+  field: Field,
+  dependsOn: DependsOn,
+  elements: ReadonlyMap<ElementId, ElementInfo>,
+  issues: DefinitionIssue[],
+  scopes: readonly ElementId[],
+): void {
+  const path = `${element.path}.dependsOn`;
+  const report = (code: DefinitionIssueCode, message: string, ids: ElementId[], at = path) => {
+    issues.push({ code, message, path: at, elements: ids });
+  };
+  const parent = elements.get(dependsOn.field);
+  if (parent === undefined) {
+    report(
+      'unknown_field',
+      `The choices of "${field.id}" depend on "${dependsOn.field}", which is not in this form`,
+      [dependsOn.field],
+    );
+    return;
+  }
+  if (parent.field === undefined) {
+    report(
+      'not_a_field',
+      `The choices of "${field.id}" depend on "${parent.id}", which is a ${parent.kind}, not a field`,
+      [parent.id],
+    );
+    return;
+  }
+  if (parent.entries !== undefined && !scopes.includes(parent.entries)) {
+    report(
+      'inside_repeat',
+      `The choices of "${field.id}" depend on "${parent.id}", which is asked once per entry of "${parent.entries}". Only a question in the same entry can narrow its choices.`,
+      [parent.id, parent.entries],
+    );
+    return;
+  }
+  const offered = choiceValues(parent.field);
+  if (offered === undefined) {
+    report(
+      'type_mismatch',
+      `The choices of "${field.id}" depend on "${parent.id}", which is a ${parent.field.type} question, not a choice`,
+      [parent.id],
+    );
+    return;
+  }
+  for (const [option, values] of Object.entries(dependsOn.options)) {
+    const missing = values.find((value) => !offered.includes(value));
+    if (missing !== undefined) {
+      report(
+        'unknown_option',
+        `"${parent.id}" has no option "${missing}"`,
+        [parent.id],
+        `${path}.options.${option}`,
       );
     }
   }
@@ -648,7 +734,7 @@ function compareType(
 // Dependencies: cycles and order
 // ---------------------------------------------------------------------------
 
-type DependencyReason = 'inside' | 'shown_when' | 'calculated_from';
+type DependencyReason = 'inside' | 'shown_when' | 'calculated_from' | 'choices_from';
 
 interface Dependency {
   on: ElementId;
@@ -661,6 +747,9 @@ interface Dependency {
  * - A section's visibility needs its page's; a field's needs its section's.
  * - Anything with `visibleWhen` needs the fields its condition reads.
  * - A calculated field needs the fields its calculation reads.
+ * - A field whose choices depend on another answer needs that field: not to be
+ *   evaluated, but so that a field depending on itself, or two on each other,
+ *   is refused with a sentence rather than offering nothing forever.
  *
  * Reading another field means needing its *effective* value, which is empty if
  * that field is hidden — so reading a field transitively depends on that
@@ -706,6 +795,10 @@ function dependenciesOf(element: ElementInfo): Dependency[] {
       push(id, 'calculated_from');
     }
   }
+  const dependsOn = field === undefined ? undefined : dependsOnOf(field);
+  if (dependsOn !== undefined) {
+    push(dependsOn.field, 'choices_from');
+  }
   return dependencies;
 }
 
@@ -713,6 +806,7 @@ const REASON_TEXT: Record<DependencyReason, string> = {
   inside: 'is inside',
   shown_when: 'is shown depending on',
   calculated_from: 'is calculated from',
+  choices_from: 'offers choices depending on',
 };
 
 function orderElements(elements: ReadonlyMap<ElementId, ElementInfo>): {

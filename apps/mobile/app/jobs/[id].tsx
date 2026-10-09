@@ -24,6 +24,7 @@ import {
   Detail,
   EmptyState,
   Heading,
+  NotReadyScreen,
   Row,
   ScrollScreen,
   Section,
@@ -52,7 +53,7 @@ function Job() {
   const state = useLocalQuery(`job:${id}`, ['work_orders'], (sql) => job(sql, id));
 
   if (state.status !== 'ready') {
-    return <ScrollScreen>{null}</ScrollScreen>;
+    return <NotReadyScreen failed={state.status === 'error'} />;
   }
   if (state.data === undefined) {
     return (

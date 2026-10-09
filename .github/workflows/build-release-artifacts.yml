@@ -202,27 +202,22 @@ jobs:
       # The policy in tauri.conf.json names a placeholder host; an installer
       # built without this would be forbidden from calling the real API and
       # every sign-in would fail inside the window before a request left it.
-      - name: Stamp the version and the API origin into the bundle
+      # The staff flavour (0022): the one installer Integr8's own people use.
+      # It carries its own name and identifier and shows only the staff
+      # sign-in; a company's people get a build of their own from
+      # build-company-apps.yml, stamped with that company's brand. The script
+      # also writes the version (plain X.Y.Z: Windows MSI rejects a prerelease
+      # suffix) and points the window's content-security policy at the API,
+      # without which every sign-in would fail inside the window.
+      - name: Stamp the staff flavour, the version and the API origin into the bundle
         shell: bash
         env:
           BASE_VERSION: ${{ inputs.base-version }}
           API_URL: ${{ inputs.api-url }}
         run: |
           set -euo pipefail
-          node -e '
-            const fs = require("node:fs");
-            const path = "apps/desktop/src-tauri/tauri.conf.json";
-            const config = JSON.parse(fs.readFileSync(path, "utf8"));
-            config.version = process.env.BASE_VERSION;
-            const origin = new URL(process.env.API_URL).origin;
-            const csp = config.app.security.csp;
-            if (!csp.includes("https://api.integr8.example")) {
-              throw new Error("tauri.conf.json csp no longer carries the placeholder API host");
-            }
-            config.app.security.csp = csp.replaceAll("https://api.integr8.example", origin);
-            fs.writeFileSync(path, JSON.stringify(config, null, 2) + "\n");
-          '
-          node -e 'const c = require("./apps/desktop/src-tauri/tauri.conf.json"); console.log("tauri version:", c.version); console.log("csp:", c.app.security.csp)'
+          node apps/desktop/scripts/stamp.mjs \
+            --version "$BASE_VERSION" --api-url "$API_URL" --flavor staff
 
       - name: Build the workspace packages the app imports
         run: pnpm build
@@ -236,6 +231,7 @@ jobs:
           VITE_API_BASE_URL: ${{ inputs.api-url }}
           VITE_APP_ENV: ${{ inputs.app-env }}
           VITE_APP_VERSION: ${{ inputs.version }}
+          VITE_APP_FLAVOR: staff
           VITE_SENTRY_DSN: ${{ inputs.desktop-sentry-dsn }}
           # Absent on a fork or before the key is stored: the build still runs
           # and produces an installer, it just carries no update signature.
@@ -279,12 +275,16 @@ jobs:
   # Mobile, when there is an Expo account behind it
   # ---------------------------------------------------------------------------
   mobile:
-    name: Mobile build (EAS)
+    name: Mobile build (EAS, generic, nightly only)
     # Gated on a repository variable rather than on the secret, because a job
-    # cannot branch on whether a secret exists. Until `eas init` replaces the
-    # placeholder projectId in apps/mobile/app.json there is no project for a
-    # build to belong to, so this stays off. Local development needs none of it.
-    if: vars.EAS_BUILDS == 'enabled'
+    # cannot branch on whether a secret exists. Local development needs none of it.
+    #
+    # Nightly only. The phone app a customer installs is built once per company
+    # with that company baked in (build-company-apps.yml, run from the version
+    # release); this generic build, with no company, is for Integr8's own
+    # testers against the staging API and would be the wrong thing to hand to
+    # a customer.
+    if: vars.EAS_BUILDS == 'enabled' && inputs.channel == 'nightly'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

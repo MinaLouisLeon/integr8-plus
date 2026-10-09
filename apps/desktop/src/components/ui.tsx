@@ -149,8 +149,13 @@ export function ErrorState({
   );
 }
 
+/**
+ * A centred column for a screen's content. The frame around every signed-in
+ * screen owns the height and the scrolling, so this sets neither — a column
+ * that insisted on being a viewport tall would scroll inside the frame for no
+ * reason. Screens add their own padding; the builder adds none and fills the
+ * window.
+ */
 export function Shell({ children }: { children: ReactNode }) {
-  return (
-    <div className="mx-auto flex min-h-dvh max-w-4xl flex-col gap-6 px-6 py-8">{children}</div>
-  );
+  return <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">{children}</div>;
 }

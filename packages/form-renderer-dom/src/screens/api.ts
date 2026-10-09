@@ -15,13 +15,56 @@ export interface ScreensConfig {
   locale: string;
   navigate: (to: string) => void;
   paths: {
+    /**
+     * The app's home. When set, the fill and submissions lists offer a way
+     * back to it; when not, the app's own shell owns that navigation.
+     */
+    dashboard?: string;
     fill: string;
     submissions: string;
     submission: (id: string) => string;
+    /** A job. When set, a submission made for a job offers a way back to it. */
+    workOrder?: (id: string) => string;
   };
   /** Saves a file the person asked for, such as a CSV export. */
   download: (blob: Blob, filename: string) => void;
+  /**
+   * A row's own menu, such as the desktop app's right-click menu. When set,
+   * right-clicking a submission row calls it with the same actions the row
+   * offers, and the browser's menu is not shown. When not set, rows keep the
+   * browser's menu.
+   */
+  rowActions?: SubmissionRowActionsHandler;
 }
+
+/** What a row is about, for a row menu. */
+export interface SubmissionRowTarget {
+  kind: 'submission';
+  id: string;
+  label: string;
+}
+
+/** One entry of a row menu: already translated, and doing what the row's own control does. */
+export interface RowAction {
+  key: string;
+  label: string;
+  onSelect: () => void;
+  destructive?: boolean;
+  disabled?: boolean;
+}
+
+/** The pointer event that opened a row menu: where, and how to stop the browser's own. */
+export interface RowActionsEvent {
+  clientX: number;
+  clientY: number;
+  preventDefault(): void;
+}
+
+export type SubmissionRowActionsHandler = (
+  target: SubmissionRowTarget,
+  actions: readonly RowAction[],
+  event: RowActionsEvent,
+) => void;
 
 export const ScreensContext = createContext<ScreensConfig | undefined>(undefined);
 

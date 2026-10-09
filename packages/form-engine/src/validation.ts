@@ -1,3 +1,4 @@
+import { type AvailableOptions, availableOptions, dependentChoiceParent } from './choices.js';
 import type { CompiledForm, ElementInfo } from './compile.js';
 import { entriesSchema } from './definition.js';
 import {
@@ -36,7 +37,18 @@ import type { ElementId } from './ids.js';
  * A repeatable section is checked where it sits: first whether it has too few
  * or too many entries, then each entry's fields in turn, each error naming its
  * entry (P13b).
+ *
+ * A field is required when its definition says so outright, or when its
+ * `requiredWhen` is definitely true — so a renderer asks the validation, not
+ * the field, whether to show the mark. A choice field whose options depend on
+ * another answer is told what it may offer right now, and an answer outside
+ * that is refused rather than quietly dropped.
  */
+
+/** How `required` and `availableOptions` name a field, or one entry's field: the field's id, or `${entry}/${field}`. */
+export function answerKey(field: ElementId, entry: string | undefined): string {
+  return entry === undefined ? field : `${entry}/${field}`;
+}
 
 export interface FormValidation {
   readonly evaluation: FormEvaluation;
@@ -46,6 +58,18 @@ export interface FormValidation {
    */
   readonly errors: readonly FieldError[];
   readonly valid: boolean;
+  /**
+   * Whether each visible typed field must be answered right now — `required`,
+   * or `requiredWhen` definitely true — by `answerKey`. Hidden and calculated
+   * fields are absent.
+   */
+  readonly required: ReadonlyMap<string, boolean>;
+  /**
+   * For each visible choice field whose options depend on another answer: what
+   * it offers right now, by `answerKey`. A field whose options depend on nothing
+   * is absent, and offers all of them.
+   */
+  readonly availableOptions: ReadonlyMap<string, AvailableOptions>;
 }
 
 /** The elements in reading order, each once. */
@@ -60,6 +84,8 @@ export function validateForm(
 ): FormValidation {
   const evaluation = evaluateForm(form, answers, context);
   const errors: FieldError[] = [];
+  const required = new Map<string, boolean>();
+  const available = new Map<string, AvailableOptions>();
   const scope = evaluationScope(form, evaluation, context);
 
   const check = (
@@ -72,15 +98,40 @@ export function validateForm(
     const push = (error: FieldError) => {
       found.push(entry === undefined ? error : { ...error, entry });
     };
+    const mandatory =
+      field.required === true ||
+      (field.requiredWhen !== undefined &&
+        truth(evaluateExpression(field.requiredWhen, within)) === true);
+    required.set(answerKey(field.id, entry), mandatory);
+
+    const parent = dependentChoiceParent(field);
+    const offered =
+      parent === undefined ? undefined : availableOptions(field, within.value(parent));
+    if (offered !== undefined) {
+      available.set(answerKey(field.id, entry), offered);
+    }
+
     if (!isAnswered(field, value)) {
-      if (field.required === true) {
+      if (mandatory) {
         push({ field: field.id, code: 'required', params: {} });
       }
-    } else if (field.type === 'checkbox' && field.required === true && value !== true) {
+    } else if (field.type === 'checkbox' && mandatory && value !== true) {
       // On a checkbox, "required" means ticked: "I have isolated the supply."
       push({ field: field.id, code: 'required', params: {} });
     } else {
-      validateAnswer(field, value).forEach(push);
+      const problems = validateAnswer(field, value);
+      problems.forEach(push);
+      // A choice the field has, but not for the parent's current answer. The
+      // answer stays — the person changed the parent, not this — and is named.
+      if (
+        offered !== undefined &&
+        !problems.some((problem) => problem.code === 'unknown_option') &&
+        (Array.isArray(value) ? (value as string[]) : [value as string]).some(
+          (chosen) => !offered.options.includes(chosen),
+        )
+      ) {
+        push({ field: field.id, code: 'option_unavailable', params: {} });
+      }
     }
 
     for (const rule of field.rules ?? []) {
@@ -143,7 +194,7 @@ export function validateForm(
     errors.push(...check(field, evaluation.values.get(field.id), scope, undefined));
   }
 
-  return { evaluation, errors, valid: errors.length === 0 };
+  return { evaluation, errors, valid: errors.length === 0, required, availableOptions: available };
 }
 
 // ---------------------------------------------------------------------------

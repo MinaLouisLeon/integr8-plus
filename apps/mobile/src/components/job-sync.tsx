@@ -4,7 +4,7 @@ import { fontSize, radii, spacing } from '@integr8/tokens';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalQuery } from '~/local/react';
-import { useTheme } from './ui';
+import { LocalReadError, useTheme } from './ui';
 
 /**
  * "Is it safe to leave?" — answered at a glance, for one job (P12).
@@ -21,6 +21,9 @@ export function JobSyncBadge({ workOrderId }: { workOrderId: string }) {
     ['outbox', 'uploads', 'submissions'],
     (sql) => jobSyncState(sql, workOrderId),
   );
+  if (state.status === 'error') {
+    return <LocalReadError />;
+  }
   if (state.status !== 'ready') {
     return null;
   }
@@ -59,6 +62,9 @@ export function JobSyncCard({ workOrderId }: { workOrderId: string }) {
     ['outbox', 'uploads', 'submissions'],
     (sql) => jobSyncState(sql, workOrderId),
   );
+  if (state.status === 'error') {
+    return <LocalReadError />;
+  }
   if (state.status !== 'ready') {
     return null;
   }

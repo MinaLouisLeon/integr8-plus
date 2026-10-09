@@ -1,0 +1,498 @@
+# One company's own apps: desktop installers and phone apps that carry its
+# name, icon and colours, sign in only its own people, and install beside any
+# other company's. Run by hand for one company (or `all`), and by the version
+# release for every company with "build apps" switched on.
+#
+# What a run needs from the deployment: the company's brand, read with no
+# session from GET /v1/public/companies/{slug}/brand, and — for `all` — the
+# list of companies from GET /v1/build/companies behind the BUILD_TOKEN secret.
+# What it produces: a GitHub release `company-<slug>-v<version>` holding the
+# installers and the Android app, plus links to the builds on Expo. Store
+# submission runs only when the STORE_SUBMIT variable is `enabled`.
+name: Build company apps
+
+on:
+  workflow_dispatch:
+    inputs:
+      company:
+        description: The company's short name (slug), or `all` for every company with apps switched on.
+        type: string
+        required: true
+      version:
+        description: Plain X.Y.Z. Empty uses the root package.json version.
+        type: string
+        required: false
+        default: ''
+      api-url:
+        description: The API these apps talk to. Empty uses the PUBLIC_API_URL variable.
+        type: string
+        required: false
+        default: ''
+      desktop-platforms:
+        description: JSON array of runner labels. Empty uses RELEASE_DESKTOP_PLATFORMS or all three.
+        type: string
+        required: false
+        default: ''
+      mobile-platforms:
+        description: android | ios | all | none. Empty uses the EAS_PLATFORMS variable (android).
+        type: string
+        required: false
+        default: ''
+  workflow_call:
+    inputs:
+      company:
+        type: string
+        required: true
+      version:
+        type: string
+        required: true
+      api-url:
+        type: string
+        required: true
+      desktop-platforms:
+        type: string
+        required: true
+      mobile-platforms:
+        type: string
+        required: true
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Which companies, which version, which API
+  # ---------------------------------------------------------------------------
+  resolve:
+    name: Resolve companies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      companies: ${{ steps.list.outputs.companies }}
+      version: ${{ steps.inputs.outputs.version }}
+      api_url: ${{ steps.inputs.outputs.api_url }}
+      desktop_platforms: ${{ steps.inputs.outputs.desktop_platforms }}
+      mobile_platforms: ${{ steps.inputs.outputs.mobile_platforms }}
+      build_mobile: ${{ steps.inputs.outputs.build_mobile }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: inputs
+        env:
+          IN_VERSION: ${{ inputs.version }}
+          IN_API_URL: ${{ inputs.api-url }}
+          IN_DESKTOP: ${{ inputs.desktop-platforms }}
+          IN_MOBILE: ${{ inputs.mobile-platforms }}
+          VAR_API_URL: ${{ vars.PUBLIC_API_URL }}
+          VAR_DESKTOP: ${{ vars.RELEASE_DESKTOP_PLATFORMS }}
+          VAR_MOBILE: ${{ vars.EAS_PLATFORMS }}
+          EAS_BUILDS: ${{ vars.EAS_BUILDS }}
+        run: |
+          set -euo pipefail
+          version="${IN_VERSION:-$(node -p 'require("./package.json").version')}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::The version must be plain X.Y.Z (got '$version')."; exit 1
+          fi
+          api_url="${IN_API_URL:-$VAR_API_URL}"
+          case "$api_url" in
+            https://*) ;;
+            *) echo "::error::No https API address. Set the PUBLIC_API_URL repository variable or pass api-url."; exit 1 ;;
+          esac
+          desktop="${IN_DESKTOP:-${VAR_DESKTOP:-[\"ubuntu-latest\",\"windows-latest\",\"macos-latest\"]}}"
+          mobile="${IN_MOBILE:-${VAR_MOBILE:-android}}"
+          build_mobile=true
+          if [ "$mobile" = none ] || [ "$EAS_BUILDS" != enabled ]; then build_mobile=false; fi
+          {
+            echo "version=$version"
+            echo "api_url=$api_url"
+            echo "desktop_platforms=$desktop"
+            echo "mobile_platforms=$mobile"
+            echo "build_mobile=$build_mobile"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building $version against $api_url (desktop $desktop, mobile $mobile, EAS enabled: $build_mobile)"
+
+      - id: list
+        env:
+          COMPANY: ${{ inputs.company }}
+          API_URL: ${{ steps.inputs.outputs.api_url }}
+          BUILD_TOKEN: ${{ secrets.BUILD_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "$COMPANY" = all ]; then
+            if [ -z "$BUILD_TOKEN" ]; then
+              echo "::error::Building for every company needs the BUILD_TOKEN secret, the same value the API has as BUILD_TOKEN."; exit 1
+            fi
+            response=$(curl -fsS "$API_URL/v1/build/companies" \
+              -H "authorization: Bearer $BUILD_TOKEN" \
+              -H 'x-client-app: web' -H 'x-client-version: 1.0.0')
+            companies=$(node -e 'const r=JSON.parse(process.argv[1]); console.log(JSON.stringify(r.items.map(i=>i.slug)))' "$response")
+          else
+            if ! [[ "$COMPANY" =~ ^[a-z0-9][a-z0-9-]*[a-z0-9]$ ]]; then
+              echo "::error::'$COMPANY' is not a company short name (lower case letters, digits, hyphens)."; exit 1
+            fi
+            # Fail here, with a clear message, rather than in three desktop jobs.
+            curl -fsS "$API_URL/v1/public/companies/$COMPANY/brand" \
+              -H 'x-client-app: web' -H 'x-client-version: 1.0.0' >/dev/null \
+              || { echo "::error::No company with short name '$COMPANY' at $API_URL."; exit 1; }
+            companies="[\"$COMPANY\"]"
+          fi
+          if [ "$companies" = '[]' ]; then
+            echo "::notice::No company has apps switched on. Nothing to build."
+          fi
+          echo "companies=$companies" >> "$GITHUB_OUTPUT"
+          echo "Companies: $companies" >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Desktop installers, one matrix cell per company and platform
+  # ---------------------------------------------------------------------------
+  desktop:
+    name: Desktop (${{ matrix.company }}, ${{ matrix.platform }})
+    needs: resolve
+    if: needs.resolve.outputs.companies != '[]' && vars.DESKTOP_BUILDS != 'disabled'
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        company: ${{ fromJSON(needs.resolve.outputs.companies) }}
+        platform: ${{ fromJSON(needs.resolve.outputs.desktop_platforms) }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache the Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+          key: ${{ matrix.platform }}
+
+      - name: Install Linux webview dependencies
+        if: startsWith(matrix.platform, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            libxdo-dev libssl-dev patchelf file
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The brand: name, colours, and where the icon is. Public, so a build
+      # needs no credential to know whose it is.
+      - name: Fetch the company's brand and icon
+        id: brand
+        shell: bash
+        env:
+          API_URL: ${{ needs.resolve.outputs.api_url }}
+          SLUG: ${{ matrix.company }}
+        run: |
+          set -euo pipefail
+          mkdir -p company
+          curl -fsS "$API_URL/v1/public/companies/$SLUG/brand" \
+            -H 'x-client-app: desktop' -H 'x-client-version: 1.0.0' > company/brand.json
+          node -e 'const b=require("./company/brand.json"); console.log("brand:", b.name, b.brandColour, b.shellColour, b.defaultTheme)'
+          icon_path=$(node -p 'require("./company/brand.json").appIconPath ?? ""')
+          if [ -n "$icon_path" ]; then
+            curl -fsSL "$API_URL$icon_path" -H 'x-client-app: desktop' -H 'x-client-version: 1.0.0' -o company/icon.png
+            echo "has_icon=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No app icon set for $SLUG; the product's own icon is used."
+            echo "has_icon=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Stamp the company into the bundle
+        shell: bash
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          API_URL: ${{ needs.resolve.outputs.api_url }}
+        run: |
+          set -euo pipefail
+          node apps/desktop/scripts/stamp.mjs \
+            --version "$VERSION" --api-url "$API_URL" --flavor company --brand company/brand.json
+
+      # `tauri icon` writes every size the three platforms need from one square
+      # PNG. A company without an icon keeps the product's.
+      - name: Generate the icons from the company's app icon
+        if: steps.brand.outputs.has_icon == 'true'
+        shell: bash
+        run: pnpm --filter @integr8/desktop exec tauri icon "$GITHUB_WORKSPACE/company/icon.png"
+
+      - name: Build the workspace packages the app imports
+        run: pnpm build
+
+      - name: Build the installer
+        id: tauri
+        uses: tauri-apps/tauri-action@v0
+        env:
+          VITE_API_BASE_URL: ${{ needs.resolve.outputs.api_url }}
+          VITE_APP_ENV: production
+          VITE_APP_VERSION: ${{ needs.resolve.outputs.version }}
+          VITE_APP_FLAVOR: company
+          VITE_COMPANY_SLUG: ${{ matrix.company }}
+          VITE_SENTRY_DSN: ${{ vars.DESKTOP_PUBLIC_SENTRY_DSN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+
+      - name: Collect the installers
+        shell: bash
+        env:
+          PATHS: ${{ steps.tauri.outputs.artifactPaths }}
+        run: |
+          set -euo pipefail
+          mkdir -p collected
+          node -e '
+            const fs = require("node:fs");
+            const path = require("node:path");
+            for (const from of JSON.parse(process.env.PATHS)) {
+              if (!fs.statSync(from).isFile()) { console.log("skipped (not a file)", path.basename(from)); continue; }
+              fs.copyFileSync(from, path.join("collected", path.basename(from)));
+              console.log("collected", path.basename(from));
+            }
+          '
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: company-${{ matrix.company }}-desktop-${{ matrix.platform }}
+          path: collected/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Phone apps on Expo, one per company
+  # ---------------------------------------------------------------------------
+  mobile:
+    name: Mobile (${{ matrix.company }})
+    needs: resolve
+    if: needs.resolve.outputs.companies != '[]' && needs.resolve.outputs.build_mobile == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        company: ${{ fromJSON(needs.resolve.outputs.companies) }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      # apps/mobile/app.config.ts reads company.json and company/icon.png and
+      # becomes that company's app: its name, bundle identifiers, icon and
+      # colours. Both files are git-ignored; EAS uploads the working tree.
+      - name: Fetch the company's brand and icon
+        working-directory: apps/mobile
+        env:
+          API_URL: ${{ needs.resolve.outputs.api_url }}
+          SLUG: ${{ matrix.company }}
+        run: |
+          set -euo pipefail
+          curl -fsS "$API_URL/v1/public/companies/$SLUG/brand" \
+            -H 'x-client-app: mobile' -H 'x-client-version: 1.0.0' > company.json
+          icon_path=$(node -p 'require("./company.json").appIconPath ?? ""')
+          if [ -n "$icon_path" ]; then
+            mkdir -p company
+            curl -fsSL "$API_URL$icon_path" -H 'x-client-app: mobile' -H 'x-client-version: 1.0.0' -o company/icon.png
+          fi
+          npx expo config --type public --json > resolved.json
+          node -e 'const c=require("./resolved.json"); console.log("app:", c.name, c.ios?.bundleIdentifier, c.android?.package, "channel: production-" + process.env.SLUG)'
+
+      # Waits for the build so the binaries can be attached to the release and
+      # submitted. Each company has its own update channel, so an over-the-air
+      # fix reaches only that company's phones; the channel lives in eas.json,
+      # so the profile is rewritten for this run (the file is not committed).
+      #
+      # The profile follows where the app is going: `production` is a store
+      # bundle (.aab) for when STORE_SUBMIT is enabled; otherwise
+      # `production-internal`, the same app as an .apk a phone installs from
+      # the release's download link.
+      - name: Build on Expo
+        working-directory: apps/mobile
+        env:
+          PLATFORMS: ${{ needs.resolve.outputs.mobile_platforms }}
+          SLUG: ${{ matrix.company }}
+          ASC_APP_IDS: ${{ vars.ASC_APP_IDS }}
+          PROFILE: ${{ vars.STORE_SUBMIT == 'enabled' && 'production' || 'production-internal' }}
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("node:fs");
+            const eas = JSON.parse(fs.readFileSync("eas.json", "utf8"));
+            eas.build.production.channel = `production-${process.env.SLUG}`;
+            eas.build["production-internal"].channel = `production-${process.env.SLUG}`;
+            let ids = {};
+            try { ids = JSON.parse(process.env.ASC_APP_IDS || "{}"); } catch {}
+            const ascAppId = ids[process.env.SLUG];
+            if (ascAppId) { eas.submit.production.ios = { ...(eas.submit.production.ios ?? {}), ascAppId: String(ascAppId) }; }
+            fs.writeFileSync("eas.json", JSON.stringify(eas, null, 2) + "\n");
+            console.log("channel:", eas.build.production.channel, "ascAppId:", ascAppId ?? "(none)");
+          '
+          echo "profile: $PROFILE"
+          eas build --platform "$PLATFORMS" --profile "$PROFILE" --non-interactive --json > builds.json
+          node -e '
+            for (const b of require("./builds.json")) {
+              console.log(b.platform, b.status, b.artifacts?.buildUrl ?? "", b.artifacts?.applicationArchiveUrl ?? "");
+            }
+          '
+
+      - name: Download the Android app for the release
+        working-directory: apps/mobile
+        env:
+          SLUG: ${{ matrix.company }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p ../../mobile-out
+          node -e '
+            const fs = require("node:fs");
+            const lines = [];
+            for (const b of require("./builds.json")) {
+              const url = b.artifacts?.applicationArchiveUrl ?? b.artifacts?.buildUrl ?? "";
+              lines.push(`- ${b.platform}: ${url}`);
+            }
+            fs.writeFileSync("../../mobile-out/eas-builds.md", lines.join("\n") + "\n");
+          '
+          url=$(node -p 'const b=require("./builds.json").find(b=>b.platform==="ANDROID"); b?.artifacts?.applicationArchiveUrl ?? ""')
+          if [ -n "$url" ]; then
+            ext="${url##*.}"; case "$ext" in apk|aab) ;; *) ext=aab ;; esac
+            curl -fsSL "$url" -o "../../mobile-out/integr8-${SLUG}-${VERSION}.${ext}"
+          fi
+          cp builds.json ../../mobile-out/eas-builds.json
+          ls -la ../../mobile-out
+
+      # Store submission, only when the deployment has said so. Android goes to
+      # the Play Console's internal track with a service-account key; iOS needs
+      # an App Store Connect API key and the app record's id per company,
+      # given as the ASC_APP_IDS variable: {"acme":"1234567890"}.
+      - name: Submit to Google Play
+        if: vars.STORE_SUBMIT == 'enabled' && contains(fromJSON('["android","all"]'), needs.resolve.outputs.mobile_platforms)
+        working-directory: apps/mobile
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GOOGLE_SERVICE_ACCOUNT_KEY" ]; then
+            echo "::warning::STORE_SUBMIT is enabled but the GOOGLE_SERVICE_ACCOUNT_KEY secret is missing; Android was not submitted."; exit 0
+          fi
+          printf '%s' "$GOOGLE_SERVICE_ACCOUNT_KEY" > google-service-account.json
+          id=$(node -p 'require("./builds.json").find(b=>b.platform==="ANDROID")?.id ?? ""')
+          [ -n "$id" ] || { echo "No Android build to submit."; exit 0; }
+          eas submit --platform android --id "$id" --profile production --non-interactive
+          rm -f google-service-account.json
+
+      - name: Submit to the App Store
+        if: vars.STORE_SUBMIT == 'enabled' && contains(fromJSON('["ios","all"]'), needs.resolve.outputs.mobile_platforms)
+        working-directory: apps/mobile
+        env:
+          SLUG: ${{ matrix.company }}
+          ASC_API_KEY: ${{ secrets.ASC_API_KEY }}
+          EXPO_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_APP_IDS: ${{ vars.ASC_APP_IDS }}
+        run: |
+          set -euo pipefail
+          app_id=$(node -p 'try { (JSON.parse(process.env.ASC_APP_IDS || "{}")[process.env.SLUG]) ?? "" } catch { "" }')
+          if [ -z "$ASC_API_KEY" ] || [ -z "$EXPO_ASC_KEY_ID" ] || [ -z "$EXPO_ASC_ISSUER_ID" ] || [ -z "$app_id" ]; then
+            echo "::warning::iOS was not submitted for $SLUG: needs the ASC_API_KEY, ASC_KEY_ID and ASC_ISSUER_ID secrets and this company's App Store Connect app id in the ASC_APP_IDS variable."; exit 0
+          fi
+          printf '%s' "$ASC_API_KEY" > asc-api-key.p8
+          id=$(node -p 'require("./builds.json").find(b=>b.platform==="IOS")?.id ?? ""')
+          [ -n "$id" ] || { echo "No iOS build to submit."; exit 0; }
+          # The app id was written into the submit profile by the build step.
+          EXPO_ASC_API_KEY_PATH="$PWD/asc-api-key.p8" eas submit --platform ios --id "$id" --profile production --non-interactive
+          rm -f asc-api-key.p8
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: company-${{ matrix.company }}-mobile
+          path: mobile-out/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # One release per company, holding its installers and its Android app
+  # ---------------------------------------------------------------------------
+  release:
+    name: Release (${{ matrix.company }})
+    needs: [resolve, desktop, mobile]
+    # Desktop or mobile may have been switched off; a release is still made of
+    # whatever was built. A failed build fails this job through the artifacts.
+    if: always() && needs.resolve.outputs.companies != '[]' && needs.resolve.result == 'success' && !contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        company: ${{ fromJSON(needs.resolve.outputs.companies) }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: company-${{ matrix.company }}-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create the company's release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SLUG: ${{ matrix.company }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+          API_URL: ${{ needs.resolve.outputs.api_url }}
+        run: |
+          set -euo pipefail
+          tag="company-${SLUG}-v${VERSION}"
+          ls -la dist || true
+          name=$(curl -fsS "$API_URL/v1/public/companies/$SLUG/brand" -H 'x-client-app: web' -H 'x-client-version: 1.0.0' | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).name')
+          {
+            echo "Apps built for **${name}** (\`${SLUG}\`) at version ${VERSION}, talking to ${API_URL}."
+            echo
+            echo "Desktop installers are attached below. Give customers the link to the file for their system."
+            echo
+            if [ -f dist/eas-builds.md ]; then
+              echo "Phone builds on Expo:"
+              echo
+              cat dist/eas-builds.md
+              echo
+            fi
+            echo "Over-the-air update channel: \`production-${SLUG}\`."
+          } > notes.md
+          rm -f dist/eas-builds.md dist/eas-builds.json
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::$tag already exists. Bump the version, or delete that release first."; exit 1
+          fi
+          files=$(ls dist 2>/dev/null | sed 's#^#dist/#' | tr '\n' ' ')
+          # shellcheck disable=SC2086
+          gh release create "$tag" $files --title "${name} ${VERSION}" --notes-file notes.md --target "$GITHUB_SHA"
+          echo "[\`$tag\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${tag})" >> "$GITHUB_STEP_SUMMARY"

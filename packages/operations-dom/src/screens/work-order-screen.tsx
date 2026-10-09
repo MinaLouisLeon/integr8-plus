@@ -9,16 +9,19 @@ import { keys, useOperations, type WorkOrderDetail, type WorkOrderState } from '
 import { CrewPicker, type CrewMember } from '../crew.js';
 import {
   addressText,
+  BackLink,
   buttonClass,
   cardClass,
   Dialog,
   Failure,
   Field,
+  InlineError,
   inputClass,
   Loading,
   PriorityBadge,
   StateBadge,
   useDuration,
+  usePermissions,
   when,
 } from '../ui.js';
 
@@ -51,11 +54,19 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
     void queryClient.invalidateQueries({ queryKey: ['work-orders', 'list'] });
   };
 
-  if (detail.isPending) {
-    return <Loading />;
-  }
-  if (detail.isError) {
-    return <Failure error={detail.error} onRetry={() => void detail.refetch()} />;
+  const back = <BackLink to={paths.workOrders} label={t('operations.workOrder.back')} />;
+
+  if (detail.isPending || detail.isError) {
+    return (
+      <div className="flex flex-col gap-6 text-start">
+        {back}
+        {detail.isPending ? (
+          <Loading />
+        ) : (
+          <Failure error={detail.error} onRetry={() => void detail.refetch()} />
+        )}
+      </div>
+    );
   }
 
   const job = detail.data;
@@ -63,19 +74,7 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
 
   return (
     <div className="flex flex-col gap-6 text-start">
-      <a
-        href={paths.workOrders}
-        className="text-sm text-accent underline-offset-4 hover:underline"
-        onClick={(event) => {
-          event.preventDefault();
-          navigate(paths.workOrders);
-        }}
-      >
-        <span aria-hidden="true" className="inline-block rtl:-scale-x-100">
-          ←
-        </span>{' '}
-        {t('operations.workOrder.back')}
-      </a>
+      {back}
 
       <AccessNotesPanel
         access={site.access}
@@ -601,6 +600,7 @@ function Forms({
 }) {
   const { t } = useTranslation();
   const { client, navigate, paths } = useOperations();
+  const permissions = usePermissions();
   const [adding, setAdding] = useState(false);
   const [formId, setFormId] = useState('');
   const [required, setRequired] = useState(true);
@@ -645,6 +645,16 @@ function Forms({
   });
 
   const closed = ['complete', 'reviewed', 'cancelled'].includes(job.workOrder.state);
+  // Taking a form off a job is the office's call, not the crew's.
+  const mayRemove = job.can.edit && permissions.includes('work_order.manage');
+  const canStart = job.can.work && !closed;
+  // A form already on the job is not offered again.
+  const attachable =
+    forms.data?.filter(
+      (form) =>
+        form.latestVersionNumber !== null &&
+        !job.forms.some((attached) => attached.formId === form.id),
+    ) ?? [];
 
   return (
     <section aria-labelledby="forms-heading" className={cardClass}>
@@ -666,16 +676,54 @@ function Forms({
       <ul className="flex flex-col divide-y divide-border-subtle">
         {job.forms.map((form) => (
           <li key={form.formId} className="flex flex-wrap items-center justify-between gap-2 py-2">
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-content">{form.title}</span>
-              <span className="text-xs text-content-muted">
-                {form.required
-                  ? t('operations.workOrder.required')
-                  : t('operations.workOrder.optional')}{' '}
-                ·{' '}
-                {form.submission === null
-                  ? t('operations.workOrder.notStarted')
-                  : t(`submissions.status.${form.submission.status}`)}
+            <div className="flex flex-col items-start gap-0.5">
+              {form.submission !== null ? (
+                <a
+                  href={paths.submission(form.submission.id)}
+                  dir="auto"
+                  className="text-start text-sm font-medium text-accent underline-offset-4 hover:underline"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    navigate(paths.submission(form.submission!.id));
+                  }}
+                >
+                  {form.title}
+                </a>
+              ) : canStart ? (
+                <button
+                  type="button"
+                  dir="auto"
+                  className="text-start text-sm font-medium text-accent underline-offset-4 hover:underline"
+                  disabled={start.isPending}
+                  aria-label={t('operations.workOrder.attached.startNamed', { title: form.title })}
+                  onClick={() => start.mutate(form.formId)}
+                >
+                  {form.title}
+                </button>
+              ) : (
+                <span dir="auto" className="text-sm font-medium text-content">
+                  {form.title}
+                </span>
+              )}
+              <span className="flex flex-wrap items-center gap-2 text-xs text-content-muted">
+                <span>
+                  {form.required
+                    ? t('operations.workOrder.required')
+                    : t('operations.workOrder.optional')}
+                </span>
+                <span
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 font-medium ${
+                    form.submission === null
+                      ? 'border-border-subtle bg-surface-muted text-content'
+                      : form.submission.status === 'submitted'
+                        ? 'border-success bg-success-subtle text-content'
+                        : 'border-accent bg-surface text-content'
+                  }`}
+                >
+                  {form.submission === null
+                    ? t('operations.workOrder.notStarted')
+                    : t(`submissions.status.${form.submission.status}`)}
+                </span>
               </span>
             </div>
             <div className="flex gap-2">
@@ -689,7 +737,7 @@ function Forms({
                     ? t('operations.workOrder.continue')
                     : t('operations.workOrder.view')}
                 </button>
-              ) : job.can.work && !closed ? (
+              ) : canStart ? (
                 <button
                   type="button"
                   className={buttonClass.primary}
@@ -699,11 +747,12 @@ function Forms({
                   {t('operations.workOrder.fill')}
                 </button>
               ) : null}
-              {form.submission === null && job.can.edit ? (
+              {form.submission === null && mayRemove ? (
                 <button
                   type="button"
                   className={buttonClass.ghost}
-                  aria-label={`${t('operations.workOrder.removeForm')} ${form.title}`}
+                  aria-label={t('operations.workOrder.attached.removeNamed', { title: form.title })}
+                  disabled={remove.isPending}
                   onClick={() => remove.mutate(form.formId)}
                 >
                   {t('operations.workOrder.removeForm')}
@@ -733,16 +782,20 @@ function Forms({
                   onChange={(event) => setFormId(event.target.value)}
                 >
                   <option value="">{t('operations.jobTypes.chooseForm')}</option>
-                  {forms.data
-                    ?.filter((form) => form.latestVersionNumber !== null)
-                    .map((form) => (
-                      <option key={form.id} value={form.id}>
-                        {form.title}
-                      </option>
-                    ))}
+                  {attachable.map((form) => (
+                    <option key={form.id} value={form.id}>
+                      {form.title}
+                    </option>
+                  ))}
                 </select>
               )}
             </Field>
+            {forms.isError ? <InlineError onRetry={() => void forms.refetch()} /> : null}
+            {forms.isSuccess && attachable.length === 0 ? (
+              <p className="text-sm text-content-muted">
+                {t('operations.workOrder.attached.allAttached')}
+              </p>
+            ) : null}
             <label className="flex items-center gap-2 text-sm text-content">
               <input
                 type="checkbox"
@@ -767,15 +820,19 @@ function Forms({
                 {t('common.cancel')}
               </button>
             </div>
-            {add.isError ? <Failure error={add.error} /> : null}
+            {add.isError ? <Failure error={add.error} onRetry={() => add.mutate()} /> : null}
           </form>
         ) : (
           <button
             type="button"
             className={`${buttonClass.ghost} self-start`}
-            onClick={() => setAdding(true)}
+            onClick={() => {
+              add.reset();
+              setAdding(true);
+            }}
           >
-            + {t('operations.workOrder.addForm')}
+            <span aria-hidden="true">+</span>
+            {t('operations.workOrder.addForm')}
           </button>
         )
       ) : null}

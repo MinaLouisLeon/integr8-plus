@@ -2,7 +2,19 @@ import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { type JobType, keys, type Priority, useOperations } from '../api.js';
-import { buttonClass, cardClass, Dialog, Failure, Field, inputClass, Loading } from '../ui.js';
+import {
+  buttonClass,
+  cardClass,
+  copyText,
+  DashboardBackLink,
+  Dialog,
+  Failure,
+  Field,
+  InlineError,
+  inputClass,
+  Loading,
+  useRowMenu,
+} from '../ui.js';
 
 interface Draft {
   id?: string;
@@ -82,9 +94,11 @@ export function JobTypesScreen() {
     queryFn: async () => (await client.GET('/v1/me')).data!,
   });
   const manage = me.data?.permissions.includes('job_type.manage') ?? false;
+  const rowMenu = useRowMenu();
 
   return (
     <div className="flex flex-col gap-6 text-start">
+      <DashboardBackLink />
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold text-content">{t('operations.jobTypes.title')}</h1>
         <div className="flex flex-wrap items-center gap-3">
@@ -103,6 +117,7 @@ export function JobTypesScreen() {
           ) : null}
         </div>
       </header>
+      {me.isError ? <InlineError onRetry={() => void me.refetch()} /> : null}
 
       {types.isPending ? (
         <Loading />
@@ -115,7 +130,26 @@ export function JobTypesScreen() {
       ) : (
         <ul className="grid gap-4 md:grid-cols-2">
           {types.data.map((type) => (
-            <li key={type.id} className={cardClass}>
+            <li
+              key={type.id}
+              className={cardClass}
+              onContextMenu={rowMenu({ kind: 'jobType', id: type.id, label: type.name }, () => [
+                ...(manage
+                  ? [
+                      {
+                        key: 'edit',
+                        label: t('operations.rowActions.edit'),
+                        onSelect: () => setEditing(toDraft(type)),
+                      },
+                    ]
+                  : []),
+                {
+                  key: 'copyId',
+                  label: t('operations.rowActions.copyId'),
+                  onSelect: () => copyText(type.id),
+                },
+              ])}
+            >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="flex flex-col">
                   <h2 className="text-lg font-semibold text-content">
@@ -472,7 +506,8 @@ function JobTypeDialog({ draft: initial, onClose }: { draft: Draft; onClose: () 
           className={`${buttonClass.ghost} self-start`}
           onClick={() => setDraft({ ...draft, checklist: [...draft.checklist, { label: '' }] })}
         >
-          + {t('operations.jobTypes.addItem')}
+          <span aria-hidden="true">+</span>
+          {t('operations.jobTypes.addItem')}
         </button>
       </fieldset>
 
@@ -561,6 +596,7 @@ function JobTypeDialog({ draft: initial, onClose }: { draft: Draft; onClose: () 
             {t('operations.common.add')}
           </button>
         </div>
+        {forms.isError ? <InlineError onRetry={() => void forms.refetch()} /> : null}
       </fieldset>
 
       {save.isError ? <Failure error={save.error} /> : null}

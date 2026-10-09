@@ -81,8 +81,10 @@ describe('the generated document', () => {
     const signIn = operation('/v1/auth/sign-in', 'post').responses as Record<string, unknown>;
 
     // It *declares* 401 as one of its own outcomes, which is different from the
-    // universal set — so the check is that 403 (a permission failure) is absent.
-    expect(signIn['403']).toBeUndefined();
+    // universal set — so the check is that no permission failure is added to
+    // it. Its one 403 is its own: an app built for another company (0022).
+    const forbidden = signIn['403'] as { description: string } | undefined;
+    expect(forbidden?.description).toContain('wrong_company');
   });
 
   it('describes path parameters as required', () => {

@@ -1,4 +1,5 @@
 import { useTranslation } from '@integr8/i18n';
+import { router } from 'expo-router';
 import { useBrand } from '~/components/brand';
 import { colours, fontSize, radii, spacing, type SemanticColours } from '@integr8/tokens';
 import type { ReactNode } from 'react';
@@ -29,12 +30,15 @@ import {
  */
 
 export function useTheme(): SemanticColours {
-  // Follows the operating system. An in-app override lands with the settings
-  // screen; until then, matching the phone is the behaviour people expect.
-  const base = useColorScheme() === 'dark' ? colours.dark : colours.light;
-  // The company's own accent, when it has one: see `brand.tsx`.
-  const { accent } = useBrand();
-  return accent === null ? base : { ...base, ...accent, focus: accent.accent };
+  // The company decides the default theme; `system` follows the operating
+  // system, which is what the generic app always did. An in-app override lands
+  // with the settings screen.
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const { accent, shell, defaultTheme } = useBrand();
+  const base = colours[defaultTheme === 'system' ? scheme : defaultTheme];
+  // The company's own accent and shell, when it has them: see `brand.tsx`.
+  const withAccent = accent === null ? base : { ...base, ...accent, focus: accent.accent };
+  return shell === null ? withAccent : { ...withAccent, ...shell };
 }
 
 export function Screen({ children }: { children: ReactNode }) {
@@ -291,6 +295,43 @@ export function ErrorState({
 }
 
 /**
+ * Back, at the start of the row. Every screen pushed on top of another shows
+ * it from its first frame — while it reads, and when the read fails — so
+ * nobody is ever stranded on a blank screen.
+ */
+export function BackButton() {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.back}>
+      <Button label={t('mobile.back')} variant="secondary" onPress={() => router.back()} />
+    </View>
+  );
+}
+
+/**
+ * What a detail screen shows until its read is ready: Back, and the error if
+ * the read failed. Nothing else, because a read from SQLite takes milliseconds.
+ */
+export function NotReadyScreen({ failed }: { failed: boolean }) {
+  return (
+    <ScrollScreen>
+      <BackButton />
+      {failed ? <LocalReadError /> : null}
+    </ScrollScreen>
+  );
+}
+
+/**
+ * A read from the phone's own database that failed: the one error a screen
+ * built on `useLocalQuery` can meet. Rare — SQLite on the phone does not time
+ * out — so when it happens the words say what to do rather than guess why.
+ */
+export function LocalReadError({ onRetry }: { onRetry?: (() => void) | undefined }) {
+  const { t } = useTranslation();
+  return <ErrorState message={t('mobile.readFailed')} onRetry={onRetry} />;
+}
+
+/**
  * Logical, not physical — with one difference from CSS worth knowing.
  *
  * For spacing, React Native uses `paddingStart` / `marginEnd`, which mirror
@@ -303,6 +344,7 @@ export function ErrorState({
  */
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  back: { alignItems: 'flex-start' },
   scrollInner: {
     gap: spacing[4],
     paddingHorizontal: spacing[4],

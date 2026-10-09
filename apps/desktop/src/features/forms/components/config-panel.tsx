@@ -1,7 +1,9 @@
 import {
   AGGREGATE_OPERATORS,
   type ArithmeticOperator,
+  choiceValues,
   type ConditionModel,
+  type DependsOn,
   type Expression,
   type Field,
   findField,
@@ -10,6 +12,7 @@ import {
   generateId,
   locate,
   referencedFields,
+  revealing,
   type LocalizedText,
   type Rule,
   type Section,
@@ -17,7 +20,7 @@ import {
   updatePage,
   updateSection,
 } from '@integr8/form-engine';
-import { useTranslation } from '@integr8/i18n';
+import { type TFunction, useTranslation } from '@integr8/i18n';
 import { useId, useState, type ReactNode } from 'react';
 import { Button } from '~/components/ui';
 import {
@@ -290,6 +293,17 @@ function FieldPanel({
         />
       </Group>
 
+      {calculated ? null : (
+        <Group title={t('forms.config.groups.required')}>
+          <RequiredWhenEditor
+            definition={definition}
+            field={field}
+            locale={locale}
+            onChange={(expression) => set({ requiredWhen: expression })}
+          />
+        </Group>
+      )}
+
       <Group title={t('forms.config.groups.checks')}>
         <ChecksEditor
           definition={definition}
@@ -299,6 +313,177 @@ function FieldPanel({
         />
       </Group>
     </fieldset>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Required only when — the same condition editor, with other words
+// ---------------------------------------------------------------------------
+
+/**
+ * "Required when Result is Fail." The fixed "Must be answered" toggle and this
+ * rule are exclusive: while the toggle is on the rule is greyed out, since a
+ * question that is always required cannot be required only sometimes.
+ */
+function RequiredWhenEditor({
+  definition,
+  field,
+  locale,
+  onChange,
+}: {
+  definition: FormDefinition;
+  field: Field;
+  locale: string;
+  onChange: (expression: Expression | undefined) => void;
+}) {
+  const { t } = useTranslation();
+  const fixed = field.required === true;
+  return (
+    <div className="flex flex-col gap-2">
+      {fixed ? (
+        <p className="text-sm text-content-muted">
+          {t('forms.config.requiredWhen.fixed')}{' '}
+          <span className="text-xs">{t('forms.config.requiredWhen.fixedHint')}</span>
+        </p>
+      ) : null}
+      <fieldset disabled={fixed} className={fixed ? 'opacity-60' : undefined}>
+        <VisibilityEditor
+          definition={definition}
+          elementId={field.id}
+          expression={field.requiredWhen}
+          locale={locale}
+          onChange={onChange}
+          wording={{
+            always: t('forms.config.requiredWhen.optional'),
+            addFirst: t('forms.config.requiredWhen.addFirst'),
+            lead: t('forms.config.requiredWhen.lead'),
+          }}
+        />
+      </fieldset>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Dependent choices — "Area" narrows "Room"
+// ---------------------------------------------------------------------------
+
+/** The choice questions whose answer may narrow this one: in scope, and not read across entries. */
+export function dependencyCandidates(definition: FormDefinition, fieldId: string): Field[] {
+  return subjectsFor(definition, fieldId).flatMap((subject) =>
+    subject.kind === 'field' &&
+    subject.across === undefined &&
+    choiceValues(subject.field) !== undefined
+      ? [subject.field]
+      : [],
+  );
+}
+
+/** How a parent's option is named: its label, or Yes, No and Not applicable. */
+function parentOptionLabel(parent: Field, value: string, locale: string, t: TFunction): string {
+  if (parent.type === 'yes_no') {
+    return value === 'yes'
+      ? t('forms.config.yes')
+      : value === 'no'
+        ? t('forms.config.no')
+        : t('forms.config.notApplicable');
+  }
+  const option = 'options' in parent ? parent.options.find((o) => o.value === value) : undefined;
+  return option === undefined ? value : say(option.label, locale) || value;
+}
+
+/**
+ * Which question this one's options follow, then for each of its options the
+ * parent's answers that reveal it. An option with nothing ticked is offered
+ * whatever the answer, so a fresh dependency changes nothing until a box is.
+ */
+function DependsOnEditor({
+  definition,
+  field,
+  value,
+  locale,
+  onChange,
+}: {
+  definition: FormDefinition;
+  field: Field;
+  value: DependsOn | undefined;
+  locale: string;
+  onChange: (value: DependsOn | undefined) => void;
+}) {
+  const { t } = useTranslation();
+  const candidates = dependencyCandidates(definition, field.id);
+  const parent = value === undefined ? undefined : findField(definition, value.field);
+  const own = 'options' in field ? field.options : [];
+  const label = t('forms.config.property.dependsOn');
+
+  const toggle = (option: string, parentValue: string, checked: boolean) => {
+    if (value === undefined) {
+      return;
+    }
+    const current = revealing(value, option) ?? [];
+    const next = checked
+      ? [...current.filter((candidate) => candidate !== parentValue), parentValue]
+      : current.filter((candidate) => candidate !== parentValue);
+    const options = { ...value.options };
+    if (next.length === 0) {
+      delete options[option];
+    } else {
+      options[option] = next;
+    }
+    onChange({ field: value.field, options });
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-0.5">
+        <SelectInput
+          label={label}
+          value={value?.field ?? ''}
+          options={[
+            { value: '', label: t('forms.config.dependsOn.none') },
+            ...candidates.map((candidate) => ({
+              value: candidate.id,
+              label: say(candidate.label, locale) || candidate.id,
+            })),
+          ]}
+          onChange={(next) => onChange(next === '' ? undefined : { field: next, options: {} })}
+        />
+        <p className="text-xs text-content-muted">
+          {candidates.length === 0
+            ? t('forms.config.dependsOn.noParents')
+            : t('forms.config.dependsOn.hint')}
+        </p>
+      </div>
+      {value === undefined || parent === undefined ? null : (
+        <ul className="flex flex-col gap-3">
+          {own.map((option) => {
+            const revealedBy = revealing(value, option.value) ?? [];
+            const optionName = say(option.label, locale) || option.value;
+            return (
+              <li key={option.value} className="flex flex-col gap-1">
+                <span className="text-sm text-content">
+                  {t('forms.config.dependsOn.forOption', {
+                    option: optionName,
+                    question: say(parent.label, locale) || parent.id,
+                  })}
+                </span>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 ps-3">
+                  {(choiceValues(parent) ?? []).map((parentValue) => (
+                    <Toggle
+                      key={parentValue}
+                      label={parentOptionLabel(parent, parentValue, locale, t)}
+                      checked={revealedBy.includes(parentValue)}
+                      onChange={(checked) => toggle(option.value, parentValue, checked)}
+                    />
+                  ))}
+                </div>
+              </li>
+            );
+          })}
+          <li className="text-xs text-content-muted">{t('forms.config.dependsOn.alwaysHint')}</li>
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -572,6 +757,16 @@ function PropertyInput({
                 : Math.round(megabytes * 1_048_576),
             );
           }}
+        />
+      );
+    case 'depends_on':
+      return (
+        <DependsOnEditor
+          definition={definition}
+          field={field}
+          value={value as DependsOn | undefined}
+          locale={locale}
+          onChange={onChange}
         />
       );
     case 'media_types':

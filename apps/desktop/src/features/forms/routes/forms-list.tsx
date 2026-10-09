@@ -9,6 +9,7 @@ import {
 import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMemo, useState, type FormEvent as SubmitEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { useContextMenu } from '~/components/context-menu';
 import { Button, EmptyState, ErrorState, Field, LoadingState, Shell } from '~/components/ui';
 import {
   canManageForms,
@@ -44,6 +45,7 @@ export function FormsListRoute() {
   const [copying, setCopying] = useState<FormListItem | undefined>(undefined);
   const [previewing, setPreviewing] = useState<string | undefined>(undefined);
   const copyTemplate = useCopyTemplate();
+  const menu = useContextMenu();
 
   if (forms.isPending || me.isPending) {
     return (
@@ -105,7 +107,37 @@ export function FormsListRoute() {
             </thead>
             <tbody>
               {forms.data.map((form) => (
-                <tr key={form.id} className="border-b border-border-subtle last:border-b-0">
+                <tr
+                  key={form.id}
+                  className="border-b border-border-subtle last:border-b-0"
+                  onContextMenu={(event) =>
+                    menu.open(
+                      event,
+                      [
+                        {
+                          key: 'open',
+                          label: t('forms.list.open'),
+                          onSelect: () => void navigate(`/forms/${form.id}`),
+                        },
+                        ...(manage
+                          ? [
+                              {
+                                key: 'copy',
+                                label: t('forms.list.copy'),
+                                onSelect: () => setCopying(form),
+                              },
+                            ]
+                          : []),
+                        {
+                          key: 'copyId',
+                          label: t('common.copyId'),
+                          onSelect: () => void navigator.clipboard?.writeText(form.id),
+                        },
+                      ],
+                      form.title,
+                    )
+                  }
+                >
                   <td className="px-4 py-3 font-medium text-content">
                     <Link to={`/forms/${form.id}`} className="hover:underline">
                       {form.title}

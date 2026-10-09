@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { Screen } from '~/components/ui';
+import { COMPANY } from '~/lib/company';
 import { session } from '~/lib/session';
 import { localData } from '~/local/local-data';
 import { resumeHref, savedRoute } from '~/local/resume';
@@ -15,6 +16,9 @@ import { resumeHref, savedRoute } from '~/local/resume';
  *
  * Signed in, they go back to the screen they were on when the app was last
  * closed (P14), with their jobs underneath it, so Back still leads home.
+ *
+ * Signed out, a company's own app opens on its website (`/welcome`); the
+ * generic app goes straight to sign-in, as it always has.
  */
 export default function IndexScreen() {
   useEffect(() => {
@@ -26,7 +30,7 @@ export default function IndexScreen() {
         return;
       }
       if (!allowed) {
-        router.replace('/sign-in');
+        router.replace(COMPANY === undefined ? '/sign-in' : '/welcome');
         return;
       }
       const db = await localData.open();

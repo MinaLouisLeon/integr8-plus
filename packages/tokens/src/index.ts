@@ -108,6 +108,18 @@ export interface SemanticColours {
 
   /** The keyboard focus ring. Never removed, only restyled. */
   focus: string;
+
+  /**
+   * The dashboard shell: the side menu and the top bar. Its own tokens rather
+   * than the surface's, because a company may colour the shell (0022) while
+   * the pages inside keep reading on their own surfaces.
+   */
+  shell: string;
+  shellHover: string;
+  shellActive: string;
+  shellText: string;
+  shellTextMuted: string;
+  shellBorder: string;
 }
 
 export const lightColours: SemanticColours = {
@@ -135,6 +147,13 @@ export const lightColours: SemanticColours = {
   dangerSubtle: palette.red[50],
 
   focus: palette.blue[500],
+
+  shell: palette.white,
+  shellHover: palette.slate[100],
+  shellActive: palette.blue[50],
+  shellText: palette.slate[900],
+  shellTextMuted: palette.slate[500],
+  shellBorder: palette.slate[200],
 };
 
 export const darkColours: SemanticColours = {
@@ -162,6 +181,13 @@ export const darkColours: SemanticColours = {
   dangerSubtle: palette.red[900],
 
   focus: palette.blue[300],
+
+  shell: palette.slate[900],
+  shellHover: palette.slate[800],
+  shellActive: palette.blue[900],
+  shellText: palette.slate[100],
+  shellTextMuted: palette.slate[400],
+  shellBorder: palette.slate[800],
 };
 
 export const THEMES = ['light', 'dark'] as const;
@@ -371,6 +397,12 @@ ${indent(dark)}
   --color-danger-hover: var(--colour-danger-hover);
   --color-danger-subtle: var(--colour-danger-subtle);
   --color-focus: var(--colour-focus);
+  --color-shell: var(--colour-shell);
+  --color-shell-hover: var(--colour-shell-hover);
+  --color-shell-active: var(--colour-shell-active);
+  --color-shell-text: var(--colour-shell-text);
+  --color-shell-text-muted: var(--colour-shell-text-muted);
+  --color-shell-border: var(--colour-shell-border);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -403,6 +435,9 @@ function indent(block: string): string {
 export {
   brandAccent,
   brandAccentVariables,
+  brandShell,
+  brandShellVariables,
+  type BrandShell,
   parseHexColour,
   relativeLuminance,
   type BrandAccent,

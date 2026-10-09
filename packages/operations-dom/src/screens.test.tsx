@@ -1,7 +1,9 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ImportDetail, Timesheet, WorkOrderDetail, WorkOrderState } from './api.js';
+import { CustomerListScreen } from './screens/customer-list.js';
+import { CustomerScreen } from './screens/customer-screen.js';
 import { ImportsScreen } from './screens/imports-screen.js';
 import { JobTypesScreen } from './screens/job-types-screen.js';
 import { TimesheetsScreen } from './screens/timesheets-screen.js';
@@ -814,5 +816,217 @@ describe('timesheets', () => {
     renderScreen(<TimesheetsScreen />, client);
     expect(await screen.findByText('No shifts or time on jobs in this week.')).toBeInTheDocument();
     expect(screen.queryByLabelText('Person')).not.toBeInTheDocument();
+  });
+});
+
+describe('the way back', () => {
+  it('shows the way back to the list while a job loads and when it fails to', async () => {
+    const { client } = fakeApi({
+      'GET /v1/work-orders/:id': () => apiError(500, 'internal', 'Boom'),
+    });
+    renderScreen(<WorkOrderScreen workOrderId={JOB} />, client);
+    // Loading: the link is there before anything has arrived.
+    expect(screen.getByRole('status')).toHaveTextContent('Loading');
+    expect(screen.getByRole('link', { name: 'All work orders' })).toHaveAttribute(
+      'href',
+      '/work-orders',
+    );
+    // Failed: still there, beside the retry.
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'All work orders' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  it('shows the way back from a customer that could not be loaded, and follows it', async () => {
+    const user = userEvent.setup();
+    const { client } = fakeApi({
+      'GET /v1/customers/:id': () => apiError(404, 'not_found', 'This customer does not exist.'),
+    });
+    const { navigate } = renderScreen(<CustomerScreen customerId={CUSTOMER} />, client);
+    expect(await screen.findByRole('alert')).toHaveTextContent('This customer does not exist.');
+    await user.click(screen.getByRole('link', { name: 'All customers' }));
+    expect(navigate).toHaveBeenCalledWith('/customers');
+  });
+
+  it('offers the dashboard from a list only when the app says where it is', async () => {
+    const routes = {
+      'GET /v1/me': () => ({ body: { permissions: [] } }),
+      'GET /v1/job-types': () => ({ body: { items: [] } }),
+    };
+    const { client } = fakeApi(routes);
+    const first = renderScreen(<JobTypesScreen />, client);
+    expect(
+      await screen.findByText('No job types yet. Add the kinds of job you do.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Back to Dashboard' })).not.toBeInTheDocument();
+    first.unmount();
+
+    renderScreen(<JobTypesScreen />, fakeApi(routes).client, { paths: { dashboard: '/' } });
+    expect(await screen.findByRole('link', { name: 'Back to Dashboard' })).toHaveAttribute(
+      'href',
+      '/',
+    );
+  });
+});
+
+describe('a job’s forms', () => {
+  const OTHER_FORM = '00000000-0000-4000-8000-000000000502';
+  const editable = () =>
+    detail({
+      can: { edit: true, assign: true, work: true, comment: true, transitions: [] },
+    });
+  const formList = {
+    items: [
+      { id: FORM, title: 'Gas safety record', latestVersionNumber: 2 },
+      { id: OTHER_FORM, title: 'Risk assessment', latestVersionNumber: 1 },
+    ],
+  };
+
+  it('does not offer a form that is already on the job, and says why adding one failed', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = fakeApi({
+      'GET /v1/work-orders/:id': () => ({ body: editable() }),
+      'GET /v1/forms': () => ({ body: formList }),
+      'POST /v1/work-orders/:id/forms': () =>
+        apiError(409, 'work_order_closed', 'This job is closed, so its forms cannot change.'),
+    });
+    renderScreen(<WorkOrderScreen workOrderId={JOB} />, client, {
+      permissions: ['work_order.manage'],
+    });
+
+    const forms = await screen.findByRole('region', { name: 'Forms' });
+    await user.click(within(forms).getByRole('button', { name: 'Add a form' }));
+    const picker = within(forms).getByRole('combobox', { name: 'Add a form' });
+    await waitFor(() =>
+      expect(
+        within(picker)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual(['Choose a form', 'Risk assessment']),
+    );
+
+    await user.selectOptions(picker, OTHER_FORM);
+    await user.click(within(forms).getByRole('button', { name: 'Add' }));
+    expect(await within(forms).findByRole('alert')).toHaveTextContent(
+      'This job is closed, so its forms cannot change.',
+    );
+    expect(calls.find((call) => call.method === 'POST')?.body).toEqual({
+      formId: OTHER_FORM,
+      required: true,
+    });
+  });
+
+  it('lets only a seat that manages work orders take a form off the job', async () => {
+    const { client } = fakeApi({ 'GET /v1/work-orders/:id': () => ({ body: editable() }) });
+    const first = renderScreen(<WorkOrderScreen workOrderId={JOB} />, client, {
+      permissions: [],
+    });
+    const forms = await screen.findByRole('region', { name: 'Forms' });
+    expect(within(forms).getByText('Not started')).toBeInTheDocument();
+    expect(
+      within(forms).queryByRole('button', { name: 'Remove Gas safety record from this job' }),
+    ).not.toBeInTheDocument();
+    first.unmount();
+
+    renderScreen(<WorkOrderScreen workOrderId={JOB} />, client, {
+      permissions: ['work_order.manage'],
+    });
+    expect(
+      await screen.findByRole('button', { name: 'Remove Gas safety record from this job' }),
+    ).toBeInTheDocument();
+  });
+
+  it('opens a started form from its row', async () => {
+    const user = userEvent.setup();
+    const SUBMISSION = '00000000-0000-4000-8000-000000000551';
+    const { client } = fakeApi({
+      'GET /v1/work-orders/:id': () => ({
+        body: detail({
+          forms: [
+            {
+              formId: FORM,
+              title: 'Gas safety record',
+              required: true,
+              submission: { id: SUBMISSION, status: 'draft' },
+            } as WorkOrderDetail['forms'][number],
+          ],
+        }),
+      }),
+    });
+    const { navigate } = renderScreen(<WorkOrderScreen workOrderId={JOB} />, client);
+    const forms = await screen.findByRole('region', { name: 'Forms' });
+    expect(within(forms).getByText('Draft')).toBeInTheDocument();
+    await user.click(within(forms).getByRole('link', { name: 'Gas safety record' }));
+    expect(navigate).toHaveBeenCalledWith(`/submissions/${SUBMISSION}`);
+  });
+});
+
+describe('row menus', () => {
+  const customers = {
+    'GET /v1/me': () => ({ body: { permissions: ['customer.manage', 'work_order.manage'] } }),
+    'GET /v1/customer-tags': () => ({ body: { items: [] } }),
+    'GET /v1/customers': () => ({
+      body: {
+        items: [
+          {
+            id: CUSTOMER,
+            name: 'Riverside Housing',
+            accountNumber: 'RH-001',
+            status: 'active',
+            email: null,
+            phone: null,
+            address: {
+              line1: null,
+              line2: null,
+              city: null,
+              region: null,
+              postcode: null,
+              countryCode: null,
+            },
+            tags: [],
+            notes: null,
+            createdAt: '2026-09-30T09:00:00.000Z',
+            updatedAt: '2026-09-30T09:00:00.000Z',
+          },
+        ],
+        nextCursor: null,
+      },
+    }),
+  };
+
+  it('hands the row’s own actions to the app’s menu, instead of the browser’s', async () => {
+    const rowActions = vi.fn();
+    const { navigate } = renderScreen(<CustomerListScreen />, fakeApi(customers).client, {
+      rowActions,
+    });
+    const link = await screen.findByRole('link', { name: 'Riverside Housing' });
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'New customer' })).toBeTruthy(),
+    );
+
+    // `fireEvent` returns false when the handler prevented the default.
+    expect(fireEvent.contextMenu(link.closest('li')!, { clientX: 40, clientY: 50 })).toBe(false);
+    expect(rowActions).toHaveBeenCalledTimes(1);
+    const [target, actions, event] = rowActions.mock.calls[0] as [
+      { kind: string; id: string; label: string },
+      { key: string; label: string; onSelect: () => void }[],
+      { clientX: number; clientY: number },
+    ];
+    expect(target).toEqual({ kind: 'customer', id: CUSTOMER, label: 'Riverside Housing' });
+    expect(actions.map((action) => [action.key, action.label])).toEqual([
+      ['open', 'Open'],
+      ['newJob', 'New job for this customer'],
+      ['copyId', 'Copy ID'],
+    ]);
+    expect(event).toMatchObject({ clientX: 40, clientY: 50 });
+
+    actions.find((action) => action.key === 'open')!.onSelect();
+    expect(navigate).toHaveBeenCalledWith(`/customers/${CUSTOMER}`);
+  });
+
+  it('leaves the browser’s menu alone when the app has none', async () => {
+    renderScreen(<CustomerListScreen />, fakeApi(customers).client);
+    const link = await screen.findByRole('link', { name: 'Riverside Housing' });
+    expect(fireEvent.contextMenu(link.closest('li')!)).toBe(true);
   });
 });

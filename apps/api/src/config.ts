@@ -217,6 +217,14 @@ export const apiConfigSchema = z.object({
   PUBLIC_SIGNUP: z.enum(['off', 'open']).default('off'),
 
   /**
+   * The bearer token the release pipeline presents to `GET /v1/build/companies`
+   * to learn which companies' apps to build. Unset means the route answers
+   * 404: a deployment that builds no company apps exposes no list of them.
+   * Long and random; GitHub holds the same value as a repository secret.
+   */
+  BUILD_TOKEN: z.string().min(32).optional(),
+
+  /**
    * Sentry. Optional: unset means errors are logged and not reported, which is
    * the right default for a developer's machine and the wrong one for
    * production — `assertProductionReady` says so at startup.

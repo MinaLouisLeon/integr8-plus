@@ -5,15 +5,19 @@ import { keys, type Priority, type SavedView, useOperations, type WorkOrderState
 import { CrewPicker, type CrewMember } from '../crew.js';
 import {
   buttonClass,
+  copyText,
+  DashboardBackLink,
   Dialog,
   Failure,
   Field,
   fromLocalInput,
+  InlineError,
   inputClass,
   Loading,
   PriorityBadge,
   StateBadge,
   toLocalInput,
+  useRowMenu,
   when,
 } from '../ui.js';
 
@@ -124,12 +128,19 @@ export function WorkOrderListScreen({
     setApplied(clean(next));
   };
 
+  const rowMenu = useRowMenu();
+  const bulkOne = (id: string, action: 'reassign' | 'reschedule' | 'cancel') => {
+    setSelected(new Set([id]));
+    setBulk(action);
+  };
+
   const activeState = applied.state?.length === 1 ? applied.state[0] : undefined;
   const allSelected = items.length > 0 && items.every((item) => selected.has(item.id));
   const selectAllId = useId();
 
   return (
     <div className="flex flex-col gap-6 text-start">
+      <DashboardBackLink />
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold text-content">{t('operations.workOrders.title')}</h1>
         {manage ? (
@@ -303,6 +314,8 @@ export function WorkOrderListScreen({
             {t('operations.workOrders.overdue')}
           </label>
         </div>
+        {me.isError ? <InlineError onRetry={() => void me.refetch()} /> : null}
+        {jobTypes.isError ? <InlineError onRetry={() => void jobTypes.refetch()} /> : null}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex gap-2">
             <button type="submit" className={buttonClass.primary}>
@@ -431,7 +444,50 @@ export function WorkOrderListScreen({
             </thead>
             <tbody className="divide-y divide-border-subtle bg-surface">
               {items.map((item) => (
-                <tr key={item.id} className="align-top hover:bg-surface-muted">
+                <tr
+                  key={item.id}
+                  className="align-top hover:bg-surface-muted"
+                  onContextMenu={rowMenu(
+                    {
+                      kind: 'workOrder',
+                      id: item.id,
+                      label: `${item.referenceLabel} · ${item.title}`,
+                    },
+                    () => [
+                      {
+                        key: 'open',
+                        label: t('operations.rowActions.open'),
+                        onSelect: () => navigate(paths.workOrder(item.id)),
+                      },
+                      {
+                        key: 'copyId',
+                        label: t('operations.rowActions.copyId'),
+                        onSelect: () => copyText(item.id),
+                      },
+                      ...(manage
+                        ? [
+                            {
+                              key: 'reassign',
+                              label: t('operations.workOrders.bulk.reassign'),
+                              onSelect: () => bulkOne(item.id, 'reassign'),
+                            },
+                            {
+                              key: 'reschedule',
+                              label: t('operations.workOrders.bulk.reschedule'),
+                              onSelect: () => bulkOne(item.id, 'reschedule'),
+                            },
+                            {
+                              key: 'cancel',
+                              label: t('operations.rowActions.cancelJob'),
+                              destructive: true,
+                              disabled: item.state === 'cancelled' || item.state === 'reviewed',
+                              onSelect: () => bulkOne(item.id, 'cancel'),
+                            },
+                          ]
+                        : []),
+                    ],
+                  )}
+                >
                   {manage ? (
                     <td className="px-3 py-2">
                       <input
@@ -494,10 +550,9 @@ export function WorkOrderListScreen({
                     ) : (
                       item.crew.map((member) => (
                         <span key={member.id} className="block">
-                          {member.name}
                           {member.lead && item.crew.length > 1
-                            ? ` (${t('operations.workOrder.lead')})`
-                            : ''}
+                            ? t('operations.workOrders.leadMember', { name: member.name })
+                            : member.name}
                         </span>
                       ))
                     )}
@@ -761,7 +816,10 @@ function SavedViews({
               <option key={view.id} value={view.id}>
                 {view.mine
                   ? view.name
-                  : `${view.name} — ${t('operations.workOrders.views.sharedBy', { name: view.owner.name })}`}
+                  : t('operations.workOrders.views.sharedOption', {
+                      name: view.name,
+                      owner: view.owner.name,
+                    })}
               </option>
             ))}
           </select>
@@ -779,6 +837,8 @@ function SavedViews({
       <button type="button" className={buttonClass.secondary} onClick={() => setSaving(true)}>
         {t('operations.workOrders.views.save')}
       </button>
+      {views.isError ? <InlineError onRetry={() => void views.refetch()} /> : null}
+      {remove.isError ? <Failure error={remove.error} /> : null}
       {saving ? (
         <Dialog
           title={t('operations.workOrders.views.saveTitle')}

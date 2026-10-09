@@ -50,6 +50,7 @@ const json = <T>(response: { body: string }) => JSON.parse(response.body) as T;
 
 export function defineMediaSuite(storage: 'local' | 'r2'): void {
   let api: ApiHarness;
+  let owner: Member;
   let engineer: Member;
   let tokens: Record<'owner' | 'engineer' | 'colleague', string>;
   let store: ObjectStore;
@@ -140,7 +141,7 @@ export function defineMediaSuite(storage: 'local' | 'r2'): void {
 
   beforeAll(async () => {
     api = await startApi({ mediaStorage: storage });
-    const owner = await api.member('owner', 'owner');
+    owner = await api.member('owner', 'owner');
     engineer = await api.member('engineer', 'engineer');
     const colleague = await api.member('engineer', 'colleague');
     tokens = {
@@ -586,7 +587,18 @@ export function defineMediaSuite(storage: 'local' | 'r2'): void {
     it('becomes the company logo once uploaded, and only an image of this company’s can (P18)', async () => {
       const logo = await upload(tokens.owner, new Uint8Array([1, 2, 3, 4]), 'image/png');
 
-      const set = await api.call(tokens.owner, {
+      // The look is Integr8's to set (0022): the company's owner uploads the
+      // file, staff acting as the company point the logo at it, and the owner
+      // asking to change it is refused.
+      const staff = await api.staff(owner);
+      const refused = await api.call(tokens.owner, {
+        method: 'PATCH',
+        url: '/v1/settings',
+        payload: { logoMediaId: logo.id },
+      });
+      expect(refused.statusCode, refused.body).toBe(403);
+
+      const set = await api.call(staff, {
         method: 'PATCH',
         url: '/v1/settings',
         payload: { logoMediaId: logo.id },
@@ -604,7 +616,7 @@ export function defineMediaSuite(storage: 'local' | 'r2'): void {
       // A file this company never stored: 422 naming the field, not a
       // constraint error dressed as a 500. The composite foreign key would
       // refuse it anyway; this is about what the caller is told.
-      const stranger = await api.call(tokens.owner, {
+      const stranger = await api.call(staff, {
         method: 'PATCH',
         url: '/v1/settings',
         payload: { logoMediaId: crypto.randomUUID() },
@@ -618,7 +630,7 @@ export function defineMediaSuite(storage: 'local' | 'r2'): void {
         new Uint8Array([37, 80, 68, 70]),
         'application/pdf',
       );
-      const notAnImage = await api.call(tokens.owner, {
+      const notAnImage = await api.call(staff, {
         method: 'PATCH',
         url: '/v1/settings',
         payload: { logoMediaId: document.id },
@@ -627,7 +639,7 @@ export function defineMediaSuite(storage: 'local' | 'r2'): void {
 
       // Removed with a null, and the file itself is untouched: it is still the
       // company's to delete or keep.
-      const cleared = await api.call(tokens.owner, {
+      const cleared = await api.call(staff, {
         method: 'PATCH',
         url: '/v1/settings',
         payload: { logoMediaId: null },

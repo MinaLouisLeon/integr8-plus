@@ -6,7 +6,16 @@ import { View } from 'react-native';
 import { AccessNotes } from '~/components/access-notes';
 import { JobRow } from '~/components/job-row';
 import { LocalGate } from '~/components/local-gate';
-import { Body, Button, EmptyState, Heading, Row, ScrollScreen, Section } from '~/components/ui';
+import {
+  Body,
+  Button,
+  EmptyState,
+  Heading,
+  NotReadyScreen,
+  Row,
+  ScrollScreen,
+  Section,
+} from '~/components/ui';
 import { useLocalQuery } from '~/local/react';
 
 /** A site, from the phone. Access notes first, as on a job. */
@@ -26,7 +35,7 @@ function Site() {
   );
 
   if (state.status !== 'ready') {
-    return <ScrollScreen>{null}</ScrollScreen>;
+    return <NotReadyScreen failed={state.status === 'error'} />;
   }
   if (state.data === undefined) {
     return (

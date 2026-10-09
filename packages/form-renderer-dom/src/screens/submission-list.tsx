@@ -10,8 +10,8 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useId, useState, type FormEvent as SubmitEvent } from 'react';
 import { say } from '../text.js';
 import { buttonClass, inputClass } from '../widgets/types.js';
-import { keys, type Me, useScreens } from './api.js';
-import { Failure, Loading } from './parts.js';
+import { keys, type Me, type RowAction, useScreens } from './api.js';
+import { BackLink, copyText, DashboardBackLink, Failure, InlineError, Loading } from './parts.js';
 
 /**
  * Finding submissions: by form, status, person, date, words in the answers,
@@ -68,14 +68,26 @@ const EMPTY: Filters = {
 
 export function SubmissionListScreen({
   initialFilters = {},
+  workOrderId,
 }: {
   /** Where the list is opened from: a job's "all submissions" link names the job. */
   initialFilters?: Partial<Pick<Filters, 'formId' | 'workOrderId' | 'siteId' | 'customerId'>>;
+  /**
+   * The job this list was opened from: its submissions are shown, with a way
+   * back to the job when the app gives `paths.workOrder`.
+   */
+  workOrderId?: string;
 } = {}) {
   const { t } = useTranslation();
-  const { client, locale, navigate, paths, download } = useScreens();
-  const [draft, setDraft] = useState<Filters>({ ...EMPTY, ...initialFilters });
-  const [applied, setApplied] = useState<Filters>({ ...EMPTY, ...initialFilters });
+  const { client, locale, navigate, paths, download, rowActions } = useScreens();
+  const initial: Filters = {
+    ...EMPTY,
+    ...initialFilters,
+    ...(workOrderId === undefined ? {} : { workOrderId }),
+  };
+  const fromJob = workOrderId ?? initialFilters.workOrderId;
+  const [draft, setDraft] = useState<Filters>(initial);
+  const [applied, setApplied] = useState<Filters>(initial);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<unknown>(undefined);
 
@@ -157,9 +169,49 @@ export function SubmissionListScreen({
   const items = list.data?.pages.flatMap((page) => page.items) ?? [];
   const readsAll =
     (me.data as Me | undefined)?.permissions.includes('submission.read_all') ?? false;
+  const jobReference =
+    fromJob === undefined
+      ? undefined
+      : items.find((item) => item.workOrder?.id === fromJob)?.workOrder?.referenceLabel;
+  const workOrderPath = paths.workOrder;
+  const failedSide = [me, forms, form, customers, sites].filter((query) => query.isError);
+
+  const actionsFor = (item: (typeof items)[number]): RowAction[] => [
+    {
+      key: 'open',
+      label: t('submissions.list.open'),
+      onSelect: () => navigate(paths.submission(item.id)),
+    },
+    ...(item.workOrder === null || workOrderPath === undefined
+      ? []
+      : [
+          {
+            key: 'openWorkOrder',
+            label: t('submissions.openJob', { reference: item.workOrder.referenceLabel }),
+            onSelect: () => navigate(workOrderPath(item.workOrder!.id)),
+          },
+        ]),
+    {
+      key: 'copyId',
+      label: t('common.copyId'),
+      onSelect: () => copyText(item.id),
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-6 text-start">
+      {fromJob === undefined || workOrderPath === undefined ? (
+        <DashboardBackLink />
+      ) : (
+        <BackLink
+          to={workOrderPath(fromJob)}
+          label={
+            jobReference === undefined
+              ? t('submissions.backToJobPlain')
+              : t('submissions.backToJob', { reference: jobReference })
+          }
+        />
+      )}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-2xl font-semibold text-content">{t('submissions.list.title')}</h1>
         <div className="flex flex-col items-end gap-1">
@@ -182,6 +234,15 @@ export function SubmissionListScreen({
       </header>
 
       {exportError === undefined ? null : <Failure error={exportError} />}
+      {failedSide.length === 0 ? null : (
+        <InlineError
+          onRetry={() => {
+            for (const query of failedSide) {
+              void query.refetch();
+            }
+          }}
+        />
+      )}
 
       <form
         onSubmit={apply}
@@ -379,7 +440,8 @@ export function SubmissionListScreen({
                   })
                 }
               >
-                {`+ ${t('submissions.list.addFilter')}`}
+                <span aria-hidden="true">+</span>
+                {t('submissions.list.addFilter')}
               </button>
             </div>
           </fieldset>
@@ -432,7 +494,26 @@ export function SubmissionListScreen({
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id} className="border-b border-border-subtle last:border-b-0">
+                <tr
+                  key={item.id}
+                  className="border-b border-border-subtle last:border-b-0"
+                  onContextMenu={
+                    rowActions === undefined
+                      ? undefined
+                      : (event) => {
+                          event.preventDefault();
+                          rowActions(
+                            {
+                              kind: 'submission',
+                              id: item.id,
+                              label: `${item.formTitle} · ${item.submittedBy.name}`,
+                            },
+                            actionsFor(item),
+                            event,
+                          );
+                        }
+                  }
+                >
                   <td className="px-4 py-3 text-content">
                     {item.formTitle}
                     {item.versionNumber === null ? null : (
@@ -464,7 +545,10 @@ export function SubmissionListScreen({
                     <button
                       type="button"
                       className={buttonClass.secondary}
-                      aria-label={`${t('submissions.list.open')}: ${item.formTitle}, ${item.submittedBy.name}`}
+                      aria-label={t('submissions.list.openNamed', {
+                        form: item.formTitle,
+                        name: item.submittedBy.name,
+                      })}
                       onClick={() => navigate(paths.submission(item.id))}
                     >
                       {t('submissions.list.open')}

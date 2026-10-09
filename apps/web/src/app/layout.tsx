@@ -17,8 +17,9 @@ export const metadata: Metadata = {
  * layout snaps into place after hydration, and on a slow connection that flash
  * lasts a second.
  *
- * `data-theme` is set the same way, from a cookie, so a person who chose dark
- * does not get a white page first.
+ * `data-theme` is set the same way, from a cookie. The theme is the company's:
+ * the signed-in shell writes it there once `/v1/me` says what it is, so a
+ * company that wears dark does not get a white page first on the next load.
  */
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const { locale, direction, theme } = await readPreferences();

@@ -24,4 +24,12 @@ export { ErrorText } from './field.js';
 export { FormFiller, type FormFillerProps, type SubmitOutcome } from './form-filler.js';
 export type { MediaAdapter } from './media.js';
 export { formatBytes, normaliseDigits, say, withLocalOffset } from './text.js';
+// What the view says about a question, for the builder's preview to draw it the same way.
+export {
+  dependentChoices,
+  isRequiredNow,
+  offeredOptions,
+  toggleOffered,
+  type DependentChoices,
+} from '@integr8/form-input';
 export { fitWithin, PHOTO_MAX_EDGE, PHOTO_QUALITY, preparePhoto } from './compress.js';

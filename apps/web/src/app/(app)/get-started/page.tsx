@@ -76,14 +76,14 @@ export default function GetStartedPage() {
     <main className="flex flex-col gap-8">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold text-content">{t('workspace.firstRun.title')}</h1>
-        <p className="text-sm text-content-muted">
-          {data.complete
-            ? t('workspace.firstRun.done')
-            : `${t('workspace.firstRun.subtitle')} — ${t('workspace.firstRun.progress', {
-                done,
-                total: data.steps.length,
-              })}`}
-        </p>
+        {data.complete ? (
+          <p className="text-sm text-content-muted">{t('workspace.firstRun.done')}</p>
+        ) : (
+          <p className="flex flex-wrap gap-x-3 text-sm text-content-muted">
+            <span>{t('workspace.firstRun.subtitle')}</span>
+            <span>{t('workspace.firstRun.progress', { done, total: data.steps.length })}</span>
+          </p>
+        )}
       </header>
 
       <ol className="flex flex-col gap-3">

@@ -21,6 +21,8 @@ import type { EvaluationContext } from '../evaluate.js';
  * - the exact wording of every publish-time error
  * - entries of a repeatable section: rules inside one entry and across all of
  *   them, adding, removing and reordering, and what the server refuses (P13b)
+ * - a field required only when another answer says so, and choices that depend
+ *   on another answer: what is offered, what is refused, and the publish errors
  *
  * Plain object literals only: this file is bundled into the Hermes run.
  */
@@ -45,6 +47,7 @@ const form = (fields: unknown[], extra: Record<string, unknown> = {}) => ({
 });
 const answer = (field: string) => ({ kind: 'answer', field });
 const answered = (field: string) => ({ kind: 'answered', field });
+const includes = (field: string, option: string) => ({ kind: 'includes', field, option });
 const num = (value: string) => ({ kind: 'number', value });
 const text = (value: string) => ({ kind: 'text', value });
 const cmp = (operator: string, left: unknown, right: unknown) => ({
@@ -906,5 +909,195 @@ export const CASES: ConformanceCase[] = [
         },
       ],
     },
+  },
+  {
+    name: 'required only when, and choices that depend on another answer',
+    definition: form([
+      {
+        id: 'area',
+        type: 'radio',
+        label: l('Area'),
+        required: true,
+        options: opts('kitchen', 'bathroom', 'outside'),
+      },
+      {
+        id: 'room',
+        type: 'dropdown',
+        label: l('Where exactly'),
+        options: opts('sink', 'hob', 'bath', 'garden'),
+        dependsOn: {
+          field: 'area',
+          options: { sink: ['kitchen'], hob: ['kitchen'], bath: ['bathroom'] },
+        },
+      },
+      {
+        id: 'hazards',
+        type: 'multi_select',
+        label: l('Hazards'),
+        options: opts('wet', 'gas', 'height'),
+      },
+      {
+        id: 'ppe',
+        type: 'multi_select',
+        label: l('Protection'),
+        options: opts('gloves', 'mask', 'harness'),
+        dependsOn: {
+          field: 'hazards',
+          options: { gloves: ['wet', 'gas'], mask: ['gas'], harness: ['height'] },
+        },
+      },
+      {
+        id: 'note',
+        type: 'text',
+        label: l('Access note'),
+        requiredWhen: cmp('eq', answer('area'), text('outside')),
+      },
+      {
+        id: 'isolated',
+        type: 'checkbox',
+        label: l('Gas isolated'),
+        requiredWhen: includes('hazards', 'gas'),
+      },
+    ]),
+    steps: [
+      { type: 'submit' },
+      set('area', 'kitchen'),
+      set('room', 'sink'),
+      set('area', 'bathroom'),
+      { type: 'touch', field: 'room' },
+      set('room', 'bath'),
+      set('hazards', ['gas', 'height']),
+      set('ppe', ['mask', 'harness']),
+      set('hazards', ['height']),
+      set('ppe', ['harness']),
+      set('area', 'outside'),
+      set('room', 'garden'),
+      set('note', 'Ladder needed'),
+      { type: 'submit' },
+    ],
+    submission: {
+      area: 'kitchen',
+      room: 'bath',
+      hazards: ['gas'],
+      ppe: ['mask'],
+      isolated: false,
+      note: 'left over',
+    },
+  },
+  {
+    name: 'publish-time errors for dependent choices and required-when, worded exactly',
+    definition: {
+      schemaVersion: 1,
+      title: l('Dependent'),
+      pages: [
+        {
+          id: 'page_1',
+          sections: [
+            {
+              id: 'plain',
+              fields: [
+                { id: 'area', type: 'radio', label: l('Area'), options: opts('kitchen', 'loft') },
+                { id: 'count', type: 'number', label: l('Count') },
+                {
+                  id: 'room_1',
+                  type: 'dropdown',
+                  label: l('Room'),
+                  options: opts('a', 'b'),
+                  dependsOn: { field: 'missing', options: {} },
+                },
+                {
+                  id: 'room_2',
+                  type: 'dropdown',
+                  label: l('Room'),
+                  options: opts('a', 'b'),
+                  dependsOn: { field: 'plain', options: {} },
+                },
+                {
+                  id: 'room_3',
+                  type: 'dropdown',
+                  label: l('Room'),
+                  options: opts('a', 'b'),
+                  dependsOn: { field: 'count', options: {} },
+                },
+                {
+                  id: 'room_4',
+                  type: 'radio',
+                  label: l('Room'),
+                  options: opts('a', 'b'),
+                  dependsOn: { field: 'area', options: { a: ['kitchen', 'cellar'] } },
+                },
+                {
+                  id: 'room_5',
+                  type: 'multi_select',
+                  label: l('Room'),
+                  options: opts('a', 'b'),
+                  dependsOn: { field: 'area', options: { c: ['kitchen'] } },
+                },
+                {
+                  id: 'room_6',
+                  type: 'dropdown',
+                  label: l('Room'),
+                  options: opts('a', 'b'),
+                  dependsOn: { field: 'make', options: {} },
+                },
+                {
+                  id: 'flag',
+                  type: 'text',
+                  label: l('Flag'),
+                  requiredWhen: answer('count'),
+                },
+                {
+                  id: 'doubled',
+                  type: 'number',
+                  label: l('Doubled'),
+                  calculation: math('multiply', answer('count'), num('2')),
+                  requiredWhen: answered('count'),
+                },
+              ],
+            },
+            {
+              id: 'appliances',
+              repeat: { maxEntries: 3, entryLabel: l('Appliance') },
+              fields: [
+                { id: 'make', type: 'radio', label: l('Make'), options: opts('baxi', 'vaillant') },
+                {
+                  id: 'model',
+                  type: 'dropdown',
+                  label: l('Model'),
+                  options: opts('b_1', 'v_1'),
+                  dependsOn: { field: 'make', options: { b_1: ['baxi'], v_1: ['vaillant'] } },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    name: 'circular dependent choices',
+    definition: form([
+      {
+        id: 'a',
+        type: 'radio',
+        label: l('A'),
+        options: opts('x'),
+        dependsOn: { field: 'b', options: {} },
+      },
+      {
+        id: 'b',
+        type: 'radio',
+        label: l('B'),
+        options: opts('x'),
+        dependsOn: { field: 'a', options: {} },
+      },
+      {
+        id: 'c',
+        type: 'dropdown',
+        label: l('C'),
+        options: opts('x'),
+        dependsOn: { field: 'c', options: {} },
+      },
+    ]),
   },
 ];

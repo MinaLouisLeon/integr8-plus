@@ -2,6 +2,7 @@ import {
   ANNOUNCEMENT_SEVERITIES,
   BILLING_INTERVALS,
   BILLING_MODES,
+  companyThemeSchema,
   SUBSCRIPTION_STATUSES,
   TENANT_EXPORT_STATUSES,
   TENANT_PLANS,
@@ -115,7 +116,20 @@ export const companyBillingSchema = z.object({
   providerSubscriptionId: z.string().nullable(),
 });
 
+/** The brand facts the dashboard shows (and two it edits) for one company (0022). */
+export const companySettingsSchema = z.object({
+  logoMediaId: z.uuid().nullable(),
+  appIconMediaId: z.uuid().nullable(),
+  brandColour: z.string().nullable(),
+  shellColour: z.string().nullable(),
+  defaultTheme: companyThemeSchema,
+  websiteUrl: z.string().nullable(),
+  /** Whether the release pipeline builds this company's own desktop and phone apps. */
+  appsEnabled: z.boolean(),
+});
+
 export const companyDetailSchema = companySummarySchema.extend({
+  settings: companySettingsSchema,
   activity: z.array(companyActivitySchema),
   billing: companyBillingSchema.nullable(),
   featureFlags: z.record(z.string(), z.boolean()),

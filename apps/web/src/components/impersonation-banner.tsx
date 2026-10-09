@@ -16,7 +16,7 @@ import { apiClient } from '~/lib/session';
  * token: the server decides who you are, and a client that worked that out for
  * itself could disagree with the server about it.
  *
- * `sticky` rather than fixed, so it never covers content at the bottom of a
+ * `sticky` under the top bar rather than fixed, so it never covers content at the bottom of a
  * long page, and `aria-live` so a screen reader announces it on arrival rather
  * than only when somebody tabs onto it.
  */
@@ -40,7 +40,7 @@ export function ImpersonationBanner() {
     <div
       role="status"
       aria-live="polite"
-      className="sticky top-0 z-50 -mx-6 mb-2 flex flex-wrap items-center justify-between gap-2 bg-danger px-6 py-2 text-sm font-medium text-on-accent"
+      className="sticky top-14 z-40 -mx-6 flex flex-wrap items-center justify-between gap-2 bg-danger px-6 py-2 text-sm font-medium text-on-accent"
     >
       <span>{t('workspace.impersonationBanner', { name: me.data?.displayName ?? '' })}</span>
       <span className="font-mono text-xs opacity-90">{impersonation.grantId}</span>

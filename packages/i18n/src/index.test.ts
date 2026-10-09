@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ar,
   createI18n,
   DEFAULT_LOCALE,
   directionFor,
@@ -15,6 +16,7 @@ import {
   LOCALE_DESCRIPTORS,
   LOCALES,
   negotiateLocale,
+  TRANSLATED_LOCALES,
   resetFormatterCache,
   resolveDirection,
 } from './index.js';
@@ -40,11 +42,12 @@ describe('locales', () => {
     expect(LOCALE_DESCRIPTORS.find((entry) => entry.code === 'ar')?.nativeName).toBe('العربية');
   });
 
-  it('declares Arabic as untranslated, which is the honest state today', () => {
-    // Declared now so RTL layout can be checked from the first screen; the copy
-    // itself is P32.
-    expect(LOCALE_DESCRIPTORS.find((entry) => entry.code === 'ar')?.translated).toBe(false);
+  it('declares both English and Arabic as translated', () => {
+    // Arabic was declared untranslated in P05 so RTL layout could be checked
+    // from the first screen; the copy itself arrived in P32.
+    expect(LOCALE_DESCRIPTORS.find((entry) => entry.code === 'ar')?.translated).toBe(true);
     expect(LOCALE_DESCRIPTORS.find((entry) => entry.code === 'en')?.translated).toBe(true);
+    expect([...TRANSLATED_LOCALES].sort()).toEqual(['ar', 'en']);
   });
 
   it('recognises its own locales and rejects others', () => {
@@ -74,24 +77,13 @@ describe('negotiation', () => {
   });
 });
 
-describe('direction, and the development override', () => {
-  /**
-   * P05's third exit criterion depends on this. Forcing right-to-left while
-   * still reading English is how a screen is checked for hardcoded `left` and
-   * `right` before any Arabic copy exists — and checking each screen as it is
-   * built costs nothing, where retrofitting is a rewrite.
-   */
-  it('follows the locale by default', () => {
+describe('direction', () => {
+  // Direction follows the locale and nothing else: Arabic reads right to left,
+  // English left to right. The development preview that forced right-to-left
+  // over English is gone now that there is Arabic copy to read.
+  it('follows the locale', () => {
     expect(resolveDirection('en')).toBe('ltr');
     expect(resolveDirection('ar')).toBe('rtl');
-  });
-
-  it('can be forced right-to-left without pretending the language changed', () => {
-    expect(resolveDirection('en', true)).toBe('rtl');
-  });
-
-  it('does not force left-to-right on a right-to-left locale', () => {
-    expect(resolveDirection('ar', false)).toBe('rtl');
   });
 });
 
@@ -112,11 +104,35 @@ describe('the instance', () => {
     expect(i18n.t('workspace.members.count', { count: 4 })).toBe('4 people');
   });
 
-  it('shows English words for an untranslated locale, not raw keys', () => {
-    // What makes the RTL preview usable: Arabic today is English text in a
-    // mirrored layout, rather than a screen of `workspace.members.title`.
+  it('shows Arabic words for Arabic without being passed any resources', () => {
     const i18n = createI18n({ locale: 'ar' });
-    expect(i18n.t('auth.signIn')).toBe('Sign in');
+    expect(i18n.t('auth.signIn')).toBe(ar.auth.signIn);
+    expect(i18n.t('auth.signIn')).not.toBe('Sign in');
+  });
+
+  it('uses every Arabic plural form, so a count of three is not English', () => {
+    // Arabic has six plural categories where English has two. i18next picks
+    // the suffix with Intl.PluralRules, so each must exist or the lookup falls
+    // through to the English `_other`.
+    const i18n = createI18n({ locale: 'ar' });
+    expect(i18n.t('workspace.members.count', { count: 0 })).toBe(ar.workspace.members.count_zero);
+    expect(i18n.t('workspace.members.count', { count: 1 })).toBe(ar.workspace.members.count_one);
+    expect(i18n.t('workspace.members.count', { count: 2 })).toBe(ar.workspace.members.count_two);
+    expect(i18n.t('workspace.members.count', { count: 3 })).toBe('3 أشخاص');
+    expect(i18n.t('workspace.members.count', { count: 11 })).toBe('11 شخصًا');
+    expect(i18n.t('workspace.members.count', { count: 100 })).toBe('100 شخص');
+  });
+
+  it('falls back to English for a key Arabic has not caught up with', () => {
+    // The parity test keeps the catalogues in step; this is what happens on the
+    // day they are not, and it is words rather than a raw key.
+    const i18n = createI18n({
+      locale: 'ar',
+      resources: {
+        ar: { ...ar, common: { ...ar.common, loading: undefined as unknown as string } },
+      },
+    });
+    expect(i18n.t('common.loading')).toBe('Loading…');
   });
 
   it('gives each caller its own instance', () => {

@@ -101,6 +101,25 @@ jobs:
       app-env: production
       desktop-sentry-dsn: ${{ vars.DESKTOP_PUBLIC_SENTRY_DSN }}
 
+  # Every company with "build apps" switched on gets its own installers and
+  # phone apps at this version, each as its own release
+  # (`company-<slug>-v<version>`). The list comes from the API, behind the
+  # BUILD_TOKEN secret; a deployment without the token builds none.
+  company-apps:
+    name: Company apps
+    needs: [preflight, verify]
+    if: vars.COMPANY_APPS != 'disabled'
+    uses: ./.github/workflows/build-company-apps.yml
+    secrets: inherit
+    permissions:
+      contents: write
+    with:
+      company: all
+      version: ${{ needs.preflight.outputs.version }}
+      api-url: ${{ vars.PUBLIC_API_URL }}
+      desktop-platforms: ${{ vars.RELEASE_DESKTOP_PLATFORMS || '["ubuntu-latest","windows-latest","macos-latest"]' }}
+      mobile-platforms: ${{ vars.EAS_PLATFORMS || 'android' }}
+
   publish:
     name: Publish the release
     needs: [preflight, artifacts]

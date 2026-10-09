@@ -10,6 +10,8 @@ import { AppState, I18nManager } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppLock } from '~/components/app-lock';
 import { BrandProvider } from '~/components/brand';
+import { refreshBrand } from '~/lib/brand-cache';
+import { COMPANY } from '~/lib/company';
 import { APP_ENV, SENTRY_DSN } from '~/lib/env';
 import { deviceLocale } from '~/lib/preferences';
 import { APP_VERSION, session, whenSignedOut } from '~/lib/session';
@@ -73,7 +75,8 @@ whenSignedOut((reason) => {
     void localData.wipe();
     void unregisterBackgroundSync();
   }
-  router.replace('/sign-in');
+  // A company's own app goes back to its website; the generic app to sign-in.
+  router.replace(COMPANY === undefined ? '/sign-in' : '/welcome');
 });
 
 function RootLayout() {
@@ -83,6 +86,8 @@ function RootLayout() {
   // connection returns, and in the background while the app is closed. Each run
   // checks it is signed in and online first, and none of them holds up a screen.
   useEffect(() => {
+    // The public brand, before anything needs a session: nothing if this is the generic app.
+    void refreshBrand();
     void localData.sync('launch');
     void registerBackgroundSync();
     const names = channelNames(i18n.t);

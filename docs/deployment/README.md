@@ -31,6 +31,7 @@ configuration.
 | Machine preparation    | `deploy/vps/setup.sh`, `Caddyfile.example`  | Firewall, Docker and Caddy on a fresh Ubuntu or Oracle Linux machine   |
 | Images in the registry | `.github/workflows/publish-images.yml`      | `ghcr.io/<owner>/integr8-api` and `integr8-web`, tagged per branch/sha |
 | Database runbooks      | `docs/database/`                            | Supabase setup, migrations, backup and restore                         |
+| Company apps           | `docs/deployment/company-apps.md`           | Installers and phone apps built per company, and the staff desktop     |
 
 ## Two modes
 

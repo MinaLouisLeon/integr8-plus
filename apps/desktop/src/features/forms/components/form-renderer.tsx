@@ -10,7 +10,13 @@ import {
   ownAnswer,
   storedEntries,
 } from '@integr8/form-engine';
-import { EntryList } from '@integr8/form-renderer-dom';
+import {
+  dependentChoices,
+  EntryList,
+  isRequiredNow,
+  offeredOptions,
+  toggleOffered,
+} from '@integr8/form-renderer-dom';
 import { useTranslation } from '@integr8/i18n';
 import { useId, useState, type ReactNode } from 'react';
 import { Button } from '~/components/ui';
@@ -147,9 +153,11 @@ function FieldControl(
     entryErrors?: readonly FieldError[] | undefined;
   },
 ) {
-  const { field, state, view, onEvent, locale, readOnly = false, entry, entryErrors } = props;
+  const { field, form, state, view, onEvent, locale, readOnly = false, entry, entryErrors } = props;
   const { t } = useTranslation();
   const id = useId();
+  const required = isRequiredNow(view, field, entry?.id);
+  const choices = dependentChoices(form, view, field, locale, entry?.id);
   const errors =
     entryErrors ??
     view.shownErrors.filter((error) => error.field === field.id && error.entry === undefined);
@@ -169,7 +177,15 @@ function FieldControl(
   const answer = (next: unknown) =>
     onEvent({ type: 'answer', field: field.id, value: next, ...inEntry });
   const touch = () => onEvent({ type: 'touch', field: field.id, ...inEntry });
-  const describedBy = errors.length > 0 ? `${id}-errors` : field.help ? `${id}-help` : undefined;
+  const noChoices = choices?.options.length === 0;
+  const describedBy =
+    errors.length > 0
+      ? `${id}-errors`
+      : noChoices
+        ? `${id}-choices`
+        : field.help
+          ? `${id}-help`
+          : undefined;
 
   const common = {
     id,
@@ -263,7 +279,7 @@ function FieldControl(
           onChange={(event) => answer(event.target.value)}
         >
           <option value="">{t('forms.preview.choose')}</option>
-          {field.options.map((option) => (
+          {offeredOptions(field.options, choices?.options).map((option) => (
             <option key={option.value} value={option.value}>
               {say(option.label, locale)}
             </option>
@@ -275,7 +291,7 @@ function FieldControl(
     case 'yes_no': {
       const options =
         field.type === 'radio'
-          ? field.options.map((option) => ({
+          ? offeredOptions(field.options, choices?.options).map((option) => ({
               value: option.value,
               label: say(option.label, locale),
             }))
@@ -319,7 +335,7 @@ function FieldControl(
           aria-describedby={describedBy}
           className="flex flex-col gap-2"
         >
-          {field.options.map((option) => (
+          {offeredOptions(field.options, choices?.options).map((option) => (
             <label key={option.value} className="flex items-center gap-2 text-sm text-content">
               <input
                 type="checkbox"
@@ -327,9 +343,13 @@ function FieldControl(
                 checked={selected.includes(option.value)}
                 onChange={(event) =>
                   answer(
-                    event.target.checked
-                      ? [...selected, option.value]
-                      : selected.filter((candidate) => candidate !== option.value),
+                    toggleOffered(
+                      field.options,
+                      choices?.options,
+                      selected,
+                      option.value,
+                      event.target.checked,
+                    ),
                   )
                 }
                 onBlur={touch}
@@ -408,7 +428,7 @@ function FieldControl(
       {field.type === 'checkbox' ? null : (
         <label id={`${id}-label`} htmlFor={id} className="text-sm font-medium text-content">
           {say(field.label, locale)}
-          {field.required === true ? (
+          {required ? (
             <span aria-hidden="true" className="text-danger">
               {' *'}
             </span>
@@ -421,6 +441,13 @@ function FieldControl(
         </p>
       )}
       {control}
+      {choices === undefined || !noChoices ? null : (
+        <p id={`${id}-choices`} className="text-xs text-content-muted">
+          {choices.parentAnswered
+            ? t('fill.dependsOn.none', { parent: choices.parentLabel })
+            : t('fill.dependsOn.chooseFirst', { parent: choices.parentLabel })}
+        </p>
+      )}
       {calculated ? (
         <p className="text-xs text-content-muted">{t('forms.preview.calculated')}</p>
       ) : null}
