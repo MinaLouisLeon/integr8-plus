@@ -71,14 +71,14 @@
     },
     "extra": {
       "eas": {
-        "projectId": "00000000-0000-0000-0000-000000000000"
+        "projectId": "b950cc9e-9e26-477a-905f-4c216767fde4"
       }
     },
     "runtimeVersion": {
       "policy": "fingerprint"
     },
     "updates": {
-      "url": "https://u.expo.dev/00000000-0000-0000-0000-000000000000",
+      "url": "https://u.expo.dev/b950cc9e-9e26-477a-905f-4c216767fde4",
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     }
