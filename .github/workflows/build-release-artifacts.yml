@@ -287,6 +287,14 @@ jobs:
 
       # --no-wait: the binaries are built and kept by EAS, not by this run. The
       # release notes link to them rather than attaching them.
+      #
+      # Android only until there are iOS credentials: an iOS build needs an
+      # Apple developer account connected to Expo, and in non-interactive mode
+      # EAS fails the whole command when it cannot find them, which took the
+      # release down with it. Set the EAS_PLATFORMS repository variable to
+      # `all` once the Apple side exists.
       - name: Queue the build
         working-directory: apps/mobile
-        run: eas build --platform all --profile ${{ inputs.eas-profile }} --non-interactive --no-wait
+        env:
+          EAS_PLATFORMS: ${{ vars.EAS_PLATFORMS || 'android' }}
+        run: eas build --platform "$EAS_PLATFORMS" --profile ${{ inputs.eas-profile }} --non-interactive --no-wait
