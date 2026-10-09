@@ -26,8 +26,10 @@ import {
   addSection,
   allIds,
   duplicate,
+  type Expression,
   type Field,
   type FieldType,
+  findField,
   type FormDefinition,
   generateId,
   type Section,
@@ -44,13 +46,16 @@ import {
   referencesTo,
   remove,
   subtreeIds,
+  updateField,
 } from '@integr8/form-engine';
 import { type TFunction, useTranslation } from '@integr8/i18n';
 import { useState, type ReactNode } from 'react';
 import { Button } from '~/components/ui';
 import { PALETTE } from '../model/catalog';
 import type { EditorAction } from '../model/editor';
+import { fieldRuleSentences } from '../model/sentences';
 import { say } from '../model/text';
+import { VisibilityEditor } from './condition-builder';
 import { Dialog } from './dialog';
 
 /**
@@ -384,10 +389,12 @@ function Canvas({
 }: BuilderCanvasProps & { publishedIds?: ReadonlySet<string> }) {
   const { t } = useTranslation();
   const [removing, setRemoving] = useState<string | undefined>(undefined);
+  const [conditioning, setConditioning] = useState<string | undefined>(undefined);
 
   const actions: ItemActions = {
     readOnly,
     select: (id) => dispatch({ type: 'select', id }),
+    showWhen: (id) => setConditioning(id),
     duplicate: (id) => {
       const result = duplicate(definition, id);
       if (isEditError(result)) {
@@ -497,6 +504,7 @@ function Canvas({
                           <FieldRow
                             key={field.id}
                             field={field}
+                            definition={definition}
                             locale={locale}
                             selected={selected === field.id}
                             actions={actions}
@@ -574,7 +582,71 @@ function Canvas({
           dispatch({ type: 'edit', apply: (current) => remove(current, id) });
         }}
       />
+
+      <ConditionDialog
+        definition={definition}
+        fieldId={conditioning}
+        locale={locale}
+        onClose={() => setConditioning(undefined)}
+        onChange={(id, expression) =>
+          dispatch({
+            type: 'edit',
+            apply: (current) =>
+              updateField(current, id, (field) => {
+                const { visibleWhen: _previous, ...rest } = field;
+                return expression === undefined ? rest : { ...rest, visibleWhen: expression };
+              }),
+          })
+        }
+      />
     </div>
+  );
+}
+
+/**
+ * "Show “Result” when…" from a question's card: the same condition editor the
+ * panel has, in a dialog, so a rule can be read and changed where the question
+ * is. Keyed by the question, so opening another starts from its own rule.
+ */
+function ConditionDialog({
+  definition,
+  fieldId,
+  locale,
+  onClose,
+  onChange,
+}: {
+  definition: FormDefinition;
+  fieldId: string | undefined;
+  locale: string;
+  onClose: () => void;
+  onChange: (fieldId: string, expression: Expression | undefined) => void;
+}) {
+  const { t } = useTranslation();
+  const field = fieldId === undefined ? undefined : findField(definition, fieldId);
+  return (
+    <Dialog
+      open={field !== undefined}
+      title={t('forms.canvas.showWhenTitle', {
+        name: field === undefined ? '' : say(field.label, locale) || field.id,
+      })}
+      onClose={onClose}
+      footer={
+        <Button variant="secondary" onClick={onClose}>
+          {t('forms.canvas.done')}
+        </Button>
+      }
+    >
+      {field === undefined ? null : (
+        <VisibilityEditor
+          key={field.id}
+          definition={definition}
+          elementId={field.id}
+          expression={field.visibleWhen}
+          locale={locale}
+          onChange={(expression) => onChange(field.id, expression)}
+        />
+      )}
+    </Dialog>
   );
 }
 
@@ -608,6 +680,8 @@ export function nudge(definition: FormDefinition, id: string, delta: -1 | 1) {
 interface ItemActions {
   readOnly: boolean;
   select: (id: string) => void;
+  /** Opens the "show when" condition editor for a question, from its card. */
+  showWhen: (id: string) => void;
   duplicate: (id: string) => void;
   move: (id: string, delta: -1 | 1) => void;
   remove: (id: string) => void;
@@ -741,6 +815,7 @@ function ItemHeader({
 
 function FieldRow({
   field,
+  definition,
   locale,
   selected,
   actions,
@@ -748,6 +823,7 @@ function FieldRow({
   last,
 }: {
   field: Field;
+  definition: FormDefinition;
   locale: string;
   selected: boolean;
   actions: ItemActions;
@@ -758,19 +834,20 @@ function FieldRow({
   const name = say(field.label, locale) || field.id;
   const badges = [
     ...(field.required === true ? [t('forms.canvas.required')] : []),
-    ...(field.visibleWhen === undefined ? [] : [t('forms.canvas.conditional')]),
     ...(isCalculated(field) ? [t('forms.canvas.calculated')] : []),
     ...((field.rules?.length ?? 0) > 0
       ? [t('forms.canvas.checks', { count: field.rules?.length ?? 0 })]
       : []),
   ];
+  // The rules, as sentences, so nobody has to open the panel to learn why a question comes and goes.
+  const rules = fieldRuleSentences(field, definition, locale, t);
 
   return (
     <Sortable
       id={dragId('field', field.id)}
       disabled={actions.readOnly}
       className={[
-        'flex items-center gap-2 rounded-md border-2 bg-surface px-2 py-2',
+        'flex flex-col gap-1 rounded-md border-2 bg-surface px-2 py-2',
         selected ? 'border-accent' : 'border-border-subtle',
       ].join(' ')}
       handleLabel={t('forms.canvas.drag', { name })}
@@ -799,7 +876,30 @@ function FieldRow({
           />
         </>
       }
-    />
+    >
+      {rules.length === 0 && actions.readOnly ? null : (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 ps-7">
+          {rules.length === 0 ? null : (
+            <ul className="flex min-w-0 flex-col gap-0.5" data-rules={field.id}>
+              {rules.map((sentence) => (
+                <li key={sentence} className="text-xs text-content-muted">
+                  {sentence}
+                </li>
+              ))}
+            </ul>
+          )}
+          {actions.readOnly ? null : (
+            <Button
+              variant="ghost"
+              className="px-2 py-0.5 text-xs"
+              onClick={() => actions.showWhen(field.id)}
+            >
+              {t('forms.canvas.showWhen')}
+            </Button>
+          )}
+        </div>
+      )}
+    </Sortable>
   );
 }
 

@@ -5,7 +5,7 @@ import {
   isCalculated,
   parseDecimal,
 } from '@integr8/form-engine';
-import { errorMessage, say } from '@integr8/form-input';
+import { type DependentChoices, errorMessage, say } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
 import { forwardRef, type ReactNode } from 'react';
@@ -42,13 +42,21 @@ export interface FieldBlockProps {
   errors: readonly FieldError[];
   locale: string;
   disabled: boolean;
+  /**
+   * Whether it must be answered right now, from the view — `required`, or a
+   * `requiredWhen` that holds. Defaults to the definition's fixed `required`.
+   */
+  required?: boolean | undefined;
+  /** For a choice whose options depend on another answer: what is on offer, and which question decides. */
+  choices?: DependentChoices | undefined;
   onAnswer: (value: unknown) => void;
   onClear: () => void;
   onBlur: () => void;
 }
 
 export const FieldBlock = forwardRef<View, FieldBlockProps>(function FieldBlock(props, ref) {
-  const { field, value, errors, locale, disabled, onAnswer, onClear, onBlur } = props;
+  const { field, value, errors, locale, disabled, choices, onAnswer, onClear, onBlur } = props;
+  const required = props.required ?? field.required === true;
   const { t } = useTranslation();
   const theme = useTheme();
   const label = say(field.label, locale) || field.id;
@@ -57,7 +65,7 @@ export const FieldBlock = forwardRef<View, FieldBlockProps>(function FieldBlock(
   const heading = (
     <Text style={[styles.label, { color: theme.text }]}>
       {label}
-      {field.required === true ? (
+      {required ? (
         <Text accessibilityLabel={` (${t('fill.required')})`} style={{ color: theme.danger }}>
           {' *'}
         </Text>
@@ -67,6 +75,15 @@ export const FieldBlock = forwardRef<View, FieldBlockProps>(function FieldBlock(
   const help =
     field.help === undefined ? null : (
       <Text style={[styles.help, { color: theme.textMuted }]}>{say(field.help, locale)}</Text>
+    );
+  // Nothing to choose from until the question this one depends on is answered.
+  const noChoices =
+    choices === undefined || choices.options.length > 0 ? null : (
+      <Text style={[styles.help, { color: theme.textMuted }]}>
+        {choices.parentAnswered
+          ? t('fill.dependsOn.none', { parent: choices.parentLabel })
+          : t('fill.dependsOn.chooseFirst', { parent: choices.parentLabel })}
+      </Text>
     );
   const messages =
     errors.length === 0 ? null : (
@@ -109,6 +126,7 @@ export const FieldBlock = forwardRef<View, FieldBlockProps>(function FieldBlock(
     value,
     label,
     invalid: errors.length > 0,
+    available: choices?.options,
     disabled: disabled || field.readOnly === true,
     locale,
     onAnswer,
@@ -124,6 +142,7 @@ export const FieldBlock = forwardRef<View, FieldBlockProps>(function FieldBlock(
       {field.type === 'checkbox' ? null : heading}
       {help}
       {widget(widgetProps)}
+      {noChoices}
       {messages}
     </View>
   );

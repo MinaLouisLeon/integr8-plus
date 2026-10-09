@@ -1,5 +1,5 @@
 import { touchKey } from '@integr8/form-engine';
-import { entriesOf, entryTitle, say } from '@integr8/form-input';
+import { dependentChoices, entriesOf, entryTitle, isRequiredNow, say } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
 import { useRef, useState, useSyncExternalStore } from 'react';
@@ -401,6 +401,8 @@ export function FormFiller(props: FormFillerProps) {
                             errors={view.shownErrors.filter((error) => error.field === field.id)}
                             locale={locale}
                             disabled={false}
+                            required={isRequiredNow(view, field)}
+                            choices={dependentChoices(model.form, view, field, locale)}
                             onAnswer={(value) => model.answer(field.id, value)}
                             onClear={() => model.clear(field.id)}
                             onBlur={() => model.touch(field.id)}

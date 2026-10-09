@@ -98,8 +98,32 @@ Pages of sections of fields, stored verbatim in `form_versions.definition`.
 | `photo`, `file`     | media references                                          | `answered` | `minFiles`, `maxFiles`, `maxFileBytes`, `acceptedTypes` (file)  |
 | `gps`               | `{ latitude, longitude, accuracyMeters }` as decimal text | `answered` | `maxAccuracyMeters`                                             |
 
-Every field also takes `label`, `help`, `required`, `readOnly`, `visibleWhen` and
-`rules` (custom rules with the admin's own message).
+Every field also takes `label`, `help`, `required`, `readOnly`, `visibleWhen`,
+`requiredWhen` and `rules` (custom rules with the admin's own message).
+
+### Required only when
+
+`requiredWhen` is an expression beside `visibleWhen`. A field is mandatory when `required`
+is true **or** `requiredWhen` is definitely true (unknown counts as not required), and only
+visible fields are checked, as always. `viewForm` exposes the result as
+`required: ReadonlyMap<touchKey, boolean>`, so a renderer draws the mark from the view and
+it follows the answers; `progress.requiredTotal` counts the same way. It is not a
+dependency — like a custom rule it changes no value — so two fields may read each other.
+Adding or changing a `requiredWhen` is a `now_required` breaking change in the publish diff.
+
+### Dependent choices
+
+On `dropdown`, `radio` and `multi_select`, `dependsOn: { field, options }` makes the list
+cascade: `field` is another choice field in scope (same rules as a condition: outside every
+repeatable section, or in the same entry), and `options` maps each of **this** field's option
+values to the parent values that reveal it. An option absent from the map is offered whatever
+the parent's answer; while the parent is unanswered **nothing** is offered, and the renderer
+says "Choose _Area_ first". A multi-select parent reveals the union. `viewForm` exposes
+`availableOptions: ReadonlyMap<touchKey, { options, parentAnswered }>` for every visible
+dependent field, and validation refuses a stored choice that is not on offer with
+`option_unavailable` — the answer is kept and named, never dropped silently. Compile refuses
+a parent that is missing, not a choice, out of scope, a value either side does not have, and
+a field depending on itself or on another that depends back (a `circular_dependency`).
 
 Three choices that look fussy and are not:
 
@@ -160,15 +184,16 @@ typed value stays in state, so switching back restores it; it is never sent.
 - a literal that does not parse
 - a field configuration at odds with itself, including a default its own rules reject
 - a pattern outside the safe subset (below)
-- **a circular dependency**, through visibility, calculations or containment:
+- a `dependsOn` naming a parent that is not a choice field in scope, or options that do not exist
+- **a circular dependency**, through visibility, calculations, dependent choices or containment:
 
 ```
 Circular rule: section "failure" is shown depending on field "reason", and field
 "reason" is inside section "failure". None of these can be worked out until another one is.
 ```
 
-Custom validation rules may read each other freely: they change no values, so they
-cannot take part in a cycle.
+Custom validation rules and `requiredWhen` may read each other freely: they change no
+values, so they cannot take part in a cycle.
 
 ## Patterns
 
@@ -248,7 +273,8 @@ Native and database clients. Its `tsconfig.json` has no ambient types, so `Buffe
 
 `src/conformance/cases.ts` holds scenarios chosen for where engines are most likely to
 disagree: rounding at both signs, leap days and UTC offsets, Arabic and emoji lengths,
-case-insensitive patterns, three-valued logic, the wording of every publish error. The
+case-insensitive patterns, three-valued logic, required-only-when and dependent choices, the
+wording of every publish error. The
 runner records the engine's decision after every step as canonical JSON (sorted keys,
 integers only) into `conformance/golden.jsonl`.
 

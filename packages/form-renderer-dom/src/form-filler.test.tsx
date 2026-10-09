@@ -330,3 +330,96 @@ describe('answers read back', () => {
     expect(screen.getAllByRole('definition')[0]).toHaveTextContent('Not answered');
   });
 });
+
+describe('required only when, and choices that depend on another answer', () => {
+  const area: Field = {
+    id: 'area',
+    type: 'radio',
+    label: { en: 'Area' },
+    options: [
+      { value: 'kitchen', label: { en: 'Kitchen' } },
+      { value: 'bathroom', label: { en: 'Bathroom' } },
+    ],
+  };
+  const room: Field = {
+    id: 'room',
+    type: 'dropdown',
+    label: { en: 'Room' },
+    options: [
+      { value: 'sink', label: { en: 'Sink' } },
+      { value: 'bath', label: { en: 'Bath' } },
+      { value: 'other', label: { en: 'Other' } },
+    ],
+    dependsOn: { field: 'area', options: { sink: ['kitchen'], bath: ['bathroom'] } },
+  };
+  const note: Field = {
+    id: 'note',
+    type: 'text',
+    label: { en: 'Access note' },
+    requiredWhen: {
+      kind: 'compare',
+      operator: 'eq',
+      left: { kind: 'answer', field: 'area' },
+      right: { kind: 'text', value: 'bathroom' },
+    },
+  };
+
+  it('shows the required mark only while the rule holds, and counts it in progress', async () => {
+    const user = userEvent.setup();
+    renderWithI18n(
+      <FormFiller
+        form={formOf([[area, room, note]])}
+        locale="en"
+        onSubmit={() => Promise.resolve({ ok: true as const })}
+      />,
+    );
+    const noteBox = screen.getByRole('textbox', { name: 'Access note' });
+    expect(noteBox).toHaveAttribute('aria-required', 'false');
+    expect(screen.getByRole('progressbar')).toHaveAccessibleName('All required questions answered');
+
+    await user.click(screen.getByRole('radio', { name: 'Bathroom' }));
+    expect(screen.getByRole('textbox', { name: /Access note/u })).toHaveAttribute(
+      'aria-required',
+      'true',
+    );
+    expect(screen.getByRole('progressbar')).toHaveAccessibleName(
+      '0 of 1 required questions answered',
+    );
+  });
+
+  it('offers nothing until the parent is answered, then only what it reveals', async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithI18n(
+      <FormFiller
+        form={formOf([[area, room, note]])}
+        locale="en"
+        onSubmit={() => Promise.resolve({ ok: true as const })}
+      />,
+    );
+    const select = screen.getByRole('combobox', { name: 'Room' });
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Choose…']);
+    expect(select).toHaveAccessibleDescription('Choose “Area” first.');
+
+    await user.click(screen.getByRole('radio', { name: 'Kitchen' }));
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Choose…', 'Sink', 'Other']);
+    await user.selectOptions(select, 'Sink');
+
+    // Changing the parent keeps the answer and says what is wrong with it; it is never dropped silently.
+    await user.click(screen.getByRole('radio', { name: 'Bathroom' }));
+    await user.click(screen.getByRole('button', { name: 'Review answers' }));
+    const summary = await screen.findByRole('alert');
+    expect(within(summary).getByRole('heading')).toHaveTextContent('There are 2 problems to fix');
+    expect(screen.getByRole('combobox', { name: 'Room' })).toHaveAccessibleDescription(
+      'This choice no longer applies. Choose from the options now offered.',
+    );
+    expect(await accessibilityViolations(container)).toEqual([]);
+  });
+});

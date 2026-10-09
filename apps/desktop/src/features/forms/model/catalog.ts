@@ -26,6 +26,7 @@ export const COMMON_PROPERTIES = [
   'required',
   'readOnly',
   'visibleWhen',
+  'requiredWhen',
   'rules',
 ] as const;
 
@@ -44,7 +45,8 @@ export type PropertyEditor =
   | 'pattern'
   | 'calculation'
   | 'megabytes'
-  | 'media_types';
+  | 'media_types'
+  | 'depends_on';
 
 export interface PaletteGroup {
   purpose: FieldPurpose;
@@ -104,6 +106,8 @@ export function editorFor(type: FieldType, property: string): PropertyEditor | u
       return 'megabytes';
     case 'acceptedTypes':
       return 'media_types';
+    case 'dependsOn':
+      return 'depends_on';
     case 'maxAccuracyMeters':
       return 'decimal';
     case 'earliest':

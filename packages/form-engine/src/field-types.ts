@@ -65,10 +65,32 @@ const base = {
   required: z.boolean().optional(),
   readOnly: z.boolean().optional(),
   visibleWhen: expressionSchema.optional(),
+  /**
+   * Mandatory only sometimes: "Reason" must be answered when "Result" is
+   * "Fail". A field is required when `required` is true *or* this is
+   * definitely true. Like `visibleWhen`, unknown counts as not required.
+   */
+  requiredWhen: expressionSchema.optional(),
   rules: z.array(ruleSchema).max(50).optional(),
 };
 
 const choices = z.array(optionSchema).min(1).max(1_000);
+
+/**
+ * Cascading lists: which of this field's options are offered depends on the
+ * answer to another choice field — "Area" narrows "Room".
+ *
+ * `options` maps an option value of *this* field to the parent's values that
+ * reveal it. An option absent from the map is offered whatever the parent's
+ * answer. While the parent is unanswered nothing is offered at all, and the
+ * renderer says which question to answer first. A multi-select parent reveals
+ * the union of what each selected value reveals.
+ */
+export const dependsOnSchema = z.strictObject({
+  field: elementIdSchema,
+  options: z.record(z.string().max(64), z.array(z.string().max(64)).min(1).max(1_000)),
+});
+export type DependsOn = z.infer<typeof dependsOnSchema>;
 
 const mediaTypes = z
   .array(
@@ -149,18 +171,21 @@ export const fieldSchema = z.discriminatedUnion('type', [
     ...base,
     type: z.literal('dropdown'),
     options: choices,
+    dependsOn: dependsOnSchema.optional(),
     default: z.string().optional(),
   }),
   z.strictObject({
     ...base,
     type: z.literal('radio'),
     options: choices,
+    dependsOn: dependsOnSchema.optional(),
     default: z.string().optional(),
   }),
   z.strictObject({
     ...base,
     type: z.literal('multi_select'),
     options: choices,
+    dependsOn: dependsOnSchema.optional(),
     minSelected: z.number().int().min(0).max(1_000).optional(),
     maxSelected: z.number().int().min(1).max(1_000).optional(),
     default: z.array(z.string()).max(1_000).optional(),
@@ -216,6 +241,16 @@ export const fieldSchema = z.discriminatedUnion('type', [
 export type Field = z.infer<typeof fieldSchema>;
 export type FieldType = Field['type'];
 export type FieldOf<T extends FieldType> = Extract<Field, { type: T }>;
+
+/** A field whose options can depend on another field's answer. */
+export type DependentChoiceField = FieldOf<'dropdown' | 'radio' | 'multi_select'>;
+
+/** How a field's options depend on another answer, or `undefined` when they do not. */
+export function dependsOnOf(field: Field): DependsOn | undefined {
+  return field.type === 'dropdown' || field.type === 'radio' || field.type === 'multi_select'
+    ? field.dependsOn
+    : undefined;
+}
 
 // ---------------------------------------------------------------------------
 // The registry
@@ -387,6 +422,8 @@ export const FIELD_ERROR_CODES = [
   'before_earliest',
   'after_latest',
   'unknown_option',
+  // A choice this field offers, but not for the current answer to the field it depends on.
+  'option_unavailable',
   'duplicate_option',
   'too_few_selected',
   'too_many_selected',
@@ -742,6 +779,9 @@ export function fieldConfigIssues(field: Field): FieldConfigIssue[] {
     if (field.required === true) {
       report('required', 'A calculated field is never typed, so it cannot be required');
     }
+    if (field.requiredWhen !== undefined) {
+      report('requiredWhen', 'A calculated field is never typed, so it cannot be required');
+    }
     if (defaultValue !== undefined) {
       report('default', 'A calculated field cannot also have a default');
     }
@@ -840,5 +880,17 @@ function checkOptions(
       'minSelected',
       `minSelected ${String(field.minSelected)} is above maxSelected ${String(field.maxSelected)}`,
     );
+  }
+
+  // Whether the parent and its values exist is the compiler's to check; that
+  // the map names this field's own options is known here.
+  if (field.dependsOn !== undefined) {
+    const stray = Object.keys(field.dependsOn.options).find((value) => !values.includes(value));
+    if (stray !== undefined) {
+      report(
+        `dependsOn.options.${stray}`,
+        `dependsOn offers "${stray}" for some answers, but the field has no such option`,
+      );
+    }
   }
 }

@@ -1,5 +1,6 @@
 import type { CompiledForm } from '../compile.js';
 import { compareCodeUnits } from '../canonical.js';
+import { dependsOnOf } from '../field-types.js';
 import type { FormView } from '../state.js';
 
 /**
@@ -11,7 +12,9 @@ import type { FormView } from '../state.js';
  *
  * A form with repeatable sections also records each entry's visibility and
  * values (P13b). A form without them records exactly what it always did, so
- * the golden lines written before entries existed still hold.
+ * the golden lines written before entries existed still hold. In the same way,
+ * a form with a `requiredWhen` records which fields are required right now, and
+ * one with dependent choices records what each offers.
  */
 export function snapshotView(form: CompiledForm, view: FormView): Record<string, unknown> {
   const sortedObject = (map: ReadonlyMap<string, unknown>, keys: readonly string[]) => {
@@ -60,6 +63,15 @@ export function snapshotView(form: CompiledForm, view: FormView): Record<string,
       });
     }
     snapshot.entries = entries;
+  }
+
+  if (form.fields.some((field) => field.requiredWhen !== undefined)) {
+    snapshot.required = sortedObject(view.required, [...view.required.keys()]);
+  }
+  if (form.fields.some((field) => dependsOnOf(field) !== undefined)) {
+    snapshot.availableOptions = sortedObject(view.availableOptions, [
+      ...view.availableOptions.keys(),
+    ]);
   }
 
   return snapshot;

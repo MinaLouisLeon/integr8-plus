@@ -12,7 +12,12 @@ import {
   transition,
   viewForm,
 } from '@integr8/form-engine';
-import { firstPerField, pageIndexOfField } from '@integr8/form-input';
+import {
+  dependentChoices,
+  firstPerField,
+  isRequiredNow,
+  pageIndexOfField,
+} from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { useId, useMemo, useRef, useState } from 'react';
 import { AnswerView } from './answer-view.js';
@@ -497,6 +502,8 @@ export function FormFiller({
                           locale={locale}
                           media={media}
                           disabled={false}
+                          required={isRequiredNow(view, field, entry.id)}
+                          choices={dependentChoices(form, view, field, locale, entry.id)}
                           onAnswer={(value) =>
                             dispatch({ type: 'answer', field: field.id, value, entry: entry.id })
                           }
@@ -527,6 +534,8 @@ export function FormFiller({
                         locale={locale}
                         media={media}
                         disabled={false}
+                        required={isRequiredNow(view, field)}
+                        choices={dependentChoices(form, view, field, locale)}
                         onAnswer={(value) => dispatch({ type: 'answer', field: field.id, value })}
                         onClear={() => dispatch({ type: 'clear', field: field.id })}
                         onBlur={() => dispatch({ type: 'touch', field: field.id })}

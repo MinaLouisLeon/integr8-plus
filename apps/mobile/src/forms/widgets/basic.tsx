@@ -1,4 +1,4 @@
-import { readDecimal, readInteger, say, toggleOption } from '@integr8/form-input';
+import { offeredOptions, readDecimal, readInteger, say, toggleOffered } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
 import { useState } from 'react';
@@ -153,11 +153,12 @@ export function DecimalWidget(props: WidgetProps<'decimal'>) {
 
 /** A long list is a sheet of whole-width rows, not a tiny native spinner. */
 export function DropdownWidget(props: WidgetProps<'dropdown'>) {
-  const { field, value, label, invalid, disabled, locale, onAnswer, onBlur } = props;
+  const { field, value, label, invalid, available, disabled, locale, onAnswer, onBlur } = props;
   const { t } = useTranslation();
   const theme = useTheme();
   const [open, setOpen] = useState(false);
-  const chosen = field.options.find((option) => option.value === value);
+  const offered = offeredOptions(field.options, available);
+  const chosen = offered.find((option) => option.value === value);
   return (
     <>
       <Pressable
@@ -202,7 +203,7 @@ export function DropdownWidget(props: WidgetProps<'dropdown'>) {
               {label}
             </Text>
             <ScrollView contentContainerStyle={kit.stack}>
-              {field.options.map((option) => (
+              {offered.map((option) => (
                 <ChoiceRow
                   key={option.value}
                   role="radio"
@@ -232,10 +233,10 @@ export function DropdownWidget(props: WidgetProps<'dropdown'>) {
 }
 
 export function RadioWidget(props: WidgetProps<'radio'>) {
-  const { field, value, disabled, locale, onAnswer, onBlur } = props;
+  const { field, value, available, disabled, locale, onAnswer, onBlur } = props;
   return (
     <View accessibilityRole="radiogroup" style={kit.stack}>
-      {field.options.map((option) => (
+      {offeredOptions(field.options, available).map((option) => (
         <ChoiceRow
           key={option.value}
           role="radio"
@@ -253,11 +254,11 @@ export function RadioWidget(props: WidgetProps<'radio'>) {
 }
 
 export function MultiSelectWidget(props: WidgetProps<'multi_select'>) {
-  const { field, value, disabled, locale, onAnswer, onBlur } = props;
+  const { field, value, available, disabled, locale, onAnswer, onBlur } = props;
   const selected = Array.isArray(value) ? (value as string[]) : [];
   return (
     <View style={kit.stack}>
-      {field.options.map((option) => {
+      {offeredOptions(field.options, available).map((option) => {
         const ticked = selected.includes(option.value);
         return (
           <ChoiceRow
@@ -267,7 +268,7 @@ export function MultiSelectWidget(props: WidgetProps<'multi_select'>) {
             selected={ticked}
             disabled={disabled}
             onPress={() => {
-              onAnswer(toggleOption(field.options, selected, option.value, !ticked));
+              onAnswer(toggleOffered(field.options, available, selected, option.value, !ticked));
               onBlur();
             }}
           />

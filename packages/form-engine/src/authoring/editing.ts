@@ -1,6 +1,6 @@
 import type { FormDefinition, Page, Section } from '../definition.js';
 import { type Expression, referencedFields, referencedSections } from '../expression.js';
-import type { Field } from '../field-types.js';
+import { dependsOnOf, type Field } from '../field-types.js';
 import type { ElementId } from '../ids.js';
 import { generateId } from './scaffold.js';
 
@@ -334,6 +334,13 @@ function remapField(field: Field, map: ReadonlyMap<ElementId, ElementId>): Field
   if (field.visibleWhen !== undefined) {
     copy.visibleWhen = remapExpression(field.visibleWhen, map);
   }
+  if (field.requiredWhen !== undefined) {
+    copy.requiredWhen = remapExpression(field.requiredWhen, map);
+  }
+  const dependsOn = dependsOnOf(field);
+  if (dependsOn !== undefined) {
+    copy.dependsOn = { ...dependsOn, field: map.get(dependsOn.field) ?? dependsOn.field };
+  }
   if ('calculation' in field && field.calculation !== undefined) {
     copy.calculation = remapExpression(field.calculation, map);
   }
@@ -420,7 +427,7 @@ export function duplicate(definition: FormDefinition, id: ElementId): DuplicateR
 export interface Reference {
   /** The element whose rule reads the field. */
   from: ElementId;
-  where: 'visibleWhen' | 'calculation' | 'rule';
+  where: 'visibleWhen' | 'requiredWhen' | 'calculation' | 'rule' | 'dependsOn';
   /** The rule id, when `where` is `rule`. */
   rule?: ElementId;
   /** The field being read, or the repeatable section read across. */
@@ -460,6 +467,11 @@ export function referencesTo(definition: FormDefinition, ids: readonly ElementId
       scan(section.id, 'visibleWhen', section.visibleWhen);
       for (const field of section.fields) {
         scan(field.id, 'visibleWhen', field.visibleWhen);
+        scan(field.id, 'requiredWhen', field.requiredWhen);
+        const parent = dependsOnOf(field)?.field;
+        if (parent !== undefined && targets.has(parent) && !targets.has(field.id)) {
+          found.push({ from: field.id, where: 'dependsOn', to: parent });
+        }
         if ('calculation' in field) {
           scan(field.id, 'calculation', field.calculation);
         }

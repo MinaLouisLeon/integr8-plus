@@ -19,6 +19,13 @@ export {
   type GeoPart,
 } from './answers.js';
 export {
+  dependentChoices,
+  isRequiredNow,
+  offeredOptions,
+  toggleOffered,
+  type DependentChoices,
+} from './choices.js';
+export {
   canAddEntry,
   entriesOf,
   entryErrors,

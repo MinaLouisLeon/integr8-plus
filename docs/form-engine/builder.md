@@ -85,9 +85,10 @@ environment; it is product content, not seed data.
 | `model/rename.ts`                  | A new question's answer key following its wording, until something depends on it |
 | `model/issues.ts`                  | Which element to open for a compile issue                                        |
 | `use-draft-sync.ts`                | Autosave, retry, conflict detection                                              |
+| `model/sentences.ts`               | A question's rules read out as sentences for its card on the canvas              |
 | `components/canvas.tsx`            | Palette and drag-and-drop canvas (dnd-kit), with keyboard and button moves       |
 | `components/config-panel.tsx`      | Everything about the selected question, section or page                          |
-| `components/condition-builder.tsx` | "Show this when…" and custom checks, as sentences                                |
+| `components/condition-builder.tsx` | "Show this when…", "Required when…" and custom checks, as sentences              |
 | `components/form-renderer.tsx`     | The preview: `viewForm` rendered for desktop and phone                           |
 | `components/changes-panel.tsx`     | The server's check, the diff, and the publish dialog                             |
 
@@ -99,6 +100,24 @@ by "all of" or "any of", and `toExpression` / `fromExpression` in the engine tur
 the typed syntax tree and back. An expression the builder cannot phrase (written by hand,
 or later by AI generation) is shown read-only with a way to remove it, never rewritten into
 something it did not say.
+
+### Conditions on the cards
+
+Every question card on the canvas reads its rules out — "Shown when Result is Fail",
+"Required when Hazards includes Gas", "Choices depend on Area" — and has a "Show when…"
+button that opens the same condition editor in a dialog, so a condition is found and changed
+without opening the panel. A rule the builder cannot phrase is named as "a rule written
+outside the builder". The sentences come from `model/sentences.ts`, over the engine's
+`fromExpression`, using the same words as the dropdowns.
+
+### Required only when, and dependent choices
+
+The panel's "When it must be answered" group holds a "Required only when…" rule built with
+the condition editor; it is greyed out while the fixed "Must be answered" toggle is on, since
+the two are exclusive. On a dropdown, pick-one or pick-several question, "Depends on" lists
+the choice questions in scope, then, per option, a row of the parent's options that reveal
+it (nothing ticked means always offered). The preview draws the required mark and the offered
+options from the engine's view, as the phone and the web renderer do.
 
 ### Answer keys
 

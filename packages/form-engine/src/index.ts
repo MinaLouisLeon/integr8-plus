@@ -24,6 +24,13 @@
 export { canonicalJson, CanonicalJsonError, compareCodeUnits } from './canonical.js';
 
 export {
+  availableOptions,
+  dependentChoiceParent,
+  revealing,
+  type AvailableOptions,
+} from './choices.js';
+
+export {
   compileDefinition,
   DEFINITION_ISSUE_CODES,
   type CompiledForm,
@@ -104,6 +111,8 @@ export {
 export {
   answerSchemaFor,
   choiceValues,
+  dependsOnOf,
+  dependsOnSchema,
   describeFieldType,
   FIELD_ERROR_CODES,
   FIELD_TYPES,
@@ -117,6 +126,8 @@ export {
   optionSchema,
   ruleSchema,
   validateAnswer,
+  type DependentChoiceField,
+  type DependsOn,
   type Field,
   type FieldConfigIssue,
   type FieldError,
@@ -177,6 +188,7 @@ export {
 export { parseDate, parseDatetime, parseTime } from './temporal.js';
 
 export {
+  answerKey,
   SUBMISSION_ISSUE_CODES,
   validateForm,
   validateSubmission,

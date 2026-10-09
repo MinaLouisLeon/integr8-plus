@@ -7,10 +7,12 @@ import {
 } from '@integr8/form-engine';
 import {
   canAddEntry,
+  dependentChoices,
   entriesOf,
   entryErrors,
   entryTitle,
   firstPerField,
+  isRequiredNow,
   say,
   sectionErrors,
 } from '@integr8/form-input';
@@ -206,6 +208,8 @@ export function EntryView({
               errors={errorsFor(field.id)}
               locale={locale}
               disabled={false}
+              required={isRequiredNow(view, field, entryId)}
+              choices={dependentChoices(model.form, view, field, locale, entryId)}
               onAnswer={(value) => model.answer(field.id, value, entryId)}
               onClear={() => model.clear(field.id, entryId)}
               onBlur={() => model.touch(field.id, entryId)}

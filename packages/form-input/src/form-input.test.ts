@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canAddEntry,
   checkChosenFiles,
+  dependentChoices,
   entryTitle,
   editGeoPoint,
   errorMessage,
@@ -16,7 +17,9 @@ import {
   fitWithin,
   formatBytes,
   geoPointFrom,
+  isRequiredNow,
   normaliseDigits,
+  offeredOptions,
   pageIndexOfField,
   prefillAnswers,
   problemsPerPage,
@@ -25,6 +28,7 @@ import {
   readInteger,
   say,
   strokesToPath,
+  toggleOffered,
   toggleOption,
   toPadPoint,
   visiblePages,
@@ -153,6 +157,85 @@ describe('answers from controls', () => {
     expect(
       editGeoPoint({ latitude: '1', longitude: '2', accuracyMeters: '5' }, 'accuracyMeters', ''),
     ).toEqual({ latitude: '1', longitude: '2' });
+  });
+});
+
+describe('what the view says about a question', () => {
+  const area = {
+    id: 'area',
+    type: 'radio',
+    label: label('Area'),
+    options: [
+      { value: 'kitchen', label: label('Kitchen') },
+      { value: 'bathroom', label: label('Bathroom') },
+    ],
+  };
+  const room = {
+    id: 'room',
+    type: 'dropdown',
+    label: label('Room'),
+    options: [
+      { value: 'sink', label: label('Sink') },
+      { value: 'bath', label: label('Bath') },
+      { value: 'other', label: label('Other') },
+    ],
+    dependsOn: { field: 'area', options: { sink: ['kitchen'], bath: ['bathroom'] } },
+  };
+  const note = {
+    id: 'note',
+    type: 'text',
+    label: label('Note'),
+    requiredWhen: {
+      kind: 'compare',
+      operator: 'eq',
+      left: { kind: 'answer', field: 'area' },
+      right: { kind: 'text', value: 'bathroom' },
+    },
+  };
+  const form = compiled({
+    schemaVersion: 1,
+    title: label('Rooms'),
+    pages: [{ id: 'p', sections: [{ id: 's', fields: [area, room, note] }] }],
+  });
+
+  it('says whether a question is required right now, following the answers', () => {
+    const noteField = form.elements.get('note')!.field!;
+    let state = createFormState(form);
+    expect(isRequiredNow(viewForm(form, state), noteField)).toBe(false);
+    state = transition(form, state, { type: 'answer', field: 'area', value: 'bathroom' }).state;
+    expect(isRequiredNow(viewForm(form, state), noteField)).toBe(true);
+  });
+
+  it('names the question a dependent choice follows, and what it offers', () => {
+    const roomField = form.elements.get('room')!.field!;
+    let state = createFormState(form);
+    expect(dependentChoices(form, viewForm(form, state), roomField, 'en')).toEqual({
+      options: [],
+      parentAnswered: false,
+      parentLabel: 'Area',
+    });
+    state = transition(form, state, { type: 'answer', field: 'area', value: 'kitchen' }).state;
+    expect(dependentChoices(form, viewForm(form, state), roomField, 'en')?.options).toEqual([
+      'sink',
+      'other',
+    ]);
+    expect(
+      dependentChoices(form, viewForm(form, state), form.elements.get('area')!.field!, 'en'),
+    ).toBeUndefined();
+  });
+
+  it('draws every option when nothing is said, and only those on offer otherwise', () => {
+    expect(offeredOptions(room.options, undefined)).toBe(room.options);
+    expect(offeredOptions(room.options, ['other']).map((option) => option.value)).toEqual([
+      'other',
+    ]);
+  });
+
+  it('drops a choice no longer on offer the moment the question is touched', () => {
+    const options = [{ value: 'a' }, { value: 'b' }, { value: 'c' }];
+    expect(toggleOffered(options, ['a', 'c'], ['b'], 'c', true)).toEqual(['c']);
+    expect(toggleOffered(options, undefined, ['b', 'c'], 'a', true)).toEqual(['a', 'b', 'c']);
+    expect(toggleOffered(options, ['a', 'b'], ['a', 'b'], 'a', false)).toEqual(['b']);
   });
 });
 

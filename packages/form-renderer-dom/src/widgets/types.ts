@@ -11,6 +11,10 @@ export interface WidgetProps<T extends FieldType = FieldType> {
   label: string;
   describedBy: string | undefined;
   invalid: boolean;
+  /** Whether it must be answered right now: fixed, or because `requiredWhen` holds. */
+  required: boolean;
+  /** For a choice whose options depend on another answer: the values on offer. `undefined` offers all. */
+  available: readonly string[] | undefined;
   disabled: boolean;
   locale: string;
   media: MediaAdapter | undefined;

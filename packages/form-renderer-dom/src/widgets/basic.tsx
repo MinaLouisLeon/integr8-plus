@@ -1,6 +1,6 @@
 import { useTranslation } from '@integr8/i18n';
 import { type ReactNode, useState } from 'react';
-import { readDecimal, readInteger, toggleOption } from '@integr8/form-input';
+import { offeredOptions, readDecimal, readInteger, toggleOffered } from '@integr8/form-input';
 import { say, withLocalOffset } from '../text.js';
 import { inputClass, type WidgetProps } from './types.js';
 
@@ -16,7 +16,7 @@ import { inputClass, type WidgetProps } from './types.js';
 const text = (value: unknown) => (typeof value === 'string' ? value : '');
 
 export function TextWidget(props: WidgetProps<'text' | 'barcode'>) {
-  const { field, value, id, describedBy, invalid, disabled, onAnswer, onBlur } = props;
+  const { field, value, id, describedBy, invalid, required, disabled, onAnswer, onBlur } = props;
   return (
     <input
       id={id}
@@ -25,7 +25,7 @@ export function TextWidget(props: WidgetProps<'text' | 'barcode'>) {
       disabled={disabled}
       aria-invalid={invalid}
       aria-describedby={describedBy}
-      aria-required={field.required === true}
+      aria-required={required}
       maxLength={field.maxLength}
       // A barcode is usually typed by a scanner acting as a keyboard: no
       // autocorrect, no capitalisation, nothing that would rewrite a serial.
@@ -40,7 +40,7 @@ export function TextWidget(props: WidgetProps<'text' | 'barcode'>) {
 }
 
 export function LongTextWidget(props: WidgetProps<'long_text'>) {
-  const { field, value, id, describedBy, invalid, disabled, onAnswer, onBlur } = props;
+  const { field, value, id, describedBy, invalid, required, disabled, onAnswer, onBlur } = props;
   return (
     <textarea
       id={id}
@@ -49,7 +49,7 @@ export function LongTextWidget(props: WidgetProps<'long_text'>) {
       disabled={disabled}
       aria-invalid={invalid}
       aria-describedby={describedBy}
-      aria-required={field.required === true}
+      aria-required={required}
       maxLength={field.maxLength}
       onChange={(event) => onAnswer(event.target.value)}
       onBlur={onBlur}
@@ -75,7 +75,7 @@ function WithUnit({ unit, children }: { unit: string | undefined; children: Reac
  * until it is a number, and shown as typed rather than snapped back.
  */
 export function NumberWidget(props: WidgetProps<'number'>) {
-  const { field, value, id, describedBy, invalid, disabled, onAnswer, onBlur } = props;
+  const { field, value, id, describedBy, invalid, required, disabled, onAnswer, onBlur } = props;
   const [typing, setTyping] = useState<string | undefined>(undefined);
   const stored = typeof value === 'number' ? String(value) : '';
   const shown = typing ?? stored;
@@ -90,7 +90,7 @@ export function NumberWidget(props: WidgetProps<'number'>) {
         disabled={disabled}
         aria-invalid={invalid || unfinished}
         aria-describedby={describedBy}
-        aria-required={field.required === true}
+        aria-required={required}
         onChange={(event) => {
           const typed = readInteger(event.target.value);
           setTyping(typed.text);
@@ -111,7 +111,7 @@ export function NumberWidget(props: WidgetProps<'number'>) {
 }
 
 export function DecimalWidget(props: WidgetProps<'decimal'>) {
-  const { field, value, id, describedBy, invalid, disabled, onAnswer, onBlur } = props;
+  const { field, value, id, describedBy, invalid, required, disabled, onAnswer, onBlur } = props;
   return (
     <WithUnit unit={field.unit}>
       <input
@@ -122,7 +122,7 @@ export function DecimalWidget(props: WidgetProps<'decimal'>) {
         disabled={disabled}
         aria-invalid={invalid}
         aria-describedby={describedBy}
-        aria-required={field.required === true}
+        aria-required={required}
         onChange={(event) => onAnswer(readDecimal(event.target.value))}
         onBlur={onBlur}
         className={inputClass}
@@ -132,7 +132,7 @@ export function DecimalWidget(props: WidgetProps<'decimal'>) {
 }
 
 export function TemporalWidget(props: WidgetProps<'date' | 'time' | 'datetime'>) {
-  const { field, value, id, describedBy, invalid, disabled, onAnswer, onBlur } = props;
+  const { field, value, id, describedBy, invalid, required, disabled, onAnswer, onBlur } = props;
   const datetime = field.type === 'datetime';
   return (
     <input
@@ -144,7 +144,7 @@ export function TemporalWidget(props: WidgetProps<'date' | 'time' | 'datetime'>)
       disabled={disabled}
       aria-invalid={invalid}
       aria-describedby={describedBy}
-      aria-required={field.required === true}
+      aria-required={required}
       onChange={(event) =>
         onAnswer(
           datetime && event.target.value !== ''
@@ -159,7 +159,19 @@ export function TemporalWidget(props: WidgetProps<'date' | 'time' | 'datetime'>)
 }
 
 export function DropdownWidget(props: WidgetProps<'dropdown'>) {
-  const { field, value, id, describedBy, invalid, disabled, locale, onAnswer, onBlur } = props;
+  const {
+    field,
+    value,
+    id,
+    describedBy,
+    invalid,
+    required,
+    available,
+    disabled,
+    locale,
+    onAnswer,
+    onBlur,
+  } = props;
   const { t } = useTranslation();
   return (
     <select
@@ -168,13 +180,13 @@ export function DropdownWidget(props: WidgetProps<'dropdown'>) {
       disabled={disabled}
       aria-invalid={invalid}
       aria-describedby={describedBy}
-      aria-required={field.required === true}
+      aria-required={required}
       onChange={(event) => onAnswer(event.target.value)}
       onBlur={onBlur}
       className={inputClass}
     >
       <option value="">{t('fill.choose')}</option>
-      {field.options.map((option) => (
+      {offeredOptions(field.options, available).map((option) => (
         <option key={option.value} value={option.value}>
           {say(option.label, locale)}
         </option>
@@ -233,7 +245,7 @@ export function RadioWidget(props: WidgetProps<'radio'>) {
     <RadioGroup
       props={props}
       inline={false}
-      choices={props.field.options.map((option) => ({
+      choices={offeredOptions(props.field.options, props.available).map((option) => ({
         value: option.value,
         label: say(option.label, props.locale),
       }))}
@@ -259,11 +271,11 @@ export function YesNoWidget(props: WidgetProps<'yes_no'>) {
 }
 
 export function MultiSelectWidget(props: WidgetProps<'multi_select'>) {
-  const { field, value, disabled, invalid, locale, onAnswer, onBlur } = props;
+  const { field, value, disabled, invalid, available, locale, onAnswer, onBlur } = props;
   const selected = Array.isArray(value) ? (value as string[]) : [];
   return (
     <div className="flex flex-col gap-2">
-      {field.options.map((option) => (
+      {offeredOptions(field.options, available).map((option) => (
         <label
           key={option.value}
           className="flex cursor-pointer items-center gap-2 text-sm text-content"
@@ -274,7 +286,15 @@ export function MultiSelectWidget(props: WidgetProps<'multi_select'>) {
             disabled={disabled}
             aria-invalid={invalid}
             onChange={(event) =>
-              onAnswer(toggleOption(field.options, selected, option.value, event.target.checked))
+              onAnswer(
+                toggleOffered(
+                  field.options,
+                  available,
+                  selected,
+                  option.value,
+                  event.target.checked,
+                ),
+              )
             }
             onBlur={onBlur}
           />
@@ -287,7 +307,7 @@ export function MultiSelectWidget(props: WidgetProps<'multi_select'>) {
 
 /** A tick box is its own label: "I have isolated the gas supply." */
 export function CheckboxWidget(props: WidgetProps<'checkbox'>) {
-  const { field, value, id, label, describedBy, invalid, disabled, onAnswer, onBlur } = props;
+  const { value, id, label, describedBy, invalid, required, disabled, onAnswer, onBlur } = props;
   const { t } = useTranslation();
   return (
     <label className="flex cursor-pointer items-start gap-2 text-sm text-content">
@@ -299,13 +319,13 @@ export function CheckboxWidget(props: WidgetProps<'checkbox'>) {
         disabled={disabled}
         aria-invalid={invalid}
         aria-describedby={describedBy}
-        aria-required={field.required === true}
+        aria-required={required}
         onChange={(event) => onAnswer(event.target.checked)}
         onBlur={onBlur}
       />
       <span className="font-medium">
         {label}
-        {field.required === true ? (
+        {required ? (
           <>
             <span aria-hidden="true" className="text-danger">
               {' *'}
