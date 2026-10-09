@@ -74,7 +74,7 @@ describe('what the top bar needs', () => {
       section: 'customers',
       back: { to: '/customers', section: 'customers' },
     });
-    expect(routeChrome('/forms/f1/versions/v2').back).toEqual({ to: '/forms', section: 'forms' });
+    expect(routeChrome('/forms/f1/versions/v2').back).toBeUndefined();
   });
 
   it('leads an unknown settings route back to the dashboard', () => {

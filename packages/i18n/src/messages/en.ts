@@ -20,6 +20,14 @@
 export const en = {
   common: {
     appName: 'Integr8 Plus',
+    // The desktop window's own right-click menu, over text.
+    contextMenu: {
+      label: 'Actions',
+      cut: 'Cut',
+      copy: 'Copy',
+      paste: 'Paste',
+      selectAll: 'Select all',
+    },
     loading: 'Loading…',
     retry: 'Try again',
     cancel: 'Cancel',

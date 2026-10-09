@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { CompanyMark } from '~/components/company-brand';
+import { useContextMenu } from '~/components/context-menu';
 import { ImpersonationBanner } from '~/components/impersonation-banner';
 import { ChromeIconGlyph, NavIconGlyph } from '~/components/nav-icon';
 import { useShellChromeOverride } from '~/components/shell-chrome';
@@ -153,6 +154,7 @@ function Sidebar({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queries = useQueryClient();
+  const menu = useContextMenu();
   const closeButton = useRef<HTMLButtonElement>(null);
   // The drawer always shows labels: folding to icons is for a wide window.
   const expanded = !collapsed || drawerOpen;
@@ -231,6 +233,24 @@ function Sidebar({
                     <li key={section.key}>
                       <Link
                         to={section.to}
+                        onContextMenu={(event) =>
+                          menu.open(
+                            event,
+                            [
+                              {
+                                key: 'open',
+                                label: t('operations.rowActions.open'),
+                                onSelect: () => void navigate(section.to),
+                              },
+                              {
+                                key: 'collapse',
+                                label: collapsed ? t('nav.expand') : t('nav.collapse'),
+                                onSelect: onToggleCollapsed,
+                              },
+                            ],
+                            label,
+                          )
+                        }
                         aria-current={active ? 'page' : undefined}
                         title={expanded ? undefined : label}
                         className={[

@@ -116,5 +116,10 @@ export function routeChrome(pathname: string): RouteChrome {
   if (root === null || clean === root) {
     return { section, back: undefined };
   }
+  // The form builder and a published version carry their own way back, in
+  // the builder's toolbar; a second one in the top bar would be noise.
+  if (section === 'forms') {
+    return { section, back: undefined };
+  }
   return { section, back: { to: root, section } };
 }

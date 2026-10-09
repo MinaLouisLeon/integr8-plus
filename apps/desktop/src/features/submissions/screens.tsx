@@ -8,6 +8,7 @@ import {
 } from '@integr8/form-renderer-dom/screens';
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { useContextMenu } from '~/components/context-menu';
 import { session } from '~/lib/session';
 
 /**
@@ -19,6 +20,7 @@ import { session } from '~/lib/session';
 function FormScreens({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
+  const menu = useContextMenu();
   const config = useMemo<ScreensConfig>(
     () => ({
       client: session().client,
@@ -28,10 +30,16 @@ function FormScreens({ children }: { children: ReactNode }) {
         fill: '/fill',
         submissions: '/submissions',
         submission: (id) => `/submissions/${id}`,
+        workOrder: (id) => `/work-orders/${id}`,
       },
       download: saveFile,
+      ...(menu.enabled
+        ? {
+            rowActions: (target, actions, event) => menu.open(event, actions, target.label),
+          }
+        : {}),
     }),
-    [navigate, i18n.language],
+    [navigate, i18n.language, menu],
   );
   return (
     <ScreensContext.Provider value={config}>

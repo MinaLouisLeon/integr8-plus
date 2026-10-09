@@ -43,6 +43,13 @@ export type Catalogue<T> = {
 export const ar: Catalogue<Messages> = {
   common: {
     appName: 'Integr8 Plus',
+    contextMenu: {
+      label: 'الإجراءات',
+      cut: 'قص',
+      copy: 'نسخ',
+      paste: 'لصق',
+      selectAll: 'تحديد الكل',
+    },
     loading: 'جارٍ التحميل…',
     retry: 'إعادة المحاولة',
     cancel: 'إلغاء',

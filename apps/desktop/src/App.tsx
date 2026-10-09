@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { HashRouter, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router';
 import { AppFrame } from '~/components/app-frame';
 import { CompanyBrand } from '~/components/company-brand';
+import { ContextMenuProvider } from '~/components/context-menu';
 import { ShellChromeProvider } from '~/components/shell-chrome';
 import { LoadingState } from '~/components/ui';
 import {
@@ -102,17 +103,21 @@ export function App() {
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
         <HashRouter>
-          <Routes>
-            <Route path="/sign-in" element={<SignInRoute />} />
-            <Route
-              element={<RequireSession locale={preferences.locale} onLocaleChange={changeLocale} />}
-            >
-              {SIGNED_IN_ROUTES.map(({ path, element }) => (
-                <Route key={path} path={path} element={element} />
-              ))}
-            </Route>
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+          <ContextMenuProvider>
+            <Routes>
+              <Route path="/sign-in" element={<SignInRoute />} />
+              <Route
+                element={
+                  <RequireSession locale={preferences.locale} onLocaleChange={changeLocale} />
+                }
+              >
+                {SIGNED_IN_ROUTES.map(({ path, element }) => (
+                  <Route key={path} path={path} element={element} />
+                ))}
+              </Route>
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </ContextMenuProvider>
         </HashRouter>
       </QueryClientProvider>
     </I18nextProvider>
