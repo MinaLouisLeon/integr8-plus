@@ -95,6 +95,11 @@ jobs:
       # a release with no macOS installer is not a release.
       desktop-platforms: ${{ vars.RELEASE_DESKTOP_PLATFORMS || '["ubuntu-latest","windows-latest","macos-latest"]' }}
       eas-profile: ${{ vars.RELEASE_EAS_PROFILE || 'production' }}
+      # The same variables the web image is built with, so the installer and the
+      # web app on a release talk to the same API.
+      api-url: ${{ vars.PUBLIC_API_URL }}
+      app-env: production
+      desktop-sentry-dsn: ${{ vars.DESKTOP_PUBLIC_SENTRY_DSN }}
 
   publish:
     name: Publish the release

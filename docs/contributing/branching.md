@@ -203,13 +203,22 @@ gh variable set DESKTOP_BUILDS --body 'disabled'   # skip desktop builds entirel
 
 ## Secrets and variables
 
-| Name                                 | Kind     | Without it                                              |
-| ------------------------------------ | -------- | ------------------------------------------------------- |
-| `TAURI_SIGNING_PRIVATE_KEY`          | secret   | Installers build, but carry no update signature         |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | secret   | As above                                                |
-| `EXPO_TOKEN`                         | secret   | Mobile builds cannot authenticate                       |
-| `EAS_BUILDS`                         | variable | Mobile builds are skipped. Set to `enabled` to run them |
-| `DESKTOP_BUILDS`                     | variable | Set to `disabled` to skip desktop builds                |
+| Name                                 | Kind     | Without it                                                                                          |
+| ------------------------------------ | -------- | --------------------------------------------------------------------------------------------------- |
+| `TAURI_SIGNING_PRIVATE_KEY`          | secret   | Installers build, but carry no update signature                                                     |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | secret   | As above                                                                                            |
+| `EXPO_TOKEN`                         | secret   | Mobile builds cannot authenticate                                                                   |
+| `EAS_BUILDS`                         | variable | Mobile builds are skipped. Set to `enabled` to run them                                             |
+| `DESKTOP_BUILDS`                     | variable | Set to `disabled` to skip desktop builds                                                            |
+| `PUBLIC_API_URL`                     | variable | The release desktop build refuses to run: an installer must know its API. Shared with the web image |
+| `STAGING_PUBLIC_API_URL`             | variable | As above, for the nightly's installer and the staging web image                                     |
+| `DESKTOP_PUBLIC_SENTRY_DSN`          | variable | Desktop installers report no errors to Sentry                                                       |
+
+The desktop installer inlines its API address at build time, so the nightly
+is built against `STAGING_PUBLIC_API_URL` and the release against
+`PUBLIC_API_URL`; a missing value fails the desktop job rather than producing
+an installer that talks to `localhost`. The phone app's addresses live in
+`apps/mobile/eas.json`, one per build profile, for the same reason.
 
 The Tauri signing key is the private half of the updater keypair — the one in
 `apps/desktop/src-tauri/updater.key`, which is git-ignored. Whoever holds it can

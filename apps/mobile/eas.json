@@ -16,7 +16,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.staging.integr8.example",
+        "EXPO_PUBLIC_API_BASE_URL": "https://api-test.integr8-media.com",
         "EXPO_PUBLIC_APP_ENV": "staging"
       },
       "channel": "staging"
@@ -24,7 +24,7 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.integr8.example",
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.integr8-media.com",
         "EXPO_PUBLIC_APP_ENV": "production"
       },
       "channel": "production"

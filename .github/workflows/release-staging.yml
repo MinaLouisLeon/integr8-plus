@@ -90,6 +90,10 @@ jobs:
       # Set the NIGHTLY_DESKTOP_PLATFORMS repository variable to widen it.
       desktop-platforms: ${{ vars.NIGHTLY_DESKTOP_PLATFORMS || '["ubuntu-latest","windows-latest"]' }}
       eas-profile: ${{ vars.NIGHTLY_EAS_PROFILE || 'preview' }}
+      # A nightly installer talks to the staging API, like the staging web image.
+      api-url: ${{ vars.STAGING_PUBLIC_API_URL }}
+      app-env: staging
+      desktop-sentry-dsn: ${{ vars.DESKTOP_PUBLIC_SENTRY_DSN }}
 
   publish:
     name: Publish the nightly
