@@ -218,7 +218,11 @@ The desktop installer inlines its API address at build time, so the nightly
 is built against `STAGING_PUBLIC_API_URL` and the release against
 `PUBLIC_API_URL`; a missing value fails the desktop job rather than producing
 an installer that talks to `localhost`. The phone app's addresses live in
-`apps/mobile/eas.json`, one per build profile, for the same reason.
+`apps/mobile/eas.json`, one per build profile, for the same reason. The
+`production` profile builds a Play Store bundle; `production-internal` is the
+same app as a file a phone installs directly, for handing to engineers before
+the store listing exists. Point `RELEASE_EAS_PROFILE` at it to get that from a
+release.
 
 The Tauri signing key is the private half of the updater keypair — the one in
 `apps/desktop/src-tauri/updater.key`, which is git-ignored. Whoever holds it can
