@@ -477,6 +477,9 @@ export const en = {
       before_earliest: 'Must be {{earliest}} or later.',
       after_latest: 'Must be {{latest}} or earlier.',
       unknown_option: 'Choose one of the options given.',
+      // A dependent choice (cascading list): the option exists, but not for the
+      // answer now given to the question it depends on.
+      option_unavailable: 'This choice no longer applies. Choose from the options now offered.',
       duplicate_option: 'Each option can only be chosen once.',
       too_few_selected: 'Choose at least {{minimum}}.',
       too_many_selected: 'Choose no more than {{maximum}}.',
@@ -649,6 +652,21 @@ export const en = {
       calculated: 'Worked out automatically',
       checks_one: '{{count}} check',
       checks_other: '{{count}} checks',
+      // Each question card reads its rules out as sentences, so a condition is
+      // found without opening the panel: "Shown when Result is Fail".
+      rules: {
+        shown: 'Shown when {{condition}}',
+        required: 'Required when {{condition}}',
+        choices: 'Choices depend on {{question}}',
+        and: ' and ',
+        or: ' or ',
+        advanced: 'a rule written outside the builder',
+        inAnyEntry: 'any {{question}}',
+        inEveryEntry: 'every {{question}}',
+      },
+      showWhen: 'Show when…',
+      showWhenTitle: 'Show “{{name}}” when…',
+      done: 'Done',
     },
 
     remove: {
@@ -656,8 +674,10 @@ export const en = {
       kept: 'Answers already submitted keep it. It leaves the form when you next publish.',
       references: 'These rules read it, and will need fixing before you can publish:',
       visibleWhen: '{{from}} — when to show',
+      requiredWhen: '{{from}} — when it must be answered',
       calculation: '{{from}} — calculation',
       rule: '{{from}} — check',
+      dependsOn: '{{from}} — which choices are offered',
       confirm: 'Delete',
     },
 
@@ -670,8 +690,28 @@ export const en = {
         basics: 'Basics',
         answer: 'Answer',
         visibility: 'When to show',
+        required: 'When it must be answered',
         checks: 'Checks',
         repeat: 'Repeating',
+      },
+      // "Must be answered" is fixed; "Required only when…" follows other answers.
+      // The two are exclusive: the rule is greyed out while the toggle is on.
+      requiredWhen: {
+        optional: 'Optional',
+        addFirst: 'Required only when…',
+        lead: 'Required when',
+        fixed: 'Always required.',
+        fixedHint:
+          'Turn off “Must be answered” to require this only when other answers call for it.',
+      },
+      // Dependent choices: which of this question's options are offered depends
+      // on the answer to another choice question — "Area" narrows "Room".
+      dependsOn: {
+        none: 'Nothing — offer every option',
+        hint: 'Offer each option only for certain answers to another question.',
+        noParents: 'Add another question with options first.',
+        forOption: 'Offer “{{option}}” when {{question}} is',
+        alwaysHint: 'An option with nothing ticked is offered whatever the answer.',
       },
       repeat: {
         toggle: 'Repeat this section',
@@ -720,6 +760,8 @@ export const en = {
         maxFileBytes: 'Largest file, in MB',
         acceptedTypes: 'File types accepted',
         maxAccuracyMeters: 'Accuracy needed, in metres',
+        requiredWhen: 'Required only when',
+        dependsOn: 'Depends on',
       },
       options: {
         add: 'Add an option',
@@ -1006,6 +1048,11 @@ export const en = {
     notTicked: 'Not ticked',
     rating: '{{value}} out of {{scale}}',
     unanswered: 'Not answered',
+    // A dependent choice: nothing is offered until the question it depends on is answered.
+    dependsOn: {
+      chooseFirst: 'Choose “{{parent}}” first.',
+      none: 'No options apply to the answer to “{{parent}}”.',
+    },
     actions: {
       back: 'Back',
       next: 'Next',
@@ -2094,6 +2141,62 @@ export const en = {
   // The super admin dashboard (P15). Not a customer-facing surface: these
   // strings are read by the handful of people who run the business, so they say
   // plainly what an action does rather than softening it.
+  /**
+   * The dashboard shell: the side menu, its groups, and the top bar. The
+   * sections come from `@integr8/core`'s navigation model; the words live here.
+   */
+  nav: {
+    menu: 'Menu',
+    openMenu: 'Open the menu',
+    closeMenu: 'Close the menu',
+    collapse: 'Collapse the menu',
+    expand: 'Expand the menu',
+    back: 'Back',
+    backTo: 'Back to {{title}}',
+    actingAs: 'Acting as {{company}}',
+    group: {
+      overview: 'Overview',
+      work: 'Work',
+      operations: 'Operations',
+      setup: 'Set-up',
+      company: 'Company',
+    },
+    section: {
+      dashboard: 'Dashboard',
+      fill: 'Fill in a form',
+      submissions: 'Submissions',
+      workOrders: 'Work orders',
+      timesheets: 'Timesheets',
+      customers: 'Customers',
+      imports: 'Import from CSV',
+      forms: 'Forms',
+      jobTypes: 'Job types',
+      branding: 'Company branding',
+      getStarted: 'Get set up',
+      people: 'People',
+      companySettings: 'Company settings',
+      storage: 'Storage',
+      billing: 'Billing',
+    },
+    hint: {
+      dashboard: 'Where you are, and what needs doing.',
+      fill: 'Start a form for a job.',
+      submissions: 'Forms filled in, and their status.',
+      workOrders: 'Jobs to schedule, dispatch, work and sign off.',
+      timesheets: 'Shifts, travel and time on jobs, week by week.',
+      customers: 'Customers, their contacts and sites.',
+      imports: 'Bring in customers, sites and jobs from a spreadsheet.',
+      forms: 'The forms your engineers fill in on site.',
+      jobTypes: 'The kinds of job you do, and the forms each needs.',
+      branding: 'Logo, colours, theme and website, as this company’s apps show them.',
+      getStarted: 'Five things to do, and sample data to look around with.',
+      people: 'Invite engineers, change roles, remove somebody.',
+      companySettings: 'Timezone, currency and working hours.',
+      storage: 'What you are using, and how much is left.',
+      billing: 'Your plan, your limits and your card.',
+    },
+  },
+
   platform: {
     funnel: {
       title: 'Signup funnel',

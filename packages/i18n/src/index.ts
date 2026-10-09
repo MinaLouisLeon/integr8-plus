@@ -1,6 +1,7 @@
 import i18next, { type i18n as I18nInstance } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { en, type Messages } from './messages/en.js';
+import { ar, type Catalogue } from './messages/ar.js';
 import { DEFAULT_LOCALE, type Locale } from './locales.js';
 
 /**
@@ -12,10 +13,10 @@ import { DEFAULT_LOCALE, type Locale } from './locales.js';
  * phase whose entire point is that every screen built afterwards inherits this
  * for free.
  *
- * English is the only translated locale today. Arabic is declared, untranslated,
- * so that selecting it produces English words in a right-to-left layout — which
- * is how a screen is checked for hardcoded `left`/`right` before any Arabic
- * copy exists. See `locales.ts`.
+ * English and Arabic are both translated and both registered here, so an app
+ * gets Arabic words in a right-to-left layout without passing `resources`.
+ * Anything Arabic lacks falls back to English, which is what `fallbackLng`
+ * below is for. See `locales.ts`.
  */
 
 export * from './core.js';
@@ -32,8 +33,11 @@ export interface CreateI18nOptions {
    * while still reading in English.
    */
   forceRtl?: boolean;
-  /** Extra locales' messages, as they are translated. P32 supplies Arabic. */
-  resources?: Partial<Record<Locale, Messages>>;
+  /**
+   * Messages to add or override, per locale. English and Arabic are built in;
+   * a catalogue passed here for either replaces the built-in one.
+   */
+  resources?: Partial<Record<Locale, Messages | Catalogue<Messages>>>;
   debug?: boolean;
 }
 
@@ -50,13 +54,14 @@ export function createI18n(options: CreateI18nOptions = {}): I18nInstance {
   const instance = i18next.createInstance();
   void instance.use(initReactI18next).init({
     lng: locale,
-    // Falling back to English is what makes an untranslated locale show real
-    // words rather than raw keys — which is the difference between a usable
-    // RTL preview and a screen full of `workspace.members.title`.
+    // Falling back to English is what makes a key Arabic has not caught up
+    // with show real words rather than raw keys — the difference between a
+    // usable screen and one full of `workspace.members.title`.
     fallbackLng: DEFAULT_LOCALE,
     defaultNS: DEFAULT_NAMESPACE,
     resources: {
       en: { [DEFAULT_NAMESPACE]: en },
+      ar: { [DEFAULT_NAMESPACE]: ar },
       ...Object.fromEntries(
         Object.entries(options.resources ?? {}).map(([code, messages]) => [
           code,

@@ -119,3 +119,54 @@ export function brandAccentVariables(colour: string, theme: Theme): Record<strin
     Object.entries(accent).map(([token, value]) => [toCssVariableName(token), value]),
   );
 }
+
+// ---------------------------------------------------------------------------
+// A company's own shell colour
+// ---------------------------------------------------------------------------
+
+export interface BrandShell {
+  shell: string;
+  shellHover: string;
+  shellActive: string;
+  shellText: string;
+  shellTextMuted: string;
+  shellBorder: string;
+}
+
+/**
+ * The six shell tokens for a company's shell colour, or null when the value is
+ * not a colour.
+ *
+ * The shell is painted in the colour as given, in both themes: it is the one
+ * place a brand is meant to be seen whole, and lifting it for dark mode would
+ * make a navy sidebar grey. Text on it is white or near black by luminance;
+ * hover and active rows are the shell mixed a little towards that text, so
+ * they read on any brand; the border is a fainter step of the same.
+ */
+export function brandShell(colour: string): BrandShell | null {
+  const rgb = parseHexColour(colour);
+  if (rgb === null) {
+    return null;
+  }
+  const dark = relativeLuminance(rgb) <= 0.45;
+  const ink = dark ? WHITE : parseHexColour(palette.slate[950])!;
+  return {
+    shell: toHex(rgb),
+    shellHover: toHex(mix(rgb, ink, 0.1)),
+    shellActive: toHex(mix(rgb, ink, 0.2)),
+    shellText: toHex(ink),
+    shellTextMuted: toHex(mix(rgb, ink, 0.7)),
+    shellBorder: toHex(mix(rgb, ink, 0.15)),
+  };
+}
+
+/** The same six, as the custom properties `theme.css` declares. */
+export function brandShellVariables(colour: string): Record<string, string> {
+  const shell = brandShell(colour);
+  if (shell === null) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(shell).map(([token, value]) => [toCssVariableName(token), value]),
+  );
+}

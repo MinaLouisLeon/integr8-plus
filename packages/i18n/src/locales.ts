@@ -1,14 +1,11 @@
 /**
  * The locales this product knows about, and which way each one reads.
  *
- * Arabic is declared here now, in P05, with no Arabic copy behind it. That is
- * deliberate and it is the whole reason the RTL task sits in this phase rather
- * than in P32: selecting `ar` today gives English words in a right-to-left
- * layout, which is exactly the test that proves a screen was built with logical
- * properties rather than hardcoded `left` and `right`.
- *
- * Retrofitting that into screens built the other way is a rewrite. Checking it
- * as each screen is built costs nothing.
+ * Arabic was declared here in P05 with no Arabic copy behind it, so that
+ * selecting `ar` gave English words in a right-to-left layout — the test that
+ * proves a screen was built with logical properties rather than hardcoded
+ * `left` and `right`. The copy arrived in P32 (`messages/ar.ts`), and the
+ * direction it was checked against is the one it reads in.
  */
 
 export const LOCALES = ['en', 'ar'] as const;
@@ -24,7 +21,7 @@ export const LOCALE_DIRECTION: Readonly<Record<Locale, Direction>> = Object.free
 });
 
 /** Locales with translations of their own. The rest fall back to English. */
-export const TRANSLATED_LOCALES: readonly Locale[] = ['en'];
+export const TRANSLATED_LOCALES: readonly Locale[] = ['en', 'ar'];
 
 export interface LocaleDescriptor {
   code: Locale;
@@ -50,7 +47,7 @@ export const LOCALE_DESCRIPTORS: readonly LocaleDescriptor[] = [
     nativeName: 'العربية',
     englishName: 'Arabic',
     direction: 'rtl',
-    translated: false,
+    translated: true,
   },
 ];
 

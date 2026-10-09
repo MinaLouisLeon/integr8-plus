@@ -28,6 +28,12 @@
   --colour-danger-hover: #ef4444;
   --colour-danger-subtle: #fef2f2;
   --colour-focus: #3b82f6;
+  --colour-shell: #ffffff;
+  --colour-shell-hover: #f1f5f9;
+  --colour-shell-active: #eff6ff;
+  --colour-shell-text: #0f172a;
+  --colour-shell-text-muted: #64748b;
+  --colour-shell-border: #e2e8f0;
   --space-0: 0px;
   --space-1: 4px;
   --space-2: 8px;
@@ -89,6 +95,12 @@
   --colour-danger-hover: #fca5a5;
   --colour-danger-subtle: #7f1d1d;
   --colour-focus: #93c5fd;
+  --colour-shell: #0f172a;
+  --colour-shell-hover: #1e293b;
+  --colour-shell-active: #1e3a8a;
+  --colour-shell-text: #f1f5f9;
+  --colour-shell-text-muted: #94a3b8;
+  --colour-shell-border: #1e293b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -113,6 +125,12 @@
     --colour-danger-hover: #fca5a5;
     --colour-danger-subtle: #7f1d1d;
     --colour-focus: #93c5fd;
+    --colour-shell: #0f172a;
+    --colour-shell-hover: #1e293b;
+    --colour-shell-active: #1e3a8a;
+    --colour-shell-text: #f1f5f9;
+    --colour-shell-text-muted: #94a3b8;
+    --colour-shell-border: #1e293b;
   }
 }
 
@@ -138,6 +156,12 @@
   --color-danger-hover: var(--colour-danger-hover);
   --color-danger-subtle: var(--colour-danger-subtle);
   --color-focus: var(--colour-focus);
+  --color-shell: var(--colour-shell);
+  --color-shell-hover: var(--colour-shell-hover);
+  --color-shell-active: var(--colour-shell-active);
+  --color-shell-text: var(--colour-shell-text);
+  --color-shell-text-muted: var(--colour-shell-text-muted);
+  --color-shell-border: var(--colour-shell-border);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
