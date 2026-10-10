@@ -35,6 +35,9 @@ export const DEMO_PLATFORM_USER = {
   id: '00000000-0000-4000-8000-00000000f001',
   email: 'super.admin@integr8.example',
   displayName: 'Platform Super Admin',
+  // Stands in for an account the terminal command made, so the Staff screen
+  // can be tried locally.
+  canManageStaff: true,
 } as const;
 
 export const NORTHWIND: DemoTenant = {

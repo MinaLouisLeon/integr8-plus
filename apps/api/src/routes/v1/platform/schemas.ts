@@ -37,6 +37,12 @@ export const platformUserSchema = z.object({
   displayName: z.string(),
 });
 
+/** The signed-in account, with what it may do beyond using the dashboard. */
+export const platformMeSchema = platformUserSchema.extend({
+  /** Made by the terminal command, so may add and remove staff. */
+  canManageStaff: z.boolean(),
+});
+
 export const platformSignInResponseSchema = z.object({
   tokens: platformTokensSchema,
   platformUser: platformUserSchema,

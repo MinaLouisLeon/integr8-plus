@@ -188,7 +188,8 @@ export type PlatformNavPath =
   | 'announcements'
   | 'templates'
   | 'releases'
-  | 'health';
+  | 'health'
+  | 'staff';
 
 export interface PlatformNavSection {
   key: PlatformNavPath;
@@ -206,6 +207,7 @@ export const PLATFORM_NAV_SECTIONS: readonly PlatformNavSection[] = [
   { key: 'templates', icon: 'layout' },
   { key: 'releases', icon: 'package' },
   { key: 'health', icon: 'heart' },
+  { key: 'staff', icon: 'users' },
 ];
 
 export type NavApp = 'web' | 'desktop';

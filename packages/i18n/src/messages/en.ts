@@ -2380,6 +2380,7 @@ export const en = {
       templates: 'Form templates',
       releases: 'Releases',
       health: 'Health',
+      staff: 'Staff',
       signOut: 'Sign out',
     },
     companies: {
@@ -2437,6 +2438,58 @@ export const en = {
       copied: 'Copied.',
       storageMissing:
         'The company was created, but its storage could not be. It will be created automatically within the hour.',
+    },
+    staff: {
+      title: 'Staff',
+      subtitle: 'Everybody who can sign in to this dashboard.',
+      managerNote:
+        'You made this account with the terminal command, so you can add and remove staff. People you add can use the dashboard but cannot add or remove anybody.',
+      viewerNote:
+        'Only an account made with the terminal command on the server can add or remove staff. Ask one of them.',
+      addTitle: 'Add a staff member',
+      addDescription:
+        'They get a password and an authenticator secret, shown here once. They can do everything in the dashboard except manage staff.',
+      email: 'Email address',
+      name: 'Name',
+      add: 'Add',
+      adding: 'Adding…',
+      credentialsTitle: 'Sign-in details for {{name}}',
+      credentialsHint:
+        'Shown once and stored nowhere you can read again. Send them to {{name}} privately. They sign in at /platform/sign-in with the password and a six-digit code from an authenticator app set up with the secret.',
+      password: 'Password',
+      secret: 'Authenticator secret',
+      uri: 'Authenticator link',
+      copy: 'Copy',
+      copied: 'Copied',
+      done: 'I have sent them',
+      listTitle: 'Everybody',
+      empty: 'Nobody can sign in yet.',
+      you: 'You',
+      terminal: 'Terminal account',
+      addedBy: 'Added by {{name}}',
+      addedFromDashboard: 'Added from the dashboard',
+      removedBadge: 'Removed',
+      notReady: 'Not set up',
+      lastSignedIn: 'Last signed in {{when}}',
+      neverSignedIn: 'Never signed in',
+      terminalHint: 'Changed only from the server, with the admin-cli command.',
+      reset: 'New password and code',
+      resetConfirm:
+        'Give {{name}} a new password and authenticator secret? The current ones stop working and they are signed out.',
+      resetYes: 'Yes, make new ones',
+      resetting: 'Making…',
+      remove: 'Remove',
+      removeConfirm:
+        'Remove {{name}} from the staff? They are signed out of the dashboard and any company at once, and cannot sign in again.',
+      removeYes: 'Yes, remove',
+      removing: 'Removing…',
+      removed: '{{name}} was removed.',
+      cancel: 'Cancel',
+      restoreHint: 'To bring a removed person back, add their address again.',
+      errorManagerOnly: 'Only an account made with the terminal command can do this.',
+      errorExists: 'Somebody already signs in with this address.',
+      errorTerminal:
+        'This account was made with the terminal command and can only be changed there.',
     },
     invitations: {
       title: 'Invitations',

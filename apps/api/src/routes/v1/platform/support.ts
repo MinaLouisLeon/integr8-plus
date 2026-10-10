@@ -9,6 +9,7 @@ import { defineRoute, noSchema } from '../../../http/routes.js';
 import { iso } from '../schemas.js';
 import { recordPlatformAction } from './audit.js';
 import { platformListSchema, releaseSchema } from './schemas.js';
+import { requireStaffManager } from './staff.js';
 
 /**
  * The support toolkit (P15).
@@ -306,6 +307,7 @@ export const resetSecondFactorRoute = defineRoute({
   body: z.object({ reason: z.string().min(5).max(500) }),
   responses: {
     200: { description: 'Removed.', schema: z.object({ reset: z.boolean() }) },
+    403: { description: '`staff_manager_only`: only a staff manager can reset a staff manager.' },
     404: { description: 'No such platform account.' },
   },
   handler: async ({ params, body }, context) => {
@@ -313,6 +315,11 @@ export const resetSecondFactorRoute = defineRoute({
     const account = await platform.platformUsers.findById(params.platformUserId);
     if (account === undefined) {
       throw notFound(`No platform account ${params.platformUserId}`);
+    }
+    // Locking a terminal account out is as good as removing it, so it takes
+    // the same power the Staff screen asks for.
+    if (account.canManageStaff) {
+      await requireStaffManager(context);
     }
 
     await platform.platformUsers.setTotpSecret(account.id, null);

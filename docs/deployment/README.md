@@ -83,7 +83,9 @@ configuration.
    ```
    It prints a generated password and the authenticator secret (as an
    `otpauth://` URI to turn into a QR code) exactly once. Sign in at
-   `/platform/sign-in`, then change the password. `docs/platform/README.md`
+   `/platform/sign-in`, then change the password. An account made this way is
+   a staff manager: it can add and remove colleagues on the dashboard's
+   **Staff** page, and the people it adds cannot. `docs/platform/README.md`
    covers what a super admin can do.
 6. **Walk the path a customer walks.** `/sign-up` → verification link (with the
    recording email sender it is in the API log, not an inbox) → first-run

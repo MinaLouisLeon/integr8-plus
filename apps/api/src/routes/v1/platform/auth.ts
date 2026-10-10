@@ -3,11 +3,7 @@ import { z } from 'zod';
 import { unauthorised } from '../../../http/errors.js';
 import { defineRoute, noSchema } from '../../../http/routes.js';
 import { iso } from '../schemas.js';
-import {
-  platformSignInResponseSchema,
-  platformTokensSchema,
-  platformUserSchema,
-} from './schemas.js';
+import { platformMeSchema, platformSignInResponseSchema, platformTokensSchema } from './schemas.js';
 import { recordPlatformAction } from './audit.js';
 
 /**
@@ -133,7 +129,7 @@ export const platformMeRoute = defineRoute({
   query: noSchema,
   body: noSchema,
   responses: {
-    200: { description: 'The signed-in super admin.', schema: platformUserSchema },
+    200: { description: 'The signed-in super admin.', schema: platformMeSchema },
   },
   handler: async (_input, context) => {
     const account = await getPlatformDataSource().platformUsers.findById(
@@ -145,7 +141,12 @@ export const platformMeRoute = defineRoute({
 
     return {
       status: 200,
-      body: { id: account.id, email: account.email, displayName: account.displayName },
+      body: {
+        id: account.id,
+        email: account.email,
+        displayName: account.displayName,
+        canManageStaff: account.canManageStaff,
+      },
     };
   },
 });

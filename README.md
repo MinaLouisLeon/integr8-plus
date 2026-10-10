@@ -34,12 +34,12 @@ start with [`plan/ROADMAP.md`](./plan/ROADMAP.md).
 
 ## Who uses it, and with what
 
-| Who                                                       | Uses                                      | To                                                                                                                |
-| --------------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **Integr8 staff** (super admins)                          | Web platform dashboard (`/platform`)      | Onboard, support, suspend and close companies; set plans and billing; feature flags; announcements; audit; health |
-| **Integr8 staff**                                         | **Integr8 Plus Staff** desktop app        | Act as a company to build its forms and job types, and set its logo, icon, colours, theme and website             |
-| **A company's office** (owner, admin, dispatcher, viewer) | Web app, or the company's own desktop app | Customers and sites, work orders, dispatch, submissions, timesheets, imports, people, billing                     |
-| **A company's engineers**                                 | The company's own phone app               | Their day: clock in, travel, arrive, work, fill forms, photos, signatures, complete. Works offline                |
+| Who                                                       | Uses                                      | To                                                                                                                                                                     |
+| --------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Integr8 staff** (super admins)                          | Web platform dashboard (`/platform`)      | Onboard, support, suspend and close companies; set plans and billing; feature flags; announcements; audit; health; staff (terminal accounts add and remove colleagues) |
+| **Integr8 staff**                                         | **Integr8 Plus Staff** desktop app        | Act as a company to build its forms and job types, and set its logo, icon, colours, theme and website                                                                  |
+| **A company's office** (owner, admin, dispatcher, viewer) | Web app, or the company's own desktop app | Customers and sites, work orders, dispatch, submissions, timesheets, imports, people, billing                                                                          |
+| **A company's engineers**                                 | The company's own phone app               | Their day: clock in, travel, arrive, work, fill forms, photos, signatures, complete. Works offline                                                                     |
 
 There is no public sign-up by default (`PUBLIC_SIGNUP=off`): every company is
 created by Integr8 from the platform dashboard, and the marketing site sends
