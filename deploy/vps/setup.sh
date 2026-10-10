@@ -18,7 +18,12 @@
 # 2. Installs Docker from Docker's own repository (distribution packages lag and
 #    lack the compose plugin), and lets the current user run it without sudo.
 # 3. Installs Caddy, the reverse proxy that obtains and renews TLS certificates
-#    by itself. deploy/vps/Caddyfile.example is the two-site configuration.
+#    by itself, from caddyserver.com's official build (on Oracle Linux, from
+#    the Caddy COPR first). deploy/vps/Caddyfile.example is the two-site
+#    configuration. The Cloudsmith apt repository earlier versions of this
+#    script added now answers 402 Payment Required, which makes every
+#    `apt-get update` on the machine fail, Docker's installer included; it is
+#    removed if present.
 # 4. Turns on automatic security updates for the operating system. Docker and
 #    the containers are not touched by it; those update when you deploy.
 #
@@ -43,6 +48,55 @@ case " ${ID:-} ${ID_LIKE:-} " in
     ;;
 esac
 echo "==> ${PRETTY_NAME:-$ID} ($FAMILY family, $(uname -m))"
+
+# A Caddy apt source left by an earlier run of this script. Cloudsmith stopped
+# serving it (402 Payment Required), and apt refuses to update at all while a
+# source is broken, so it has to go before anything here runs apt-get. A Caddy
+# already installed from it stays installed and keeps working.
+if [ "$FAMILY" = debian ] && [ -f /etc/apt/sources.list.d/caddy-stable.list ]; then
+  echo '==> Removing the retired Cloudsmith Caddy apt source'
+  $SUDO rm -f /etc/apt/sources.list.d/caddy-stable.list \
+    /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+fi
+
+# Caddy's official static build for this architecture, with the same systemd
+# unit Caddy's own packages install. Used on Debian-family machines, and on Red
+# Hat-family machines when the COPR has no build for the release.
+install_caddy_binary() {
+  case "$(uname -m)" in
+    aarch64 | arm64) CADDY_ARCH=arm64 ;;
+    *) CADDY_ARCH=amd64 ;;
+  esac
+  curl -fsSL "https://caddyserver.com/api/download?os=linux&arch=${CADDY_ARCH}" -o /tmp/caddy
+  $SUDO install -m 0755 /tmp/caddy /usr/bin/caddy && rm -f /tmp/caddy
+  id caddy >/dev/null 2>&1 || $SUDO useradd --system --home /var/lib/caddy --shell /usr/sbin/nologin caddy
+  $SUDO mkdir -p /etc/caddy /var/lib/caddy
+  $SUDO chown caddy:caddy /var/lib/caddy
+  [ -f /etc/caddy/Caddyfile ] || echo ':80 { respond "Caddy is running" }' | $SUDO tee /etc/caddy/Caddyfile >/dev/null
+  $SUDO tee /etc/systemd/system/caddy.service >/dev/null <<'UNIT'
+[Unit]
+Description=Caddy
+Documentation=https://caddyserver.com/docs/
+After=network.target network-online.target
+Requires=network-online.target
+
+[Service]
+Type=notify
+User=caddy
+Group=caddy
+ExecStart=/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile
+ExecReload=/usr/bin/caddy reload --config /etc/caddy/Caddyfile --force
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+PrivateTmp=true
+ProtectSystem=full
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+  $SUDO systemctl daemon-reload
+}
 
 echo '==> Firewall: allow 80 and 443'
 if command -v firewall-cmd >/dev/null 2>&1 && $SUDO firewall-cmd --state >/dev/null 2>&1; then
@@ -91,14 +145,7 @@ $SUDO docker compose version
 echo '==> Caddy'
 if ! command -v caddy >/dev/null 2>&1; then
   if [ "$FAMILY" = debian ]; then
-    $SUDO apt-get update -qq
-    $SUDO apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https curl gnupg
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
-      | $SUDO gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
-      | $SUDO tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
-    $SUDO apt-get update -qq
-    $SUDO apt-get install -y -qq caddy
+    install_caddy_binary
   else
     # Caddy's official RPMs live in a Fedora COPR that also builds for EPEL 9.
     # If the COPR is unreachable for this release or architecture, fall back to
@@ -107,39 +154,7 @@ if ! command -v caddy >/dev/null 2>&1; then
         && $SUDO dnf -y -q copr enable @caddy/caddy \
         && $SUDO dnf -y -q install caddy; }; then
       echo '    COPR install failed; installing the official binary instead'
-      case "$(uname -m)" in
-        aarch64) CADDY_ARCH=arm64 ;;
-        *) CADDY_ARCH=amd64 ;;
-      esac
-      curl -fsSL "https://caddyserver.com/api/download?os=linux&arch=${CADDY_ARCH}" -o /tmp/caddy
-      $SUDO install -m 0755 /tmp/caddy /usr/bin/caddy && rm -f /tmp/caddy
-      id caddy >/dev/null 2>&1 || $SUDO useradd --system --home /var/lib/caddy --shell /usr/sbin/nologin caddy
-      $SUDO mkdir -p /etc/caddy /var/lib/caddy
-      $SUDO chown caddy:caddy /var/lib/caddy
-      [ -f /etc/caddy/Caddyfile ] || echo ':80 { respond "Caddy is running" }' | $SUDO tee /etc/caddy/Caddyfile >/dev/null
-      $SUDO tee /etc/systemd/system/caddy.service >/dev/null <<'UNIT'
-[Unit]
-Description=Caddy
-Documentation=https://caddyserver.com/docs/
-After=network.target network-online.target
-Requires=network-online.target
-
-[Service]
-Type=notify
-User=caddy
-Group=caddy
-ExecStart=/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile
-ExecReload=/usr/bin/caddy reload --config /etc/caddy/Caddyfile --force
-TimeoutStopSec=5s
-LimitNOFILE=1048576
-PrivateTmp=true
-ProtectSystem=full
-AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-      $SUDO systemctl daemon-reload
+      install_caddy_binary
     fi
   fi
 fi
