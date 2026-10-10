@@ -48,6 +48,10 @@ another's data even if somebody signs in with the wrong address.
 3. On the company's page in the platform dashboard, tick **Build apps for
    this company** and save. The company now appears in
    `GET /v1/build/companies`.
+4. When its forms, job types, look and apps are ready, invite the owner: the
+   company's page → **Invitations** → **Send invitation** (or **Copy a new
+   link** to send it yourself). Onboarding does not email the owner unless you
+   tick the box for it.
 
 ## Building
 

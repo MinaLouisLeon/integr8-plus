@@ -6,7 +6,9 @@ import { defineRoute, noSchema } from '../../../http/routes.js';
 import { forgetTenantStatus } from '../../../http/suspension.js';
 import { onboardCompany } from '../../../platform/onboarding.js';
 import { iso, isoOrNull } from '../schemas.js';
+import { deliverInvitation } from '../../../email/deliver.js';
 import { acceptInvitationUrl } from '../../../email/links.js';
+import { INTEGR8_INVITER } from './support.js';
 import { recordPlatformAction } from './audit.js';
 import {
   companySettingsSchema,
@@ -111,6 +113,10 @@ export const getCompanyRoute = defineRoute({
         (member) => member.role === 'owner' || member.role === 'admin',
       ),
     );
+    const invitations = await withTenant(toTenantId(params.tenantId), (tx) =>
+      tx.invitations.listPending(),
+    );
+    const now = Date.now();
 
     const subscription = await platform.billing.find(params.tenantId);
     const tenant = await platform.tenants.findById(params.tenantId);
@@ -121,6 +127,14 @@ export const getCompanyRoute = defineRoute({
       body: {
         ...toSummary(summary, scheduled),
         settings: toCompanySettings(settings),
+        invitations: invitations.map((invitation) => ({
+          id: invitation.id,
+          email: invitation.email,
+          role: invitation.role,
+          createdAt: iso(invitation.createdAt),
+          expiresAt: iso(invitation.expiresAt),
+          expired: invitation.expiresAt.getTime() <= now,
+        })),
         activity: await platform.tenants.monthlyActivity(params.tenantId),
         billing:
           subscription === undefined
@@ -187,6 +201,13 @@ export const onboardCompanyRoute = defineRoute({
     ownerEmail: z.email().max(320),
     /** The company's own website, https only. Its phone app opens on this page. */
     websiteUrl: websiteUrlSchema.nullable().optional(),
+    /**
+     * Email the owner's invitation now. Off by default: a company is usually
+     * set up first (its forms, job types and look), and the invitation is sent
+     * from the company's page once there is something to log in to. The link
+     * is returned either way.
+     */
+    sendInvitation: z.boolean().default(false),
     /** Overrides the default starter set; an empty array seeds none. */
     jobTypes: z
       .array(
@@ -250,6 +271,22 @@ export const onboardCompanyRoute = defineRoute({
       (company) => company.id === onboarded.tenant.id,
     );
 
+    // Sent now only when asked: usually the company is set up first and the
+    // invitation goes from its page when there is something to log in to.
+    const delivery =
+      body.sendInvitation && onboarded.invitation !== null
+        ? await deliverInvitation({
+            sender: context.services.email,
+            config: context.config,
+            logger: context.logger,
+            tenantId: onboarded.tenant.id,
+            email: onboarded.invitation.email,
+            token: onboarded.invitation.token,
+            invitedBy: INTEGR8_INVITER,
+            expiresAt: onboarded.invitation.expiresAt,
+          })
+        : { sent: false, problem: null };
+
     return {
       status: 201,
       body: {
@@ -267,6 +304,8 @@ export const onboardCompanyRoute = defineRoute({
             onboarded.invitation === null
               ? null
               : acceptInvitationUrl(context.config.WEB_APP_URL, onboarded.invitation.token),
+          emailed: delivery.sent,
+          emailProblem: delivery.problem,
         },
         storage: { bucket: onboarded.storage.bucket ?? '', created: onboarded.storage.created },
       },

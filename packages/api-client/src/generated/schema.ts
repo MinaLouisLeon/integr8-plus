@@ -2431,8 +2431,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Send somebody their invitation again
-         * @description Withdraws the old invitation and issues a new one to the same address and role. A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read, and the point of resending is usually that it went astray.
+         * Send somebody their invitation, or a fresh link to it
+         * @description Withdraws the old invitation and issues a new one to the same address and role, valid for seven days from now, then emails it unless `sendEmail` is false (the link is returned either way, to send by hand). A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read. Works on an expired invitation too, which is how a company set up weeks ago gets its owner in once its forms are ready.
          */
         post: operations["resendInvitation"];
         delete?: never;
@@ -18953,6 +18953,8 @@ export interface operations {
                     /** Format: email */
                     ownerEmail: string;
                     websiteUrl?: string | null;
+                    /** @default false */
+                    sendInvitation?: boolean;
                     jobTypes?: {
                         name: string;
                         code: string;
@@ -19000,6 +19002,8 @@ export interface operations {
                             /** Format: date-time */
                             expiresAt: string;
                             acceptUrl: string | null;
+                            emailed: boolean;
+                            emailProblem: string | null;
                         };
                         storage: {
                             bucket: string;
@@ -19115,6 +19119,17 @@ export interface operations {
                             websiteUrl: string | null;
                             appsEnabled: boolean;
                         };
+                        invitations: {
+                            /** Format: uuid */
+                            id: string;
+                            email: string;
+                            role: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            expired: boolean;
+                        }[];
                         activity: {
                             month: string;
                             jobs: number;
@@ -21403,7 +21418,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default true */
+                    sendEmail?: boolean;
+                };
+            };
+        };
         responses: {
             /** @description A new invitation. */
             200: {
@@ -21418,6 +21440,8 @@ export interface operations {
                         /** Format: date-time */
                         expiresAt: string;
                         acceptUrl: string | null;
+                        emailed: boolean;
+                        emailProblem: string | null;
                     };
                 };
             };

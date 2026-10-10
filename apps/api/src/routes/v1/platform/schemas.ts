@@ -128,8 +128,21 @@ export const companySettingsSchema = z.object({
   appsEnabled: z.boolean(),
 });
 
+/** An invitation nobody has accepted or withdrawn, as the company page shows it. */
+export const companyInvitationSchema = z.object({
+  id: z.uuid(),
+  email: z.string(),
+  role: z.string(),
+  createdAt: timestamp,
+  expiresAt: timestamp,
+  /** Past its date: a fresh one (resend) is needed before it can be accepted. */
+  expired: z.boolean(),
+});
+
 export const companyDetailSchema = companySummarySchema.extend({
   settings: companySettingsSchema,
+  /** Invitations waiting to be accepted, the owner's among them, newest first. */
+  invitations: z.array(companyInvitationSchema),
   activity: z.array(companyActivitySchema),
   billing: companyBillingSchema.nullable(),
   featureFlags: z.record(z.string(), z.boolean()),
@@ -148,6 +161,10 @@ export const onboardResponseSchema = z.object({
     expiresAt: timestamp,
     /** Present only when the API is configured to return it; never logged. */
     acceptUrl: z.string().nullable(),
+    /** Whether it was emailed now. False by default: it is sent once the company is set up. */
+    emailed: z.boolean(),
+    /** Why the email did not go out, when it was asked for and failed. */
+    emailProblem: z.string().nullable(),
   }),
   /** The bucket that now exists in Cloudflare, so the exit criterion is checkable. */
   storage: z.object({ bucket: z.string(), created: z.boolean() }),

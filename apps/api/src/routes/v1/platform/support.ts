@@ -2,6 +2,7 @@ import { mintInvitationToken } from '@integr8/auth';
 import { toTenantId, toUserId } from '@integr8/core';
 import { getAuthDataSource, getPlatformDataSource, withTenant } from '@integr8/db';
 import { z } from 'zod';
+import { deliverInvitation } from '../../../email/deliver.js';
 import { acceptInvitationUrl } from '../../../email/links.js';
 import { notFound } from '../../../http/errors.js';
 import { defineRoute, noSchema } from '../../../http/routes.js';
@@ -28,7 +29,14 @@ const resentSchema = z.object({
   expiresAt: z.iso.datetime(),
   /** Present only when a web address is configured; never logged. */
   acceptUrl: z.string().nullable(),
+  /** Whether the invitation email went out. False when only a link was asked for. */
+  emailed: z.boolean(),
+  /** Why the email did not go out, when it was asked for and failed. */
+  emailProblem: z.string().nullable(),
 });
+
+/** Who an invitation from Integr8's own people says it is from. */
+export const INTEGR8_INVITER = 'Integr8';
 
 const failureSchema = z.object({
   id: z.uuid(),
@@ -196,19 +204,22 @@ export const resendInvitationRoute = defineRoute({
   method: 'post',
   path: '/v1/platform/companies/:tenantId/invitations/:invitationId/resend',
   operationId: 'resendInvitation',
-  summary: 'Send somebody their invitation again',
+  summary: 'Send somebody their invitation, or a fresh link to it',
   description:
-    'Withdraws the old invitation and issues a new one to the same address and role. A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read, and the point of resending is usually that it went astray.',
+    'Withdraws the old invitation and issues a new one to the same address and role, valid for seven days from now, then emails it unless `sendEmail` is false (the link is returned either way, to send by hand). A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read. Works on an expired invitation too, which is how a company set up weeks ago gets its owner in once its forms are ready.',
   tags: ['platform'],
   security: 'platform',
   params: z.object({ tenantId: z.uuid(), invitationId: z.uuid() }),
   query: noSchema,
-  body: noSchema,
+  body: z.object({
+    /** Email the invitation (default), or only return a fresh link. */
+    sendEmail: z.boolean().default(true),
+  }),
   responses: {
     200: { description: 'A new invitation.', schema: resentSchema },
     404: { description: 'No such invitation, or it has been accepted already.' },
   },
-  handler: async ({ params }, context) => {
+  handler: async ({ params, body }, context) => {
     const tenantId = toTenantId(params.tenantId);
     const platformUserId = context.platform.platformUserId;
 
@@ -242,12 +253,29 @@ export const resendInvitationRoute = defineRoute({
       throw notFound(`No pending invitation ${params.invitationId} in this company`);
     }
 
+    const delivery = body.sendEmail
+      ? await deliverInvitation({
+          sender: context.services.email,
+          config: context.config,
+          logger: context.logger,
+          tenantId,
+          email: reissued.invitation.email,
+          token: reissued.token,
+          invitedBy: INTEGR8_INVITER,
+          expiresAt: reissued.invitation.expiresAt,
+        })
+      : { sent: false, problem: null };
+
     await recordPlatformAction(context, {
       action: 'support.invitation_resent',
       tenantId: params.tenantId,
       targetKind: 'invitation',
       targetId: reissued.invitation.id,
-      metadata: { email: reissued.invitation.email, replaced: params.invitationId },
+      metadata: {
+        email: reissued.invitation.email,
+        replaced: params.invitationId,
+        emailed: delivery.sent,
+      },
     });
 
     return {
@@ -257,6 +285,8 @@ export const resendInvitationRoute = defineRoute({
         email: reissued.invitation.email,
         expiresAt: iso(reissued.invitation.expiresAt),
         acceptUrl: acceptInvitationUrl(context.config.WEB_APP_URL, reissued.token),
+        emailed: delivery.sent,
+        emailProblem: delivery.problem,
       },
     };
   },

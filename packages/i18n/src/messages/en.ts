@@ -2425,11 +2425,32 @@ export const en = {
       submit: 'Onboard',
       busy: 'Onboarding...',
       done: '{{name}} is ready.',
-      invitationSent: 'The invitation is waiting for {{email}}.',
+      invitationSent: 'The owner’s invitation was emailed to {{email}}.',
+      invitationReady:
+        'The owner’s invitation for {{email}} is ready and has not been sent. Set the company up first, then send it from the company’s page.',
+      invitationNotSent:
+        'The invitation could not be emailed to {{email}} ({{problem}}). Copy the link below, or send it again from the company’s page.',
+      sendInvitation: 'Email the owner’s invitation now',
+      sendInvitationHint:
+        'Leave this off to set the company up first — forms, job types and its look — and send the invitation from its page when it is ready.',
       copyInvitation: 'Copy the invitation link',
       copied: 'Copied.',
       storageMissing:
         'The company was created, but its storage could not be. It will be created automatically within the hour.',
+    },
+    invitations: {
+      title: 'Invitations',
+      description:
+        'People invited to this company who have not joined yet, the owner among them. A link lasts seven days; sending again makes a fresh one and the old one stops working.',
+      none: 'Nobody is waiting to join: the owner has accepted, or nobody has been invited.',
+      waiting: 'Waiting, until {{date}}',
+      expired: 'Expired on {{date}}',
+      send: 'Send invitation',
+      sending: 'Sending…',
+      sent: 'Emailed to {{email}}.',
+      copyLink: 'Copy a new link',
+      copied: 'A new link is copied. It replaces the old one.',
+      failed: 'The email could not be sent ({{problem}}). Use “Copy a new link” instead.',
     },
     apps: {
       title: 'Website and apps',

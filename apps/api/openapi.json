@@ -41668,6 +41668,10 @@
                     "maxLength": 2048,
                     "pattern": "^https:\\/\\/\\S+$"
                   },
+                  "sendInvitation": {
+                    "default": false,
+                    "type": "boolean"
+                  },
                   "jobTypes": {
                     "maxItems": 50,
                     "type": "array",
@@ -41834,13 +41838,22 @@
                         "acceptUrl": {
                           "nullable": true,
                           "type": "string"
+                        },
+                        "emailed": {
+                          "type": "boolean"
+                        },
+                        "emailProblem": {
+                          "nullable": true,
+                          "type": "string"
                         }
                       },
                       "required": [
                         "id",
                         "email",
                         "expiresAt",
-                        "acceptUrl"
+                        "acceptUrl",
+                        "emailed",
+                        "emailProblem"
                       ],
                       "additionalProperties": false
                     },
@@ -42092,6 +42105,47 @@
                       ],
                       "additionalProperties": false
                     },
+                    "invitations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "email": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "expiresAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "expired": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "email",
+                          "role",
+                          "createdAt",
+                          "expiresAt",
+                          "expired"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "activity": {
                       "type": "array",
                       "items": {
@@ -42287,6 +42341,7 @@
                     "suspendedReason",
                     "deletionScheduledFor",
                     "settings",
+                    "invitations",
                     "activity",
                     "billing",
                     "featureFlags",
@@ -46310,8 +46365,8 @@
     "/v1/platform/companies/{tenantId}/invitations/{invitationId}/resend": {
       "post": {
         "operationId": "resendInvitation",
-        "summary": "Send somebody their invitation again",
-        "description": "Withdraws the old invitation and issues a new one to the same address and role. A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read, and the point of resending is usually that it went astray.",
+        "summary": "Send somebody their invitation, or a fresh link to it",
+        "description": "Withdraws the old invitation and issues a new one to the same address and role, valid for seven days from now, then emails it unless `sendEmail` is false (the link is returned either way, to send by hand). A new token rather than the old one: the old link may be sitting in a mailbox somebody else can read. Works on an expired invitation too, which is how a company set up weeks ago gets its owner in once its forms are ready.",
         "tags": [
           "platform"
         ],
@@ -46337,6 +46392,22 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sendEmail": {
+                    "default": true,
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "A new invitation.",
@@ -46361,13 +46432,22 @@
                     "acceptUrl": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "emailed": {
+                      "type": "boolean"
+                    },
+                    "emailProblem": {
+                      "nullable": true,
+                      "type": "string"
                     }
                   },
                   "required": [
                     "id",
                     "email",
                     "expiresAt",
-                    "acceptUrl"
+                    "acceptUrl",
+                    "emailed",
+                    "emailProblem"
                   ],
                   "additionalProperties": false
                 }

@@ -76,6 +76,24 @@ except for storage. That is recoverable and already handled: the media maintenan
 provisions any company whose bucket is missing, and the response says what happened rather than
 pretending.
 
+### Inviting the owner when the company is ready
+
+Onboarding creates the owner's invitation but **does not email it unless asked**
+(`sendInvitation: true`, the "Email the owner's invitation now" box). Integr8 sets a company up
+first — its forms, job types and look — and the owner should arrive to a company that is ready,
+not to an empty one. The link is returned either way, to copy if wanted.
+
+The company's page lists every invitation nobody has accepted, with its expiry, and offers two
+actions, both through `POST /v1/platform/companies/:tenantId/invitations/:invitationId/resend`:
+
+| Action              | Body                     | Does                                                              |
+| ------------------- | ------------------------ | ----------------------------------------------------------------- |
+| **Send invitation** | `{}`                     | A fresh seven-day invitation, emailed from Integr8 through Resend |
+| **Copy a new link** | `{ "sendEmail": false }` | The same fresh invitation, nothing sent; the link is copied       |
+
+Both withdraw the previous invitation, so an old link that went astray stops working, and both
+work on an invitation that already expired while the company was being set up.
+
 ---
 
 ## Suspending

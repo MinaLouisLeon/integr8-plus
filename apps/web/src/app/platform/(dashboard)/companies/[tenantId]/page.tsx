@@ -97,6 +97,7 @@ export default function CompanyPage() {
         seats={detail.seats}
         billingMode={detail.billingMode}
       />
+      <InvitationsPanel tenantId={tenantId} invitations={detail.invitations} />
       <AppsPanel tenantId={tenantId} settings={detail.settings} />
       <BillingPanel billing={detail.billing} />
 
@@ -275,6 +276,147 @@ function PlanPanel({
         )}
       </form>
     </Panel>
+  );
+}
+
+/**
+ * Who has been invited and not joined yet — the owner, straight after
+ * onboarding — and the two ways to get them in.
+ *
+ * Onboarding does not email the owner by default: Integr8 sets the company up
+ * first, and invites the owner from here once there is something to log in to.
+ * Either action makes a fresh seven-day link and stops the old one working, so
+ * an invitation that expired while the forms were being built is no obstacle.
+ */
+function InvitationsPanel({
+  tenantId,
+  invitations,
+}: {
+  tenantId: string;
+  invitations: {
+    id: string;
+    email: string;
+    role: string;
+    expiresAt: string;
+    expired: boolean;
+  }[];
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Panel
+      title={t('platform.invitations.title')}
+      description={t('platform.invitations.description')}
+    >
+      {invitations.length === 0 ? (
+        <p className="text-sm text-content-muted">{t('platform.invitations.none')}</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {invitations.map((invitation) => (
+            <InvitationRow key={invitation.id} tenantId={tenantId} invitation={invitation} />
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+function InvitationRow({
+  tenantId,
+  invitation,
+}: {
+  tenantId: string;
+  invitation: { id: string; email: string; role: string; expiresAt: string; expired: boolean };
+}) {
+  const { t } = useTranslation();
+  const queries = useQueryClient();
+  const [notice, setNotice] = useState<{ tone: 'ok' | 'problem'; text: string } | undefined>(
+    undefined,
+  );
+
+  const reissue = useMutation({
+    mutationFn: async (sendEmail: boolean) => {
+      const { data } = await platformClient().POST(
+        '/v1/platform/companies/{tenantId}/invitations/{invitationId}/resend',
+        {
+          params: { path: { tenantId, invitationId: invitation.id } },
+          body: { sendEmail },
+        },
+      );
+      return { data, sendEmail };
+    },
+    onSuccess: async ({ data, sendEmail }) => {
+      if (data === undefined) {
+        return;
+      }
+      if (sendEmail) {
+        setNotice(
+          data.emailed
+            ? { tone: 'ok', text: t('platform.invitations.sent', { email: data.email }) }
+            : {
+                tone: 'problem',
+                text: t('platform.invitations.failed', { problem: data.emailProblem ?? '' }),
+              },
+        );
+      } else if (data.acceptUrl !== null) {
+        await navigator.clipboard.writeText(data.acceptUrl);
+        setNotice({ tone: 'ok', text: t('platform.invitations.copied') });
+      }
+      // The invitation was replaced: the list now names the new one.
+      void queries.invalidateQueries({ queryKey: ['platform', 'company', tenantId] });
+    },
+    onError: (error) => {
+      setNotice({ tone: 'problem', text: messageForError(error, t) });
+    },
+  });
+
+  const role = ['owner', 'admin', 'dispatcher', 'engineer', 'viewer'].includes(invitation.role)
+    ? t(`workspace.role.${invitation.role as 'owner'}`)
+    : invitation.role;
+
+  return (
+    <li className="flex flex-col gap-2 rounded-md border border-border-subtle p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="font-medium text-content">{invitation.email}</span>
+        <Badge tone="muted">{role}</Badge>
+        {invitation.expired ? (
+          <Badge tone="warning">
+            {t('platform.invitations.expired', { date: formatDate(invitation.expiresAt) })}
+          </Badge>
+        ) : (
+          <span className="text-content-muted">
+            {t('platform.invitations.waiting', { date: formatDate(invitation.expiresAt) })}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          busy={reissue.isPending && reissue.variables}
+          disabled={reissue.isPending}
+          onClick={() => reissue.mutate(true)}
+        >
+          {reissue.isPending && reissue.variables
+            ? t('platform.invitations.sending')
+            : t('platform.invitations.send')}
+        </Button>
+        <Button
+          variant="secondary"
+          busy={reissue.isPending && !reissue.variables}
+          disabled={reissue.isPending}
+          onClick={() => reissue.mutate(false)}
+        >
+          {t('platform.invitations.copyLink')}
+        </Button>
+        {notice === undefined ? null : (
+          <span
+            role={notice.tone === 'problem' ? 'alert' : 'status'}
+            className={notice.tone === 'problem' ? 'text-danger' : 'text-content-muted'}
+          >
+            {notice.text}
+          </span>
+        )}
+      </div>
+    </li>
   );
 }
 
