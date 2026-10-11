@@ -1,5 +1,5 @@
 import { holds, type Principal } from '@integr8/core';
-import type { Shift, Submission, TenantTransaction } from '@integr8/db';
+import type { FormVersion, Shift, Submission, TenantTransaction } from '@integr8/db';
 import { unprocessable } from '../http/errors.js';
 import { assetsForSites } from '../routes/v1/assets.js';
 import { customerDetailBody } from '../routes/v1/customers.js';
@@ -7,7 +7,7 @@ import { formDetailBody } from '../routes/v1/forms.js';
 import { isFeatureEnabled } from '../http/features.js';
 import { itemSummary } from '../routes/v1/inventory.js';
 import { peopleOf } from '../routes/v1/operations.js';
-import { mayRead } from '../routes/v1/submissions.js';
+import { carryOverFor, mayRead } from '../routes/v1/submissions.js';
 import { detailBody } from '../routes/v1/work-orders.js';
 
 /**
@@ -192,7 +192,10 @@ export async function pullPage(
   const assetSiteIds = (await isFeatureEnabled(principal.tenantId, 'assets'))
     ? [...new Set(jobs.map((job) => job.siteId))]
     : [];
-  const assets = await assetsForSites(tx, principal, options.webAppUrl, assetSiteIds);
+  const assets = await withCarryOver(
+    tx,
+    await assetsForSites(tx, principal, options.webAppUrl, assetSiteIds),
+  );
 
   const last = changed.ids.at(-1);
   return {
@@ -218,6 +221,52 @@ export async function pullPage(
     assetSiteIds: holdsAssets(principal) ? assetSiteIds : [],
     assets,
   };
+}
+
+/**
+ * For each asset, what a form started for it on the phone would carry over
+ * (ADR-0008): per form it has been filled on, the marked answers of its last
+ * submission moved onto the form's current version. The phone uses one only
+ * while its own copy of the form is that version.
+ */
+async function withCarryOver(
+  tx: TenantTransaction,
+  assets: Awaited<ReturnType<typeof assetsForSites>>,
+) {
+  const latest = new Map<string, Promise<FormVersion | undefined>>();
+  const versionOf = (formId: string) => {
+    let found = latest.get(formId);
+    if (found === undefined) {
+      found = tx.forms.findLatestPublished(formId);
+      latest.set(formId, found);
+    }
+    return found;
+  };
+  const result = [];
+  for (const entry of assets) {
+    const formIds = new Set(
+      entry.timeline.flatMap((item) =>
+        item.kind === 'submission' ? [item.submission.form.id] : [],
+      ),
+    );
+    const carryOver = [];
+    for (const formId of formIds) {
+      const version = await versionOf(formId);
+      const carry =
+        version === undefined ? undefined : await carryOverFor(tx, entry.asset.id, version);
+      if (version !== undefined && carry !== undefined) {
+        carryOver.push({
+          formId,
+          formVersionId: version.id,
+          fromSubmissionId: carry.carriedOver.fromSubmissionId,
+          fields: carry.carriedOver.fields,
+          answers: carry.answers,
+        });
+      }
+    }
+    result.push({ ...entry, carryOver });
+  }
+  return result;
 }
 
 /** The engineer's van and its stock, or an empty answer for a company without the module. */

@@ -1,5 +1,11 @@
-import { holds, formatWorkOrderReference, type Principal } from '@integr8/core';
 import {
+  formatAssetReference,
+  formatWorkOrderReference,
+  holds,
+  type Principal,
+} from '@integr8/core';
+import {
+  type CarriedOver,
   type Form,
   type FormVersion,
   type ReportableValueType,
@@ -20,6 +26,7 @@ import {
   type SubmissionIssue,
   validateSubmission,
 } from '@integr8/form-engine';
+import { hasCarryOver, prefillAnswers } from '@integr8/form-input';
 import { z } from 'zod';
 import {
   conflict,
@@ -30,8 +37,10 @@ import {
   unprocessable,
 } from '../../http/errors.js';
 import { assertSubmissionAllowed, startOfMonth } from '../../billing/entitlements.js';
+import { assertFeatureEnabled } from '../../http/features.js';
 import { planFor } from '../../http/suspension.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
+import { readableAsset } from './assets.js';
 import { readableWorkOrder, requireWork } from './operations.js';
 import { iso, isoOrNull } from './schemas.js';
 
@@ -143,6 +152,13 @@ const detailSchema = z.object({
   events: z.array(eventSchema),
   /** What this caller may do next. A convenience for the screen; every action is checked again. */
   can: z.object({ edit: z.boolean(), submit: z.boolean(), reopen: z.boolean() }),
+  /** The asset it was filled for (CRM/ERP plan, phase E3), if any. */
+  asset: z.object({ id: z.uuid(), reference: z.string(), name: z.string() }).nullable(),
+  /**
+   * The questions whose answers were carried over from that asset's last
+   * submission of this form when it was started, in reading order.
+   */
+  carriedOver: z.object({ fromSubmissionId: z.uuid(), fields: z.array(z.string()) }).nullable(),
 });
 
 const submissionParams = z.object({ submissionId: z.uuid() });
@@ -287,11 +303,12 @@ export async function detailBody(
   principal: Principal,
   submission: Submission,
 ) {
-  const [known, version, form, events] = await Promise.all([
+  const [known, version, form, events, asset] = await Promise.all([
     lookups(tx, [submission]),
     tx.forms.findVersion(submission.formVersionId),
     tx.forms.findForm(submission.formId),
     tx.submissions.listEvents(submission.id),
+    submission.assetId === null ? undefined : tx.assets.find(submission.assetId),
   ]);
   if (version === undefined) {
     throw internal();
@@ -322,6 +339,11 @@ export async function detailBody(
       submit: editable,
       reopen: submission.status === 'submitted' && holds(principal, 'submission.amend'),
     },
+    asset:
+      asset === undefined
+        ? null
+        : { id: asset.id, reference: formatAssetReference(asset.reference), name: asset.name },
+    carriedOver: submission.carriedOver,
   };
 }
 
@@ -465,6 +487,42 @@ export function compiledVersion(version: FormVersion): CompiledForm {
     throw internal();
   }
   return compiled.form;
+}
+
+/**
+ * What a form started for an asset takes from that asset's last submission of
+ * the same form (ADR-0008): only the questions this version marks to carry
+ * over, moved across from the version it was filled on. Nothing when the form
+ * marks none, the asset has no earlier submission, or none of them was answered.
+ */
+export async function carryOverFor(
+  tx: TenantTransaction,
+  assetId: string,
+  version: FormVersion,
+): Promise<{ answers: Record<string, unknown>; carriedOver: CarriedOver } | undefined> {
+  const current = compiledVersion(version);
+  if (!hasCarryOver(current)) {
+    return undefined;
+  }
+  const last = await tx.assets.lastSubmissionOf(assetId, version.formId);
+  const earlier =
+    last === undefined
+      ? undefined
+      : last.formVersionId === version.id
+        ? version
+        : await tx.forms.findVersion(last.formVersionId);
+  if (last === undefined || earlier === undefined) {
+    return undefined;
+  }
+  const prefill = prefillAnswers(compiledVersion(earlier), current, last.answers, {
+    only: 'marked',
+  });
+  return prefill.filled.length === 0
+    ? undefined
+    : {
+        answers: prefill.answers,
+        carriedOver: { fromSubmissionId: last.id, fields: prefill.filled },
+      };
 }
 
 export function refusal(outcome: 'not_found' | 'conflict' | 'wrong_status'): never {
@@ -630,6 +688,30 @@ function decodeCursor(cursor: string): { at: Date; id: string } {
 // Routes
 // ---------------------------------------------------------------------------
 
+/** The asset a form is started for: one this person may record against, on the job if there is one. */
+export async function assetToFillFor(
+  tx: TenantTransaction,
+  principal: Principal,
+  assetId: string,
+  workOrderId: string | undefined,
+) {
+  await assertFeatureEnabled(principal.tenantId, 'assets');
+  if (!holds(principal, 'asset.record')) {
+    throw forbidden('Your role may not record work against assets.');
+  }
+  const asset = await readableAsset(tx, principal, assetId);
+  if (asset.status === 'retired') {
+    throw conflict('asset_retired', 'This asset is retired; forms are no longer filled for it.');
+  }
+  if (
+    workOrderId !== undefined &&
+    !(await tx.assets.linksOfWorkOrders([workOrderId])).some((link) => link.assetId === asset.id)
+  ) {
+    throw conflict('asset_not_on_work_order', 'This asset is not one of the job’s assets.');
+  }
+  return asset;
+}
+
 export const startSubmissionRoute = defineRoute({
   method: 'post',
   path: '/v1/submissions',
@@ -647,12 +729,18 @@ export const startSubmissionRoute = defineRoute({
     formId: z.uuid(),
     /** Fill it for this job. The form must be one of the job's, and the job still open. */
     workOrderId: z.uuid().optional(),
+    /**
+     * Fill it for this asset (E3): one of the job's assets when `workOrderId` is
+     * given. Questions the form marks to carry over start from the asset's last
+     * submission of this form; `carriedOver` in the answer says which.
+     */
+    assetId: z.uuid().optional(),
   }),
   responses: {
     201: { description: 'The draft, with the version it is bound to.', schema: detailSchema },
     409: {
       description:
-        'The job is closed (`work_order_closed`), the form is not one of its forms (`form_not_on_work_order`), or the plan’s submissions for the month are used up (`submission_limit_reached`).',
+        'The job is closed (`work_order_closed`), the form is not one of its forms (`form_not_on_work_order`), the asset is not one of its assets (`asset_not_on_work_order`) or is retired (`asset_retired`), or the plan’s submissions for the month are used up (`submission_limit_reached`).',
     },
     403: { description: 'This person’s role may not fill this form.' },
     404: { description: 'No such form, or nothing published to fill.' },
@@ -691,10 +779,17 @@ export const startSubmissionRoute = defineRoute({
           throw conflict('form_not_on_work_order', 'This form is not one of the job’s forms.');
         }
       }
+      let carry: Awaited<ReturnType<typeof carryOverFor>>;
+      if (body.assetId !== undefined) {
+        const asset = await assetToFillFor(tx, principal, body.assetId, body.workOrderId);
+        carry = await carryOverFor(tx, asset.id, version);
+      }
       const draft = await tx.submissions.startDraft({
         formVersionId: version.id,
         submittedBy: principal.userId,
         ...(body.workOrderId === undefined ? {} : { workOrderId: body.workOrderId }),
+        ...(body.assetId === undefined ? {} : { assetId: body.assetId }),
+        ...(carry ?? {}),
       });
       return detailBody(tx, principal, draft);
     });

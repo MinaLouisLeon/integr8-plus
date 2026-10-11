@@ -601,6 +601,7 @@ export {
   type SubmissionEventKind,
   type SubmitLocation,
   type SubmissionStatus,
+  type CarriedOver,
 } from './schema.js';
 
 export {

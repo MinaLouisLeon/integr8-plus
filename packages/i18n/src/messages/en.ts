@@ -836,6 +836,7 @@ export const en = {
         options: 'Options',
         minSelected: 'Choose at least',
         maxSelected: 'Choose at most',
+        carryOver: 'Carry over from the asset’s last visit',
         allowNotApplicable: 'Offer “Not applicable”',
         scale: 'Out of',
         minFiles: 'At least',
@@ -1287,6 +1288,9 @@ export const en = {
       contains: 'contains',
     },
     detail: {
+      forAsset: 'For asset {{asset}}',
+      carriedOver:
+        'Carried over from {{asset}}’s last visit: {{questions}}. Check each one before you submit.',
       back: 'All submissions',
       version: 'Answers to version {{number}} of this form',
       submittedBy: 'Submitted by {{name}} on {{when}}',
@@ -1489,6 +1493,8 @@ export const en = {
       },
     },
     workOrder: {
+      fillForAsset: 'Fill forms for',
+      noAsset: 'No particular asset',
       back: 'All work orders',
       forCustomer: 'for {{name}}',
       details: 'Details',
@@ -3207,6 +3213,8 @@ export const en = {
         prefilled_one: '{{count}} answer was filled in from {{job}}. Check it before you submit.',
         prefilled_other:
           '{{count}} answers were filled in from {{job}}. Check each one before you submit.',
+        carried:
+          'Carried over from {{asset}}’s last visit: {{questions}}. Check each one before you submit.',
       },
       barcode: {
         scan: 'Scan',
@@ -3391,6 +3399,10 @@ export const en = {
       warrantyBody: '{{asset}} at {{site}}: the warranty ends on {{date}}.',
       warrantySummary_one: '{{count}} asset at your sites has a warranty ending soon.',
       warrantySummary_other: '{{count}} assets at your sites have warranties ending soon.',
+      fillFor: 'Fill a form for this asset',
+      chooseForForm:
+        'This job has more than one asset, and this form carries answers over from an asset’s last visit. Open the asset under “Assets on this job” to fill it for that asset.',
+      fillWithout: 'Fill without an asset',
     },
     change: {
       transition: 'Marked {{job}} as {{state}}',

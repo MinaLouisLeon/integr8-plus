@@ -493,6 +493,13 @@ export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
  * Where a device was when a form was submitted (migration 0012). Coordinates are
  * decimal text, as GPS answers are; `capturedAt` is on the server's clock.
  */
+/** Which answers a draft took from its asset's last submission of the same form (0032). */
+export interface CarriedOver {
+  fromSubmissionId: string;
+  /** Question ids, in reading order. */
+  fields: string[];
+}
+
 export type SubmitLocation =
   | {
       status: 'captured';
@@ -525,6 +532,8 @@ export interface SubmissionsTable {
   work_order_id: ColumnType<string | null, string | null | undefined, never>;
   /** The asset this form was filled for (0031): one of the job's assets. */
   asset_id: ColumnType<string | null, string | null | undefined, string | null>;
+  /** Answers taken from the asset's last submission of the form (0032). Set at insert. */
+  carried_over: ColumnType<CarriedOver | null, CarriedOver | null | undefined, never>;
   /** Written only by submitting; see {@link SubmitLocation}. */
   submit_location: ColumnType<
     SubmitLocation | null,

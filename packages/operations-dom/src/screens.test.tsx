@@ -994,6 +994,50 @@ describe('a job’s forms', () => {
     await user.click(within(forms).getByRole('link', { name: 'Gas safety record' }));
     expect(navigate).toHaveBeenCalledWith(`/submissions/${SUBMISSION}`);
   });
+
+  it('fills a form for the job’s asset, so its answers carry over from its last visit', async () => {
+    const user = userEvent.setup();
+    const ASSET = '00000000-0000-4000-8000-00000000a501';
+    const DRAFT = '00000000-0000-4000-8000-000000000552';
+    const asset = {
+      id: ASSET,
+      reference: 'AS-000012',
+      name: 'Chiller',
+      status: 'active',
+      condition: null,
+      warranty: 'none',
+      warrantyExpiresOn: null,
+    };
+    const { client, calls } = fakeApi({
+      'GET /v1/me': () => ({
+        body: {
+          userId: ENGINEER.id,
+          tenantId: CUSTOMER,
+          email: 'e@x.example',
+          displayName: 'Sam',
+          role: 'engineer',
+          permissions: ['asset.read', 'asset.record'],
+          features: { assets: true },
+        },
+      }),
+      'GET /v1/work-orders/:id': () => ({ body: editable() }),
+      'GET /v1/work-orders/:id/assets': () => ({
+        body: { items: [asset], atSite: [], can: { link: false, unlink: false, register: true } },
+      }),
+      'POST /v1/submissions': () => ({ status: 201, body: { submission: { id: DRAFT } } }),
+    });
+    const { navigate } = renderScreen(<WorkOrderScreen workOrderId={JOB} />, client);
+    const forms = await screen.findByRole('region', { name: 'Forms' });
+    const chooser = await within(forms).findByLabelText('Fill forms for');
+    await waitFor(() => expect(chooser).toHaveValue(ASSET));
+    await user.click(within(forms).getByRole('button', { name: 'Fill in' }));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith(`/submissions/${DRAFT}`));
+    expect(calls.find((call) => call.path === '/v1/submissions')?.body).toEqual({
+      formId: FORM,
+      workOrderId: JOB,
+      assetId: ASSET,
+    });
+  });
 });
 
 describe('row menus', () => {

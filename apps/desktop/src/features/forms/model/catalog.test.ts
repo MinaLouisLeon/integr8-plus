@@ -28,7 +28,13 @@ describe('the configuration panel', () => {
   });
 
   it('reads the properties from the schema, in its order', () => {
-    expect(specificProperties('text')).toEqual(['minLength', 'maxLength', 'pattern', 'default']);
+    expect(specificProperties('text')).toEqual([
+      'minLength',
+      'maxLength',
+      'pattern',
+      'default',
+      'carryOver',
+    ]);
     expect(specificProperties('signature')).toEqual([]);
   });
 

@@ -1,3 +1,4 @@
+import { say } from '@integr8/form-input';
 import { fillSession, type FillSession, recordAnswers } from '@integr8/offline';
 import { useTranslation } from '@integr8/i18n';
 import * as Crypto from 'expo-crypto';
@@ -40,11 +41,14 @@ export default function FillScreen() {
 }
 
 function Fill() {
-  const { t } = useTranslation();
-  const { id, prefilled, from } = useLocalSearchParams<{
+  const { t, i18n } = useTranslation();
+  const { id, prefilled, from, carried, asset } = useLocalSearchParams<{
     id: string;
     prefilled?: string;
     from?: string;
+    /** Questions carried over from an asset's last visit (E3), comma-separated. */
+    carried?: string;
+    asset?: string;
   }>();
   const state = useLocalQuery(
     `fill:${id}`,
@@ -74,10 +78,19 @@ function Fill() {
     );
   }
 
+  const form = compiledVersion(opened.submission.formVersionId, opened.definition);
   const notice =
-    prefilled === undefined || from === undefined
-      ? undefined
-      : t('mobile.fill.start.prefilled', { count: Number(prefilled), job: from });
+    carried !== undefined && asset !== undefined && carried !== ''
+      ? t('mobile.fill.start.carried', {
+          asset,
+          questions: carried
+            .split(',')
+            .map((field) => say(form?.elements.get(field)?.field?.label, i18n.language) || field)
+            .join(', '),
+        })
+      : prefilled === undefined || from === undefined
+        ? undefined
+        : t('mobile.fill.start.prefilled', { count: Number(prefilled), job: from });
   return <Session session={opened} live={state.data} notice={notice} />;
 }
 

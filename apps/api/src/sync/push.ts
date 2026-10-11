@@ -27,6 +27,7 @@ import {
 } from '../routes/v1/operations.js';
 import {
   answersSchema,
+  assetToFillFor,
   compiledVersion,
   dateSchema,
   mayEdit,
@@ -111,6 +112,16 @@ export const mutationSchema = z.discriminatedUnion('kind', [
       formId: z.uuid(),
       formVersionId: z.uuid(),
       workOrderId: z.uuid().nullable(),
+      /** Filled for one of the job's assets (E3). Older phones leave it out. */
+      assetId: z.uuid().nullable().optional(),
+      /** Which of the answers that follow the phone carried over from the asset's last visit. */
+      carriedOver: z
+        .object({
+          fromSubmissionId: z.uuid(),
+          fields: z.array(z.string().max(200)).max(1_000),
+        })
+        .nullable()
+        .optional(),
     }),
   }),
   z.object({
@@ -1240,11 +1251,36 @@ async function startSubmission(
       return rejected('form_not_on_work_order', 'This form is no longer one of the job’s forms.');
     }
   }
+  // The asset is a label on the form, not a condition of it: if the asset was
+  // retired, moved off the job or the module turned off while the phone was
+  // offline, the form is still started — just not for the asset.
+  let assetId: string | undefined;
+  if (mutation.payload.assetId !== undefined && mutation.payload.assetId !== null) {
+    try {
+      assetId = (
+        await assetToFillFor(
+          tx,
+          principal,
+          mutation.payload.assetId,
+          workOrderId ?? undefined,
+        )
+      ).id;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status >= 500) {
+        throw error;
+      }
+    }
+  }
+  const carriedOver = mutation.payload.carriedOver;
   const draft = await tx.submissions.startDraft({
     id: mutation.entityId,
     formVersionId: version.id,
     submittedBy: principal.userId,
     ...(workOrderId === null ? {} : { workOrderId }),
+    ...(assetId === undefined ? {} : { assetId }),
+    ...(assetId === undefined || carriedOver === undefined || carriedOver === null
+      ? {}
+      : { carriedOver }),
   });
   return applied(draft.revision, false, draft.answers);
 }

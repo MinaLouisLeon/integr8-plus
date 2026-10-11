@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyPulledAssets,
   assetByScan,
+  assetCarryOver,
   assetsAtSite,
   assetsOfJob,
   type AssetSync,
@@ -20,6 +21,7 @@ import {
   recordAssetCondition,
   recordAssetLink,
   recordAssetRegistered,
+  recordFormStarted,
   selectBatch,
 } from './outbox.js';
 
@@ -90,6 +92,7 @@ function synced(
     workOrders: workOrderIds.map((jobId) => ({ id: jobId }) as AssetSync['workOrders'][number]),
     can: { edit: false, record: true, attach: true },
     timeline: [],
+    carryOver: [],
   };
 }
 
@@ -304,5 +307,67 @@ describe('assets on the phone', () => {
       sql.get<{ value: string }>(`select value from meta where key = 'warranty_alerted'`),
     );
     expect(JSON.parse(kept?.value ?? '[]')).toEqual([`${OTHER}:2026-12-31`]);
+  });
+
+  it('offers the server’s carry-over only while the phone’s form is that version', async () => {
+    const { db, siteId, customerId } = await phone();
+    const FORM = '00000000-0000-4000-8000-00000000f001';
+    const VERSION = '00000000-0000-4000-8000-00000000f011';
+    const LAST = '00000000-0000-4000-8000-00000000f021';
+    await db.write(['assets', 'asset_links'], (sql) =>
+      applyPulledAssets(
+        sql,
+        {
+          assetSiteIds: [siteId],
+          assets: [
+            {
+              ...synced(ASSET, { siteId, customerId }),
+              carryOver: [
+                {
+                  formId: FORM,
+                  formVersionId: VERSION,
+                  fromSubmissionId: LAST,
+                  fields: ['refrigerant'],
+                  answers: { refrigerant: 'R410A' },
+                },
+              ],
+            },
+          ],
+        },
+        NOW.toISOString(),
+      ),
+    );
+    const carry = (formVersionId: string) =>
+      db.read((sql) => assetCarryOver(sql, { assetId: ASSET, formId: FORM, formVersionId }));
+    expect(await carry(VERSION)).toMatchObject({
+      fromSubmissionId: LAST,
+      answers: { refrigerant: 'R410A' },
+    });
+    expect(await carry('00000000-0000-4000-8000-00000000f012')).toBeUndefined();
+  });
+
+  it('starts a form for an asset registered here only after the registration is sent', async () => {
+    const { db, context, job } = await phone();
+    const assetId = await recordAssetRegistered(context, {
+      workOrderId: job.workOrder.id,
+      name: 'Found pump',
+    });
+    const { submissionId } = await recordFormStarted(context, {
+      formId: '00000000-0000-4000-8000-00000000f001',
+      formVersionId: '00000000-0000-4000-8000-00000000f011',
+      workOrderId: job.workOrder.id,
+      assetId,
+    });
+    // Held back while the registration is unsent: only the registration goes.
+    const { rows } = await db.read((sql) => selectBatch(sql, NOW));
+    expect(rows.map((row) => row.kind)).toEqual(['asset.register']);
+    const start = await db.read((sql) =>
+      sql.get<{ payload: string; waits_for: string }>(
+        `select payload, waits_for from outbox where entity_id = ?`,
+        [submissionId],
+      ),
+    );
+    expect(JSON.parse(start?.payload ?? '{}')).toMatchObject({ assetId });
+    expect(start?.waits_for).toContain(rows[0]!.id);
   });
 });

@@ -806,6 +806,7 @@ export const ar: Catalogue<Messages> = {
         options: 'الخيارات',
         minSelected: 'اختيار ما لا يقل عن',
         maxSelected: 'اختيار ما لا يزيد على',
+        carryOver: 'نقل الإجابة من آخر زيارة للأصل',
         allowNotApplicable: 'إتاحة خيار «لا ينطبق»',
         scale: 'من أصل',
         minFiles: 'على الأقل',
@@ -1256,6 +1257,8 @@ export const ar: Catalogue<Messages> = {
       contains: 'يحتوي على',
     },
     detail: {
+      forAsset: 'للأصل {{asset}}',
+      carriedOver: 'منقولة من آخر زيارة لـ{{asset}}: {{questions}}. راجع كلًّا منها قبل الإرسال.',
       back: 'جميع الإرسالات',
       version: 'إجابات الإصدار {{number}} من هذا النموذج',
       submittedBy: 'أرسله {{name}} في {{when}}',
@@ -1474,6 +1477,8 @@ export const ar: Catalogue<Messages> = {
       },
     },
     workOrder: {
+      fillForAsset: 'ملء النماذج لـ',
+      noAsset: 'دون أصل محدد',
       back: 'جميع أوامر العمل',
       forCustomer: 'للعميل {{name}}',
       details: 'التفاصيل',
@@ -3244,6 +3249,7 @@ export const ar: Catalogue<Messages> = {
         prefilled_few: 'مُلئت {{count}} إجابات من {{job}}. راجع كل واحدة منها قبل الإرسال.',
         prefilled_many: 'مُلئت {{count}} إجابة من {{job}}. راجع كل واحدة منها قبل الإرسال.',
         prefilled_other: 'مُلئت {{count}} إجابة من {{job}}. راجع كل واحدة منها قبل الإرسال.',
+        carried: 'منقولة من آخر زيارة لـ{{asset}}: {{questions}}. راجع كلًّا منها قبل الإرسال.',
       },
       barcode: {
         scan: 'مسح',
@@ -3459,6 +3465,10 @@ export const ar: Catalogue<Messages> = {
       warrantySummary_few: '{{count}} أصول في مواقعك تنتهي ضماناتها قريبًا.',
       warrantySummary_many: '{{count}} أصلًا في مواقعك تنتهي ضماناتها قريبًا.',
       warrantySummary_other: '{{count}} أصل في مواقعك تنتهي ضماناتها قريبًا.',
+      fillFor: 'ملء نموذج لهذا الأصل',
+      chooseForForm:
+        'في هذه المهمة أكثر من أصل، وهذا النموذج ينقل إجابات من آخر زيارة لأصل. افتح الأصل من «الأصول في هذه المهمة» لملء النموذج له.',
+      fillWithout: 'الملء دون أصل',
     },
     change: {
       transition: 'تعليم {{job}} بالحالة {{state}}',

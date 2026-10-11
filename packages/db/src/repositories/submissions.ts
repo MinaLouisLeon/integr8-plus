@@ -1,6 +1,7 @@
 import { type TenantId, type UserId, toTenantId, toUserId } from '@integr8/core';
 import { type ExpressionBuilder, type Selectable, sql } from 'kysely';
 import type {
+  CarriedOver,
   Database,
   ReportableValueType,
   SubmissionEventKind,
@@ -26,6 +27,10 @@ export interface Submission {
   revision: number;
   /** The job this form was filled for, if any. */
   workOrderId: string | null;
+  /** The asset it was filled for, if any (CRM/ERP plan, phase E3). */
+  assetId: string | null;
+  /** Answers taken from that asset's last submission of the form, if any. */
+  carriedOver: CarriedOver | null;
   /** Where the device was when it was last submitted, if it recorded that (P13). */
   submitLocation: SubmitLocation | null;
   createdAt: Date;
@@ -57,6 +62,10 @@ export interface StartDraftInput {
   answers?: Record<string, unknown>;
   /** The job it is filled for. The form must be one of the job's; the database refuses otherwise. */
   workOrderId?: string;
+  /** The asset it is filled for (E3); the caller checks it may be. */
+  assetId?: string;
+  /** Answers in `answers` taken from the asset's last submission of the form. */
+  carriedOver?: CarriedOver;
 }
 
 /** Why a write did not happen, so the API can say the right thing. */
@@ -171,6 +180,8 @@ export class SubmissionsRepository extends TenantScopedRepository {
         submitted_by: toUserId(input.submittedBy),
         last_actor: toUserId(input.submittedBy),
         ...(input.workOrderId === undefined ? {} : { work_order_id: input.workOrderId }),
+        ...(input.assetId === undefined ? {} : { asset_id: input.assetId }),
+        ...(input.carriedOver === undefined ? {} : { carried_over: input.carriedOver }),
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -471,6 +482,8 @@ function toDomain(row: Selectable<SubmissionsTable>): Submission {
     amendedAt: row.amended_at,
     revision: row.revision,
     workOrderId: row.work_order_id,
+    assetId: row.asset_id,
+    carriedOver: row.carried_over,
     submitLocation: row.submit_location,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

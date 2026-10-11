@@ -349,6 +349,25 @@ export function assetFilesIn(data: AssetSync): Omit<AssetFileToFetch, 'siteId'>[
   return files;
 }
 
+/** What a form started for an asset on this phone carries over from its last visit. */
+export type AssetCarryOver = AssetSync['carryOver'][number];
+
+/**
+ * The carry-over the server worked out for this asset and form at the last
+ * pull (ADR-0008), while the phone's form is the version it was worked out
+ * for; otherwise nothing — the form changed since, and the server's answers
+ * may not fit it.
+ */
+export async function assetCarryOver(
+  sql: SqlConnection,
+  input: { assetId: string; formId: string; formVersionId: string },
+): Promise<AssetCarryOver | undefined> {
+  const asset = await localAsset(sql, input.assetId);
+  return (asset?.data.carryOver ?? []).find(
+    (entry) => entry.formId === input.formId && entry.formVersionId === input.formVersionId,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Warranty alerts
 // ---------------------------------------------------------------------------

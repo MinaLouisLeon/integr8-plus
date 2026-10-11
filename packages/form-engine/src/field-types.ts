@@ -74,6 +74,15 @@ const base = {
   rules: z.array(ruleSchema).max(50).optional(),
 };
 
+/**
+ * "Carry over from the asset's last visit" (CRM/ERP plan, phase E3;
+ * ADR-0008): a form started for an asset fills this question from the last
+ * submission of the same form on the same asset — the make, the model, the
+ * refrigerant charge. Only questions that describe the thing carry: evidence
+ * of this visit (signature, photo, file, location) cannot be marked.
+ */
+const carry = { carryOver: z.boolean().optional() };
+
 const choices = z.array(optionSchema).min(1).max(1_000);
 
 /**
@@ -119,6 +128,7 @@ export const fieldSchema = z.discriminatedUnion('type', [
       })
       .optional(),
     default: z.string().optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
@@ -126,6 +136,7 @@ export const fieldSchema = z.discriminatedUnion('type', [
     minLength: z.number().int().min(0).max(100_000).optional(),
     maxLength: z.number().int().min(1).max(100_000).optional(),
     default: z.string().optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
@@ -135,6 +146,7 @@ export const fieldSchema = z.discriminatedUnion('type', [
     max: z.number().int().optional(),
     default: z.number().int().optional(),
     calculation: expressionSchema.optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
@@ -145,6 +157,7 @@ export const fieldSchema = z.discriminatedUnion('type', [
     max: decimalTextSchema.optional(),
     default: decimalTextSchema.optional(),
     calculation: expressionSchema.optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
@@ -152,6 +165,7 @@ export const fieldSchema = z.discriminatedUnion('type', [
     earliest: z.string().max(32).optional(),
     latest: z.string().max(32).optional(),
     default: z.string().max(32).optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
@@ -159,6 +173,7 @@ export const fieldSchema = z.discriminatedUnion('type', [
     earliest: z.string().max(32).optional(),
     latest: z.string().max(32).optional(),
     default: z.string().max(32).optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
@@ -166,6 +181,7 @@ export const fieldSchema = z.discriminatedUnion('type', [
     earliest: z.string().max(32).optional(),
     latest: z.string().max(32).optional(),
     default: z.string().max(32).optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
@@ -173,6 +189,7 @@ export const fieldSchema = z.discriminatedUnion('type', [
     options: choices,
     dependsOn: dependsOnSchema.optional(),
     default: z.string().optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
@@ -180,6 +197,7 @@ export const fieldSchema = z.discriminatedUnion('type', [
     options: choices,
     dependsOn: dependsOnSchema.optional(),
     default: z.string().optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
@@ -189,23 +207,27 @@ export const fieldSchema = z.discriminatedUnion('type', [
     minSelected: z.number().int().min(0).max(1_000).optional(),
     maxSelected: z.number().int().min(1).max(1_000).optional(),
     default: z.array(z.string()).max(1_000).optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
     type: z.literal('checkbox'),
     default: z.boolean().optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
     type: z.literal('yes_no'),
     allowNotApplicable: z.boolean().optional(),
     default: z.enum(['yes', 'no', 'not_applicable']).optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
     type: z.literal('rating'),
     scale: z.number().int().min(3).max(10),
     default: z.number().int().optional(),
+    ...carry,
   }),
   z.strictObject({
     ...base,
@@ -235,6 +257,7 @@ export const fieldSchema = z.discriminatedUnion('type', [
     ...base,
     type: z.literal('barcode'),
     maxLength: z.number().int().min(1).max(1_000).optional(),
+    ...carry,
   }),
 ]);
 
@@ -774,6 +797,14 @@ export function fieldConfigIssues(field: Field): FieldConfigIssue[] {
   }
 
   const defaultValue = 'default' in field ? field.default : undefined;
+
+  if ('carryOver' in field && field.carryOver === true) {
+    if (isCalculated(field)) {
+      report('carryOver', 'A calculated field is worked out by the form, so it cannot carry over');
+    } else if (field.readOnly === true) {
+      report('carryOver', 'A read-only field is fixed by the form, so it cannot carry over');
+    }
+  }
 
   if (isCalculated(field)) {
     if (field.required === true) {

@@ -9588,6 +9588,8 @@ export interface operations {
                     formId: string;
                     /** Format: uuid */
                     workOrderId?: string;
+                    /** Format: uuid */
+                    assetId?: string;
                 };
             };
         };
@@ -9682,6 +9684,17 @@ export interface operations {
                             submit: boolean;
                             reopen: boolean;
                         };
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                        } | null;
+                        carriedOver: {
+                            /** Format: uuid */
+                            fromSubmissionId: string;
+                            fields: string[];
+                        } | null;
                     };
                 };
             };
@@ -9708,7 +9721,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The job is closed (`work_order_closed`), the form is not one of its forms (`form_not_on_work_order`), or the plan’s submissions for the month are used up (`submission_limit_reached`). */
+            /** @description The job is closed (`work_order_closed`), the form is not one of its forms (`form_not_on_work_order`), the asset is not one of its assets (`asset_not_on_work_order`) or is retired (`asset_retired`), or the plan’s submissions for the month are used up (`submission_limit_reached`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9947,6 +9960,17 @@ export interface operations {
                             submit: boolean;
                             reopen: boolean;
                         };
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                        } | null;
+                        carriedOver: {
+                            /** Format: uuid */
+                            fromSubmissionId: string;
+                            fields: string[];
+                        } | null;
                     };
                 };
             };
@@ -10252,6 +10276,17 @@ export interface operations {
                             submit: boolean;
                             reopen: boolean;
                         };
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                        } | null;
+                        carriedOver: {
+                            /** Format: uuid */
+                            fromSubmissionId: string;
+                            fields: string[];
+                        } | null;
                     };
                 };
             };
@@ -10431,6 +10466,17 @@ export interface operations {
                             submit: boolean;
                             reopen: boolean;
                         };
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                        } | null;
+                        carriedOver: {
+                            /** Format: uuid */
+                            fromSubmissionId: string;
+                            fields: string[];
+                        } | null;
                     };
                 };
             };
@@ -40598,6 +40644,18 @@ export interface operations {
                                     workOrderId: string | null;
                                 };
                             })[];
+                            carryOver: {
+                                /** Format: uuid */
+                                formId: string;
+                                /** Format: uuid */
+                                formVersionId: string;
+                                /** Format: uuid */
+                                fromSubmissionId: string;
+                                fields: string[];
+                                answers: {
+                                    [key: string]: unknown;
+                                };
+                            }[];
                         }[];
                     };
                 };
@@ -40760,6 +40818,13 @@ export interface operations {
                             formVersionId: string;
                             /** Format: uuid */
                             workOrderId: string | null;
+                            /** Format: uuid */
+                            assetId?: string | null;
+                            carriedOver?: {
+                                /** Format: uuid */
+                                fromSubmissionId: string;
+                                fields: string[];
+                            } | null;
                         };
                     } | {
                         /** Format: uuid */

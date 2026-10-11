@@ -517,6 +517,20 @@ export async function freshTagCode(tx: TenantTransaction): Promise<string> {
 export const assetSyncSchema = assetDetailSchema.extend({
   /** Everything it has been through, newest first: the phone shows it with no signal. */
   timeline: z.array(timelineEntrySchema),
+  /**
+   * Per form filled on it whose current version marks questions to carry
+   * over: the answers a form started for this asset starts with, already
+   * moved onto that version. Used only while the phone's form is that version.
+   */
+  carryOver: z.array(
+    z.object({
+      formId: z.uuid(),
+      formVersionId: z.uuid(),
+      fromSubmissionId: z.uuid(),
+      fields: z.array(z.string()),
+      answers: z.record(z.string(), z.unknown()),
+    }),
+  ),
 });
 
 /**
@@ -529,7 +543,7 @@ export async function assetsForSites(
   principal: Principal,
   webAppUrl: string | undefined,
   siteIds: readonly string[],
-): Promise<z.infer<typeof assetSyncSchema>[]> {
+): Promise<Omit<z.infer<typeof assetSyncSchema>, 'carryOver'>[]> {
   if (siteIds.length === 0 || !holds(principal, 'asset.read')) {
     return [];
   }

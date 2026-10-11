@@ -451,6 +451,7 @@ export async function recordAssetRegistered(
       },
       workOrders: [],
       can: { edit: false, record: true, attach: false },
+      carryOver: [],
       timeline: [
         {
           kind: 'event',
@@ -750,7 +751,14 @@ export async function recordAccessChange(
 
 export async function recordFormStarted(
   context: ChangeContext,
-  input: { formId: string; formVersionId: string; workOrderId: string | null },
+  input: {
+    formId: string;
+    formVersionId: string;
+    workOrderId: string | null;
+    /** Filled for one of the job's assets (E3); with the answers carried over, if any. */
+    assetId?: string;
+    carriedOver?: { fromSubmissionId: string; fields: string[] };
+  },
 ): Promise<{ mutationId: string; submissionId: string }> {
   const { db, clock, random } = context;
   return db.write(OUTBOX_TABLES, async (sql) => {
@@ -763,6 +771,15 @@ export async function recordFormStarted(
        values (?, ?, ?, ?, 'draft', '{}', ?)`,
       [submissionId, input.formId, input.formVersionId, input.workOrderId, at],
     );
+    // An asset registered on this phone and not yet sent: the server must have
+    // it before a form can be filled for it.
+    const registration =
+      input.assetId === undefined
+        ? undefined
+        : await sql.get<{ id: string }>(
+            `select id from outbox where kind = 'asset.register' and entity_id = ? and state <> 'done'`,
+            [input.assetId],
+          );
     await insertChange(sql, {
       id: mutationId,
       kind: 'submission.start',
@@ -772,6 +789,9 @@ export async function recordFormStarted(
       payload: input,
       base: null,
       at,
+      ...(registration === undefined
+        ? {}
+        : { waitsFor: { media: [], mutations: [registration.id] } }),
     });
     return { mutationId, submissionId };
   });

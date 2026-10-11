@@ -27,6 +27,7 @@ import {
 import { Parts } from './work-order-parts.js';
 import { JobFinancePanel } from '../finance/job-finance.js';
 import { JobAssetsPanel } from '../assets/job-assets.js';
+import { useAssetAccess } from '../assets/asset-parts.js';
 
 /**
  * One job.
@@ -633,12 +634,33 @@ function Forms({
     enabled: adding,
   });
 
+  // A form may be filled for one of the job's assets (E3): its marked answers
+  // then carry over from that asset's last visit. The job's one asset is
+  // chosen for you; with several, you choose.
+  const assetAccess = useAssetAccess();
+  const jobAssets = useQuery({
+    queryKey: keys.jobAssets(job.workOrder.id),
+    queryFn: async () =>
+      (
+        await client.GET('/v1/work-orders/{workOrderId}/assets', {
+          params: { path: { workOrderId: job.workOrder.id } },
+        })
+      ).data!,
+    enabled: assetAccess.record,
+  });
+  const fillable = (jobAssets.data?.items ?? []).filter((asset) => asset.status !== 'retired');
+  const [chosenAsset, setChosenAsset] = useState<string | null>(null);
+  const assetId = chosenAsset ?? (fillable.length === 1 ? fillable[0]!.id : '');
   const start = useMutation({
     mutationFn: async (id: string) =>
       (
         await client.POST('/v1/submissions', {
           params: { header: { 'Idempotency-Key': crypto.randomUUID() } },
-          body: { formId: id, workOrderId: job.workOrder.id },
+          body: {
+            formId: id,
+            workOrderId: job.workOrder.id,
+            ...(assetId === '' ? {} : { assetId }),
+          },
         })
       ).data!,
     onSuccess: (draft) => navigate(paths.submission(draft.submission.id)),
@@ -696,6 +718,25 @@ function Forms({
           {t('operations.workOrder.submissionsForJob')}
         </a>
       </div>
+      {canStart && fillable.length > 0 && job.forms.some((form) => form.submission === null) ? (
+        <Field label={t('operations.workOrder.fillForAsset')} className="mt-3 max-w-md">
+          {(id) => (
+            <select
+              id={id}
+              className={inputClass}
+              value={assetId}
+              onChange={(event) => setChosenAsset(event.target.value)}
+            >
+              <option value="">{t('operations.workOrder.noAsset')}</option>
+              {fillable.map((asset) => (
+                <option key={asset.id} value={asset.id}>
+                  {`${asset.reference} · ${asset.name}`}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+      ) : null}
       <ul className="flex flex-col divide-y divide-border-subtle">
         {job.forms.map((form) => (
           <li key={form.formId} className="flex flex-wrap items-center justify-between gap-2 py-2">

@@ -608,3 +608,207 @@ describe('from the phone', () => {
     expect(refused.results[0]).toMatchObject({ outcome: 'rejected', code: 'asset_not_at_site' });
   });
 });
+
+describe('carrying answers over from an asset’s last visit', () => {
+  async function publishForm() {
+    const builder = await api.staff(owner);
+    const as = async <T>(method: 'GET' | 'POST' | 'PUT', url: string, payload?: unknown) => {
+      const response = await api.call(builder, {
+        method,
+        url,
+        ...(payload === undefined ? {} : { payload: payload as Record<string, unknown> }),
+      });
+      expect(response.statusCode, response.body).toBeLessThan(300);
+      return json<T>(response);
+    };
+    const { form } = await as<{ form: { id: string } }>('POST', '/v1/forms', {
+      title: `Chiller service ${tag()}`,
+    });
+    const detail = await as<{ draft: { revision: number } }>('GET', `/v1/forms/${form.id}`);
+    const saved = await as<{ revision: number }>('PUT', `/v1/forms/${form.id}/draft`, {
+      expectedRevision: detail.draft.revision,
+      definition: {
+        schemaVersion: 1,
+        title: { en: 'Chiller service' },
+        pages: [
+          {
+            id: 'page_1',
+            sections: [
+              {
+                id: 'section_1',
+                fields: [
+                  {
+                    id: 'refrigerant',
+                    type: 'text',
+                    label: { en: 'Refrigerant' },
+                    carryOver: true,
+                  },
+                  {
+                    id: 'charge',
+                    type: 'decimal',
+                    decimalPlaces: 2,
+                    label: { en: 'Charge (kg)' },
+                    carryOver: true,
+                  },
+                  { id: 'reading', type: 'text', label: { en: 'Today’s reading' } },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    await as('POST', `/v1/forms/${form.id}/draft/publish`, { expectedRevision: saved.revision });
+    return form.id;
+  }
+
+  async function jobWithAssetAndForm(assetId: string, formId: string) {
+    const job = await newJob();
+    expect(
+      (
+        await call(dispatcher, 'POST', `/v1/work-orders/${job.id}/forms`, {
+          formId,
+          required: false,
+        })
+      ).statusCode,
+    ).toBeLessThan(300);
+    expect(
+      (await call(dispatcher, 'POST', `/v1/work-orders/${job.id}/assets`, { assetId })).statusCode,
+    ).toBeLessThan(300);
+    return job;
+  }
+
+  interface Draft {
+    submission: { id: string; revision: number; answers: Record<string, unknown> };
+    asset: { id: string; reference: string } | null;
+    carriedOver: { fromSubmissionId: string; fields: string[] } | null;
+  }
+
+  async function start(payload: Record<string, unknown>) {
+    const response = await call(engineer, 'POST', '/v1/submissions', payload, randomUUID());
+    return { response, draft: response.statusCode === 201 ? json<Draft>(response) : undefined };
+  }
+
+  it('fills only the marked questions from the same form’s last submission on the asset', async () => {
+    const formId = await publishForm();
+    const { asset } = await register({ name: 'Chiller' });
+    const first = await jobWithAssetAndForm(asset.id, formId);
+
+    const opened = await start({ formId, workOrderId: first.id, assetId: asset.id });
+    expect(opened.response.statusCode, opened.response.body).toBe(201);
+    expect(opened.draft).toMatchObject({
+      asset: { id: asset.id, reference: asset.reference },
+      carriedOver: null,
+      submission: { answers: {} },
+    });
+    const answers = { refrigerant: 'R410A', charge: '2.40', reading: '7 bar' };
+    const submitted = await call(
+      engineer,
+      'POST',
+      `/v1/submissions/${opened.draft!.submission.id}/submit`,
+      { answers, expectedRevision: opened.draft!.submission.revision },
+    );
+    expect(submitted.statusCode, submitted.body).toBe(200);
+
+    const second = await jobWithAssetAndForm(asset.id, formId);
+    const next = await start({ formId, workOrderId: second.id, assetId: asset.id });
+    expect(next.draft).toMatchObject({
+      submission: { answers: { refrigerant: 'R410A', charge: '2.40' } },
+      carriedOver: {
+        fromSubmissionId: opened.draft!.submission.id,
+        fields: ['refrigerant', 'charge'],
+      },
+    });
+    expect(next.draft!.submission.answers).not.toHaveProperty('reading');
+    // Reading it back says the same, on any device.
+    const read = json<Draft>(
+      await call(engineer, 'GET', `/v1/submissions/${next.draft!.submission.id}`),
+    );
+    expect(read.carriedOver?.fields).toEqual(['refrigerant', 'charge']);
+
+    // Started without the asset, nothing is carried.
+    const plain = await start({ formId, workOrderId: second.id });
+    expect(plain.draft).toMatchObject({
+      asset: null,
+      carriedOver: null,
+      submission: { answers: {} },
+    });
+
+    // The phone is told what a form started for the asset would carry.
+    const pulled = json<{
+      assets: {
+        asset: { id: string };
+        carryOver: { formId: string; fields: string[]; answers: Record<string, unknown> }[];
+      }[];
+    }>(await call(engineer, 'GET', '/v1/sync/pull'));
+    expect(pulled.assets.find((entry) => entry.asset.id === asset.id)?.carryOver).toEqual([
+      expect.objectContaining({
+        formId,
+        fromSubmissionId: opened.draft!.submission.id,
+        fields: ['refrigerant', 'charge'],
+        answers: { refrigerant: 'R410A', charge: '2.40' },
+      }),
+    ]);
+  });
+
+  it('refuses an asset that is not one of the job’s, and a retired one', async () => {
+    const formId = await publishForm();
+    const { asset } = await register({ name: 'Linked chiller' });
+    const job = await jobWithAssetAndForm(asset.id, formId);
+    const loose = await register({ name: 'Unlinked chiller' });
+    const notOnJob = await start({ formId, workOrderId: job.id, assetId: loose.asset.id });
+    expect(notOnJob.response.statusCode).toBe(409);
+    expect(code(notOnJob.response)).toBe('asset_not_on_work_order');
+
+    const current = json<AssetDetail>(await call(dispatcher, 'GET', `/v1/assets/${asset.id}`));
+    const retired = await call(dispatcher, 'POST', `/v1/assets/${asset.id}/status`, {
+      status: 'retired',
+      expectedVersion: current.asset.version,
+    });
+    expect(retired.statusCode, retired.body).toBe(200);
+    const refused = await start({ formId, workOrderId: job.id, assetId: asset.id });
+    expect(code(refused.response)).toBe('asset_retired');
+  });
+
+  it('starts a phone’s form for the asset, keeping it even if the asset moved off the job', async () => {
+    const formId = await publishForm();
+    const { asset } = await register({ name: 'Phone chiller' });
+    const job = await jobWithAssetAndForm(asset.id, formId);
+    const version = json<{ live: { id: string } }>(
+      await call(engineer, 'GET', `/v1/forms/${formId}`),
+    );
+    const push = (mutations: Record<string, unknown>[]) =>
+      call(engineer, 'POST', '/v1/sync/push', { sentAt: new Date().toISOString(), mutations });
+    const startOnPhone = (assetId: string) => ({
+      id: randomUUID(),
+      entityId: randomUUID(),
+      recordedAt: new Date().toISOString(),
+      kind: 'submission.start',
+      payload: {
+        formId,
+        formVersionId: version.live.id,
+        workOrderId: job.id,
+        assetId,
+        carriedOver: { fromSubmissionId: randomUUID(), fields: ['refrigerant'] },
+      },
+    });
+    const kept = startOnPhone(asset.id);
+    expect(json<{ results: { outcome: string }[] }>(await push([kept])).results[0]).toMatchObject({
+      outcome: 'applied',
+    });
+    expect(
+      json<Draft>(await call(engineer, 'GET', `/v1/submissions/${kept.entityId}`)),
+    ).toMatchObject({ asset: { id: asset.id }, carriedOver: { fields: ['refrigerant'] } });
+
+    const elsewhere = await register({ name: 'Not on this job' });
+    const dropped = startOnPhone(elsewhere.asset.id);
+    expect(
+      json<{ results: { outcome: string }[] }>(await push([dropped])).results[0],
+    ).toMatchObject({
+      outcome: 'applied',
+    });
+    expect(
+      json<Draft>(await call(engineer, 'GET', `/v1/submissions/${dropped.entityId}`)),
+    ).toMatchObject({ asset: null, carriedOver: null });
+  });
+});

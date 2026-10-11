@@ -4,6 +4,7 @@ import {
   type AssetTimelineEntry,
   type ConditionValue,
   assetFilesIn,
+  jobForms,
   localAsset,
   LocalChangeError,
 } from '@integr8/offline';
@@ -11,6 +12,7 @@ import { radii, spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { openStarted } from '~/components/job-forms';
 import { AssetRow } from '~/components/job-assets';
 import { LocalGate } from '~/components/local-gate';
 import {
@@ -25,7 +27,9 @@ import {
   useTheme,
 } from '~/components/ui';
 import { formatWhen } from '~/lib/format';
+import { assetStart, startForm } from '~/forms/session';
 import { linkAsset, openAssetFile, recordCondition } from '~/local/job-actions';
+import { localData } from '~/local/local-data';
 import { useLocalQuery } from '~/local/react';
 
 /**
@@ -48,6 +52,17 @@ function Asset() {
   const { id, workOrderId } = useLocalSearchParams<{ id: string; workOrderId?: string }>();
   const state = useLocalQuery(`asset:${id}`, ['assets', 'asset_links'], (sql) =>
     localAsset(sql, id),
+  );
+  // Opened from a job: that job's forms not started yet can be filled for this asset.
+  const forms = useLocalQuery(
+    `asset-forms:${id}:${workOrderId ?? ''}`,
+    ['work_orders', 'submissions', 'forms', 'outbox'],
+    async (sql) =>
+      workOrderId === undefined
+        ? []
+        : (await jobForms(sql, workOrderId)).filter(
+            (form) => form.submission === null && form.liveVersionId !== null,
+          ),
   );
   const [condition, setCondition] = useState<ConditionValue | null>(null);
   const [note, setNote] = useState('');
@@ -117,6 +132,46 @@ function Asset() {
             linkAsset({ workOrderId, assetId: data.asset.id }).catch(failed);
           }}
         />
+      ) : null}
+
+      {linkedHere &&
+      workOrderId !== undefined &&
+      data.asset.status !== 'retired' &&
+      forms.status === 'ready' &&
+      forms.data.length > 0 ? (
+        <Section title={t('mobile.assets.fillFor')}>
+          {forms.data.map((form) => (
+            <Button
+              key={form.formId}
+              label={form.title}
+              variant="secondary"
+              disabled={busy}
+              onPress={() => {
+                const context = localData.changeContext();
+                if (context === undefined) {
+                  return;
+                }
+                setBusy(true);
+                void assetStart(context, { form, workOrderId, assetId: data.asset.id })
+                  .then(async (start) => {
+                    const submissionId = await startForm(context, {
+                      form,
+                      workOrderId,
+                      startFrom: undefined,
+                      asset: start,
+                    });
+                    if (start === undefined) {
+                      router.push({ pathname: '/forms/[id]', params: { id: submissionId } });
+                    } else {
+                      openStarted(submissionId, start);
+                    }
+                  })
+                  .catch(failed)
+                  .finally(() => setBusy(false));
+              }}
+            />
+          ))}
+        </Section>
       ) : null}
 
       <Section title={t('mobile.assets.details')}>
