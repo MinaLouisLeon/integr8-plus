@@ -29,6 +29,10 @@ export function InventoryOverviewScreen() {
     me.data !== undefined &&
     hasFeature(me.data.features, 'purchasing') &&
     permissions.includes('purchasing.read');
+  const sales =
+    me.data !== undefined &&
+    hasFeature(me.data.features, 'sales') &&
+    permissions.includes('sales.read');
 
   const attention = useQuery({
     queryKey: ['inventory', 'material-conflicts'],
@@ -43,6 +47,12 @@ export function InventoryOverviewScreen() {
       (await client.GET('/v1/inventory/balances', { params: { query: { belowMinimum: 'true' } } }))
         .data!.items,
     enabled: enabled && allowed,
+  });
+  const toOrder = useQuery({
+    queryKey: keys.toOrder,
+    queryFn: async () =>
+      (await client.GET('/v1/sales/to-order', { params: { query: { limit: 50 } } })).data!.items,
+    enabled: enabled && allowed && sales,
   });
   const recent = useQuery({
     queryKey: keys.movements({ limit: 10 }),
@@ -143,6 +153,48 @@ export function InventoryOverviewScreen() {
                             locale,
                             unitName,
                           ),
+                        })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ) : null}
+
+          {sales ? (
+            <section aria-labelledby="inventory-to-order" className={cardClass}>
+              <h2 id="inventory-to-order" className="text-base font-semibold text-content">
+                {t('inventory.overview.toOrder')}
+              </h2>
+              {toOrder.isPending ? (
+                <Loading />
+              ) : toOrder.isError ? (
+                <InlineError onRetry={() => void toOrder.refetch()} />
+              ) : toOrder.data.length === 0 ? (
+                <p className="text-sm text-content-muted">{t('inventory.overview.noToOrder')}</p>
+              ) : (
+                <ul className="flex flex-col divide-y divide-border-subtle text-sm">
+                  {toOrder.data.map((row) => (
+                    <li
+                      key={row.lineId}
+                      className="flex flex-wrap items-center justify-between gap-2 py-2"
+                    >
+                      <span>
+                        <AppLink to={paths.item(row.item.id)}>{row.item.name}</AppLink>
+                        <span className="text-content-muted">
+                          {' · '}
+                          <AppLink to={paths.salesOrder(row.order.id)}>
+                            {row.order.reference}
+                          </AppLink>
+                          {' · '}
+                          {row.order.title}
+                        </span>
+                      </span>
+                      <span className="text-content tabular-nums">
+                        {t('inventory.overview.toOrderLine', {
+                          shortfall: formatQuantity(row.shortfall, row.item.unit, locale, unitName),
+                          location: row.location?.name ?? '—',
                         })}
                       </span>
                     </li>

@@ -5,6 +5,10 @@ import {
   type LocationKind,
   type MovementKind,
   type MaterialStatus,
+  type QuoteAnswerVia,
+  type QuoteStatus,
+  type SalesDocumentKind,
+  type SalesOrderStatus,
   type PurchaseOrderStatus,
   type StockCountStatus,
   type SupplierStatus,
@@ -1237,6 +1241,125 @@ export interface ErpWorkOrderMaterialsTable {
   version: Generated<number>;
 }
 
+// ---------------------------------------------------------------------------
+// Quotes and sales orders (0029; CRM/ERP plan, phase S1)
+// ---------------------------------------------------------------------------
+
+export interface SalesDocumentCountersTable {
+  tenant_id: string;
+  kind: SalesDocumentKind;
+  last_reference: number;
+}
+
+export interface CrmQuotesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  reference: Generated<number>;
+  revision: Generated<number>;
+  customer_id: string;
+  site_id: string | null;
+  contact_id: string | null;
+  opportunity_id: string | null;
+  status: Generated<QuoteStatus>;
+  title: string;
+  currency_code: string;
+  /** A calendar date, read as `YYYY-MM-DD` text. */
+  valid_until: ColumnType<string | null, string | null, string | null>;
+  introduction: string | null;
+  terms: string | null;
+  internal_notes: string | null;
+  customer_name: string | null;
+  customer_address: Jsonb<Record<string, string | null>> | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  issued_by: string | null;
+  issued_at: Date | null;
+  access_token_hash: string | null;
+  answered_at: Date | null;
+  answered_by: string | null;
+  answered_via: QuoteAnswerVia | null;
+  answered_name: string | null;
+  answered_from: string | null;
+  rejection_reason: string | null;
+  converted_order_id: string | null;
+  converted_at: Date | null;
+  cancelled_by: string | null;
+  cancelled_at: Date | null;
+  cancel_reason: string | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface CrmQuoteLinesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  quote_id: string;
+  position: number;
+  item_id: string | null;
+  description: string;
+  quantity: string;
+  unit: Generated<Unit>;
+  unit_price: string;
+  discount_bp: Generated<number>;
+  tax_rate_bp: Generated<number>;
+}
+
+export interface ErpSalesOrdersTable {
+  id: Generated<string>;
+  tenant_id: string;
+  reference: Generated<number>;
+  quote_id: string | null;
+  customer_id: string;
+  site_id: string | null;
+  contact_id: string | null;
+  status: Generated<SalesOrderStatus>;
+  title: string;
+  currency_code: string;
+  notes: string | null;
+  internal_notes: string | null;
+  reserve_location_id: string | null;
+  customer_name: string | null;
+  customer_address: Jsonb<Record<string, string | null>> | null;
+  confirmed_by: string | null;
+  confirmed_at: Date | null;
+  fulfilled_at: Date | null;
+  cancelled_by: string | null;
+  cancelled_at: Date | null;
+  cancel_reason: string | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface ErpSalesOrderLinesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  order_id: string;
+  position: number;
+  item_id: string | null;
+  description: string;
+  quantity: string;
+  unit: Generated<Unit>;
+  unit_price: string;
+  discount_bp: Generated<number>;
+  tax_rate_bp: Generated<number>;
+  quantity_reserved: Generated<string>;
+  reserve_location_id: string | null;
+  quantity_fulfilled: Generated<string>;
+}
+
+export interface ErpSalesOrderWorkOrdersTable {
+  tenant_id: string;
+  order_id: string;
+  work_order_id: string;
+  linked_by: string;
+  linked_at: CreatedAt;
+}
+
 export interface CustomerContactsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -1747,6 +1870,12 @@ export interface Database {
   erp_goods_receipts: ErpGoodsReceiptsTable;
   erp_goods_receipt_lines: ErpGoodsReceiptLinesTable;
   erp_work_order_materials: ErpWorkOrderMaterialsTable;
+  sales_document_counters: SalesDocumentCountersTable;
+  crm_quotes: CrmQuotesTable;
+  crm_quote_lines: CrmQuoteLinesTable;
+  erp_sales_orders: ErpSalesOrdersTable;
+  erp_sales_order_lines: ErpSalesOrderLinesTable;
+  erp_sales_order_work_orders: ErpSalesOrderWorkOrdersTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -1881,6 +2010,7 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'erp_stock_lock_balance',
   // Hands out purchase order references from a counter the runtime role cannot write; see 0027.
   'assign_purchase_order_reference',
+  'assign_sales_reference',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -1953,6 +2083,12 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_goods_receipts: true,
   erp_goods_receipt_lines: true,
   erp_work_order_materials: true,
+  sales_document_counters: true,
+  crm_quotes: true,
+  crm_quote_lines: true,
+  erp_sales_orders: true,
+  erp_sales_order_lines: true,
+  erp_sales_order_work_orders: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

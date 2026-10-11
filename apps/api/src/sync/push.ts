@@ -5,6 +5,7 @@ import { ApiError, type ErrorDetail } from '../http/errors.js';
 import { isFeatureEnabled } from '../http/features.js';
 import { fingerprintRequest } from '../http/idempotency.js';
 import { recordUse } from '../routes/v1/materials.js';
+import { deliverOnCompletion } from '../routes/v1/sales-fulfilment.js';
 import type { RequestContext } from '../http/routes.js';
 import { updateAccessNotes } from '../routes/v1/customers.js';
 import {
@@ -631,6 +632,9 @@ async function transition(
         via: 'sync',
         ...(reason === undefined ? {} : { reason }),
       });
+      if (to === 'complete') {
+        await deliverOnCompletion(tx, context, result.workOrder);
+      }
       return applied(result.workOrder.revision);
     case 'conflict':
       return {

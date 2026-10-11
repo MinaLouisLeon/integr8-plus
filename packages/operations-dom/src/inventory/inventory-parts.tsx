@@ -95,21 +95,26 @@ export function ItemPicker({
   value,
   onChange,
   label,
+  hint,
+  kinds = ['stock_item'],
 }: {
   value: Pick<ItemRow, 'id' | 'name' | 'sku' | 'unit'> | null;
-  onChange: (item: Pick<ItemRow, 'id' | 'name' | 'sku' | 'unit'> | null) => void;
+  onChange: (item: ItemRow | null) => void;
   label: string;
+  hint?: string;
+  /** Which kinds to offer; stock items only unless said otherwise. */
+  kinds?: readonly ItemKind[];
 }) {
   const { t } = useTranslation();
   const { client } = useOperations();
   const [text, setText] = useState('');
   const [searched, setSearched] = useState('');
   const found = useQuery({
-    queryKey: keys.items({ q: searched, kind: 'stock_item', limit: 10 }),
+    queryKey: keys.items({ q: searched, kind: kinds, limit: 10 }),
     queryFn: async () =>
       (
         await client.GET('/v1/inventory/items', {
-          params: { query: { q: searched, kind: ['stock_item'], limit: 10 } },
+          params: { query: { q: searched, kind: [...kinds], limit: 10 } },
         })
       ).data!.items,
     enabled: searched !== '',
@@ -136,11 +141,12 @@ export function ItemPicker({
   }
   return (
     <div className="flex flex-col gap-2">
-      <Field label={label}>
-        {(id) => (
+      <Field label={label} {...(hint === undefined ? {} : { hint })}>
+        {(id, describedBy) => (
           <div className="flex gap-2">
             <input
               id={id}
+              aria-describedby={describedBy}
               type="search"
               className={inputClass}
               value={text}

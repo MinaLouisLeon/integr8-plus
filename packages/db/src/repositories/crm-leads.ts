@@ -378,6 +378,23 @@ function leadColumns(input: Partial<LeadInput>) {
  * The amount as Postgres wrote it, minus trailing zeros: `1250.5000` reads as
  * `1250.5`. String work only, so nothing passes through a float.
  */
+/**
+ * A `date` column as `YYYY-MM-DD`. node-postgres hands a `date` back as a
+ * JavaScript Date at local midnight unless the query casts it to text; read
+ * either way, a calendar day stays the day it was.
+ */
+export function toDayString(value: string | Date | null | undefined): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (value instanceof Date) {
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${String(value.getFullYear())}-${month}-${day}`;
+  }
+  return value.slice(0, 10);
+}
+
 export function trimDecimal(value: string): string {
   if (!value.includes('.')) {
     return value;

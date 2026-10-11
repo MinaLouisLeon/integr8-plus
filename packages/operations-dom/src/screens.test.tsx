@@ -127,6 +127,7 @@ function detail(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
     materials: [],
     materialsCost: null,
     van: null,
+    salesOrders: [],
     can: {
       edit: false,
       assign: false,

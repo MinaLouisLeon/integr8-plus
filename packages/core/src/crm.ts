@@ -19,7 +19,7 @@ import { z } from 'zod';
  * Integr8 staff switch it on per company. A route or a menu section that names
  * one is unavailable to a company without it, whatever the seat's permissions.
  */
-export const MODULE_FEATURES = ['crm', 'inventory', 'purchasing'] as const;
+export const MODULE_FEATURES = ['crm', 'inventory', 'purchasing', 'sales'] as const;
 export const moduleFeatureSchema = z.enum(MODULE_FEATURES);
 export type ModuleFeature = z.infer<typeof moduleFeatureSchema>;
 

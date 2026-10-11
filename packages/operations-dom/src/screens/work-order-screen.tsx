@@ -182,6 +182,23 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
             <Detail label={t('operations.workOrder.dueWindow')}>
               <DueWindow from={workOrder.dueFrom} by={workOrder.dueBy} locale={locale} />
             </Detail>
+            {job.salesOrders.length === 0 ? null : (
+              <Detail label={t('sales.orders.onJob')}>
+                {job.salesOrders.map((order) => (
+                  <a
+                    key={order.id}
+                    href={paths.salesOrder(order.id)}
+                    className="block text-accent underline-offset-4 hover:underline"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      navigate(paths.salesOrder(order.id));
+                    }}
+                  >
+                    <span dir="ltr">{order.reference}</span> · {order.title}
+                  </a>
+                ))}
+              </Detail>
+            )}
           </dl>
           {job.workOrder.description === null ? null : (
             <div className="flex flex-col gap-1">

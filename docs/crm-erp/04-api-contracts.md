@@ -270,3 +270,80 @@ phone's sync) and `work-order-materials.ts` (the routes). Tests:
 
 Audit actions: `work_order.part_used`, `.part_conflict`, `.part_retried`,
 `.part_cancelled`, `.part_returned`.
+
+## Quotes (phase S1)
+
+Source: `apps/api/src/routes/v1/sales-quotes.ts`. Tests:
+`apps/api/src/routes/v1/sales-quotes.integration.test.ts`. Every route needs
+the `sales` module. Prices are decimal strings in the quote's currency;
+`discountBp` and `taxRateBp` are basis points per line; every total comes from
+the server. Every body carries `can` so the screens show only what the seat
+may do.
+
+| Method and path                      | Permission     | What it does                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/sales/quotes`               | `sales.read`   | `q` (reference such as `QT-000123` or `123`, or words of the title or customer), `status`, `customerId`, `opportunityId`, newest first; each with `totals` and `expired`                                                                                                                                                                                   |
+| `POST /v1/sales/quotes`              | `sales.manage` | Draft with `lines` (`itemId` or `description`, `quantity`, `unit`, `unitPrice`, `discountBp`, `taxRateBp`; defaults from the item); company currency unless `currencyCode`; 404 `customer_not_found`, `item_not_found`; 422 `site_not_customers`, `contact_not_customers`, `opportunity_not_customers`, `description_required`. `Idempotency-Key` honoured |
+| `GET /v1/sales/quotes/{id}`          | `sales.read`   | The quote, lines, `issuedTo` snapshot, `answer`, `hasLink`, `convertedOrderId`, `can` (`edit`, `issue`, `revise`, `answer`, `convert`, `cancel`); `internalNotes` null without `sales.manage`                                                                                                                                                              |
+| `PATCH /v1/sales/quotes/{id}`        | `sales.manage` | Change a draft; `lines` replaces every line; `expectedVersion`; 409 `quote_not_draft`                                                                                                                                                                                                                                                                      |
+| `POST /v1/sales/quotes/{id}/issue`   | `sales.issue`  | Draft → issued: freezes the customer and lines, records who and when, mints the customer's link; answers with `acceptToken` and `acceptUrl` **once** (the token is never stored or shown again). 409 `quote_not_draft`; 422 `quote_empty`                                                                                                                  |
+| `POST /v1/sales/quotes/{id}/answer`  | `sales.manage` | The office records the customer's answer: `status` (`accepted`/`rejected`), `name`, `reason`; spends the link; accepting wins the quote's opportunity. 409 `quote_not_issued`, `quote_expired`                                                                                                                                                             |
+| `POST /v1/sales/quotes/{id}/revise`  | `sales.manage` | A new draft revision under the same reference (`QT-000123-R2`); the old link dies. Allowed for issued, expired or rejected; 409 `quote_not_revisable`                                                                                                                                                                                                      |
+| `POST /v1/sales/quotes/{id}/cancel`  | `sales.manage` | Withdraw a draft, issued or rejected quote with an optional `reason`; 409 `quote_closed` for accepted, converted or cancelled                                                                                                                                                                                                                              |
+| `POST /v1/sales/quotes/{id}/convert` | `sales.manage` | Makes the sales order from an accepted quote, once (see below); 409 `quote_not_accepted`, `quote_converted`                                                                                                                                                                                                                                                |
+
+Audit actions: `quote.created`, `.updated`, `.issued`, `.accepted`, `.rejected`,
+`.revised`, `.cancelled`, `.converted`, and `crm_opportunity.won_by_quote`.
+
+## Sales orders (phase S1; ADR-0006)
+
+Source: `apps/api/src/routes/v1/sales-orders.ts`; the hooks the job and parts
+routes call are in `sales-fulfilment.ts`. Tests:
+`apps/api/src/routes/v1/sales-orders.integration.test.ts`.
+
+| Method and path                                                            | Permission        | What it does                                                                                                                                                                                                                                                                                                               |
+| -------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/sales/orders`                                                     | `sales.read`      | `q` (reference `SO-000123` or words), `status`, `customerId`; each with `totals`, `quote` and `toOrder` (a stock line is short)                                                                                                                                                                                            |
+| `POST /v1/sales/orders`                                                    | `sales.manage`    | Draft without a quote, same line rules as a quote. `Idempotency-Key` honoured                                                                                                                                                                                                                                              |
+| `GET /v1/sales/orders/{id}`                                                | `sales.read`      | The order, lines with `quantityReserved`, `quantityFulfilled`, `shortfall`, `reserveLocation`, `stock`; `workOrders` (job summaries, oldest link first); `can` (`edit`, `confirm`, `reserve`, `cancel`, `linkJobs`, `createJobs`)                                                                                          |
+| `PATCH /v1/sales/orders/{id}`                                              | `sales.manage`    | Change a draft; `lines` replaces every line; 409 `order_not_draft`                                                                                                                                                                                                                                                         |
+| `POST /v1/sales/orders/{id}/confirm`                                       | `sales.issue`     | Draft → confirmed: freezes the customer and lines, reserves each stock line at `reserveLocationId` (what is there is held, the rest is the line's `shortfall`); 422 `order_empty`, `location_required` (stock lines without a location), `location_archived`; 404 `location_not_found`; 409 `order_not_draft`              |
+| `POST /v1/sales/orders/{id}/reserve`                                       | `sales.manage`    | Re-runs the reservation, at `reserveLocationId` or the order's own, after goods arrived or to hold elsewhere; 409 `order_not_open`                                                                                                                                                                                         |
+| `POST /v1/sales/orders/{id}/cancel`                                        | `sales.manage`    | A draft by whoever manages sales; a confirmed order by `sales.issue` (403 otherwise); releases every reservation; 409 `order_closed`                                                                                                                                                                                       |
+| `POST /v1/sales/orders/{id}/work-orders`                                   | `sales.manage`    | `{workOrderId}` links one of the customer's jobs (422 `work_order_not_customers`), or `{create: {...}}` makes one the way `POST /v1/work-orders` does (needs `work_order.manage`; the order's site unless `siteId`; the order's title unless `title`; 422 `site_required`). 409 `order_closed`. `Idempotency-Key` honoured |
+| `DELETE /v1/sales/orders/{id}/work-orders/{workOrderId}`                   | `sales.manage`    | Unlinks; what the job already delivered stays delivered; 404 when not linked                                                                                                                                                                                                                                               |
+| `GET /v1/sales/to-order`                                                   | `sales.read`      | Every stock line of an open order with a shortfall: what to buy                                                                                                                                                                                                                                                            |
+| `GET /v1/inventory/balances`, `/items/{id}`, `/locations/{id}` (additions) | `inventory.read`  | Every balance row and the item's totals now carry `reserved` (promised to open orders) and `available` (on hand less reserved, never below zero)                                                                                                                                                                           |
+| `GET /v1/work-orders/{id}` (addition)                                      | `work_order.read` | `salesOrders`: the orders this job delivers (empty without the sales module or `sales.read`)                                                                                                                                                                                                                               |
+
+What the job routes and the phone's sync do with orders (`sales-fulfilment.ts`):
+a part used on any job sees only what is **available** at the location — held
+less what other orders reserved there — and is refused as a `conflict` beyond
+it, with `availableQuantity` saying what was free; a part used on a job linked
+to an order counts towards that order's lines for the item (oldest link first)
+and releases the reservation it fulfils; a linked job completing (through
+`POST /v1/work-orders/{id}/transitions` or the phone's `work_order.transition`)
+delivers every line that is not stock. The order's status follows its lines:
+`partially_fulfilled`, then `fulfilled`, which releases anything still held.
+
+Audit actions: `sales_order.created`, `.updated`, `.confirmed`, `.reserved`
+(with each short line), `.cancelled`, `.job_linked`, `.job_unlinked`,
+`.delivered`, `.job_completed`.
+
+## The customer's link (phase S1; ADR-0006)
+
+Source: `apps/api/src/routes/v1/sales-public.ts`. Tests:
+`apps/api/src/routes/v1/sales-public.integration.test.ts`. Public: no session;
+the token in the path is the capability. The hash of the token is resolved to
+its company on the platform connection, then the quote is read on that
+company's own connection. The server's per-address rate limit applies as to
+every route.
+
+| Method and path                         | What it does                                                                                                                                                                                                                                                                                 |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/public/quotes/{token}`         | The issued quote: company (`name`, `logoPath`, `brandColour`), the customer as named on the quote, lines, totals, introduction, terms, `validUntil`, `expired`, `answer`, `canAnswer`. No ids, no people, no internal notes. `no-store`. 404 for a spent, revised, withdrawn or unknown link |
+| `POST /v1/public/quotes/{token}/answer` | `status` (`accepted`/`rejected`), `name` (required), `reason`: records the answer with `via = link` and the caller's address, spends the link, wins the opportunity (actor: the issuer), audited as actor kind `system` with label `customer-link`. 409 `quote_expired`, `quote_not_issued`  |
+
+The web page `/q/[token]` (`apps/web/src/app/q/[token]/page.tsx`) renders the
+same `QuoteDocument` the office prints, with the accept and decline form and a
+"Print or save as PDF" button that calls the browser's own print.

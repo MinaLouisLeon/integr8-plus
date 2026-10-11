@@ -8,6 +8,7 @@ import {
   quantitySchema,
   unitSchema,
   decimalAmountSchema,
+  compareDecimals,
 } from '@integr8/core';
 import {
   type Item,
@@ -15,6 +16,7 @@ import {
   type StockLocation,
   type TenantTransaction,
   withTenant,
+  addDecimals,
 } from '@integr8/db';
 import { z } from 'zod';
 import { ApiError, conflict, notFound, unprocessable } from '../../http/errors.js';
@@ -422,9 +424,31 @@ export const createItemRoute = defineRoute({
   },
 });
 
+/** What is reserved where, keyed `itemId:locationId` (ADR-0006). */
+export async function reservedAt(
+  tx: TenantTransaction,
+  query: { itemId?: string; locationId?: string },
+): Promise<Map<string, string>> {
+  const rows = await tx.salesOrders.reservations(query);
+  return new Map(rows.map((row) => [`${row.itemId}:${row.locationId}`, row.reserved]));
+}
+
+/** Reserved and available from on-hand and what orders hold; available never below zero. */
+export function availability(
+  onHand: string,
+  reserved = '0',
+): { reserved: string; available: string } {
+  const available = addDecimals(onHand, `-${reserved}`);
+  return { reserved, available: compareDecimals(available, '0') < 0 ? '0' : available };
+}
+
 const stockLineSchema = z.object({
   location: locationSummarySchema,
   onHand: z.string(),
+  /** Promised to confirmed sales orders here (ADR-0006). */
+  reserved: z.string(),
+  /** On hand less reserved, never below zero. */
+  available: z.string(),
   /** The reorder level here, if one is set. */
   minimum: z.string().nullable(),
 });
@@ -434,6 +458,8 @@ export const itemDetailSchema = z.object({
   /** Every location that holds it or has a reorder level for it. */
   stock: z.array(stockLineSchema),
   onHand: z.string(),
+  reserved: z.string(),
+  available: z.string(),
   can: z.object({ manage: z.boolean(), move: z.boolean() }),
 });
 
@@ -460,34 +486,52 @@ export const getItemRoute = defineRoute({
       if (item === undefined) {
         throw notFound('This item does not exist.');
       }
-      const balances = await tx.inventoryStock.balances({ itemId: item.id });
-      const locations = new Map(
-        (await tx.inventoryStock.findLocations(balances.map((row) => row.locationId))).map(
-          (location) => [location.id, location],
-        ),
-      );
-      const total = await sumDecimals(
-        tx,
-        balances.map((row) => row.onHand),
-      );
-      return {
-        item: itemBody(item, seesCosts(principal)),
-        stock: balances.flatMap((row) => {
-          const location = locations.get(row.locationId);
-          return location === undefined
-            ? []
-            : [{ location: locationSummary(location), onHand: row.onHand, minimum: row.minimum }];
-        }),
-        onHand: total,
-        can: {
-          manage: holds(principal, 'inventory.manage'),
-          move: holds(principal, 'inventory.move'),
-        },
-      };
+      return itemDetailBody(tx, principal, item);
     });
     return { status: 200, body };
   },
 });
+
+/** The item with how much of it is where: held, reserved for orders, and available. */
+export async function itemDetailBody(
+  tx: TenantTransaction,
+  principal: Principal,
+  item: Item,
+): Promise<z.infer<typeof itemDetailSchema>> {
+  const balances = await tx.inventoryStock.balances({ itemId: item.id });
+  const [places, reserved, total] = await Promise.all([
+    tx.inventoryStock.findLocations(balances.map((row) => row.locationId)),
+    reservedAt(tx, { itemId: item.id }),
+    sumDecimals(
+      tx,
+      balances.map((row) => row.onHand),
+    ),
+  ]);
+  const locations = new Map(places.map((location) => [location.id, location]));
+  const totalReserved = await sumDecimals(tx, [...reserved.values()]);
+  return {
+    item: itemBody(item, seesCosts(principal)),
+    stock: balances.flatMap((row) => {
+      const location = locations.get(row.locationId);
+      return location === undefined
+        ? []
+        : [
+            {
+              location: locationSummary(location),
+              onHand: row.onHand,
+              ...availability(row.onHand, reserved.get(`${row.itemId}:${row.locationId}`)),
+              minimum: row.minimum,
+            },
+          ];
+    }),
+    onHand: total,
+    ...availability(total, totalReserved),
+    can: {
+      manage: holds(principal, 'inventory.manage'),
+      move: holds(principal, 'inventory.move'),
+    },
+  };
+}
 
 /** Adds decimal strings exactly, in the database. */
 export async function sumDecimals(
@@ -612,29 +656,7 @@ export const setReorderLevelsRoute = defineRoute({
       await audit(tx, context, 'inventory_item.reorder_levels_set', 'inventory_item', item.id, {
         levels: body.levels.length,
       });
-      const balances = await tx.inventoryStock.balances({ itemId: item.id });
-      const locations = new Map(
-        (await tx.inventoryStock.findLocations(balances.map((row) => row.locationId))).map(
-          (location) => [location.id, location],
-        ),
-      );
-      return {
-        item: itemBody(item, seesCosts(principal)),
-        stock: balances.flatMap((row) => {
-          const location = locations.get(row.locationId);
-          return location === undefined
-            ? []
-            : [{ location: locationSummary(location), onHand: row.onHand, minimum: row.minimum }];
-        }),
-        onHand: await sumDecimals(
-          tx,
-          balances.map((row) => row.onHand),
-        ),
-        can: {
-          manage: holds(principal, 'inventory.manage'),
-          move: holds(principal, 'inventory.move'),
-        },
-      };
+      return itemDetailBody(tx, principal, item);
     });
     return { status: 200, body: detail };
   },
@@ -784,7 +806,13 @@ export const locationDetailSchema = z.object({
   location: locationSchema,
   /** Every item it holds or has a reorder level for. */
   stock: z.array(
-    z.object({ item: itemSummarySchema, onHand: z.string(), minimum: z.string().nullable() }),
+    z.object({
+      item: itemSummarySchema,
+      onHand: z.string(),
+      reserved: z.string(),
+      available: z.string(),
+      minimum: z.string().nullable(),
+    }),
   ),
   can: z.object({ manage: z.boolean(), move: z.boolean() }),
 });
@@ -813,12 +841,11 @@ export const getLocationRoute = defineRoute({
         throw notFound('This location does not exist.');
       }
       const balances = await tx.inventoryStock.balances({ locationId: location.id });
-      const items = new Map(
-        (await tx.inventoryCatalogue.findItems(balances.map((row) => row.itemId))).map((item) => [
-          item.id,
-          item,
-        ]),
-      );
+      const [found, reserved] = await Promise.all([
+        tx.inventoryCatalogue.findItems(balances.map((row) => row.itemId)),
+        reservedAt(tx, { locationId: location.id }),
+      ]);
+      const items = new Map(found.map((item) => [item.id, item]));
       return {
         location: (await locationBodies(tx, [location]))[0]!,
         stock: balances
@@ -826,7 +853,14 @@ export const getLocationRoute = defineRoute({
             const item = items.get(row.itemId);
             return item === undefined
               ? []
-              : [{ item: itemSummary(item), onHand: row.onHand, minimum: row.minimum }];
+              : [
+                  {
+                    item: itemSummary(item),
+                    onHand: row.onHand,
+                    ...availability(row.onHand, reserved.get(`${row.itemId}:${row.locationId}`)),
+                    minimum: row.minimum,
+                  },
+                ];
           })
           .sort((a, b) => a.item.name.localeCompare(b.item.name)),
         can: {

@@ -412,6 +412,32 @@ export {
   type MaterialInput,
   type MaterialPatch,
 } from './repositories/inventory-materials.js';
+export {
+  addDecimals,
+  type DocumentTotals,
+  type Quote,
+  type QuoteInput,
+  type QuoteLine,
+  type QuoteLineInput,
+  type QuotePage,
+  type QuoteQuery,
+  type QuoteRefusal,
+  type QuoteSnapshot,
+  PublicQuotesLookup,
+  SalesQuotesRepository,
+} from './repositories/sales-quotes.js';
+export {
+  type OrderWorkOrderLink,
+  type Reservation,
+  type SalesOrder,
+  type SalesOrderInput,
+  type SalesOrderLine,
+  type SalesOrderPage,
+  type SalesOrderQuery,
+  type SalesOrderRefusal,
+  SalesOrdersRepository,
+  type ShortLine,
+} from './repositories/sales-orders.js';
 
 export {
   addressLine,

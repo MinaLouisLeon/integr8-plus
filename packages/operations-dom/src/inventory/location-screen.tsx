@@ -205,6 +205,14 @@ export function LocationScreen({ locationId }: { locationId: string }) {
                   <span className="text-content">
                     {formatQuantity(row.onHand, row.item.unit, locale, unitName)}
                   </span>
+                  {row.reserved === '0' ? null : (
+                    <span className="text-xs text-content-muted">
+                      {t('inventory.items.reservedLine', {
+                        reserved: formatQuantity(row.reserved, row.item.unit, locale, unitName),
+                        available: formatQuantity(row.available, row.item.unit, locale, unitName),
+                      })}
+                    </span>
+                  )}
                   {row.minimum === null ? null : (
                     <span className="text-xs text-content-muted">
                       {t('inventory.items.minimumIs', {

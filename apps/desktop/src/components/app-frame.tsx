@@ -182,7 +182,7 @@ function Sidebar({
       aria-label={t('nav.menu')}
       className={[
         drawerOpen ? 'flex' : 'hidden',
-        'fixed inset-y-0 start-0 z-40 h-dvh w-72 flex-col border-e border-shell-border bg-shell text-shell-text',
+        'fixed inset-y-0 start-0 z-40 h-dvh w-72 flex-col border-e border-shell-border bg-shell text-shell-text print:hidden',
         'md:static md:flex md:h-auto',
         collapsed ? 'md:w-16' : 'md:w-64',
       ].join(' ')}
@@ -366,7 +366,7 @@ function TopBar({
   }, [title, me?.company.name]);
 
   return (
-    <header className="flex min-h-14 items-center gap-3 border-b border-shell-border bg-shell px-4 py-2 text-shell-text">
+    <header className="flex min-h-14 items-center gap-3 border-b border-shell-border bg-shell px-4 py-2 text-shell-text print:hidden">
       <button
         ref={menuButton}
         type="button"

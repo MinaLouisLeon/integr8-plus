@@ -38,10 +38,11 @@ export type NavIcon =
   | 'megaphone'
   | 'layout'
   | 'package'
+  | 'file-text'
   | 'heart';
 
 export type NavGroup =
-  'overview' | 'work' | 'crm' | 'inventory' | 'operations' | 'setup' | 'company';
+  'overview' | 'work' | 'crm' | 'sales' | 'inventory' | 'operations' | 'setup' | 'company';
 
 /** One entry in the side menu. */
 export interface NavSection {
@@ -89,12 +90,15 @@ export type NavPath =
   | 'items'
   | 'stockLocations'
   | 'suppliers'
-  | 'purchaseOrders';
+  | 'purchaseOrders'
+  | 'quotes'
+  | 'salesOrders';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   'overview',
   'work',
   'crm',
+  'sales',
   'inventory',
   'operations',
   'setup',
@@ -160,6 +164,24 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     icon: 'list',
     permission: 'crm.read',
     feature: 'crm',
+  },
+
+  // Sales (CRM/ERP plan, phase S1): the company's `sales` module.
+  {
+    key: 'quotes',
+    group: 'sales',
+    path: 'quotes',
+    icon: 'file-text',
+    permission: 'sales.read',
+    feature: 'sales',
+  },
+  {
+    key: 'salesOrders',
+    group: 'sales',
+    path: 'salesOrders',
+    icon: 'clipboard',
+    permission: 'sales.read',
+    feature: 'sales',
   },
 
   // Inventory (CRM/ERP plan, phase E1): the company's `inventory` module.

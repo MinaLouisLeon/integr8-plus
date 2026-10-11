@@ -13,6 +13,9 @@ import { crmRoutes } from './v1/crm.js';
 import { stockRoutes } from './v1/inventory-stock.js';
 import { catalogueRoutes } from './v1/inventory.js';
 import { purchasingRoutes } from './v1/purchasing.js';
+import { salesOrderRoutes } from './v1/sales-orders.js';
+import { salesPublicRoutes } from './v1/sales-public.js';
+import { quoteRoutes } from './v1/sales-quotes.js';
 import { materialRoutes } from './v1/work-order-materials.js';
 import { customerRoutes } from './v1/customers.js';
 import { importRoutes } from './v1/imports.js';
@@ -56,6 +59,9 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...stockRoutes,
     ...purchasingRoutes,
     ...materialRoutes,
+    ...quoteRoutes,
+    ...salesOrderRoutes,
+    ...salesPublicRoutes,
     ...jobTypeRoutes,
     ...workOrderRoutes,
     ...importRoutes,

@@ -26,11 +26,13 @@ import { ApiError, conflict, notFound, unprocessable } from '../../http/errors.j
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { crmAudit as audit, versionConflict } from './crm-shared.js';
 import {
+  availability,
   FEATURE,
   itemSummary,
   itemSummarySchema,
   locationSummary,
   locationSummarySchema,
+  reservedAt,
   seesCosts,
   TAGS,
 } from './inventory.js';
@@ -368,6 +370,10 @@ export const listBalancesRoute = defineRoute({
             item: itemSummarySchema,
             location: locationSummarySchema,
             onHand: z.string(),
+            /** Promised to confirmed sales orders (ADR-0006); `0` without the sales module. */
+            reserved: z.string(),
+            /** On hand less reserved, never below zero. */
+            available: z.string(),
             minimum: z.string().nullable(),
           }),
         ),
@@ -381,9 +387,13 @@ export const listBalancesRoute = defineRoute({
         ...(query.locationId === undefined ? {} : { locationId: query.locationId }),
         belowMinimum: query.belowMinimum === 'true',
       });
-      const [found, places] = await Promise.all([
+      const [found, places, reserved] = await Promise.all([
         tx.inventoryCatalogue.findItems(balances.map((row) => row.itemId)),
         tx.inventoryStock.findLocations(balances.map((row) => row.locationId)),
+        reservedAt(tx, {
+          ...(query.itemId === undefined ? {} : { itemId: query.itemId }),
+          ...(query.locationId === undefined ? {} : { locationId: query.locationId }),
+        }),
       ]);
       const item = new Map(found.map((row) => [row.id, row]));
       const location = new Map(places.map((row) => [row.id, row]));
@@ -398,6 +408,7 @@ export const listBalancesRoute = defineRoute({
                   item: itemSummary(i),
                   location: locationSummary(l),
                   onHand: row.onHand,
+                  ...availability(row.onHand, reserved.get(`${row.itemId}:${row.locationId}`)),
                   minimum: row.minimum,
                 },
               ];

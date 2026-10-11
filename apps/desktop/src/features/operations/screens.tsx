@@ -14,6 +14,10 @@ import {
   LocationScreen,
   OrderListScreen,
   OrderScreen,
+  QuoteListScreen,
+  QuoteScreen,
+  SalesOrderListScreen,
+  SalesOrderScreen,
   StockCountScreen,
   SupplierListScreen,
   SupplierScreen,
@@ -81,6 +85,10 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         supplier: (id) => `/purchasing/suppliers/${id}`,
         purchaseOrders: '/purchasing/orders',
         purchaseOrder: (id) => `/purchasing/orders/${id}`,
+        quotes: '/sales/quotes',
+        quote: (id) => `/sales/quotes/${id}`,
+        salesOrders: '/sales/orders',
+        salesOrder: (id) => `/sales/orders/${id}`,
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -333,6 +341,40 @@ export function PurchaseOrderRoute() {
   return (
     <OperationsScreens>
       <OrderScreen key={orderId} orderId={orderId} />
+    </OperationsScreens>
+  );
+}
+
+export function QuotesRoute() {
+  return (
+    <OperationsScreens>
+      <QuoteListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function QuoteRoute() {
+  const { quoteId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <QuoteScreen key={quoteId} quoteId={quoteId} />
+    </OperationsScreens>
+  );
+}
+
+export function SalesOrdersRoute() {
+  return (
+    <OperationsScreens>
+      <SalesOrderListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function SalesOrderRoute() {
+  const { orderId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <SalesOrderScreen key={orderId} orderId={orderId} />
     </OperationsScreens>
   );
 }

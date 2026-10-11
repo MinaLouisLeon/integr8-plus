@@ -32,6 +32,8 @@ import { InventoryCatalogueRepository } from './repositories/inventory-catalogue
 import { InventoryMaterialsRepository } from './repositories/inventory-materials.js';
 import { InventoryPurchasingRepository } from './repositories/inventory-purchasing.js';
 import { InventoryStockRepository } from './repositories/inventory-stock.js';
+import { SalesOrdersRepository } from './repositories/sales-orders.js';
+import { PublicQuotesLookup, SalesQuotesRepository } from './repositories/sales-quotes.js';
 import { CustomersRepository } from './repositories/customers.js';
 import { FilesRepository } from './repositories/files.js';
 import { ImportsRepository } from './repositories/imports.js';
@@ -124,6 +126,8 @@ export interface TenantTransaction {
   readonly inventoryStock: InventoryStockRepository;
   readonly inventoryPurchasing: InventoryPurchasingRepository;
   readonly inventoryMaterials: InventoryMaterialsRepository;
+  readonly salesQuotes: SalesQuotesRepository;
+  readonly salesOrders: SalesOrdersRepository;
   readonly sites: SitesRepository;
   readonly jobTypes: JobTypesRepository;
   readonly workOrders: WorkOrdersRepository;
@@ -223,6 +227,8 @@ export interface PlatformDataSource {
   readonly signup: SignupRepository;
   /** Creates a company's settings row when the company is made (P18). */
   readonly tenantSettings: TenantSettingsWriter;
+  /** Which company a quote's customer link belongs to (CRM/ERP plan, S1; ADR-0006). */
+  readonly publicQuotes: PublicQuotesLookup;
 }
 
 /**
@@ -374,6 +380,8 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     inventoryStock: new InventoryStockRepository(scope),
     inventoryPurchasing: new InventoryPurchasingRepository(scope),
     inventoryMaterials: new InventoryMaterialsRepository(scope),
+    salesQuotes: new SalesQuotesRepository(scope),
+    salesOrders: new SalesOrdersRepository(scope),
     sites: new SitesRepository(scope),
     jobTypes: new JobTypesRepository(scope),
     workOrders: new WorkOrdersRepository(scope),
@@ -460,6 +468,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     billing: new BillingRepository(db),
     signup: new SignupRepository(db),
     tenantSettings: new TenantSettingsWriter(db),
+    publicQuotes: new PublicQuotesLookup(db),
     jobs: {
       claim: (options) => claimJobs(db, options),
       complete: (jobId, options) => completeJob(db, jobId, options),

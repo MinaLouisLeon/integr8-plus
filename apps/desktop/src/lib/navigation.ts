@@ -41,6 +41,8 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   stockLocations: '/inventory/locations',
   suppliers: '/purchasing/suppliers',
   purchaseOrders: '/purchasing/orders',
+  quotes: '/sales/quotes',
+  salesOrders: '/sales/orders',
 };
 
 /**

@@ -12,7 +12,7 @@ import type {
   ErpPurchaseOrdersTable,
   ErpSuppliersTable,
 } from '../schema.js';
-import { trimDecimal } from './crm-leads.js';
+import { toDayString, trimDecimal } from './crm-leads.js';
 import type { Address } from './customers.js';
 import { prefixQuery } from './customers.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
@@ -768,7 +768,7 @@ function toOrder(row: Selectable<ErpPurchaseOrdersTable>): PurchaseOrder {
     supplierName: row.supplier_name,
     status: row.status,
     currencyCode: row.currency_code,
-    expectedDate: row.expected_date,
+    expectedDate: toDayString(row.expected_date),
     deliveryLocationId: row.delivery_location_id,
     notes: row.notes,
     approvedBy: row.approved_by === null ? null : toUserId(row.approved_by),

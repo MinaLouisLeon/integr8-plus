@@ -94,10 +94,24 @@ const locations: StockLocation[] = [
 const detail = (): ItemDetail => ({
   item: item(),
   stock: [
-    { location: { id: STORE, name: 'Main store', kind: 'warehouse' }, onHand: '10', minimum: '5' },
-    { location: { id: VAN, name: 'Van 1', kind: 'van' }, onHand: '2.5', minimum: null },
+    {
+      location: { id: STORE, name: 'Main store', kind: 'warehouse' },
+      onHand: '10',
+      reserved: '4',
+      available: '6',
+      minimum: '5',
+    },
+    {
+      location: { id: VAN, name: 'Van 1', kind: 'van' },
+      onHand: '2.5',
+      reserved: '0',
+      available: '2.5',
+      minimum: null,
+    },
   ],
   onHand: '12.5',
+  reserved: '4',
+  available: '8.5',
   can: { manage: true, move: true },
 });
 
@@ -119,6 +133,8 @@ describe('the inventory overview', { timeout: 20_000 }, () => {
               },
               location: { id: STORE, name: 'Main store', kind: 'warehouse' },
               onHand: '2',
+              reserved: '0',
+              available: '2',
               minimum: '5',
             },
           ],
@@ -311,6 +327,8 @@ describe('moving stock', { timeout: 20_000 }, () => {
                 unit: 'each',
               },
               onHand: '10',
+              reserved: '0',
+              available: '10',
               minimum: '5',
             },
           ],

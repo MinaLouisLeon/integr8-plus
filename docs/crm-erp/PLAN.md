@@ -690,12 +690,12 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase S1 — Quotes and sales orders
 
-**Status:** `NOT STARTED` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `DONE` — the printable quote is the browser's own print to PDF rather than a server-rendered PDF (decision, 2026-10-11); emailing the link waits for an email channel — see the [phase tracker](./README.md#phase-tracker).
 
-- [ ] Exact decimals/currency policy documented and tested; quote draft/issue/revision/accept/reject.
-- [ ] Line snapshots, server totals and tenant document counters; basic PDF printable format with local fonts.
-- [ ] Atomic conversion to sales order; link sales orders to existing/new work orders explicitly.
-- [ ] UI flow and translated lifecycle errors.
+- [x] Exact decimals/currency policy documented and tested; quote draft/issue/revision/accept/reject.
+- [x] Line snapshots, server totals and tenant document counters; basic PDF printable format with local fonts.
+- [x] Atomic conversion to sales order; link sales orders to existing/new work orders explicitly.
+- [x] UI flow and translated lifecycle errors.
 - **Done when:** opportunity → quote → approved order → linked work order has clean audit trail and no duplicate conversion.
 
 ### Phase B1 — Tenant invoices, payments, job profitability

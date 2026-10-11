@@ -49,6 +49,11 @@ export interface OperationsConfig {
     supplier: (id: string) => string;
     purchaseOrders: string;
     purchaseOrder: (id: string) => string;
+    /** Sales (CRM/ERP plan, phase S1). */
+    quotes: string;
+    quote: (id: string) => string;
+    salesOrders: string;
+    salesOrder: (id: string) => string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -86,7 +91,9 @@ export interface RowTarget {
     | 'item'
     | 'stockLocation'
     | 'supplier'
-    | 'purchaseOrder';
+    | 'purchaseOrder'
+    | 'quote'
+    | 'salesOrder';
   id: string;
   label: string;
 }
@@ -186,6 +193,15 @@ export type PurchaseOrderStatus = PurchaseOrderRow['status'];
 export type PurchaseOrderDetail = Json<'/v1/purchasing/orders/{orderId}', 'get', 200>;
 export type PurchaseOrderLine = PurchaseOrderDetail['lines'][number];
 export type GoodsReceipt = PurchaseOrderDetail['receipts'][number];
+export type QuoteRow = Json<'/v1/sales/quotes', 'get', 200>['items'][number];
+export type QuoteStatus = QuoteRow['status'];
+export type QuoteDetail = Json<'/v1/sales/quotes/{quoteId}', 'get', 200>;
+export type DocumentLine = QuoteDetail['lines'][number];
+export type SalesOrderRow = Json<'/v1/sales/orders', 'get', 200>['items'][number];
+export type SalesOrderStatus = SalesOrderRow['status'];
+export type SalesOrderDetail = Json<'/v1/sales/orders/{orderId}', 'get', 200>;
+export type SalesOrderLine = SalesOrderDetail['lines'][number];
+export type ToOrderLine = Json<'/v1/sales/to-order', 'get', 200>['items'][number];
 
 export const keys = {
   me: ['me'] as const,
@@ -212,6 +228,11 @@ export const keys = {
   supplier: (id: string) => ['purchasing', 'supplier', id] as const,
   purchaseOrders: (query: object) => ['purchasing', 'orders', query] as const,
   purchaseOrder: (id: string) => ['purchasing', 'order', id] as const,
+  quotes: (query: object) => ['sales', 'quotes', query] as const,
+  quote: (id: string) => ['sales', 'quote', id] as const,
+  salesOrders: (query: object) => ['sales', 'orders', query] as const,
+  salesOrder: (id: string) => ['sales', 'order', id] as const,
+  toOrder: ['sales', 'to-order'] as const,
   forms: ['forms'] as const,
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,

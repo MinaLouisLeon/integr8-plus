@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { ApiError, conflict, forbidden, unprocessable } from '../../http/errors.js';
 import type { RequestContext } from '../../http/routes.js';
 import { requireLocation } from './inventory-stock.js';
+import { availableForJob, deliverForJob } from './sales-fulfilment.js';
 import { itemSummary, itemSummarySchema, seesCosts } from './inventory.js';
 import { type People, personBody, personSchema } from './operations.js';
 import { iso } from './schemas.js';
@@ -25,11 +26,13 @@ import { iso } from './schemas.js';
  * rules every way of recording a use shares — the job screen on the web or
  * desktop, and the phone's outbox through `sync/push`.
  *
- * The server decides under the balance's lock. When the location holds
- * enough, the use posts one `consumption` movement; when it does not, nothing
- * posts and the use is kept as a conflict with what was asked for and what was
- * there. Stock never goes negative. An engineer records only on a job they are
- * on, from the van assigned to them; a dispatcher names any location.
+ * The server decides under the balance's lock. When the location has enough
+ * available — held, less what is reserved for sales orders this job is not
+ * delivering (ADR-0006) — the use posts one `consumption` movement and counts
+ * towards the linked orders; when it does not, nothing posts and the use is
+ * kept as a conflict with what was asked for and what was available. Stock
+ * never goes negative. An engineer records only on a job they are on, from
+ * the van assigned to them; a dispatcher names any location.
  */
 
 export const materialSchema = z.object({
@@ -41,7 +44,7 @@ export const materialSchema = z.object({
   /** The item's average cost when it posted; null to seats that may not see costs. */
   unitCost: z.string().nullable(),
   status: materialStatusSchema,
-  /** What the location held when the use was refused (status `conflict`). */
+  /** What the location had available — held, less what other orders reserved — when the use was refused (status `conflict`). */
   availableQuantity: z.string().nullable(),
   note: z.string().nullable(),
   recordedBy: personSchema,
@@ -198,12 +201,14 @@ export async function recordUse(
       quantity: input.quantity,
       stock: false,
     });
+    await deliverForJob(tx, context, job, item.id, input.quantity);
     return { outcome: 'posted', material };
   }
 
   const location = await sourceLocation(tx, principal, input.locationId);
   const held = await tx.inventoryStock.lockBalance(item.id, location.id);
-  const enough = compareDecimals(held, input.quantity) >= 0;
+  const { available } = await availableForJob(tx, job, item.id, location.id, held);
+  const enough = compareDecimals(available, input.quantity) >= 0;
   let material: Material;
   try {
     material = await tx.inventoryMaterials.create({
@@ -213,7 +218,7 @@ export async function recordUse(
       quantity: input.quantity,
       unitCost: enough ? item.averageUnitCost : null,
       status: enough ? 'posted' : 'conflict',
-      availableQuantity: enough ? null : held,
+      availableQuantity: enough ? null : available,
       clientActionId,
       note: input.note ?? null,
       recordedBy: principal.userId,
@@ -242,9 +247,12 @@ export async function recordUse(
     itemId: item.id,
     locationId: location.id,
     quantity: input.quantity,
-    ...(enough ? {} : { available: held }),
+    ...(enough ? {} : { available, held }),
     ...(clientActionId === null ? {} : { clientActionId }),
   });
+  if (enough) {
+    await deliverForJob(tx, context, job, item.id, input.quantity);
+  }
   return { outcome: enough ? 'posted' : 'conflict', material };
 }
 
@@ -329,13 +337,14 @@ export async function resolveUse(
     throw unprocessable('not_stock_item', 'Only stock items have stock.');
   }
   const held = await tx.inventoryStock.lockBalance(item.id, location.id);
-  const enough = compareDecimals(held, quantity) >= 0;
+  const { available } = await availableForJob(tx, job, item.id, location.id, held);
+  const enough = compareDecimals(available, quantity) >= 0;
   const updated = await tx.inventoryMaterials.update(material.id, {
     quantity,
     locationId: location.id,
     status: enough ? 'posted' : 'conflict',
     unitCost: enough ? item.averageUnitCost : null,
-    availableQuantity: enough ? null : held,
+    availableQuantity: enough ? null : available,
   });
   if (enough) {
     await postUse(tx, context, job, updated, item.averageUnitCost);
@@ -345,8 +354,11 @@ export async function resolveUse(
     quantity,
     locationId: location.id,
     outcome: enough ? 'posted' : 'conflict',
-    ...(enough ? {} : { available: held }),
+    ...(enough ? {} : { available, held }),
   });
+  if (enough) {
+    await deliverForJob(tx, context, job, item.id, quantity);
+  }
   return { outcome: enough ? 'posted' : 'conflict', material: updated };
 }
 
