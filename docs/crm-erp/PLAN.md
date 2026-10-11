@@ -639,7 +639,7 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase C1 — Lead vertical slice
 
-**Status:** `NOT STARTED` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `DONE` — see the [phase tracker](./README.md#phase-tracker).
 
 - [ ] Repository with tenant-safe list/create/get/update/archive; status transition validation.
 - [ ] Fastify typed CRUD routes; OpenAPI and generated client.

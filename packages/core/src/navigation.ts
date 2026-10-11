@@ -79,7 +79,8 @@ export type NavPath =
   | 'companySettings'
   | 'storage'
   | 'billing'
-  | 'crm';
+  | 'crm'
+  | 'leads';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   'overview',
@@ -123,6 +124,14 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     group: 'crm',
     path: 'crm',
     icon: 'funnel',
+    permission: 'crm.read',
+    feature: 'crm',
+  },
+  {
+    key: 'leads',
+    group: 'crm',
+    path: 'leads',
+    icon: 'user-plus',
     permission: 'crm.read',
     feature: 'crm',
   },

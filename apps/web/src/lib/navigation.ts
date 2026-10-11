@@ -25,6 +25,7 @@ export const NAV_PATHS: Readonly<Record<Exclude<NavPath, 'forms' | 'branding'>, 
   storage: '/storage',
   billing: '/billing',
   crm: '/crm',
+  leads: '/crm/leads',
 };
 
 /**

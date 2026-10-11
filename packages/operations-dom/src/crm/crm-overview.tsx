@@ -13,7 +13,7 @@ import { cardClass, DashboardBackLink, Failure, Loading } from '../ui.js';
  */
 export function CrmOverviewScreen() {
   const { t } = useTranslation();
-  const { client } = useOperations();
+  const { client, paths, navigate } = useOperations();
   const me = useQuery({
     queryKey: keys.me,
     queryFn: async () => (await client.GET('/v1/me')).data!,
@@ -49,7 +49,21 @@ export function CrmOverviewScreen() {
           <h2 id="crm-overview-sections" className="text-base font-semibold text-content">
             {t('crm.overview.sections')}
           </h2>
-          <p className="text-sm text-content-muted">{t('crm.overview.comingSoon')}</p>
+          <ul className="flex flex-col gap-2">
+            <li>
+              <a
+                href={paths.crmLeads}
+                className="font-medium text-accent underline-offset-4 hover:underline"
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigate(paths.crmLeads);
+                }}
+              >
+                {t('crm.leads.title')}
+              </a>
+              <p className="text-sm text-content-muted">{t('nav.hint.leads')}</p>
+            </li>
+          </ul>
         </section>
       )}
     </div>

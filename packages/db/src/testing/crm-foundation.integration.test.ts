@@ -9,6 +9,7 @@ import {
   type TenantFixture,
   truncateAll,
   useTestDatabase,
+  withUnprotectedRepositories,
 } from './harness.js';
 
 /**
@@ -140,5 +141,74 @@ describe('crm_leads', () => {
         [id],
       ),
     ).rejects.toThrow(/crm_leads_value_not_negative/u);
+  });
+});
+
+describe('CrmLeadsRepository on its own, without row-level security', () => {
+  // Run over the owner connection, where RLS does not apply: only the
+  // repository's own tenant predicate stands between the two companies.
+  it('lists, finds and edits only the asking company’s leads', async () => {
+    const north = await withUnprotectedRepositories(northwind.id, (tx) =>
+      tx.crmLeads.create({ displayName: 'North Only' }, USER),
+    );
+    const south = await withUnprotectedRepositories(southgate.id, (tx) =>
+      tx.crmLeads.create({ displayName: 'South Only' }, USER),
+    );
+
+    for (const [tenant, own, other] of [
+      [northwind, north, south],
+      [southgate, south, north],
+    ] as const) {
+      const page = await withUnprotectedRepositories(tenant.id, (tx) =>
+        tx.crmLeads.list({ includeArchived: true, limit: 100 }),
+      );
+      expect(page.items.every((item) => item.tenantId === tenant.id)).toBe(true);
+      expect(page.items.map((item) => item.id)).toContain(own.id);
+
+      await expect(
+        withUnprotectedRepositories(tenant.id, (tx) => tx.crmLeads.find(other.id)),
+      ).resolves.toBeUndefined();
+      await expect(
+        withUnprotectedRepositories(tenant.id, (tx) =>
+          tx.crmLeads.update(other.id, other.version, { displayName: 'Taken over' }),
+        ),
+      ).resolves.toBe('not_found');
+    }
+  });
+
+  it('refuses an edit against a version somebody else already changed', async () => {
+    const created = await withUnprotectedRepositories(northwind.id, (tx) =>
+      tx.crmLeads.create({ displayName: 'Contested' }, USER),
+    );
+    const first = await withUnprotectedRepositories(northwind.id, (tx) =>
+      tx.crmLeads.update(created.id, created.version, { status: 'contacted' }),
+    );
+    expect(typeof first === 'object' && first.version).toBe(2);
+    await expect(
+      withUnprotectedRepositories(northwind.id, (tx) =>
+        tx.crmLeads.update(created.id, created.version, { status: 'qualified' }),
+      ),
+    ).resolves.toBe('version_conflict');
+  });
+
+  it('pages through leads created in the same millisecond without skipping any', async () => {
+    const tenant = await createTenant('crm-paging');
+    // One statement, so every row gets the same now().
+    await owner.query(
+      `insert into crm_leads (tenant_id, display_name, created_by)
+       select $1, 'Lead ' || n, $2 from generate_series(1, 7) as n`,
+      [tenant.id, USER],
+    );
+    const seen: string[] = [];
+    let after: { createdAt: Date; id: string } | undefined;
+    do {
+      const page = await withUnprotectedRepositories(tenant.id, (tx) =>
+        tx.crmLeads.list({ limit: 3, ...(after === undefined ? {} : { after }) }),
+      );
+      seen.push(...page.items.map((item) => item.id));
+      after = page.next;
+    } while (after !== undefined);
+    expect(seen).toHaveLength(7);
+    expect(new Set(seen).size).toBe(7);
   });
 });

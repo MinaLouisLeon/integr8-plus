@@ -7,6 +7,7 @@ import { memberRoutes } from './v1/members.js';
 import { onboardingRoutes } from './v1/onboarding.js';
 import { settingsRoutes } from './v1/settings.js';
 import { signupRoutes } from './v1/signup.js';
+import { crmRoutes } from './v1/crm.js';
 import { customerRoutes } from './v1/customers.js';
 import { importRoutes } from './v1/imports.js';
 import { jobTypeRoutes } from './v1/job-types.js';
@@ -42,6 +43,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...submissionRoutes,
     ...mediaRoutes,
     ...customerRoutes,
+    ...crmRoutes,
     ...jobTypeRoutes,
     ...workOrderRoutes,
     ...importRoutes,

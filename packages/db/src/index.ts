@@ -328,6 +328,16 @@ export {
 } from './repositories/customers.js';
 
 export {
+  type CrmLeadsRepository,
+  type Lead,
+  type LeadInput,
+  type LeadPage,
+  type LeadQuery,
+  type LeadUpdateRefusal,
+  trimDecimal,
+} from './repositories/crm-leads.js';
+
+export {
   addressLine,
   type AccessNotes,
   type GeocodeResult,

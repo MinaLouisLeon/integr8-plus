@@ -54,3 +54,13 @@ digits (partial); converted customer (partial); GIN on `search`.
 **Tests:** `packages/db/src/testing/crm-foundation.integration.test.ts`, plus the
 schema-invariant suite (vocabulary, RLS, tenant keys) and the migration suite
 (up, down, up).
+
+### Repository (phase C1)
+
+`CrmLeadsRepository` (`packages/db/src/repositories/crm-leads.ts`), reached as
+`tx.crmLeads` inside `withTenant`. Every query filters on the tenant as well as
+relying on RLS. `update` takes the expected `version` and returns
+`'version_conflict'` instead of overwriting a newer row. `list` orders by
+`created_at` truncated to milliseconds, then `id`, so the keyset cursor (which
+carries a JavaScript date) never skips or repeats rows created in the same
+millisecond. Phase C1 added no migration.

@@ -30,6 +30,10 @@ export interface OperationsConfig {
     submission: (id: string) => string;
     /** Submissions filtered to one job. */
     submissionsForWorkOrder: (workOrderId: string) => string;
+    /** The CRM's front page, its lead list, and one lead (CRM/ERP plan). */
+    crm: string;
+    crmLeads: string;
+    crmLead: (id: string) => string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -56,7 +60,7 @@ export interface OperationsConfig {
 
 /** What a row is about, for a row menu. */
 export interface RowTarget {
-  kind: 'workOrder' | 'customer' | 'site' | 'jobType' | 'timesheetShift';
+  kind: 'workOrder' | 'customer' | 'site' | 'jobType' | 'timesheetShift' | 'lead';
   id: string;
   label: string;
 }
@@ -118,10 +122,17 @@ export type ImportDetail = Json<'/v1/imports/{importId}', 'get', 200>;
 export type Me = Json<'/v1/me', 'get', 200>;
 export type Member = Json<'/v1/members', 'get', 200>['items'][number];
 export type Timesheet = Json<'/v1/timesheets', 'get', 200>;
+export type LeadPage = Json<'/v1/crm/leads', 'get', 200>;
+export type Lead = LeadPage['items'][number];
+export type LeadDetail = Json<'/v1/crm/leads/{leadId}', 'get', 200>;
+export type LeadStatus = Lead['status'];
+export type LeadSource = Lead['source'];
 
 export const keys = {
   me: ['me'] as const,
   members: ['members'] as const,
+  leads: (query: object) => ['crm', 'leads', query] as const,
+  lead: (id: string) => ['crm', 'lead', id] as const,
   forms: ['forms'] as const,
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,

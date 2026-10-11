@@ -23,6 +23,7 @@ import {
 import { FormTemplatesReader, FormTemplatesWriter } from './repositories/form-templates.js';
 import { FormsRepository } from './repositories/forms.js';
 import { AttachmentsRepository } from './repositories/attachments.js';
+import { CrmLeadsRepository } from './repositories/crm-leads.js';
 import { CustomersRepository } from './repositories/customers.js';
 import { FilesRepository } from './repositories/files.js';
 import { ImportsRepository } from './repositories/imports.js';
@@ -105,6 +106,8 @@ export interface TenantTransaction {
   readonly submissions: SubmissionsRepository;
   readonly files: FilesRepository;
   readonly customers: CustomersRepository;
+  /** Prospects, before they are customers (CRM phase C1). */
+  readonly crmLeads: CrmLeadsRepository;
   readonly sites: SitesRepository;
   readonly jobTypes: JobTypesRepository;
   readonly workOrders: WorkOrdersRepository;
@@ -346,6 +349,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     submissions: new SubmissionsRepository(scope),
     files: new FilesRepository(scope),
     customers: new CustomersRepository(scope),
+    crmLeads: new CrmLeadsRepository(scope),
     sites: new SitesRepository(scope),
     jobTypes: new JobTypesRepository(scope),
     workOrders: new WorkOrdersRepository(scope),

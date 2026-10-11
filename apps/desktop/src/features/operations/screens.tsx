@@ -5,6 +5,8 @@ import {
   CustomerScreen,
   ImportsScreen,
   JobTypesScreen,
+  LeadListScreen,
+  LeadScreen,
   type OperationsConfig,
   OperationsContext,
   SiteScreen,
@@ -48,6 +50,9 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         imports: '/imports',
         submission: (id) => `/submissions/${id}`,
         submissionsForWorkOrder: (id) => `/submissions?workOrderId=${id}`,
+        crm: '/crm',
+        crmLeads: '/crm/leads',
+        crmLead: (id) => `/crm/leads/${id}`,
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -112,6 +117,23 @@ export function CrmRoute() {
   return (
     <OperationsScreens>
       <CrmOverviewScreen />
+    </OperationsScreens>
+  );
+}
+
+export function LeadsRoute() {
+  return (
+    <OperationsScreens>
+      <LeadListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function LeadRoute() {
+  const { leadId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <LeadScreen leadId={leadId} />
     </OperationsScreens>
   );
 }

@@ -34,10 +34,22 @@ access (they still read customers for their jobs, through `customer.read`).
 
 None of these is staff-only. Integr8 staff acting as a company (impersonation)
 hold whatever the seat holds; CRM audit entries record the staff member in
-`metadata.impersonatedBy` (from phase C1).
+`metadata.impersonatedBy` (from phase C1; `crmAudit` in
+`apps/api/src/routes/v1/crm.ts`).
 
 Tests: `packages/core/src/crm.test.ts` pins the table above;
 `packages/core/src/permissions.test.ts` keeps every role's grants explicit.
+
+## Rules beyond the role (phase C1)
+
+- An assignee must be an active member of the same company (422
+  `assignee_not_member`); a lead cannot be handed to someone outside it.
+- Edits carry `expectedVersion`, so two people editing the same lead cannot
+  silently overwrite each other (409 `version_conflict`).
+- A lead in another company answers 404, by id and by search, exactly as one
+  that does not exist.
+- The detail response says what the seat may do (`can.edit`, `can.convert`);
+  screens use it to hide actions, and the API refuses them anyway.
 
 ## Database
 
