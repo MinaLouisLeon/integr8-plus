@@ -14,11 +14,13 @@ Branch: `feat/crm-erp-foundation`, from `main` at `8db1c50` (version 0.1.4).
 Agreed scope for this branch: **F0 → F1 → C1 → C2 → C3 (the CRM MVP), then stop
 for review.** Nothing after C3 starts without a new instruction.
 
-**State: the CRM MVP (F0–C3) merged in PR #73 and the inventory and purchasing
-round (E1, E2) in PR #74. The third round, S1 (quotes and sales orders, the
-customer's link and the printable quote), is complete on
-`feat/sales-quotes-orders` and awaits review; B1 onwards wait for a new
-instruction.**
+**State: the CRM MVP (F0–C3) merged in PR #73, the inventory and purchasing
+round (E1, E2) in PR #74, and the sales round (S1) in PR #75. The fourth
+round, B1 (company invoices, payments and job profitability), is in progress
+on `feat/finance-invoices-payments`; E3 onwards wait for a new instruction.**
+
+Fourth round — branch `feat/finance-invoices-payments`, from `main` at
+`1886f34`. Agreed scope: **B1 only, then stop for review.**
 
 Third round — branch `feat/sales-quotes-orders`, from `main` at `6819a57`.
 Agreed scope: **S1 only, then stop for review.**
@@ -37,7 +39,7 @@ instruction.
 | E1    | Catalogue and immutable stock ledger (aligns with `plan/v1.1-inventory/P22`)                                                  | `DONE`           | 0026       | second commit on the branch                                                                                                      |
 | E2    | Suppliers, purchasing, goods receipts, van stock, work-order materials (aligns P23)                                           | `DONE`           | 0027, 0028 | third commit: suppliers, purchase orders, receipts, returns (E2a); fourth: parts used on jobs, web, desktop and phone (E2b)      |
 | S1    | Quotes, sales orders with reservations, jobs linked or created from an order, the customer's acceptance link, printable quote | `DONE`           | 0029       | third round: decisions (S0); quotes (S1a); orders, reservations, delivery by jobs (S1b); customer link and printable quote (S1c) |
-| B1    | Company invoices, payments, credit notes, job costing (not Integr8's own billing)                                             | `NOT STARTED`    | —          | —                                                                                                                                |
+| B1    | Company invoices, payments, credit notes, job costing (not Integr8's own billing)                                             | `IN PROGRESS`    | —          | fourth round, branch `feat/finance-invoices-payments` from `main` at `1886f34`                                                   |
 | E3    | Assets and service history (aligns P24)                                                                                       | `NOT STARTED`    | —          | —                                                                                                                                |
 | A1    | General ledger                                                                                                                | `NOT AUTHORIZED` | —          | —                                                                                                                                |
 | L     | Pilot release                                                                                                                 | `NOT STARTED`    | —          | —                                                                                                                                |
@@ -58,7 +60,7 @@ Every numbered item in PLAN.md §4–§5, so none is forgotten.
 | ERP-02 Locations and inventory ledger      | E1         | `DONE`           | Serial and batch tracking deferred (P22 lists it; not in scope)                                                                                                  |
 | ERP-03 Suppliers and purchasing            | E2         | `DONE`           | Supplier price lists and sending a PO to the supplier are follow-ups                                                                                             |
 | ERP-04 Quotes → sales orders → work orders | S1         | `DONE`           | One order per quote; reservations on confirmation (ADR-0006); jobs created or linked explicitly; delivery by parts and completion                                |
-| ERP-05 Invoicing and payments              | B1         | `NOT STARTED`    | Internal ledger only; no e-invoicing or tax compliance claim                                                                                                     |
+| ERP-05 Invoicing and payments              | B1         | `IN PROGRESS`    | Internal ledger only; no e-invoicing or tax compliance claim                                                                                                     |
 | ERP-06 Work-order materials and costing    | E2, B1     | `DONE` (parts)   | Parts and their cost on the job (E2); labour and job costing arrive with B1                                                                                      |
 | ERP-07 Asset register                      | E3         | `NOT STARTED`    | Update P24 when E3 starts                                                                                                                                        |
 | ERP-08 General ledger                      | A1         | `NOT AUTHORIZED` |                                                                                                                                                                  |
@@ -143,6 +145,21 @@ or a decision before the pilot (phase L).
 | Pricing                           | A line starts at the item's sale price (editable), with an optional discount % and tax rate in basis points per line; subtotal, discount, tax and total computed exactly on the server |
 | Delivery                          | Same as before: one branch, push after each slice, one pull request against `main` at the end                                                                                          |
 
+### Fourth round: company invoices, payments and job profitability (2026-10-11)
+
+| Question                     | Decision                                                                                                                                                                                                                                                                    |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| How far before review        | B1 only, then stop; E3 waits for a new instruction                                                                                                                                                                                                                          |
+| Who works with invoices      | Dispatchers draft invoices and credit notes; only owners and admins issue them, record payments, allocate, void and credit. Viewers read; engineers see nothing of finance                                                                                                  |
+| Where invoices come from     | From a sales order (its lines, or what was delivered), from a completed job (parts used and a labour line), or blank; the source is kept on the invoice                                                                                                                     |
+| Payments                     | A payment is an immutable receipt (date, amount, method cash / bank transfer / other, reference) allocated to one or more of the customer's invoices, never beyond the receipt or the invoice balance; any remainder stays on the customer's account                        |
+| Correcting an issued invoice | Never edited. A credit note — a separate numbered document, whole or partial — reduces the balance; an invoice with nothing allocated to it may be voided with a reason and keeps its number                                                                                |
+| Labour cost                  | One optional hourly labour cost per company in its settings; job cost = parts used + hours on site × that rate; without a rate the job shows parts only and says labour is not costed                                                                                       |
+| Issuer identity and tax      | Company settings hold the issuer block (legal name, address, tax registration number, payment instructions, footer); the invoice prints it with per-line tax rates and exact totals. A fixed note says this is a commercial record, not a certified tax document (ADR-0004) |
+| Module switch                | A new `finance` flag, off by default, independent of `sales`; a Finance group with Invoices and Payments; job cost on the job and balance on the customer when it is on                                                                                                     |
+| Printing and sending         | A print-ready invoice in the app, PDF through the browser, English or Arabic. No customer link and no email in B1                                                                                                                                                           |
+| Delivery                     | Same as before: one branch `feat/finance-invoices-payments`, push after each slice, one pull request against `main` at the end                                                                                                                                              |
+
 ## Documents
 
 | File                                                                               | Status                 |
@@ -152,7 +169,7 @@ or a decision before the pilot (phase L).
 | [01-architecture.md](./01-architecture.md)                                         | F0                     |
 | [02-feature-matrix.md](./02-feature-matrix.md)                                     | F0                     |
 | [dependencies.md](./dependencies.md)                                               | F0                     |
-| [decisions/](./decisions/) — ADR-0001 to ADR-0006                                  | F0, E2, S1             |
+| [decisions/](./decisions/) — ADR-0001 to ADR-0007                                  | F0, E2, S1, B1         |
 | [03-data-model.md](./03-data-model.md)                                             | F1, updated each phase |
 | [04-api-contracts.md](./04-api-contracts.md)                                       | C1, updated each phase |
 | [05-permissions-and-security.md](./05-permissions-and-security.md)                 | F1, updated each phase |

@@ -700,7 +700,7 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase B1 — Tenant invoices, payments, job profitability
 
-**Status:** `NOT STARTED` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `IN PROGRESS` — see the [phase tracker](./README.md#phase-tracker).
 
 - [ ] Distinguish from SaaS subscription billing at code/model/UI level.
 - [ ] Invoice issue/immutable lines, partial payment receipt allocations, credit notes, PDF.
