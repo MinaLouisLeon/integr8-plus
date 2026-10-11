@@ -60,7 +60,7 @@ function OperationsScreens({ children }: { children: ReactNode }) {
     () => ({
       client: session().client,
       locale: i18n.language,
-      navigate: (to) => void navigate(to),
+      navigate: (to, options) => void navigate(to, { replace: options?.replace === true }),
       paths: {
         workOrders: '/work-orders',
         newWorkOrder: (options) =>

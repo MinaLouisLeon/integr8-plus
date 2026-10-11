@@ -1,10 +1,13 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import { createI18n, I18nextProvider } from '@integr8/i18n';
 import { userEvent } from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AssetDetail, AssetRow, AssetTimelineEntry, JobAssets } from '../api.js';
 import { accessibilityViolations, fakeApi, renderScreen } from '../testing/render.js';
 import { AssetListScreen } from './asset-list.js';
 import { AssetScreen } from './asset-screen.js';
+import { AssetTag, groupedCode } from './asset-tag.js';
+import { AssetTagOpener } from './asset-tag-open.js';
 import { JobAssetsPanel } from './job-assets.js';
 
 const USER = '00000000-0000-4000-8000-000000000401';
@@ -47,6 +50,7 @@ const row = (overrides: Partial<AssetRow> = {}): AssetRow => ({
   warrantyExpiresOn: '2026-11-30',
   warranty: 'expiring',
   tagCode: '7K2M9P4QX8ZT',
+  tagLink: 'https://app.example.com/a/7K2M9P4QX8ZT',
   version: 3,
   ...overrides,
 });
@@ -59,7 +63,6 @@ const detail = (overrides: Partial<AssetDetail> = {}): AssetDetail => ({
     notes: null,
     conditionRecordedAt: '2026-10-10T09:00:00.000Z',
     conditionRecordedBy: { id: USER, name: 'Dee' },
-    tagLink: 'https://app.example.com/a/7K2M9P4QX8ZT',
     createdBy: { id: USER, name: 'Dee' },
     createdAt: '2026-10-01T09:00:00.000Z',
     updatedAt: '2026-10-10T09:00:00.000Z',
@@ -247,5 +250,90 @@ describe('assets', { timeout: 20_000 }, () => {
     await waitFor(() => expect(calls.some((call) => call.path === '/v1/me')).toBe(true));
     expect(container).toBeEmptyDOMElement();
     expect(calls.some((call) => call.path.includes('/assets'))).toBe(false);
+  });
+
+  it('prints a tag with a QR code of the link, the number and the code to type', () => {
+    render(
+      <I18nextProvider i18n={createI18n({ locale: 'en' })}>
+        <AssetTag
+          tag={{
+            id: ASSET,
+            reference: 'AS-000012',
+            name: 'Boiler',
+            tagCode: '7K2M9P4QX8ZT',
+            tagLink: 'https://app.example.com/a/7K2M9P4QX8ZT',
+          }}
+          company="Riverside Services"
+        />
+      </I18nextProvider>,
+    );
+    const code = screen.getByRole('img', { name: 'QR code for AS-000012' });
+    const [, , width, height] = (code.getAttribute('viewBox') ?? '').split(' ').map(Number);
+    // Version 3 or more for a link this long, plus four modules of quiet zone each side.
+    expect(width).toBeGreaterThanOrEqual(37);
+    expect(width).toBe(height);
+    expect(code.querySelector('path')?.getAttribute('d')).toMatch(/^M\d+ \d+h1v1h-1z/u);
+    expect(screen.getByText('7K2M-9P4Q-X8ZT')).toBeInTheDocument();
+    expect(screen.getByText('Riverside Services')).toBeInTheDocument();
+    expect(groupedCode('ABCDEFGH')).toBe('ABCD-EFGH');
+  });
+
+  it('prints the tags of the assets chosen on the list', async () => {
+    const user = userEvent.setup();
+    const print = vi.fn();
+    window.print = print;
+    const { client } = fakeApi({
+      'GET /v1/me': me(MANAGE),
+      'GET /v1/assets': () => ({
+        body: {
+          items: [
+            row(),
+            row({ id: OTHER, reference: 'AS-000013', name: 'Pump', tagCode: 'ABCDEFGHJKMN' }),
+          ],
+          nextCursor: null,
+        },
+      }),
+    });
+    renderScreen(<AssetListScreen />, client);
+    const button = await screen.findByRole('button', { name: 'Print 0 tags' });
+    expect(button).toBeDisabled();
+    await user.click(screen.getByLabelText('Select AS-000013 for printing'));
+    await user.click(screen.getByRole('button', { name: 'Print 1 tag' }));
+    expect(print).toHaveBeenCalledOnce();
+    expect(screen.getByText('ABCD-EFGH-JKMN', { ignore: '' })).toBeInTheDocument();
+    expect(screen.queryByText('7K2M-9P4Q-X8ZT')).not.toBeInTheDocument();
+  });
+
+  it('opens the asset a scanned link names, replacing the tag page', async () => {
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(MANAGE),
+      'GET /v1/assets/by-tag/:code': () => ({ body: { id: ASSET, reference: 'AS-000012' } }),
+    });
+    const { navigate } = renderScreen(<AssetTagOpener code="7k2m-9p4q-x8zt" />, client);
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith(`/assets/${ASSET}`, { replace: true }),
+    );
+    expect(calls.find((call) => call.path.startsWith('/v1/assets/by-tag/'))!.path).toBe(
+      '/v1/assets/by-tag/7K2M9P4QX8ZT',
+    );
+  });
+
+  it('says plainly when no asset has the tag', async () => {
+    const { client } = fakeApi({
+      'GET /v1/me': me(MANAGE),
+      'GET /v1/assets/by-tag/:code': () => ({
+        status: 404,
+        body: { error: { code: 'not_found', message: 'No asset has this tag.', requestId: 'r' } },
+      }),
+    });
+    renderScreen(<AssetTagOpener code="ZZZZZZZZZZZZ" />, client);
+    expect(
+      await screen.findByRole('heading', { name: 'No asset has this tag' }),
+    ).toBeInTheDocument();
+    const { client: other } = fakeApi({ 'GET /v1/me': me(MANAGE) });
+    renderScreen(<AssetTagOpener code="not a tag" />, other);
+    expect(await screen.findAllByRole('heading', { name: 'No asset has this tag' })).toHaveLength(
+      2,
+    );
   });
 });

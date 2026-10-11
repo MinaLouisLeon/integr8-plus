@@ -6,9 +6,10 @@ allowed without explicit approval.
 
 ## Added for the CRM and ERP work
 
-| Package | Version | Licence | Phase | Reason                                                                                                                                                                  |
-| ------- | ------- | ------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _none_  |         |         |       | The CRM MVP (F1–C3), the inventory and purchasing round (E1–E2), the sales round (S1) and the finance round (B1) are built with the packages already in the repository. |
+| Package          | Version       | Licence                                                                                             | Phase | Reason                                                                                                                                                                  |
+| ---------------- | ------------- | --------------------------------------------------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uqr`            | 0.1.3 (exact) | MIT (Project Nayuki, Anthony Fu); no dependencies, no install scripts; licence file read 2026-10-11 | E3    | Encodes the QR code printed on asset tags, in `@integr8/operations-dom`. Pure TypeScript, renders to an SVG the app draws itself; nothing leaves the device             |
+| _otherwise none_ |               |                                                                                                     |       | The CRM MVP (F1–C3), the inventory and purchasing round (E1–E2), the sales round (S1) and the finance round (B1) are built with the packages already in the repository. |
 
 Considered in PLAN.md §10.2 and **not installed**: `@tanstack/react-table`,
 `recharts`, `decimal.js`, `@react-pdf/renderer`, `xlsx`, `ag-grid-community`,

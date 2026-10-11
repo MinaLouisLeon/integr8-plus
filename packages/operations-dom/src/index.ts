@@ -49,3 +49,4 @@ export { FinanceSettingsScreen } from './finance/finance-settings.js';
 export { AssetListScreen } from './assets/asset-list.js';
 export { AssetScreen } from './assets/asset-screen.js';
 export { NewAssetDialog } from './assets/asset-parts.js';
+export { AssetTagOpener } from './assets/asset-tag-open.js';

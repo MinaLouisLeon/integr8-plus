@@ -31,6 +31,7 @@ import {
   SitePicker,
   WarrantyBadge,
 } from './asset-parts.js';
+import { AssetTagSheet } from './asset-tag.js';
 
 /**
  * One asset (CRM/ERP plan, phase E3; ADR-0008): what it is and where, its
@@ -44,6 +45,10 @@ export function AssetScreen({ assetId }: { assetId: string }) {
   const queries = useQueryClient();
   const [dialog, setDialog] = useState<'edit' | 'move' | 'status' | 'condition' | null>(null);
 
+  const me = useQuery({
+    queryKey: keys.me,
+    queryFn: async () => (await client.GET('/v1/me')).data!,
+  });
   const detail = useQuery({
     queryKey: keys.asset(assetId),
     queryFn: async () =>
@@ -85,6 +90,7 @@ export function AssetScreen({ assetId }: { assetId: string }) {
   }
 
   const { asset, workOrders, can } = detail.data;
+  const company = me.data?.company?.name ?? '';
   const link = (href: string, label: ReactNode) => (
     <a
       href={href}
@@ -106,188 +112,191 @@ export function AssetScreen({ assetId }: { assetId: string }) {
     );
 
   return (
-    <div className="flex flex-col gap-6 text-start">
-      {back}
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="flex flex-wrap items-center gap-3 text-2xl font-semibold text-content">
-            <span dir="ltr">{asset.reference}</span>
-            <span dir="auto">{asset.name}</span>
-          </h1>
-          <p className="flex flex-wrap items-center gap-2 text-sm">
-            <AssetStatusBadge status={asset.status} />
-            <ConditionBadge condition={asset.condition} />
-            <WarrantyBadge warranty={asset.warranty} />
-          </p>
-          <p className="text-sm text-content-muted">
-            {link(paths.customer(asset.customer.id), asset.customer.name)}
-            {' · '}
-            {link(paths.site(asset.site.id), asset.site.name)}
-            {asset.locationNote === null ? null : ` · ${asset.locationNote}`}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {can.record ? (
-            <button
-              type="button"
-              className={buttonClass.primary}
-              onClick={() => setDialog('condition')}
-            >
-              {t('assets.recordCondition')}
-            </button>
-          ) : null}
-          {can.edit ? (
-            <>
+    <>
+      <AssetTagSheet tags={[asset]} company={company} />
+      <div className="flex flex-col gap-6 text-start print:hidden">
+        {back}
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-2">
+            <h1 className="flex flex-wrap items-center gap-3 text-2xl font-semibold text-content">
+              <span dir="ltr">{asset.reference}</span>
+              <span dir="auto">{asset.name}</span>
+            </h1>
+            <p className="flex flex-wrap items-center gap-2 text-sm">
+              <AssetStatusBadge status={asset.status} />
+              <ConditionBadge condition={asset.condition} />
+              <WarrantyBadge warranty={asset.warranty} />
+            </p>
+            <p className="text-sm text-content-muted">
+              {link(paths.customer(asset.customer.id), asset.customer.name)}
+              {' · '}
+              {link(paths.site(asset.site.id), asset.site.name)}
+              {asset.locationNote === null ? null : ` · ${asset.locationNote}`}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {can.record ? (
               <button
                 type="button"
-                className={buttonClass.secondary}
-                onClick={() => setDialog('edit')}
+                className={buttonClass.primary}
+                onClick={() => setDialog('condition')}
               >
-                {t('assets.edit')}
+                {t('assets.recordCondition')}
               </button>
-              <button
-                type="button"
-                className={buttonClass.secondary}
-                onClick={() => setDialog('move')}
-              >
-                {t('assets.move')}
-              </button>
-              <button
-                type="button"
-                className={buttonClass.secondary}
-                onClick={() => setDialog('status')}
-              >
-                {t('assets.changeStatus')}
-              </button>
-              <button
-                type="button"
-                className={buttonClass.secondary}
-                disabled={reissue.isPending}
-                onClick={() => {
-                  if (window.confirm(t('assets.reissueConfirm'))) {
-                    reissue.mutate();
-                  }
-                }}
-              >
-                {t('assets.reissueTag')}
-              </button>
-            </>
-          ) : null}
-        </div>
-      </header>
+            ) : null}
+            {can.edit ? (
+              <>
+                <button
+                  type="button"
+                  className={buttonClass.secondary}
+                  onClick={() => setDialog('edit')}
+                >
+                  {t('assets.edit')}
+                </button>
+                <button
+                  type="button"
+                  className={buttonClass.secondary}
+                  onClick={() => setDialog('move')}
+                >
+                  {t('assets.move')}
+                </button>
+                <button
+                  type="button"
+                  className={buttonClass.secondary}
+                  onClick={() => setDialog('status')}
+                >
+                  {t('assets.changeStatus')}
+                </button>
+                <button
+                  type="button"
+                  className={buttonClass.secondary}
+                  disabled={reissue.isPending}
+                  onClick={() => {
+                    if (window.confirm(t('assets.reissueConfirm'))) {
+                      reissue.mutate();
+                    }
+                  }}
+                >
+                  {t('assets.reissueTag')}
+                </button>
+              </>
+            ) : null}
+          </div>
+        </header>
 
-      {reissue.isError ? <Failure error={reissue.error} /> : null}
+        {reissue.isError ? <Failure error={reissue.error} /> : null}
 
-      <section className={cardClass} aria-labelledby="asset-details">
-        <h2 id="asset-details" className="sr-only">
-          {t('assets.details')}
-        </h2>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
-          {fact(t('assets.fields.make'), asset.make)}
-          {fact(t('assets.fields.model'), asset.model)}
-          {fact(
-            t('assets.fields.serialNumber'),
-            asset.serialNumber === null ? null : <span dir="ltr">{asset.serialNumber}</span>,
-          )}
-          {fact(
-            t('assets.item'),
-            asset.item === null ? null : `${asset.item.sku} · ${asset.item.name}`,
-          )}
-          {fact(
-            t('assets.fields.installDate'),
-            asset.installDate === null ? null : formatDate(asset.installDate, { locale }),
-          )}
-          {fact(
-            t('assets.fields.warrantyExpiresOn'),
-            asset.warrantyExpiresOn === null
-              ? null
-              : formatDate(asset.warrantyExpiresOn, { locale }),
-          )}
-          {fact(
-            t('assets.lastCondition'),
-            asset.condition === null || asset.conditionRecordedAt === null
-              ? null
-              : t('assets.conditionBy', {
-                  condition: t(`assets.condition.${asset.condition}`),
-                  name: asset.conditionRecordedBy?.name ?? '',
-                  date: formatDateTime(asset.conditionRecordedAt, { locale }),
-                }),
-          )}
-          {fact(
-            t('assets.tagCode'),
-            <span dir="ltr" className="font-mono">
-              {asset.tagCode}
-            </span>,
-          )}
-          {fact(
-            t('assets.fields.notes'),
-            asset.notes === null ? null : (
-              <span className="whitespace-pre-wrap" dir="auto">
-                {asset.notes}
-              </span>
-            ),
-          )}
-        </dl>
-      </section>
-
-      <section className="flex flex-col gap-3" aria-labelledby="asset-jobs">
-        <h2 id="asset-jobs" className="text-lg font-semibold text-content">
-          {t('assets.jobs')}
-        </h2>
-        {workOrders.length === 0 ? (
-          <p className="text-sm text-content-muted">{t('assets.noJobs')}</p>
-        ) : (
-          <ul className="flex flex-col divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface text-sm">
-            {workOrders.map((job) => (
-              <li
-                key={job.id}
-                className="flex flex-wrap items-center justify-between gap-2 px-4 py-2"
-              >
-                {link(paths.workOrder(job.id), `${job.referenceLabel} · ${job.title}`)}
-                <span className="flex items-center gap-2 text-xs text-content-muted">
-                  <StateBadge state={job.state} />
-                  {formatDate(job.linkedAt, { locale })}
+        <section className={cardClass} aria-labelledby="asset-details">
+          <h2 id="asset-details" className="sr-only">
+            {t('assets.details')}
+          </h2>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+            {fact(t('assets.fields.make'), asset.make)}
+            {fact(t('assets.fields.model'), asset.model)}
+            {fact(
+              t('assets.fields.serialNumber'),
+              asset.serialNumber === null ? null : <span dir="ltr">{asset.serialNumber}</span>,
+            )}
+            {fact(
+              t('assets.item'),
+              asset.item === null ? null : `${asset.item.sku} · ${asset.item.name}`,
+            )}
+            {fact(
+              t('assets.fields.installDate'),
+              asset.installDate === null ? null : formatDate(asset.installDate, { locale }),
+            )}
+            {fact(
+              t('assets.fields.warrantyExpiresOn'),
+              asset.warrantyExpiresOn === null
+                ? null
+                : formatDate(asset.warrantyExpiresOn, { locale }),
+            )}
+            {fact(
+              t('assets.lastCondition'),
+              asset.condition === null || asset.conditionRecordedAt === null
+                ? null
+                : t('assets.conditionBy', {
+                    condition: t(`assets.condition.${asset.condition}`),
+                    name: asset.conditionRecordedBy?.name ?? '',
+                    date: formatDateTime(asset.conditionRecordedAt, { locale }),
+                  }),
+            )}
+            {fact(
+              t('assets.tagCode'),
+              <span dir="ltr" className="font-mono">
+                {asset.tagCode}
+              </span>,
+            )}
+            {fact(
+              t('assets.fields.notes'),
+              asset.notes === null ? null : (
+                <span className="whitespace-pre-wrap" dir="auto">
+                  {asset.notes}
                 </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              ),
+            )}
+          </dl>
+        </section>
 
-      {can.attach ? <AssetPhoto assetId={asset.id} onDone={() => void settle()} /> : null}
+        <section className="flex flex-col gap-3" aria-labelledby="asset-jobs">
+          <h2 id="asset-jobs" className="text-lg font-semibold text-content">
+            {t('assets.jobs')}
+          </h2>
+          {workOrders.length === 0 ? (
+            <p className="text-sm text-content-muted">{t('assets.noJobs')}</p>
+          ) : (
+            <ul className="flex flex-col divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface text-sm">
+              {workOrders.map((job) => (
+                <li
+                  key={job.id}
+                  className="flex flex-wrap items-center justify-between gap-2 px-4 py-2"
+                >
+                  {link(paths.workOrder(job.id), `${job.referenceLabel} · ${job.title}`)}
+                  <span className="flex items-center gap-2 text-xs text-content-muted">
+                    <StateBadge state={job.state} />
+                    {formatDate(job.linkedAt, { locale })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-      <section className="flex flex-col gap-3" aria-labelledby="asset-timeline">
-        <h2 id="asset-timeline" className="text-lg font-semibold text-content">
-          {t('assets.timeline')}
-        </h2>
-        {timeline.isPending ? (
-          <Loading />
-        ) : timeline.isError ? (
-          <Failure error={timeline.error} onRetry={() => void timeline.refetch()} />
-        ) : timeline.data.entries.length === 0 ? (
-          <p className="text-sm text-content-muted">{t('assets.noHistory')}</p>
-        ) : (
-          <ol className="flex flex-col gap-0 border-s border-border-subtle ps-4">
-            {timeline.data.entries.map((entry) => (
-              <TimelineItem key={`${entry.kind}-${entry.id}`} entry={entry} />
-            ))}
-          </ol>
-        )}
-      </section>
+        {can.attach ? <AssetPhoto assetId={asset.id} onDone={() => void settle()} /> : null}
 
-      {dialog === 'edit' ? (
-        <EditDialog detail={detail.data} onClose={() => setDialog(null)} onDone={settle} />
-      ) : null}
-      {dialog === 'move' ? (
-        <MoveDialog detail={detail.data} onClose={() => setDialog(null)} onDone={settle} />
-      ) : null}
-      {dialog === 'status' ? (
-        <StatusDialog detail={detail.data} onClose={() => setDialog(null)} onDone={settle} />
-      ) : null}
-      {dialog === 'condition' ? (
-        <ConditionDialog assetId={asset.id} onClose={() => setDialog(null)} onDone={settle} />
-      ) : null}
-    </div>
+        <section className="flex flex-col gap-3" aria-labelledby="asset-timeline">
+          <h2 id="asset-timeline" className="text-lg font-semibold text-content">
+            {t('assets.timeline')}
+          </h2>
+          {timeline.isPending ? (
+            <Loading />
+          ) : timeline.isError ? (
+            <Failure error={timeline.error} onRetry={() => void timeline.refetch()} />
+          ) : timeline.data.entries.length === 0 ? (
+            <p className="text-sm text-content-muted">{t('assets.noHistory')}</p>
+          ) : (
+            <ol className="flex flex-col gap-0 border-s border-border-subtle ps-4">
+              {timeline.data.entries.map((entry) => (
+                <TimelineItem key={`${entry.kind}-${entry.id}`} entry={entry} />
+              ))}
+            </ol>
+          )}
+        </section>
+
+        {dialog === 'edit' ? (
+          <EditDialog detail={detail.data} onClose={() => setDialog(null)} onDone={settle} />
+        ) : null}
+        {dialog === 'move' ? (
+          <MoveDialog detail={detail.data} onClose={() => setDialog(null)} onDone={settle} />
+        ) : null}
+        {dialog === 'status' ? (
+          <StatusDialog detail={detail.data} onClose={() => setDialog(null)} onDone={settle} />
+        ) : null}
+        {dialog === 'condition' ? (
+          <ConditionDialog assetId={asset.id} onClose={() => setDialog(null)} onDone={settle} />
+        ) : null}
+      </div>
+    </>
   );
 }
 

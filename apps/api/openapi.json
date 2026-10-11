@@ -67715,6 +67715,10 @@
                           "tagCode": {
                             "type": "string"
                           },
+                          "tagLink": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -67736,6 +67740,7 @@
                           "warrantyExpiresOn",
                           "warranty",
                           "tagCode",
+                          "tagLink",
                           "version"
                         ],
                         "additionalProperties": false
@@ -68033,6 +68038,10 @@
                         "tagCode": {
                           "type": "string"
                         },
+                        "tagLink": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -68124,10 +68133,6 @@
                           ],
                           "additionalProperties": false
                         },
-                        "tagLink": {
-                          "nullable": true,
-                          "type": "string"
-                        },
                         "createdBy": {
                           "type": "object",
                           "properties": {
@@ -68197,13 +68202,13 @@
                         "warrantyExpiresOn",
                         "warranty",
                         "tagCode",
+                        "tagLink",
                         "version",
                         "item",
                         "installDate",
                         "notes",
                         "conditionRecordedAt",
                         "conditionRecordedBy",
-                        "tagLink",
                         "createdBy",
                         "createdAt",
                         "updatedAt",
@@ -68628,6 +68633,10 @@
                         "tagCode": {
                           "type": "string"
                         },
+                        "tagLink": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -68719,10 +68728,6 @@
                           ],
                           "additionalProperties": false
                         },
-                        "tagLink": {
-                          "nullable": true,
-                          "type": "string"
-                        },
                         "createdBy": {
                           "type": "object",
                           "properties": {
@@ -68792,13 +68797,13 @@
                         "warrantyExpiresOn",
                         "warranty",
                         "tagCode",
+                        "tagLink",
                         "version",
                         "item",
                         "installDate",
                         "notes",
                         "conditionRecordedAt",
                         "conditionRecordedBy",
-                        "tagLink",
                         "createdBy",
                         "createdAt",
                         "updatedAt",
@@ -69287,6 +69292,10 @@
                         "tagCode": {
                           "type": "string"
                         },
+                        "tagLink": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -69378,10 +69387,6 @@
                           ],
                           "additionalProperties": false
                         },
-                        "tagLink": {
-                          "nullable": true,
-                          "type": "string"
-                        },
                         "createdBy": {
                           "type": "object",
                           "properties": {
@@ -69451,13 +69456,13 @@
                         "warrantyExpiresOn",
                         "warranty",
                         "tagCode",
+                        "tagLink",
                         "version",
                         "item",
                         "installDate",
                         "notes",
                         "conditionRecordedAt",
                         "conditionRecordedBy",
-                        "tagLink",
                         "createdBy",
                         "createdAt",
                         "updatedAt",
@@ -70746,6 +70751,10 @@
                         "tagCode": {
                           "type": "string"
                         },
+                        "tagLink": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -70837,10 +70846,6 @@
                           ],
                           "additionalProperties": false
                         },
-                        "tagLink": {
-                          "nullable": true,
-                          "type": "string"
-                        },
                         "createdBy": {
                           "type": "object",
                           "properties": {
@@ -70910,13 +70915,13 @@
                         "warrantyExpiresOn",
                         "warranty",
                         "tagCode",
+                        "tagLink",
                         "version",
                         "item",
                         "installDate",
                         "notes",
                         "conditionRecordedAt",
                         "conditionRecordedBy",
-                        "tagLink",
                         "createdBy",
                         "createdAt",
                         "updatedAt",
@@ -71369,6 +71374,10 @@
                         "tagCode": {
                           "type": "string"
                         },
+                        "tagLink": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -71460,10 +71469,6 @@
                           ],
                           "additionalProperties": false
                         },
-                        "tagLink": {
-                          "nullable": true,
-                          "type": "string"
-                        },
                         "createdBy": {
                           "type": "object",
                           "properties": {
@@ -71533,13 +71538,13 @@
                         "warrantyExpiresOn",
                         "warranty",
                         "tagCode",
+                        "tagLink",
                         "version",
                         "item",
                         "installDate",
                         "notes",
                         "conditionRecordedAt",
                         "conditionRecordedBy",
-                        "tagLink",
                         "createdBy",
                         "createdAt",
                         "updatedAt",
@@ -71992,6 +71997,10 @@
                         "tagCode": {
                           "type": "string"
                         },
+                        "tagLink": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -72083,10 +72092,6 @@
                           ],
                           "additionalProperties": false
                         },
-                        "tagLink": {
-                          "nullable": true,
-                          "type": "string"
-                        },
                         "createdBy": {
                           "type": "object",
                           "properties": {
@@ -72156,13 +72161,13 @@
                         "warrantyExpiresOn",
                         "warranty",
                         "tagCode",
+                        "tagLink",
                         "version",
                         "item",
                         "installDate",
                         "notes",
                         "conditionRecordedAt",
                         "conditionRecordedBy",
-                        "tagLink",
                         "createdBy",
                         "createdAt",
                         "updatedAt",
@@ -72608,6 +72613,10 @@
                         "tagCode": {
                           "type": "string"
                         },
+                        "tagLink": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -72699,10 +72708,6 @@
                           ],
                           "additionalProperties": false
                         },
-                        "tagLink": {
-                          "nullable": true,
-                          "type": "string"
-                        },
                         "createdBy": {
                           "type": "object",
                           "properties": {
@@ -72772,13 +72777,13 @@
                         "warrantyExpiresOn",
                         "warranty",
                         "tagCode",
+                        "tagLink",
                         "version",
                         "item",
                         "installDate",
                         "notes",
                         "conditionRecordedAt",
                         "conditionRecordedBy",
-                        "tagLink",
                         "createdBy",
                         "createdAt",
                         "updatedAt",
@@ -73205,6 +73210,10 @@
                           "tagCode": {
                             "type": "string"
                           },
+                          "tagLink": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -73226,6 +73235,7 @@
                           "warrantyExpiresOn",
                           "warranty",
                           "tagCode",
+                          "tagLink",
                           "version"
                         ],
                         "additionalProperties": false
@@ -73335,6 +73345,10 @@
                           "tagCode": {
                             "type": "string"
                           },
+                          "tagLink": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -73356,6 +73370,7 @@
                           "warrantyExpiresOn",
                           "warranty",
                           "tagCode",
+                          "tagLink",
                           "version"
                         ],
                         "additionalProperties": false

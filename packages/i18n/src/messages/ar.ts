@@ -2892,6 +2892,21 @@ export const ar: Catalogue<Messages> = {
     link: 'ربط',
     unlink: 'إلغاء الربط',
     unlinkConfirm: 'إزالة هذا الأصل من العمل؟ يحتفظ سجله بما سُجّل.',
+    tags: {
+      unknownTitle: 'لا يوجد أصل بهذا الملصق',
+      unknown:
+        'قد يكون الملصق لشركة أخرى، أو استُبدل، أو قُرئ خطأً. جرّب كتابة الرمز المطبوع أسفله.',
+      print: 'طباعة الملصق',
+      printSelected_zero: 'طباعة الملصقات',
+      printSelected_one: 'طباعة ملصق واحد',
+      printSelected_two: 'طباعة ملصقين',
+      printSelected_few: 'طباعة {{count}} ملصقات',
+      printSelected_many: 'طباعة {{count}} ملصقًا',
+      printSelected_other: 'طباعة {{count}} ملصق',
+      select: 'تحديد {{reference}} للطباعة',
+      qrLabel: 'رمز QR للأصل {{reference}}',
+      scan: 'امسح لفتح سجله',
+    },
     status: {
       active: 'قيد الاستخدام',
       out_of_service: 'خارج الخدمة',

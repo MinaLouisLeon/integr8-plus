@@ -31328,6 +31328,7 @@ export interface operations {
                             /** @enum {string} */
                             warranty: "none" | "covered" | "expiring" | "expired";
                             tagCode: string;
+                            tagLink: string | null;
                             version: number;
                         }[];
                         nextCursor: string | null;
@@ -31460,6 +31461,7 @@ export interface operations {
                             /** @enum {string} */
                             warranty: "none" | "covered" | "expiring" | "expired";
                             tagCode: string;
+                            tagLink: string | null;
                             version: number;
                             item: {
                                 /** Format: uuid */
@@ -31481,7 +31483,6 @@ export interface operations {
                                 id: string;
                                 name: string;
                             } | null;
-                            tagLink: string | null;
                             createdBy: {
                                 /** Format: uuid */
                                 id: string;
@@ -31665,6 +31666,7 @@ export interface operations {
                             /** @enum {string} */
                             warranty: "none" | "covered" | "expiring" | "expired";
                             tagCode: string;
+                            tagLink: string | null;
                             version: number;
                             item: {
                                 /** Format: uuid */
@@ -31686,7 +31688,6 @@ export interface operations {
                                 id: string;
                                 name: string;
                             } | null;
-                            tagLink: string | null;
                             createdBy: {
                                 /** Format: uuid */
                                 id: string;
@@ -31881,6 +31882,7 @@ export interface operations {
                             /** @enum {string} */
                             warranty: "none" | "covered" | "expiring" | "expired";
                             tagCode: string;
+                            tagLink: string | null;
                             version: number;
                             item: {
                                 /** Format: uuid */
@@ -31902,7 +31904,6 @@ export interface operations {
                                 id: string;
                                 name: string;
                             } | null;
-                            tagLink: string | null;
                             createdBy: {
                                 /** Format: uuid */
                                 id: string;
@@ -32351,6 +32352,7 @@ export interface operations {
                             /** @enum {string} */
                             warranty: "none" | "covered" | "expiring" | "expired";
                             tagCode: string;
+                            tagLink: string | null;
                             version: number;
                             item: {
                                 /** Format: uuid */
@@ -32372,7 +32374,6 @@ export interface operations {
                                 id: string;
                                 name: string;
                             } | null;
-                            tagLink: string | null;
                             createdBy: {
                                 /** Format: uuid */
                                 id: string;
@@ -32563,6 +32564,7 @@ export interface operations {
                             /** @enum {string} */
                             warranty: "none" | "covered" | "expiring" | "expired";
                             tagCode: string;
+                            tagLink: string | null;
                             version: number;
                             item: {
                                 /** Format: uuid */
@@ -32584,7 +32586,6 @@ export interface operations {
                                 id: string;
                                 name: string;
                             } | null;
-                            tagLink: string | null;
                             createdBy: {
                                 /** Format: uuid */
                                 id: string;
@@ -32776,6 +32777,7 @@ export interface operations {
                             /** @enum {string} */
                             warranty: "none" | "covered" | "expiring" | "expired";
                             tagCode: string;
+                            tagLink: string | null;
                             version: number;
                             item: {
                                 /** Format: uuid */
@@ -32797,7 +32799,6 @@ export interface operations {
                                 id: string;
                                 name: string;
                             } | null;
-                            tagLink: string | null;
                             createdBy: {
                                 /** Format: uuid */
                                 id: string;
@@ -32987,6 +32988,7 @@ export interface operations {
                             /** @enum {string} */
                             warranty: "none" | "covered" | "expiring" | "expired";
                             tagCode: string;
+                            tagLink: string | null;
                             version: number;
                             item: {
                                 /** Format: uuid */
@@ -33008,7 +33010,6 @@ export interface operations {
                                 id: string;
                                 name: string;
                             } | null;
-                            tagLink: string | null;
                             createdBy: {
                                 /** Format: uuid */
                                 id: string;
@@ -33192,6 +33193,7 @@ export interface operations {
                             /** @enum {string} */
                             warranty: "none" | "covered" | "expiring" | "expired";
                             tagCode: string;
+                            tagLink: string | null;
                             version: number;
                         }[];
                         atSite: {
@@ -33222,6 +33224,7 @@ export interface operations {
                             /** @enum {string} */
                             warranty: "none" | "covered" | "expiring" | "expired";
                             tagCode: string;
+                            tagLink: string | null;
                             version: number;
                         }[];
                         can: {

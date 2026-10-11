@@ -72,6 +72,8 @@ export const assetSummarySchema = z.object({
   /** Against the company's warning window, on the company's today. */
   warranty: z.enum(['none', 'covered', 'expiring', 'expired']),
   tagCode: z.string(),
+  /** What the printed QR code holds; null until the web app's address is configured. */
+  tagLink: z.string().nullable(),
   version: z.number().int(),
 });
 
@@ -81,8 +83,6 @@ export const assetSchema = assetSummarySchema.extend({
   notes: z.string().nullable(),
   conditionRecordedAt: z.iso.datetime().nullable(),
   conditionRecordedBy: personSchema.nullable(),
-  /** What the printed QR code holds; null until the web app's address is configured. */
-  tagLink: z.string().nullable(),
   createdBy: personSchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -204,14 +204,10 @@ export async function readableAsset(
   return asset;
 }
 
-export function tagLinkOf(context: RequestContext, code: string): string | null {
-  const base = context.config.WEB_APP_URL;
-  return base === undefined ? null : assetTagLink(base, code);
-}
-
 export async function assetSummaries(
   tx: TenantTransaction,
   assets: readonly Asset[],
+  webAppUrl: string | undefined,
 ): Promise<z.infer<typeof assetSummarySchema>[]> {
   const [customers, sites, settings, today] = await Promise.all([
     tx.customers.findMany([...new Set(assets.map((asset) => asset.customerId))]),
@@ -239,6 +235,7 @@ export async function assetSummaries(
         ? 'none'
         : warrantyState(asset.warrantyExpiresOn, today, settings.warrantyAlertDays),
     tagCode: asset.tagCode,
+    tagLink: webAppUrl === undefined ? null : assetTagLink(webAppUrl, asset.tagCode),
     version: asset.version,
   }));
 }
@@ -250,7 +247,7 @@ async function assetDetail(
 ): Promise<z.infer<typeof assetDetailSchema>> {
   const { principal } = context;
   const [[summary], people, items, links] = await Promise.all([
-    assetSummaries(tx, [asset]),
+    assetSummaries(tx, [asset], context.config.WEB_APP_URL),
     peopleOf(tx),
     asset.itemId === null ? Promise.resolve([]) : tx.inventoryCatalogue.findItems([asset.itemId]),
     tx.assets.linksOfAsset(asset.id),
@@ -273,7 +270,6 @@ async function assetDetail(
       conditionRecordedAt: isoOrNull(asset.conditionRecordedAt),
       conditionRecordedBy:
         asset.conditionRecordedBy === null ? null : personBody(asset.conditionRecordedBy, people),
-      tagLink: tagLinkOf(context, asset.tagCode),
       createdBy: personBody(asset.createdBy, people),
       createdAt: iso(asset.createdAt),
       updatedAt: iso(asset.updatedAt),
@@ -589,7 +585,7 @@ export const listAssetsRoute = defineRoute({
         limit: query.limit,
       });
       return {
-        items: await assetSummaries(tx, page.items),
+        items: await assetSummaries(tx, page.items, context.config.WEB_APP_URL),
         nextCursor: page.next === undefined ? null : String(page.next),
       };
     });
@@ -1102,10 +1098,12 @@ export const jobAssetsRoute = defineRoute({
             const asset = byId.get(link.assetId);
             return asset === undefined ? [] : [asset];
           }),
+          context.config.WEB_APP_URL,
         ),
         atSite: await assetSummaries(
           tx,
           site.items.filter((asset) => !linked.has(asset.id)),
+          context.config.WEB_APP_URL,
         ),
         can: { link: records, unlink: holds(principal, 'asset.manage'), register: records },
       };

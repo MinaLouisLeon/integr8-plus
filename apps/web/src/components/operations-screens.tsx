@@ -38,7 +38,7 @@ export function OperationsScreens({ children }: { children: ReactNode }) {
     () => ({
       client: apiClient(),
       locale: i18n.language,
-      navigate: (to) => router.push(to),
+      navigate: (to, options) => (options?.replace === true ? router.replace(to) : router.push(to)),
       paths: {
         workOrders: '/work-orders',
         newWorkOrder: (options) =>

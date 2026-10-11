@@ -2884,6 +2884,17 @@ export const en = {
     link: 'Link',
     unlink: 'Unlink',
     unlinkConfirm: 'Take this asset off the job? Its history keeps what was recorded.',
+    tags: {
+      unknownTitle: 'No asset has this tag',
+      unknown:
+        'The tag may belong to another company, have been replaced, or be misread. Try typing the code printed under it.',
+      print: 'Print tag',
+      printSelected_one: 'Print {{count}} tag',
+      printSelected_other: 'Print {{count}} tags',
+      select: 'Select {{reference}} for printing',
+      qrLabel: 'QR code for {{reference}}',
+      scan: 'Scan to open its history',
+    },
     status: {
       active: 'In use',
       out_of_service: 'Out of service',

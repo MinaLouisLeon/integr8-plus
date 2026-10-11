@@ -11,7 +11,8 @@ import { createContext, useContext } from 'react';
 export interface OperationsConfig {
   client: Integr8Client;
   locale: string;
-  navigate: (to: string) => void;
+  /** `replace` swaps the current entry, for a page that only forwards (a scanned tag). */
+  navigate: (to: string, options?: { replace?: boolean }) => void;
   paths: {
     /**
      * The app's home. When set, every list screen offers a way back to it;
