@@ -28,6 +28,10 @@ import { CrmLeadsRepository } from './repositories/crm-leads.js';
 import { CrmOpportunitiesRepository } from './repositories/crm-opportunities.js';
 import { CrmPipelinesRepository } from './repositories/crm-pipelines.js';
 import { CrmReportsRepository } from './repositories/crm-reports.js';
+import { InventoryCatalogueRepository } from './repositories/inventory-catalogue.js';
+import { InventoryMaterialsRepository } from './repositories/inventory-materials.js';
+import { InventoryPurchasingRepository } from './repositories/inventory-purchasing.js';
+import { InventoryStockRepository } from './repositories/inventory-stock.js';
 import { CustomersRepository } from './repositories/customers.js';
 import { FilesRepository } from './repositories/files.js';
 import { ImportsRepository } from './repositories/imports.js';
@@ -116,6 +120,10 @@ export interface TenantTransaction {
   readonly crmOpportunities: CrmOpportunitiesRepository;
   readonly crmActivities: CrmActivitiesRepository;
   readonly crmReports: CrmReportsRepository;
+  readonly inventoryCatalogue: InventoryCatalogueRepository;
+  readonly inventoryStock: InventoryStockRepository;
+  readonly inventoryPurchasing: InventoryPurchasingRepository;
+  readonly inventoryMaterials: InventoryMaterialsRepository;
   readonly sites: SitesRepository;
   readonly jobTypes: JobTypesRepository;
   readonly workOrders: WorkOrdersRepository;
@@ -362,6 +370,10 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     crmOpportunities: new CrmOpportunitiesRepository(scope),
     crmActivities: new CrmActivitiesRepository(scope),
     crmReports: new CrmReportsRepository(scope),
+    inventoryCatalogue: new InventoryCatalogueRepository(scope),
+    inventoryStock: new InventoryStockRepository(scope),
+    inventoryPurchasing: new InventoryPurchasingRepository(scope),
+    inventoryMaterials: new InventoryMaterialsRepository(scope),
     sites: new SitesRepository(scope),
     jobTypes: new JobTypesRepository(scope),
     workOrders: new WorkOrdersRepository(scope),

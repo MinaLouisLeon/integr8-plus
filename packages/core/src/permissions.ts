@@ -134,6 +134,34 @@ export const PERMISSIONS = [
   'crm.opportunity.manage',
   /** Log calls, meetings and notes, and set and complete follow-ups. */
   'crm.activity.manage',
+
+  // Inventory and purchasing (CRM/ERP plan, phases E1 and E2). Each also needs
+  // the company's `inventory` or `purchasing` module switched on.
+
+  /** See the catalogue, stock locations, vans and how much is where. Not costs. */
+  'inventory.read',
+  /** Add and change items, categories, stock locations and vans, and assign vans. */
+  'inventory.manage',
+  /**
+   * Move stock: receive, issue, transfer, adjust, count. Seats holding it also
+   * see costs, because they are the ones who value what they move.
+   */
+  'inventory.move',
+  /**
+   * Record parts used on a job. Engineers hold it for jobs they are assigned
+   * to and the van assigned to them; dispatchers and above for any job.
+   */
+  'inventory.consume',
+  /** See suppliers and purchase orders. */
+  'purchasing.read',
+  /** Add suppliers, draft purchase orders and receive goods against approved ones. */
+  'purchasing.manage',
+  /**
+   * Approve a purchase order so goods can be received against it. Owners and
+   * admins only (product decision, 2026-10-11): spending is approved by the
+   * people who answer for it.
+   */
+  'purchasing.approve',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -183,6 +211,13 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'crm.lead.convert',
     'crm.opportunity.manage',
     'crm.activity.manage',
+    'inventory.read',
+    'inventory.manage',
+    'inventory.move',
+    'inventory.consume',
+    'purchasing.read',
+    'purchasing.manage',
+    'purchasing.approve',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -222,6 +257,13 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'crm.lead.convert',
     'crm.opportunity.manage',
     'crm.activity.manage',
+    'inventory.read',
+    'inventory.manage',
+    'inventory.move',
+    'inventory.consume',
+    'purchasing.read',
+    'purchasing.manage',
+    'purchasing.approve',
   ],
 
   // Runs the day: needs to see who is available, not to change who they are.
@@ -247,6 +289,14 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'crm.lead.convert',
     'crm.opportunity.manage',
     'crm.activity.manage',
+    // Product decision (2026-10-11): runs stock and drafts purchases; approving
+    // a purchase is left to owners and admins.
+    'inventory.read',
+    'inventory.manage',
+    'inventory.move',
+    'inventory.consume',
+    'purchasing.read',
+    'purchasing.manage',
   ],
 
   // Does the work. Sees colleagues so a job can be handed over, their own
@@ -259,6 +309,10 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'submission.fill',
     'customer.read',
     'work_order.progress',
+    // Product decision (2026-10-11): sees stock and records the parts used on
+    // their own jobs, from the van assigned to them.
+    'inventory.read',
+    'inventory.consume',
   ],
 
   // Reads, and only reads: every submission and every job, and nothing to fill.
@@ -271,6 +325,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'work_order.read_all',
     // Reads the CRM and changes nothing in it, like everything else a viewer sees.
     'crm.read',
+    'inventory.read',
+    'purchasing.read',
   ],
 });
 

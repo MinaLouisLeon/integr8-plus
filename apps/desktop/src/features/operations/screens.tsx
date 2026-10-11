@@ -7,6 +7,16 @@ import {
   JobTypesScreen,
   LeadListScreen,
   ActivitiesScreen,
+  InventoryOverviewScreen,
+  ItemListScreen,
+  ItemScreen,
+  LocationListScreen,
+  LocationScreen,
+  OrderListScreen,
+  OrderScreen,
+  StockCountScreen,
+  SupplierListScreen,
+  SupplierScreen,
   LeadConvertScreen,
   OpportunityBoardScreen,
   OpportunityScreen,
@@ -61,6 +71,16 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         crmOpportunities: '/crm/opportunities',
         crmOpportunity: (id) => `/crm/opportunities/${id}`,
         crmActivities: '/crm/activities',
+        inventory: '/inventory',
+        items: '/inventory/items',
+        item: (id) => `/inventory/items/${id}`,
+        stockLocations: '/inventory/locations',
+        stockLocation: (id) => `/inventory/locations/${id}`,
+        stockCount: (id) => `/inventory/counts/${id}`,
+        suppliers: '/purchasing/suppliers',
+        supplier: (id) => `/purchasing/suppliers/${id}`,
+        purchaseOrders: '/purchasing/orders',
+        purchaseOrder: (id) => `/purchasing/orders/${id}`,
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -133,6 +153,57 @@ export function LeadsRoute() {
   return (
     <OperationsScreens>
       <LeadListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function InventoryRoute() {
+  return (
+    <OperationsScreens>
+      <InventoryOverviewScreen />
+    </OperationsScreens>
+  );
+}
+
+export function ItemsRoute() {
+  return (
+    <OperationsScreens>
+      <ItemListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function ItemRoute() {
+  const { itemId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <ItemScreen key={itemId} itemId={itemId} />
+    </OperationsScreens>
+  );
+}
+
+export function StockLocationsRoute() {
+  return (
+    <OperationsScreens>
+      <LocationListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function StockLocationRoute() {
+  const { locationId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <LocationScreen key={locationId} locationId={locationId} />
+    </OperationsScreens>
+  );
+}
+
+export function StockCountRoute() {
+  const { countId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <StockCountScreen key={countId} countId={countId} />
     </OperationsScreens>
   );
 }
@@ -228,6 +299,40 @@ export function TimesheetsRoute() {
   return (
     <OperationsScreens>
       <TimesheetsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function SuppliersRoute() {
+  return (
+    <OperationsScreens>
+      <SupplierListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function SupplierRoute() {
+  const { supplierId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <SupplierScreen key={supplierId} supplierId={supplierId} />
+    </OperationsScreens>
+  );
+}
+
+export function PurchaseOrdersRoute() {
+  return (
+    <OperationsScreens>
+      <OrderListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function PurchaseOrderRoute() {
+  const { orderId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <OrderScreen key={orderId} orderId={orderId} />
     </OperationsScreens>
   );
 }

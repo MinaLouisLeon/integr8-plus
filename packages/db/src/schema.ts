@@ -1,6 +1,14 @@
 import {
   type ActivityKind,
   type ActivityStatus,
+  type ItemKind,
+  type LocationKind,
+  type MovementKind,
+  type MaterialStatus,
+  type PurchaseOrderStatus,
+  type StockCountStatus,
+  type SupplierStatus,
+  type Unit,
   type LeadSource,
   type LeadStatus,
   type OpportunityEventKind,
@@ -1018,6 +1026,217 @@ export interface CrmActivityOpportunitiesTable {
   opportunity_id: string;
 }
 
+export interface ErpItemCategoriesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  archived_at: Date | null;
+}
+
+export interface ErpItemsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  sku: string;
+  name: string;
+  description: string | null;
+  kind: Generated<ItemKind>;
+  category_id: string | null;
+  unit: Generated<Unit>;
+  barcode: string | null;
+  /** `numeric(20,4)`, read as a string. */
+  default_unit_cost: string | null;
+  sale_price: string | null;
+  average_unit_cost: Generated<string>;
+  preferred_supplier_id: string | null;
+  supplier_part_number: string | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  archived_at: Date | null;
+  search: ColumnType<string, never, never>;
+}
+
+export interface ErpStockLocationsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  kind: LocationKind;
+  assigned_to: string | null;
+  site_id: string | null;
+  notes: string | null;
+  version: Generated<number>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  archived_at: Date | null;
+}
+
+export interface ErpStockCountsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  location_id: string;
+  status: Generated<StockCountStatus>;
+  notes: string | null;
+  version: Generated<number>;
+  created_by: string;
+  posted_by: string | null;
+  posted_at: Date | null;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface ErpStockCountLinesTable {
+  tenant_id: string;
+  count_id: string;
+  item_id: string;
+  counted_quantity: string;
+  expected_quantity: string | null;
+}
+
+export interface ErpStockMovementsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  posting_id: string;
+  item_id: string;
+  location_id: string;
+  kind: MovementKind;
+  /** Signed `numeric(20,4)`, read as a string. */
+  quantity: string;
+  unit_cost: string | null;
+  source_key: string;
+  reason: string | null;
+  stock_count_id: string | null;
+  reversal_of: string | null;
+  actor_id: string;
+  occurred_at: CreatedAt;
+}
+
+export interface ErpStockBalancesTable {
+  tenant_id: string;
+  item_id: string;
+  location_id: string;
+  on_hand: string;
+  updated_at: UpdatedAt;
+}
+
+export interface ErpReorderLevelsTable {
+  tenant_id: string;
+  item_id: string;
+  location_id: string;
+  minimum: string;
+}
+
+export interface ErpSuppliersTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  contact_name: string | null;
+  email: string | null;
+  phone: string | null;
+  tax_reference: string | null;
+  payment_terms: string | null;
+  lead_time_days: number | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  region: string | null;
+  postcode: string | null;
+  country_code: string | null;
+  status: Generated<SupplierStatus>;
+  notes: string | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  search: ColumnType<string, never, never>;
+}
+
+export interface ErpPurchaseOrderCountersTable {
+  tenant_id: string;
+  last_reference: number;
+}
+
+export interface ErpPurchaseOrdersTable {
+  id: Generated<string>;
+  tenant_id: string;
+  reference: Generated<number>;
+  supplier_id: string;
+  supplier_name: string;
+  status: Generated<PurchaseOrderStatus>;
+  currency_code: string;
+  /** A calendar date, read as `YYYY-MM-DD` text. */
+  expected_date: ColumnType<string | null, string | null, string | null>;
+  delivery_location_id: string | null;
+  notes: string | null;
+  approved_by: string | null;
+  approved_at: Date | null;
+  cancelled_by: string | null;
+  cancelled_at: Date | null;
+  cancel_reason: string | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface ErpPurchaseOrderLinesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  order_id: string;
+  position: number;
+  item_id: string;
+  description: string;
+  quantity_ordered: string;
+  quantity_received: Generated<string>;
+  unit_price: string;
+  tax_rate_bp: Generated<number>;
+}
+
+export interface ErpGoodsReceiptsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  order_id: string;
+  location_id: string;
+  supplier_note: string | null;
+  notes: string | null;
+  received_by: string;
+  received_at: CreatedAt;
+}
+
+export interface ErpGoodsReceiptLinesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  receipt_id: string;
+  order_line_id: string;
+  quantity: string;
+  unit_cost: string;
+  returned_quantity: Generated<string>;
+}
+
+/** A part used on a job (CRM/ERP plan, phase E2; ADR-0005). */
+export interface ErpWorkOrderMaterialsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  work_order_id: string;
+  item_id: string;
+  location_id: string | null;
+  quantity: string;
+  returned_quantity: Generated<string>;
+  unit_cost: string | null;
+  status: Generated<MaterialStatus>;
+  available_quantity: string | null;
+  client_action_id: string | null;
+  note: string | null;
+  recorded_by: string;
+  recorded_at: CreatedAt;
+  occurred_at: Generated<Date>;
+  cancelled_by: string | null;
+  cancelled_at: Date | null;
+  version: Generated<number>;
+}
+
 export interface CustomerContactsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -1513,6 +1732,21 @@ export interface Database {
   crm_activity_leads: CrmActivityLeadsTable;
   crm_activity_customers: CrmActivityCustomersTable;
   crm_activity_opportunities: CrmActivityOpportunitiesTable;
+  erp_item_categories: ErpItemCategoriesTable;
+  erp_items: ErpItemsTable;
+  erp_stock_locations: ErpStockLocationsTable;
+  erp_stock_counts: ErpStockCountsTable;
+  erp_stock_count_lines: ErpStockCountLinesTable;
+  erp_stock_movements: ErpStockMovementsTable;
+  erp_stock_balances: ErpStockBalancesTable;
+  erp_reorder_levels: ErpReorderLevelsTable;
+  erp_suppliers: ErpSuppliersTable;
+  erp_purchase_order_counters: ErpPurchaseOrderCountersTable;
+  erp_purchase_orders: ErpPurchaseOrdersTable;
+  erp_purchase_order_lines: ErpPurchaseOrderLinesTable;
+  erp_goods_receipts: ErpGoodsReceiptsTable;
+  erp_goods_receipt_lines: ErpGoodsReceiptLinesTable;
+  erp_work_order_materials: ErpWorkOrderMaterialsTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -1639,6 +1873,14 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // Write and prune the sync change log, which the runtime role can only read; see 0011.
   'touch_sync',
   'prune_sync_touches',
+  // Applies each stock movement to its balance, which the runtime role can
+  // only read; see 0026 and ADR-0003.
+  'erp_stock_apply_movement',
+  // Locks a balance row for the caller's own company, which the runtime role
+  // can only read; see 0026.
+  'erp_stock_lock_balance',
+  // Hands out purchase order references from a counter the runtime role cannot write; see 0027.
+  'assign_purchase_order_reference',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -1696,6 +1938,21 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   crm_activity_leads: true,
   crm_activity_customers: true,
   crm_activity_opportunities: true,
+  erp_item_categories: true,
+  erp_items: true,
+  erp_stock_locations: true,
+  erp_stock_counts: true,
+  erp_stock_count_lines: true,
+  erp_stock_movements: true,
+  erp_stock_balances: true,
+  erp_reorder_levels: true,
+  erp_suppliers: true,
+  erp_purchase_order_counters: true,
+  erp_purchase_orders: true,
+  erp_purchase_order_lines: true,
+  erp_goods_receipts: true,
+  erp_goods_receipt_lines: true,
+  erp_work_order_materials: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

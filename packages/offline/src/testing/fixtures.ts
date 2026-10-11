@@ -216,7 +216,17 @@ export function workOrderDetail(
       },
     },
     previousAtSite: [],
-    can: { edit: false, assign: false, work: true, comment: true, transitions: [] },
+    materials: [],
+    materialsCost: null,
+    van: null,
+    can: {
+      edit: false,
+      assign: false,
+      work: true,
+      comment: true,
+      transitions: [],
+      recordParts: false,
+    },
   };
 }
 

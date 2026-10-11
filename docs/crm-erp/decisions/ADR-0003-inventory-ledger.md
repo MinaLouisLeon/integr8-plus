@@ -1,6 +1,6 @@
 # ADR-0003 — Stock is an append-only ledger
 
-**Status:** Accepted for phase E1 (recorded at F0, 2026-10-11). Not built on this branch.
+**Status:** Accepted (F0, 2026-10-11); implemented in E1 on `feat/erp-inventory-purchasing`.
 
 ## Context
 
@@ -22,3 +22,25 @@ reconstructible and correct under concurrency and retries.
 
 E1 updates P22 with this model rather than writing a second plan. Phone-side
 consumption (E2) needs its own conflict-safe sync design before it is built.
+
+## How E1 enforces it (2026-10-11)
+
+- `erp_stock_movements` is the ledger. The runtime role may only `select` and
+  `insert` it; a trigger refuses any update.
+- `erp_stock_balances` (one row per company, item and location) is the
+  projection. Nothing in the application writes it: an `after insert` trigger
+  on the ledger adds each movement's quantity with an `update` (inserting the
+  row only for an item's first movement at a place), which takes the balance
+  row's lock, so two
+  concurrent issues of the same item from the same place run one after the
+  other. A `check (on_hand >= 0)` on the balance refuses the second one if it
+  would go negative, and the whole movement rolls back with it.
+- A transfer is two movements (out and in) with one `posting_id`, inserted in
+  one statement batch inside one transaction.
+- Each movement has a `source_key` that is unique per company (for example
+  `receipt-line:<id>`, `transfer:<idempotency key>`, `phone:<action id>`), so a
+  retried posting fails the unique index instead of counting twice.
+- The trigger function is `security definer` (owned by the schema owner, fixed
+  `search_path`), which is how it writes a table the runtime role cannot.
+- `reconcile()` in the stock repository rebuilds every balance from the ledger
+  and reports any difference.

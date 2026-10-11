@@ -5,6 +5,7 @@ import {
   fetchAttachment,
   markOpened,
   recordPhoto,
+  recordMaterial,
   recordPhotoRemoved,
   recordShiftEnd,
   recordShiftStart,
@@ -65,6 +66,17 @@ export async function clockIn(): Promise<void> {
 
 export async function clockOut(shiftId: string): Promise<void> {
   await recordShiftEnd(context(), { shiftId, location: await quickLocation() });
+  sent();
+}
+
+/** A part used on the job, from the engineer's van (CRM/ERP plan, phase E2). */
+export async function recordPart(input: {
+  workOrderId: string;
+  itemId: string;
+  quantity: string;
+  note?: string;
+}): Promise<void> {
+  await recordMaterial(context(), input);
   sent();
 }
 

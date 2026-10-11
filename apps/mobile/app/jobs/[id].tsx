@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { AccessNotes } from '~/components/access-notes';
 import { JobForms } from '~/components/job-forms';
+import { JobParts } from '~/components/job-parts';
 import { JobSyncBadge, JobSyncCard } from '~/components/job-sync';
 import {
   JobActions,
@@ -107,6 +108,8 @@ function Job() {
       <JobPhotos detail={detail} closed={closed} />
 
       <JobChecklist detail={detail} closed={closed} />
+
+      <JobParts detail={detail} closed={closed} />
 
       <JobAttachments detail={detail} />
 

@@ -368,6 +368,26 @@ export const MIGRATIONS: readonly Migration[] = [
       `create index shifts_by_start on shifts (started_at)`,
     ],
   },
+  {
+    version: 7,
+    name: 'parts from the van',
+    statements: [
+      // What the engineer's van holds, as the server last said (CRM/ERP plan,
+      // phase E2; ADR-0005). The parts picker works from it offline; the
+      // phone's own unsent uses are subtracted when it is shown.
+      `create table van_stock (
+        item_id text primary key,
+        location_id text not null,
+        location_name text not null,
+        sku text not null,
+        name text not null,
+        kind text not null,
+        unit text not null,
+        on_hand text not null,
+        updated_at text not null
+      ) strict`,
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.at(-1)?.version ?? 0;

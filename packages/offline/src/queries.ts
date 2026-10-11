@@ -300,3 +300,67 @@ export async function storageSummary(sql: SqlConnection): Promise<StorageSummary
 export async function unsentWorkCount(sql: SqlConnection): Promise<number> {
   return (await storageSummary(sql)).unsentWork;
 }
+
+// ---------------------------------------------------------------------------
+// The van (CRM/ERP plan, phase E2)
+// ---------------------------------------------------------------------------
+
+export interface VanStockRow {
+  item: { id: string; sku: string; name: string; kind: string; unit: string };
+  location: { id: string; name: string };
+  /** What the server last said the van held. */
+  onHand: string;
+  /** `onHand` less this phone's own uses not yet applied: what is probably left. */
+  forecast: string;
+  updatedAt: string;
+}
+
+/** Subtracts decimal strings of up to four places exactly, never below zero. */
+function minus(held: string, used: readonly string[]): string {
+  const scale = (text: string) => {
+    const [whole = '0', fraction = ''] = text.split('.');
+    return BigInt(whole + fraction.padEnd(4, '0').slice(0, 4));
+  };
+  let left = scale(held);
+  for (const quantity of used) {
+    left -= scale(quantity);
+  }
+  if (left <= 0n) {
+    return '0';
+  }
+  const digits = left.toString().padStart(5, '0');
+  return `${digits.slice(0, -4)}.${digits.slice(-4)}`.replace(/\.?0+$/u, '');
+}
+
+/**
+ * What the engineer's van holds, with this phone's own unsent uses taken off.
+ * A forecast, and shown as one: the server's count is the count (ADR-0005).
+ */
+export async function vanStock(sql: SqlConnection): Promise<VanStockRow[]> {
+  const rows = await sql.all<{
+    item_id: string;
+    location_id: string;
+    location_name: string;
+    sku: string;
+    name: string;
+    kind: string;
+    unit: string;
+    on_hand: string;
+    updated_at: string;
+  }>('select * from van_stock order by name, sku');
+  const pending = await sql.all<{ payload: string }>(
+    `select payload from outbox where kind = 'work_order.material' and state <> 'done'`,
+  );
+  const used = new Map<string, string[]>();
+  for (const row of pending) {
+    const payload = JSON.parse(row.payload) as { itemId: string; quantity: string };
+    used.set(payload.itemId, [...(used.get(payload.itemId) ?? []), payload.quantity]);
+  }
+  return rows.map((row) => ({
+    item: { id: row.item_id, sku: row.sku, name: row.name, kind: row.kind, unit: row.unit },
+    location: { id: row.location_id, name: row.location_name },
+    onHand: row.on_hand,
+    forecast: minus(row.on_hand, used.get(row.item_id) ?? []),
+    updatedAt: row.updated_at,
+  }));
+}

@@ -1664,6 +1664,583 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/inventory/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Item categories */
+        get: operations["listItemCategories"];
+        put?: never;
+        /** Add an item category */
+        post: operations["createItemCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/categories/{categoryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename or archive an item category */
+        patch: operations["updateItemCategory"];
+        trace?: never;
+    };
+    "/v1/inventory/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find items in the catalogue
+         * @description Alphabetical, a page at a time, with how much the company holds of each, everywhere together. `q` matches words or their beginnings in the SKU, name, barcode or description.
+         */
+        get: operations["listItems"];
+        put?: never;
+        /**
+         * Add an item to the catalogue
+         * @description Honours `Idempotency-Key`.
+         */
+        post: operations["createItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An item, with how much of it is where */
+        get: operations["getItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change or archive an item
+         * @description Send `expectedVersion` as read. An item that holds stock stays a stock item (`item_has_stock`).
+         */
+        patch: operations["updateItem"];
+        trace?: never;
+    };
+    "/v1/inventory/items/{itemId}/reorder-levels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set where an item should be reordered, and below what
+         * @description Replaces the item’s reorder levels. Stock items only.
+         */
+        put: operations["setReorderLevels"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The item with this barcode
+         * @description For scanning.
+         */
+        get: operations["lookupItemByBarcode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Warehouses, vans and site locations
+         * @description Warehouses first, then vans, then sites; alphabetical within each.
+         */
+        get: operations["listStockLocations"];
+        put?: never;
+        /**
+         * Add a warehouse, a van or a site location
+         * @description A van may be assigned to one active member, who has at most one van. A site location names one of the company’s customer sites.
+         */
+        post: operations["createStockLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/locations/{locationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A location and what it holds */
+        get: operations["getStockLocation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename a location, assign a van, or archive an empty location */
+        patch: operations["updateStockLocation"];
+        trace?: never;
+    };
+    "/v1/inventory/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The stock ledger
+         * @description Newest first, a page at a time.
+         */
+        get: operations["listStockMovements"];
+        put?: never;
+        /**
+         * Receive, issue, transfer or adjust stock
+         * @description Writes to the ledger: a receipt (optionally priced, which folds into the average cost), an issue, a transfer (both halves together), or an adjustment in or out. Issues and adjustments need a reason. Nothing goes below zero (409 `insufficient_stock`). Needs `Idempotency-Key`.
+         */
+        post: operations["postStockMovement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How much is where
+         * @description `belowMinimum=true` lists everything below its reorder level, including what has none at all.
+         */
+        get: operations["listStockBalances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Replay the ledger and check every balance
+         * @description Empty `discrepancies` means every balance equals the sum of its movements.
+         */
+        get: operations["reconcileStock"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stock counts
+         * @description Newest first.
+         */
+        get: operations["listStockCounts"];
+        put?: never;
+        /** Start counting a location */
+        post: operations["createStockCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/counts/{countId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A stock count and its lines */
+        get: operations["getStockCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/counts/{countId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Record what was counted
+         * @description Replaces a draft count’s lines. Stock items only, one line each.
+         */
+        put: operations["setStockCountLines"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/counts/{countId}/post": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post a count: adjust stock to what was counted
+         * @description For each line, what the system holds is recorded and the difference is posted as a count adjustment naming who posted it. Items not on the count are left alone.
+         */
+        post: operations["postStockCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/counts/{countId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a draft count */
+        post: operations["cancelStockCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchasing/suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find suppliers
+         * @description Alphabetical, a page at a time. `q` matches words or their beginnings in the name, contact, email or tax reference. Active suppliers only unless `status` says otherwise.
+         */
+        get: operations["listSuppliers"];
+        put?: never;
+        /**
+         * Add a supplier
+         * @description Honours `Idempotency-Key`.
+         */
+        post: operations["createSupplier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchasing/suppliers/{supplierId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a supplier
+         * @description The supplier with its most recent orders and what this seat may do.
+         */
+        get: operations["getSupplier"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a supplier
+         * @description Send `expectedVersion` as read. Setting `status` to `inactive` keeps the supplier on record but stops new orders to it.
+         */
+        patch: operations["updateSupplier"];
+        trace?: never;
+    };
+    "/v1/purchasing/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find purchase orders
+         * @description Newest first, a page at a time. `q` matches the reference (`PO-000123`, `123`) or words of the supplier name.
+         */
+        get: operations["listPurchaseOrders"];
+        put?: never;
+        /**
+         * Draft a purchase order
+         * @description A draft in the company currency, numbered `PO-000001` onwards. Lines name catalogue items; a line without a `description` takes the item name. Honours `Idempotency-Key`.
+         */
+        post: operations["createPurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchasing/orders/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a purchase order
+         * @description The order, its lines, every receipt against it and what this seat may do.
+         */
+        get: operations["getPurchaseOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a draft purchase order
+         * @description Send `expectedVersion` as read. `lines`, when sent, replaces every line. Only a draft changes (409 `order_not_draft`).
+         */
+        patch: operations["updatePurchaseOrder"];
+        trace?: never;
+    };
+    "/v1/purchasing/orders/{orderId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a purchase order
+         * @description Owners and admins approve. From then on the lines are fixed and goods may be received against it. A draft with no lines cannot be approved (422 `order_empty`).
+         */
+        post: operations["approvePurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchasing/orders/{orderId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a purchase order
+         * @description Closes an order that will not be (fully) delivered. What was already received stays in stock. A received or cancelled order does not change (409 `order_closed`).
+         */
+        post: operations["cancelPurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchasing/orders/{orderId}/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record goods received against an order
+         * @description Each line names an order line and what arrived, at the order's price unless `unitCost` says otherwise. Stock items are written to the ledger at the location given (or the order's delivery location) and the cost folds into the item's average. The order becomes partially or fully received. Needs `Idempotency-Key`.
+         */
+        post: operations["receivePurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchasing/receipts/{receiptId}/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Return goods from a receipt to the supplier
+         * @description Takes the quantity back out of the location it was received at, as a reversal of the receipt movement, and frees that much of the order line to be received again. Needs `Idempotency-Key`.
+         */
+        post: operations["returnToSupplier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work-orders/{workOrderId}/materials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a part used on a job
+         * @description A stock item is taken from the engineer's van (or the location a dispatcher names) and posted to the ledger at the item's average cost. When the location does not hold enough, nothing is posted and the use is kept as a conflict (`status: conflict`) for the office to resolve; stock never goes negative. Services and non-stock items are recorded without touching stock. Needs `Idempotency-Key`.
+         */
+        post: operations["recordWorkOrderMaterial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work-orders/{workOrderId}/materials/{materialId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Settle a part use the location could not cover
+         * @description `cancel` drops the use (the person who recorded it, or the office). `retry` posts it again, optionally with another quantity or location, after the stock has been put right (office only); it may be refused again and stay a conflict.
+         */
+        post: operations["resolveWorkOrderMaterial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work-orders/{workOrderId}/materials/{materialId}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Put an unused part back
+         * @description Returns part or all of a posted use to the location it came from, as a reversal of the use; never more than was used (422 `over_returned`). Needs `Idempotency-Key`.
+         */
+        post: operations["returnWorkOrderMaterial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/materials/conflicts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Part uses waiting for the office
+         * @description Every use a location could not cover, newest first, across jobs: what was asked for, what was there, and which job.
+         */
+        get: operations["listMaterialConflicts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -5469,7 +6046,7 @@ export interface operations {
                         displayName: string;
                         /** @enum {string} */
                         role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
-                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage")[];
+                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -14263,6 +14840,6170 @@ export interface operations {
             };
         };
     };
+    listItemCategories: {
+        parameters: {
+            query?: {
+                includeArchived?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Alphabetical. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            archived: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createItemCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The category. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        archived: boolean;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The name is taken (`category_name_taken`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateItemCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    archived?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The category. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        archived: boolean;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such category. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The name is taken (`category_name_taken`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listItems: {
+        parameters: {
+            query?: {
+                q?: string;
+                kind?: ("stock_item" | "non_stock_item" | "service") | ("stock_item" | "non_stock_item" | "service")[];
+                categoryId?: string;
+                includeArchived?: "true" | "false";
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of items. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            sku: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "stock_item" | "non_stock_item" | "service";
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            description: string | null;
+                            /** Format: uuid */
+                            categoryId: string | null;
+                            barcode: string | null;
+                            defaultUnitCost: string | null;
+                            salePrice: string | null;
+                            averageUnitCost: string | null;
+                            /** Format: uuid */
+                            preferredSupplierId: string | null;
+                            supplierPartNumber: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                            onHand: string;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    sku: string;
+                    name: string;
+                    description?: string | null;
+                    /** @enum {string} */
+                    kind?: "stock_item" | "non_stock_item" | "service";
+                    /** Format: uuid */
+                    categoryId?: string | null;
+                    /** @enum {string} */
+                    unit?: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                    barcode?: string | null;
+                    defaultUnitCost?: string | null;
+                    salePrice?: string | null;
+                    /** Format: uuid */
+                    preferredSupplierId?: string | null;
+                    supplierPartNumber?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The item. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        sku: string;
+                        name: string;
+                        /** @enum {string} */
+                        kind: "stock_item" | "non_stock_item" | "service";
+                        /** @enum {string} */
+                        unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        description: string | null;
+                        /** Format: uuid */
+                        categoryId: string | null;
+                        barcode: string | null;
+                        defaultUnitCost: string | null;
+                        salePrice: string | null;
+                        averageUnitCost: string | null;
+                        /** Format: uuid */
+                        preferredSupplierId: string | null;
+                        supplierPartNumber: string | null;
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such category (`category_not_found`) or supplier (`supplier_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The SKU (`sku_taken`) or barcode (`barcode_taken`) is taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The item. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        item: {
+                            /** Format: uuid */
+                            id: string;
+                            sku: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "stock_item" | "non_stock_item" | "service";
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            description: string | null;
+                            /** Format: uuid */
+                            categoryId: string | null;
+                            barcode: string | null;
+                            defaultUnitCost: string | null;
+                            salePrice: string | null;
+                            averageUnitCost: string | null;
+                            /** Format: uuid */
+                            preferredSupplierId: string | null;
+                            supplierPartNumber: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        };
+                        stock: {
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            onHand: string;
+                            minimum: string | null;
+                        }[];
+                        onHand: string;
+                        can: {
+                            manage: boolean;
+                            move: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    sku?: string;
+                    name?: string;
+                    description?: string | null;
+                    /** @enum {string} */
+                    kind?: "stock_item" | "non_stock_item" | "service";
+                    /** Format: uuid */
+                    categoryId?: string | null;
+                    /** @enum {string} */
+                    unit?: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                    barcode?: string | null;
+                    defaultUnitCost?: string | null;
+                    salePrice?: string | null;
+                    /** Format: uuid */
+                    preferredSupplierId?: string | null;
+                    supplierPartNumber?: string | null;
+                    expectedVersion: number;
+                    archived?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The item as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        sku: string;
+                        name: string;
+                        /** @enum {string} */
+                        kind: "stock_item" | "non_stock_item" | "service";
+                        /** @enum {string} */
+                        unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        description: string | null;
+                        /** Format: uuid */
+                        categoryId: string | null;
+                        barcode: string | null;
+                        defaultUnitCost: string | null;
+                        salePrice: string | null;
+                        averageUnitCost: string | null;
+                        /** Format: uuid */
+                        preferredSupplierId: string | null;
+                        supplierPartNumber: string | null;
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such item, category or supplier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`), SKU or barcode taken, or it holds stock (`item_has_stock`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setReorderLevels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    levels: {
+                        /** Format: uuid */
+                        locationId: string;
+                        minimum: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The item, with its stock and levels. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        item: {
+                            /** Format: uuid */
+                            id: string;
+                            sku: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "stock_item" | "non_stock_item" | "service";
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            description: string | null;
+                            /** Format: uuid */
+                            categoryId: string | null;
+                            barcode: string | null;
+                            defaultUnitCost: string | null;
+                            salePrice: string | null;
+                            averageUnitCost: string | null;
+                            /** Format: uuid */
+                            preferredSupplierId: string | null;
+                            supplierPartNumber: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        };
+                        stock: {
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            onHand: string;
+                            minimum: string | null;
+                        }[];
+                        onHand: string;
+                        can: {
+                            manage: boolean;
+                            move: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such item or location. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a stock item (`not_stock_item`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    lookupItemByBarcode: {
+        parameters: {
+            query: {
+                barcode: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The item. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        sku: string;
+                        name: string;
+                        /** @enum {string} */
+                        kind: "stock_item" | "non_stock_item" | "service";
+                        /** @enum {string} */
+                        unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        description: string | null;
+                        /** Format: uuid */
+                        categoryId: string | null;
+                        barcode: string | null;
+                        defaultUnitCost: string | null;
+                        salePrice: string | null;
+                        averageUnitCost: string | null;
+                        /** Format: uuid */
+                        preferredSupplierId: string | null;
+                        supplierPartNumber: string | null;
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No item has this barcode. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listStockLocations: {
+        parameters: {
+            query?: {
+                kind?: ("warehouse" | "van" | "site") | ("warehouse" | "van" | "site")[];
+                includeArchived?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Locations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "warehouse" | "van" | "site";
+                            /** Format: uuid */
+                            assignedTo: string | null;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createStockLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @enum {string} */
+                    kind: "warehouse" | "van" | "site";
+                    /** Format: uuid */
+                    assignedTo?: string | null;
+                    /** Format: uuid */
+                    siteId?: string;
+                    notes?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The location. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** @enum {string} */
+                        kind: "warehouse" | "van" | "site";
+                        /** Format: uuid */
+                        assignedTo: string | null;
+                        site: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        notes: string | null;
+                        version: number;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such site (`site_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Name taken (`location_name_taken`), or the member already has a van (`member_has_van`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid, or the assignee is not an active member (`assignee_not_member`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getStockLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The location. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        location: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "warehouse" | "van" | "site";
+                            /** Format: uuid */
+                            assignedTo: string | null;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        };
+                        stock: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            onHand: string;
+                            minimum: string | null;
+                        }[];
+                        can: {
+                            manage: boolean;
+                            move: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such location. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateStockLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    name?: string;
+                    /** Format: uuid */
+                    assignedTo?: string | null;
+                    notes?: string | null;
+                    archived?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The location as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** @enum {string} */
+                        kind: "warehouse" | "van" | "site";
+                        /** Format: uuid */
+                        assignedTo: string | null;
+                        site: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        notes: string | null;
+                        version: number;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such location. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`), name taken, the member already has a van (`member_has_van`), or it still holds stock (`location_not_empty`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only vans are assigned (`not_a_van`), or the assignee is not an active member. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listStockMovements: {
+        parameters: {
+            query?: {
+                itemId?: string;
+                locationId?: string;
+                kind?: ("receipt" | "issue" | "transfer_out" | "transfer_in" | "adjustment" | "count_adjustment" | "consumption" | "consumption_return" | "return_to_supplier") | ("receipt" | "issue" | "transfer_out" | "transfer_in" | "adjustment" | "count_adjustment" | "consumption" | "consumption_return" | "return_to_supplier")[];
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of movements. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            postingId: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            /** @enum {string} */
+                            kind: "receipt" | "issue" | "transfer_out" | "transfer_in" | "adjustment" | "count_adjustment" | "consumption" | "consumption_return" | "return_to_supplier";
+                            quantity: string;
+                            unitCost: string | null;
+                            reason: string | null;
+                            /** Format: uuid */
+                            actorId: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    postStockMovement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    type: "receipt";
+                    /** Format: uuid */
+                    itemId: string;
+                    /** Format: uuid */
+                    locationId: string;
+                    quantity: string;
+                    unitCost?: string;
+                    reason?: string;
+                } | {
+                    /** @enum {string} */
+                    type: "issue";
+                    /** Format: uuid */
+                    itemId: string;
+                    /** Format: uuid */
+                    locationId: string;
+                    quantity: string;
+                    reason: string;
+                } | {
+                    /** @enum {string} */
+                    type: "transfer";
+                    /** Format: uuid */
+                    itemId: string;
+                    /** Format: uuid */
+                    fromLocationId: string;
+                    /** Format: uuid */
+                    toLocationId: string;
+                    quantity: string;
+                    reason?: string;
+                } | {
+                    /** @enum {string} */
+                    type: "adjustment";
+                    /** Format: uuid */
+                    itemId: string;
+                    /** Format: uuid */
+                    locationId: string;
+                    /** @enum {string} */
+                    direction: "in" | "out";
+                    quantity: string;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description What was posted. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        postingId: string;
+                        movements: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            postingId: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            /** @enum {string} */
+                            kind: "receipt" | "issue" | "transfer_out" | "transfer_in" | "adjustment" | "count_adjustment" | "consumption" | "consumption_return" | "return_to_supplier";
+                            quantity: string;
+                            unitCost: string | null;
+                            reason: string | null;
+                            /** Format: uuid */
+                            actorId: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such item (`item_not_found`) or location (`location_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not enough stock (`insufficient_stock`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid; not a stock item (`not_stock_item`); archived (`item_archived`, `location_archived`); or a transfer to where it already is (`same_location`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listStockBalances: {
+        parameters: {
+            query?: {
+                itemId?: string;
+                locationId?: string;
+                belowMinimum?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Balances. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            onHand: string;
+                            minimum: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reconcileStock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Any balance that disagrees with its ledger. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date-time */
+                        checkedAt: string;
+                        discrepancies: {
+                            /** Format: uuid */
+                            itemId: string;
+                            /** Format: uuid */
+                            locationId: string;
+                            ledger: string;
+                            balance: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listStockCounts: {
+        parameters: {
+            query?: {
+                locationId?: string;
+                status?: ("draft" | "posted" | "cancelled") | ("draft" | "posted" | "cancelled")[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Counts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "posted" | "cancelled";
+                            notes: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: uuid */
+                            postedBy: string | null;
+                            /** Format: date-time */
+                            postedAt: string | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createStockCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    locationId: string;
+                    notes?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft count. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        count: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "posted" | "cancelled";
+                            notes: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: uuid */
+                            postedBy: string | null;
+                            /** Format: date-time */
+                            postedAt: string | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                        };
+                        lines: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            countedQuantity: string;
+                            expectedQuantity: string | null;
+                            onHand: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such location. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getStockCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The count. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        count: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "posted" | "cancelled";
+                            notes: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: uuid */
+                            postedBy: string | null;
+                            /** Format: date-time */
+                            postedAt: string | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                        };
+                        lines: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            countedQuantity: string;
+                            expectedQuantity: string | null;
+                            onHand: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such count. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setStockCountLines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    lines: {
+                        /** Format: uuid */
+                        itemId: string;
+                        countedQuantity: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The count. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        count: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "posted" | "cancelled";
+                            notes: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: uuid */
+                            postedBy: string | null;
+                            /** Format: date-time */
+                            postedAt: string | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                        };
+                        lines: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            countedQuantity: string;
+                            expectedQuantity: string | null;
+                            onHand: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such count or item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else, or not a draft (`count_not_draft`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    postStockCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The posted count. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        count: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "posted" | "cancelled";
+                            notes: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: uuid */
+                            postedBy: string | null;
+                            /** Format: date-time */
+                            postedAt: string | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                        };
+                        lines: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            countedQuantity: string;
+                            expectedQuantity: string | null;
+                            onHand: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such count. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else, or not a draft (`count_not_draft`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelStockCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                countId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The cancelled count. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        count: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "posted" | "cancelled";
+                            notes: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: uuid */
+                            postedBy: string | null;
+                            /** Format: date-time */
+                            postedAt: string | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                        };
+                        lines: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            countedQuantity: string;
+                            expectedQuantity: string | null;
+                            onHand: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such count. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else, or not a draft (`count_not_draft`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listSuppliers: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: ("active" | "inactive") | ("active" | "inactive")[];
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of suppliers. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            status: "active" | "inactive";
+                            contactName: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            taxReference: string | null;
+                            paymentTerms: string | null;
+                            leadTimeDays: number | null;
+                            address: {
+                                line1: string | null;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            notes: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createSupplier: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    contactName?: string | null;
+                    /** Format: email */
+                    email?: string | null;
+                    phone?: string | null;
+                    taxReference?: string | null;
+                    paymentTerms?: string | null;
+                    leadTimeDays?: number | null;
+                    address?: {
+                        line1?: string | null;
+                        line2?: string | null;
+                        city?: string | null;
+                        region?: string | null;
+                        postcode?: string | null;
+                        countryCode?: string | null;
+                    };
+                    /** @enum {string} */
+                    status?: "active" | "inactive";
+                    notes?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The supplier. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** @enum {string} */
+                        status: "active" | "inactive";
+                        contactName: string | null;
+                        email: string | null;
+                        phone: string | null;
+                        taxReference: string | null;
+                        paymentTerms: string | null;
+                        leadTimeDays: number | null;
+                        address: {
+                            line1: string | null;
+                            line2: string | null;
+                            city: string | null;
+                            region: string | null;
+                            postcode: string | null;
+                            countryCode: string | null;
+                        };
+                        notes: string | null;
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The name is taken (`supplier_name_taken`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getSupplier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The supplier. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        supplier: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            status: "active" | "inactive";
+                            contactName: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            taxReference: string | null;
+                            paymentTerms: string | null;
+                            leadTimeDays: number | null;
+                            address: {
+                                line1: string | null;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            notes: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        };
+                        orders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            manage: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such supplier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateSupplier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    contactName?: string | null;
+                    /** Format: email */
+                    email?: string | null;
+                    phone?: string | null;
+                    taxReference?: string | null;
+                    paymentTerms?: string | null;
+                    leadTimeDays?: number | null;
+                    address?: {
+                        line1?: string | null;
+                        line2?: string | null;
+                        city?: string | null;
+                        region?: string | null;
+                        postcode?: string | null;
+                        countryCode?: string | null;
+                    };
+                    /** @enum {string} */
+                    status?: "active" | "inactive";
+                    notes?: string | null;
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The supplier as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** @enum {string} */
+                        status: "active" | "inactive";
+                        contactName: string | null;
+                        email: string | null;
+                        phone: string | null;
+                        taxReference: string | null;
+                        paymentTerms: string | null;
+                        leadTimeDays: number | null;
+                        address: {
+                            line1: string | null;
+                            line2: string | null;
+                            city: string | null;
+                            region: string | null;
+                            postcode: string | null;
+                            countryCode: string | null;
+                        };
+                        notes: string | null;
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such supplier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`) or the name is taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listPurchaseOrders: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: ("draft" | "approved" | "partially_received" | "received" | "cancelled") | ("draft" | "approved" | "partially_received" | "received" | "cancelled")[];
+                supplierId?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of orders. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    supplierId: string;
+                    /** Format: date */
+                    expectedDate?: string | null;
+                    /** Format: uuid */
+                    deliveryLocationId?: string | null;
+                    notes?: string | null;
+                    currencyCode?: string;
+                    /** @default [] */
+                    lines?: {
+                        /** Format: uuid */
+                        itemId: string;
+                        description?: string;
+                        quantityOrdered: string;
+                        unitPrice: string;
+                        taxRateBp?: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The order. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such supplier (`supplier_not_found`), item (`item_not_found`) or location (`location_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Invalid, or the supplier is inactive (`supplier_inactive`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updatePurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    supplierId?: string;
+                    /** Format: date */
+                    expectedDate?: string | null;
+                    /** Format: uuid */
+                    deliveryLocationId?: string | null;
+                    notes?: string | null;
+                    lines?: {
+                        /** Format: uuid */
+                        itemId: string;
+                        description?: string;
+                        quantityOrdered: string;
+                        unitPrice: string;
+                        taxRateBp?: number;
+                    }[];
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The order as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order, supplier, item or location. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`) or no longer a draft (`order_not_draft`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    approvePurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The order, approved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`) or not a draft (`order_not_draft`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No lines (`order_empty`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The order, cancelled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`) or closed (`order_closed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    receivePurchaseOrder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** Format: uuid */
+                    locationId?: string;
+                    supplierNote?: string | null;
+                    notes?: string | null;
+                    lines: {
+                        /** Format: uuid */
+                        orderLineId: string;
+                        quantity: string;
+                        unitCost?: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The order after the receipt. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order, order line or location. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`), not approved (`order_not_receivable`), or already posted (`already_posted`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description More than is left to receive (`over_received`), no location (`location_required`), or a line named twice (`line_repeated`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    returnToSupplier: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                receiptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                    lines: {
+                        /** Format: uuid */
+                        receiptLineId: string;
+                        quantity: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The order after the return. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such receipt or receipt line. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not enough stock left there (`insufficient_stock`) or already posted. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description More than the line brought in (`over_returned`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    recordWorkOrderMaterial: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                workOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    itemId: string;
+                    /** Format: uuid */
+                    locationId?: string;
+                    quantity: string;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The job, with the use recorded or kept as a conflict. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            description: string | null;
+                            instructions: string | null;
+                            lastReason: string | null;
+                            completedAt: string | null;
+                            reviewedAt: string | null;
+                            cancelledAt: string | null;
+                        };
+                        site: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            address: {
+                                line1: string;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            location: {
+                                latitude: number;
+                                longitude: number;
+                            } | null;
+                            /** @enum {string} */
+                            geocodeStatus: "pending" | "found" | "not_found" | "failed" | "manual";
+                            access: {
+                                gateCode: string | null;
+                                parking: string | null;
+                                askFor: string | null;
+                                hazards: string | null;
+                                notes: string | null;
+                                updatedAt: string | null;
+                                updatedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                            };
+                        };
+                        siteContact: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            jobTitle: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            isPrimary: boolean;
+                            notes: string | null;
+                            archived: boolean;
+                        } | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            accountNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "on_hold" | "closed";
+                            phone: string | null;
+                        };
+                        jobType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            code: string;
+                            expectedDurationMinutes: number | null;
+                        };
+                        crew: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            lead: boolean;
+                            assignedAt: string;
+                        }[];
+                        forms: {
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                            required: boolean;
+                            submission: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "reopened";
+                                submittedAt: string | null;
+                            } | null;
+                        }[];
+                        checklist: {
+                            /** Format: uuid */
+                            id: string;
+                            label: string;
+                            done: boolean;
+                            doneBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            doneAt: string | null;
+                        }[];
+                        comments: {
+                            /** Format: uuid */
+                            id: string;
+                            author: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            visibility: "internal" | "customer";
+                            body: string;
+                            createdAt: string;
+                        }[];
+                        events: {
+                            /** @enum {string} */
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            /** @enum {string|null} */
+                            fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            /** @enum {string|null} */
+                            toState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            person: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            actor: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            reason: string | null;
+                            details: {
+                                [key: string]: unknown;
+                            };
+                            occurredAt: string;
+                            recordedAt: string;
+                        }[];
+                        attachments: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
+                        previousAtSite: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        can: {
+                            edit: boolean;
+                            assign: boolean;
+                            work: boolean;
+                            comment: boolean;
+                            transitions: {
+                                /** @enum {string} */
+                                to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                requiresReason: boolean;
+                            }[];
+                            recordParts: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not on this job, or not your van. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such job (this person may see) or item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No van assigned (`no_van`), no location given by a dispatcher (`location_required`), or the item is archived. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    resolveWorkOrderMaterial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workOrderId: string;
+                materialId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    action: "cancel";
+                } | {
+                    /** @enum {string} */
+                    action: "retry";
+                    quantity?: string;
+                    /** Format: uuid */
+                    locationId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The job as it now is. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            description: string | null;
+                            instructions: string | null;
+                            lastReason: string | null;
+                            completedAt: string | null;
+                            reviewedAt: string | null;
+                            cancelledAt: string | null;
+                        };
+                        site: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            address: {
+                                line1: string;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            location: {
+                                latitude: number;
+                                longitude: number;
+                            } | null;
+                            /** @enum {string} */
+                            geocodeStatus: "pending" | "found" | "not_found" | "failed" | "manual";
+                            access: {
+                                gateCode: string | null;
+                                parking: string | null;
+                                askFor: string | null;
+                                hazards: string | null;
+                                notes: string | null;
+                                updatedAt: string | null;
+                                updatedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                            };
+                        };
+                        siteContact: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            jobTitle: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            isPrimary: boolean;
+                            notes: string | null;
+                            archived: boolean;
+                        } | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            accountNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "on_hold" | "closed";
+                            phone: string | null;
+                        };
+                        jobType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            code: string;
+                            expectedDurationMinutes: number | null;
+                        };
+                        crew: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            lead: boolean;
+                            assignedAt: string;
+                        }[];
+                        forms: {
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                            required: boolean;
+                            submission: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "reopened";
+                                submittedAt: string | null;
+                            } | null;
+                        }[];
+                        checklist: {
+                            /** Format: uuid */
+                            id: string;
+                            label: string;
+                            done: boolean;
+                            doneBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            doneAt: string | null;
+                        }[];
+                        comments: {
+                            /** Format: uuid */
+                            id: string;
+                            author: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            visibility: "internal" | "customer";
+                            body: string;
+                            createdAt: string;
+                        }[];
+                        events: {
+                            /** @enum {string} */
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            /** @enum {string|null} */
+                            fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            /** @enum {string|null} */
+                            toState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            person: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            actor: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            reason: string | null;
+                            details: {
+                                [key: string]: unknown;
+                            };
+                            occurredAt: string;
+                            recordedAt: string;
+                        }[];
+                        attachments: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
+                        previousAtSite: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        can: {
+                            edit: boolean;
+                            assign: boolean;
+                            work: boolean;
+                            comment: boolean;
+                            transitions: {
+                                /** @enum {string} */
+                                to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                requiresReason: boolean;
+                            }[];
+                            recordParts: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not allowed to resolve this use. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such job or part. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a conflict (`not_a_conflict`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    returnWorkOrderMaterial: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                workOrderId: string;
+                materialId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    quantity: string;
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The job as it now is. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            description: string | null;
+                            instructions: string | null;
+                            lastReason: string | null;
+                            completedAt: string | null;
+                            reviewedAt: string | null;
+                            cancelledAt: string | null;
+                        };
+                        site: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            address: {
+                                line1: string;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            location: {
+                                latitude: number;
+                                longitude: number;
+                            } | null;
+                            /** @enum {string} */
+                            geocodeStatus: "pending" | "found" | "not_found" | "failed" | "manual";
+                            access: {
+                                gateCode: string | null;
+                                parking: string | null;
+                                askFor: string | null;
+                                hazards: string | null;
+                                notes: string | null;
+                                updatedAt: string | null;
+                                updatedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                            };
+                        };
+                        siteContact: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            jobTitle: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            isPrimary: boolean;
+                            notes: string | null;
+                            archived: boolean;
+                        } | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            accountNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "on_hold" | "closed";
+                            phone: string | null;
+                        };
+                        jobType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            code: string;
+                            expectedDurationMinutes: number | null;
+                        };
+                        crew: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            lead: boolean;
+                            assignedAt: string;
+                        }[];
+                        forms: {
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                            required: boolean;
+                            submission: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "reopened";
+                                submittedAt: string | null;
+                            } | null;
+                        }[];
+                        checklist: {
+                            /** Format: uuid */
+                            id: string;
+                            label: string;
+                            done: boolean;
+                            doneBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            doneAt: string | null;
+                        }[];
+                        comments: {
+                            /** Format: uuid */
+                            id: string;
+                            author: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            visibility: "internal" | "customer";
+                            body: string;
+                            createdAt: string;
+                        }[];
+                        events: {
+                            /** @enum {string} */
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            /** @enum {string|null} */
+                            fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            /** @enum {string|null} */
+                            toState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            person: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            actor: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            reason: string | null;
+                            details: {
+                                [key: string]: unknown;
+                            };
+                            occurredAt: string;
+                            recordedAt: string;
+                        }[];
+                        attachments: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
+                        previousAtSite: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        can: {
+                            edit: boolean;
+                            assign: boolean;
+                            work: boolean;
+                            comment: boolean;
+                            transitions: {
+                                /** @enum {string} */
+                                to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                requiresReason: boolean;
+                            }[];
+                            recordParts: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such job or part. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a posted use (`not_posted`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description More than was used (`over_returned`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listMaterialConflicts: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The conflicts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                referenceLabel: string;
+                                title: string;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listJobTypes: {
         parameters: {
             query?: {
@@ -15190,6 +21931,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -15200,6 +21989,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -15668,6 +22458,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -15678,6 +22516,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -16042,6 +22881,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -16052,6 +22939,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -16414,6 +23302,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -16424,6 +23360,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -16784,6 +23721,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -16794,6 +23779,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -17156,6 +24142,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -17166,6 +24200,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -17525,6 +24560,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -17535,6 +24618,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -17888,6 +24972,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -17898,6 +25030,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -18250,6 +25383,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -18260,6 +25441,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -18605,6 +25787,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -18615,6 +25845,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -18979,6 +26210,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -18989,6 +26268,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -20140,6 +27420,54 @@ export interface operations {
                                 createdAt: string;
                                 updatedAt: string;
                             }[];
+                            materials: {
+                                /** Format: uuid */
+                                id: string;
+                                item: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    sku: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    kind: "stock_item" | "non_stock_item" | "service";
+                                    /** @enum {string} */
+                                    unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                };
+                                location: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                quantity: string;
+                                returnedQuantity: string;
+                                unitCost: string | null;
+                                /** @enum {string} */
+                                status: "posted" | "conflict" | "cancelled";
+                                availableQuantity: string | null;
+                                note: string | null;
+                                recordedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: date-time */
+                                recordedAt: string;
+                                /** Format: date-time */
+                                occurredAt: string;
+                                cancelledBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                clientActionId: string | null;
+                                version: number;
+                            }[];
+                            materialsCost: string | null;
+                            van: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
                             can: {
                                 edit: boolean;
                                 assign: boolean;
@@ -20150,6 +27478,7 @@ export interface operations {
                                     to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                     requiresReason: boolean;
                                 }[];
+                                recordParts: boolean;
                             };
                         }[];
                         removedWorkOrderIds: string[];
@@ -20405,6 +27734,26 @@ export interface operations {
                                 status: "denied" | "unavailable";
                             }) | null;
                         }[];
+                        vanStock: {
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            items: {
+                                item: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    sku: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    kind: "stock_item" | "non_stock_item" | "service";
+                                    /** @enum {string} */
+                                    unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                };
+                                onHand: string;
+                            }[];
+                        } | null;
                     };
                 };
             };
@@ -20723,6 +28072,23 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "denied" | "unavailable";
                             }) | null;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "work_order.material";
+                        payload: {
+                            /** Format: uuid */
+                            materialId: string;
+                            /** Format: uuid */
+                            itemId: string;
+                            quantity: string;
+                            note?: string | null;
                         };
                     })[];
                 };

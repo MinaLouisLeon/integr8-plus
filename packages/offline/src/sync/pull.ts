@@ -45,6 +45,7 @@ export interface PullOutcome {
 const PULL_TABLES = [
   'meta',
   'shifts',
+  'van_stock',
   'customers',
   'sites',
   'work_orders',
@@ -69,7 +70,8 @@ async function withPendingChanges(
     `select kind, payload, recorded_at from outbox
      where state = 'pending'
        and kind in ('work_order.transition', 'work_order.checklist', 'work_order.comment', 'site.access',
-                    'work_order.photo', 'work_order.photo_remove', 'work_order.signoff')
+                    'work_order.photo', 'work_order.photo_remove', 'work_order.signoff',
+                    'work_order.material')
        and (work_order_id = ? or (kind = 'site.access' and entity_id = ?))
      order by seq`,
     [detail.workOrder.id, detail.site.id],
@@ -162,6 +164,32 @@ async function applyPage(
         at,
       ],
     );
+  }
+
+  // The van's stock comes with the first page and replaces what was held
+  // (CRM/ERP plan, phase E2): an engineer taken off a van sees it empty.
+  if (page.vanStock !== null && page.vanStock !== undefined) {
+    await sql.run('delete from van_stock');
+    const { location, items } = page.vanStock;
+    if (location !== null) {
+      for (const row of items) {
+        await sql.run(
+          `insert into van_stock (item_id, location_id, location_name, sku, name, kind, unit, on_hand, updated_at)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            row.item.id,
+            location.id,
+            location.name,
+            row.item.sku,
+            row.item.name,
+            row.item.kind,
+            row.item.unit,
+            row.onHand,
+            at,
+          ],
+        );
+      }
+    }
   }
 
   let removed = 0;

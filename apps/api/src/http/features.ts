@@ -43,13 +43,21 @@ export async function assertFeatureEnabled(
   feature: ModuleFeature,
   now = Date.now(),
 ): Promise<void> {
+  if (!(await isFeatureEnabled(tenantId, feature, now))) {
+    throw new FeatureDisabledError(feature);
+  }
+}
+
+/** Whether this company has the module switched on, for a body that shows more when it does. */
+export async function isFeatureEnabled(
+  tenantId: string,
+  feature: ModuleFeature,
+  now = Date.now(),
+): Promise<boolean> {
   const cached = cache.get(tenantId);
   const fresh =
     cached !== undefined && now - cached.readAt < CACHE_TTL_MS ? cached : await read(tenantId, now);
-
-  if (fresh.features[feature] !== true) {
-    throw new FeatureDisabledError(feature);
-  }
+  return fresh.features[feature] === true;
 }
 
 /** Forgets what is cached about one company's modules, or every company's. */

@@ -1,6 +1,7 @@
 import { findTransition } from '@integr8/core';
 import type {
   AccessValues,
+  MaterialBody,
   MutationKind,
   PushMutation,
   PushResult,
@@ -126,6 +127,7 @@ const OUTBOX_TABLES = [
   'submissions',
   'uploads',
   'files',
+  'van_stock',
 ] as const;
 
 async function actorOf(sql: SqlConnection): Promise<Actor> {
@@ -292,6 +294,69 @@ export async function recordChecklist(
     await insertChange(sql, {
       id,
       kind: 'work_order.checklist',
+      entityKey: `work_order:${input.workOrderId}`,
+      entityId: input.workOrderId,
+      workOrderId: input.workOrderId,
+      payload,
+      base: null,
+      at,
+    });
+    return id;
+  });
+}
+
+/**
+ * A part used on the job, from the engineer's van (CRM/ERP plan, phase E2;
+ * ADR-0005). The item must be one the van holds, as the server last said; the
+ * server decides whether enough is left when the change arrives, so the phone
+ * records what was asked for and shows it at once.
+ */
+export async function recordMaterial(
+  context: ChangeContext,
+  input: { workOrderId: string; itemId: string; quantity: string; note?: string },
+): Promise<string> {
+  const { db, clock, random } = context;
+  if (!/^\d{1,16}(\.\d{1,4})?$/u.test(input.quantity) || !/[1-9]/u.test(input.quantity)) {
+    throw new LocalChangeError('quantity_invalid', 'Enter a quantity above zero.');
+  }
+  return db.write(OUTBOX_TABLES, async (sql) => {
+    await jobDetail(sql, input.workOrderId);
+    const held = await sql.get<{
+      location_id: string;
+      location_name: string;
+      sku: string;
+      name: string;
+      kind: string;
+      unit: string;
+    }>(
+      'select location_id, location_name, sku, name, kind, unit from van_stock where item_id = ?',
+      [input.itemId],
+    );
+    if (held === undefined) {
+      throw new LocalChangeError('item_not_in_van', 'This part is not in your van.');
+    }
+    const now = clock.now();
+    const at = now.toISOString();
+    const id = uuidv7(now.getTime(), random);
+    const materialId = uuidv7(now.getTime(), random);
+    const payload = {
+      materialId,
+      itemId: input.itemId,
+      quantity: input.quantity,
+      ...(input.note === undefined || input.note.trim() === '' ? {} : { note: input.note.trim() }),
+      item: {
+        id: input.itemId,
+        sku: held.sku,
+        name: held.name,
+        kind: held.kind as MaterialBody['item']['kind'],
+        unit: held.unit as MaterialBody['item']['unit'],
+      },
+      location: { id: held.location_id, name: held.location_name },
+    };
+    await applyLocally(sql, input.workOrderId, { kind: 'work_order.material', payload }, at);
+    await insertChange(sql, {
+      id,
+      kind: 'work_order.material',
       entityKey: `work_order:${input.workOrderId}`,
       entityId: input.workOrderId,
       workOrderId: input.workOrderId,

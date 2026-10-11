@@ -27,6 +27,11 @@ type JsonBody<T> = T extends { requestBody: { content: { 'application/json': inf
 
 export type PullPage = Ok<paths['/v1/sync/pull']['get']>;
 export type SyncSubmission = PullPage['submissions'][number];
+/** The caller's van and its stock, with the first page of a pull (CRM/ERP plan, phase E2). */
+export type VanStock = NonNullable<PullPage['vanStock']>;
+export type VanStockItem = VanStock['items'][number];
+/** A part used on a job, as the job detail carries it. */
+export type MaterialBody = WorkOrderDetail['materials'][number];
 export type PushRequest = JsonBody<paths['/v1/sync/push']['post']>;
 export type PushMutation = PushRequest['mutations'][number];
 export type MutationKind = PushMutation['kind'];

@@ -364,6 +364,54 @@ export {
   type CurrencyTotal,
   type StageSummary,
 } from './repositories/crm-reports.js';
+export {
+  type Item,
+  type ItemCategory,
+  type ItemInput,
+  type ItemPage,
+  type ItemQuery,
+  type ItemRefusal,
+  type ItemWithStock,
+} from './repositories/inventory-catalogue.js';
+export {
+  type Balance,
+  type Discrepancy,
+  DuplicatePostingError,
+  InsufficientStockError,
+  type LocationInput,
+  type Movement,
+  type MovementInput,
+  type MovementPage,
+  type MovementQuery,
+  NotStockItemError,
+  type StockCount,
+  type StockCountLine,
+  type StockLocation,
+  type StockRefusal,
+} from './repositories/inventory-stock.js';
+export {
+  type GoodsReceipt,
+  type GoodsReceiptLine,
+  InventoryPurchasingRepository,
+  parsePurchaseOrderReference,
+  type PurchaseOrder,
+  type PurchaseOrderInput,
+  type PurchaseOrderLine,
+  type PurchaseOrderLineInput,
+  type PurchaseOrderPage,
+  type PurchaseOrderQuery,
+  type PurchaseOrderTotals,
+  type PurchaseRefusal,
+  type Supplier,
+  type SupplierInput,
+  type SupplierQuery,
+} from './repositories/inventory-purchasing.js';
+export {
+  InventoryMaterialsRepository,
+  type Material,
+  type MaterialInput,
+  type MaterialPatch,
+} from './repositories/inventory-materials.js';
 
 export {
   addressLine,

@@ -64,6 +64,22 @@ export const EXPORTED_TABLES = [
   'crm_activity_leads',
   'crm_activity_customers',
   'crm_activity_opportunities',
+  // Inventory (0026): the catalogue, locations, the stock ledger and counts.
+  // Balances are left out: they are derived from the ledger, which is exported.
+  'erp_item_categories',
+  'erp_items',
+  'erp_stock_locations',
+  'erp_stock_counts',
+  'erp_stock_count_lines',
+  'erp_stock_movements',
+  'erp_reorder_levels',
+  // Purchasing (0027). The reference counter is working state and is left out.
+  'erp_suppliers',
+  'erp_purchase_orders',
+  'erp_purchase_order_lines',
+  'erp_goods_receipts',
+  'erp_goods_receipt_lines',
+  'erp_work_order_materials',
   'audit_log',
 ] as const;
 
