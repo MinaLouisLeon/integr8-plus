@@ -1741,6 +1741,7 @@ export const en = {
         customers: 'Customers',
         sites: 'Sites',
         work_orders: 'Work orders',
+        assets: 'Assets',
       },
       template: 'Download the template',
       file: 'CSV file',

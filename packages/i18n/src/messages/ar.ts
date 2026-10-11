@@ -1744,6 +1744,7 @@ export const ar: Catalogue<Messages> = {
         customers: 'العملاء',
         sites: 'المواقع',
         work_orders: 'أوامر العمل',
+        assets: 'الأصول',
       },
       template: 'تنزيل القالب',
       file: 'ملف CSV',

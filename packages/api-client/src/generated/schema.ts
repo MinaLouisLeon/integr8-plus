@@ -3510,7 +3510,7 @@ export interface paths {
         get: operations["listImports"];
         put?: never;
         /**
-         * Import customers, sites or work orders from CSV
+         * Import customers, sites, work orders or assets from CSV
          * @description The CSV is sent as text, at most 5 MB and 20000 rows, with the first row naming the columns (see the template). Dates without an offset are read in `timeZone`, which a browser should set to its own. Returns at once; poll the import for progress and per-row errors. Honours `Idempotency-Key`.
          */
         post: operations["startImport"];
@@ -39271,7 +39271,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             /** @enum {string} */
-                            kind: "customers" | "sites" | "work_orders";
+                            kind: "customers" | "sites" | "work_orders" | "assets";
                             /** @enum {string} */
                             status: "pending" | "running" | "completed" | "failed";
                             fileName: string;
@@ -39360,7 +39360,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    kind: "customers" | "sites" | "work_orders";
+                    kind: "customers" | "sites" | "work_orders" | "assets";
                     fileName: string;
                     csv: string;
                     /** @default UTC */
@@ -39379,7 +39379,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         /** @enum {string} */
-                        kind: "customers" | "sites" | "work_orders";
+                        kind: "customers" | "sites" | "work_orders" | "assets";
                         /** @enum {string} */
                         status: "pending" | "running" | "completed" | "failed";
                         fileName: string;
@@ -39465,7 +39465,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "customers" | "sites" | "work_orders";
+                kind: "customers" | "sites" | "work_orders" | "assets";
             };
             cookie?: never;
         };
@@ -39541,7 +39541,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "customers" | "sites" | "work_orders";
+                kind: "customers" | "sites" | "work_orders" | "assets";
             };
             cookie?: never;
         };
@@ -39640,7 +39640,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         /** @enum {string} */
-                        kind: "customers" | "sites" | "work_orders";
+                        kind: "customers" | "sites" | "work_orders" | "assets";
                         /** @enum {string} */
                         status: "pending" | "running" | "completed" | "failed";
                         fileName: string;

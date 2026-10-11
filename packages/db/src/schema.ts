@@ -863,7 +863,7 @@ export type PushDisabledReason = (typeof PUSH_DISABLED_REASONS)[number];
 export const COMMENT_VISIBILITIES = ['internal', 'customer'] as const;
 export type CommentVisibility = (typeof COMMENT_VISIBILITIES)[number];
 
-export const IMPORT_KINDS = ['customers', 'sites', 'work_orders'] as const;
+export const IMPORT_KINDS = ['customers', 'sites', 'work_orders', 'assets'] as const;
 export type ImportKind = (typeof IMPORT_KINDS)[number];
 
 export const IMPORT_STATUSES = ['pending', 'running', 'completed', 'failed'] as const;

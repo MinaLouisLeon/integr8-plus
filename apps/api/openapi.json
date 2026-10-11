@@ -93968,7 +93968,7 @@
     "/v1/imports": {
       "post": {
         "operationId": "startImport",
-        "summary": "Import customers, sites or work orders from CSV",
+        "summary": "Import customers, sites, work orders or assets from CSV",
         "description": "The CSV is sent as text, at most 5 MB and 20000 rows, with the first row naming the columns (see the template). Dates without an offset are read in `timeZone`, which a browser should set to its own. Returns at once; poll the import for progress and per-row errors. Honours `Idempotency-Key`.",
         "tags": [
           "imports"
@@ -93997,7 +93997,8 @@
                     "enum": [
                       "customers",
                       "sites",
-                      "work_orders"
+                      "work_orders",
+                      "assets"
                     ]
                   },
                   "fileName": {
@@ -94043,7 +94044,8 @@
                       "enum": [
                         "customers",
                         "sites",
-                        "work_orders"
+                        "work_orders",
+                        "assets"
                       ]
                     },
                     "status": {
@@ -94220,7 +94222,8 @@
                             "enum": [
                               "customers",
                               "sites",
-                              "work_orders"
+                              "work_orders",
+                              "assets"
                             ]
                           },
                           "status": {
@@ -94391,7 +94394,8 @@
               "enum": [
                 "customers",
                 "sites",
-                "work_orders"
+                "work_orders",
+                "assets"
               ]
             }
           }
@@ -94492,7 +94496,8 @@
               "enum": [
                 "customers",
                 "sites",
-                "work_orders"
+                "work_orders",
+                "assets"
               ]
             }
           }
@@ -94646,7 +94651,8 @@
                       "enum": [
                         "customers",
                         "sites",
-                        "work_orders"
+                        "work_orders",
+                        "assets"
                       ]
                     },
                     "status": {

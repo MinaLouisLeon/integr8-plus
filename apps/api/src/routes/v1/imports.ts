@@ -1,6 +1,8 @@
 import { type ImportRecord, withTenant } from '@integr8/db';
 import { z } from 'zod';
-import { notFound, unprocessable } from '../../http/errors.js';
+import { holds } from '@integr8/core';
+import { forbidden, notFound, unprocessable } from '../../http/errors.js';
+import { assertFeatureEnabled } from '../../http/features.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import {
   IMPORT_COLUMNS,
@@ -23,7 +25,7 @@ import { iso, isoOrNull } from './schemas.js';
 
 const TAGS = ['imports'];
 
-const kindSchema = z.enum(['customers', 'sites', 'work_orders']);
+const kindSchema = z.enum(['customers', 'sites', 'work_orders', 'assets']);
 
 const importSchema = z.object({
   id: z.uuid(),
@@ -71,7 +73,7 @@ export const startImportRoute = defineRoute({
   method: 'post',
   path: '/v1/imports',
   operationId: 'startImport',
-  summary: 'Import customers, sites or work orders from CSV',
+  summary: 'Import customers, sites, work orders or assets from CSV',
   description: `The CSV is sent as text, at most 5 MB and ${String(MAX_IMPORT_ROWS)} rows, with the first row naming the columns (see the template). Dates without an offset are read in \`timeZone\`, which a browser should set to its own. Returns at once; poll the import for progress and per-row errors. Honours \`Idempotency-Key\`.`,
   tags: TAGS,
   security: 'authenticated',
@@ -99,6 +101,13 @@ export const startImportRoute = defineRoute({
           message: `"${body.timeZone}" is not an IANA time zone.`,
         },
       ]);
+    }
+    // Assets (E3) are the asset register's to import: the module on, and asset.manage.
+    if (body.kind === 'assets') {
+      await assertFeatureEnabled(context.principal.tenantId, 'assets');
+      if (!holds(context.principal, 'asset.manage')) {
+        throw forbidden('Your role may not import assets.');
+      }
     }
     const result = await withTenant(context.principal.tenantId, async (tx) => {
       const record = await tx.imports.create(

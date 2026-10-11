@@ -1,5 +1,8 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { getPlatformDataSource } from '@integr8/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createLogger } from '../../http/logger.js';
+import { buildJobHandlers } from '../../jobs/handlers.js';
 import {
   type ApiHarness,
   type Member,
@@ -810,5 +813,89 @@ describe('carrying answers over from an asset’s last visit', () => {
     expect(
       json<Draft>(await call(engineer, 'GET', `/v1/submissions/${dropped.entityId}`)),
     ).toMatchObject({ asset: null, carriedOver: null });
+  });
+});
+
+describe('importing assets from CSV', () => {
+  async function runImports() {
+    const handlers = buildJobHandlers(api.services);
+    const logger = createLogger({ level: 'error', write: () => undefined });
+    for (;;) {
+      const claimed = await getPlatformDataSource().jobs.claim({ workerId: 'test', limit: 50 });
+      if (claimed.length === 0) {
+        return;
+      }
+      for (const job of claimed.filter((candidate) => candidate.tenantId === api.tenantId)) {
+        if (job.queue === 'import.run') {
+          await handlers[job.queue]!(job.payload, {
+            tenantId: job.tenantId,
+            jobId: job.id,
+            attempt: job.attempts,
+            logger,
+          });
+        }
+        await getPlatformDataSource().jobs.complete(job.id);
+      }
+    }
+  }
+
+  it('registers each good row with a number and a tag, and says why the others were refused', async () => {
+    const serial = `IMP-${tag()}`;
+    const existing = `IMP-${tag()}`;
+    await register({ name: 'Already here', serialNumber: existing });
+    const csv = [
+      'customer_name,site_name,name,make,serial_number,install_date,warranty_expires_on,condition',
+      `Riverside Housing,Block A,Imported chiller,Daikin,${serial},2021-05-01,2026-11-30,fair`,
+      `Riverside Housing,Block Z,No such site,,,,,`,
+      `Riverside Housing,Block A,Duplicate,,${existing},,,`,
+      `Riverside Housing,Block A,Bad dates,,,2021-02-30,soon,broken`,
+    ].join('\r\n');
+
+    const refused = await call(dispatcher, 'POST', '/v1/imports', {
+      kind: 'assets',
+      fileName: 'assets.csv',
+      csv,
+    });
+    expect(refused.statusCode).toBe(403);
+
+    const started = await call(owner, 'POST', '/v1/imports', {
+      kind: 'assets',
+      fileName: 'assets.csv',
+      csv,
+    });
+    expect(started.statusCode, started.body).toBe(202);
+    await runImports();
+    const report = json<{
+      status: string;
+      succeededRows: number;
+      failedRows: number;
+      errors: { row: number; column: string | null; code: string }[];
+    }>(await call(owner, 'GET', `/v1/imports/${json<{ id: string }>(started).id}`));
+    expect(report).toMatchObject({ status: 'completed', succeededRows: 1, failedRows: 3 });
+    expect(report.errors.map((error) => [error.row, error.column, error.code])).toEqual([
+      [3, 'site_name', 'not_found'],
+      [4, 'serial_number', 'duplicate'],
+      [5, 'install_date', 'invalid'],
+      [5, 'warranty_expires_on', 'invalid'],
+      [5, 'condition', 'invalid'],
+    ]);
+
+    const found = json<{ items: AssetBody[] }>(
+      await call(dispatcher, 'GET', `/v1/assets?q=${encodeURIComponent(serial)}`),
+    ).items;
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({
+      name: 'Imported chiller',
+      serialNumber: serial,
+      condition: 'fair',
+      site: { id: siteId },
+    });
+    expect(found[0]!.reference).toMatch(/^AS-\d{6}$/u);
+    expect(found[0]!.tagCode).toHaveLength(12);
+
+    const template = await call(owner, 'GET', '/v1/imports/templates/assets');
+    expect(template.body.split('\r\n')[0]).toBe(
+      'customer_account_number,customer_name,site_name,name,make,model,serial_number,location,install_date,warranty_expires_on,condition,notes',
+    );
   });
 });

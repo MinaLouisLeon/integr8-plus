@@ -675,6 +675,43 @@ describe('imports', () => {
     ]);
     expect(screen.getByText('998 imported, 2 with problems')).toBeInTheDocument();
   });
+
+  it('offers assets to those who manage the register, with the module on', async () => {
+    const me = (permissions: string[], assets: boolean) => () => ({
+      body: {
+        userId: ENGINEER.id,
+        tenantId: CUSTOMER,
+        email: 'o@x.example',
+        displayName: 'Olu',
+        role: 'owner',
+        permissions,
+        features: { assets },
+      },
+    });
+    const kinds = async () => {
+      const picker = await screen.findByRole('combobox', { name: 'What to import' });
+      return within(picker)
+        .getAllByRole('option')
+        .map((option) => option.textContent);
+    };
+    const routes = {
+      'GET /v1/imports/columns/:kind': () => ({ body: { items: [] } }),
+      'GET /v1/imports': () => ({ body: { items: [] } }),
+    };
+    const first = renderScreen(
+      <ImportsScreen />,
+      fakeApi({ ...routes, 'GET /v1/me': me(['import.run', 'asset.manage'], true) }).client,
+    );
+    await waitFor(async () =>
+      expect(await kinds()).toEqual(['Customers', 'Sites', 'Work orders', 'Assets']),
+    );
+    first.unmount();
+    renderScreen(
+      <ImportsScreen />,
+      fakeApi({ ...routes, 'GET /v1/me': me(['import.run', 'asset.manage'], false) }).client,
+    );
+    expect(await kinds()).toEqual(['Customers', 'Sites', 'Work orders']);
+  });
 });
 
 describe('timesheets', () => {

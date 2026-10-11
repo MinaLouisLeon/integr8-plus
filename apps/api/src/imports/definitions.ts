@@ -197,6 +197,56 @@ export const IMPORT_COLUMNS: Record<ImportKind, readonly ImportColumn[]> = {
       example: '',
     },
   ],
+  // CRM/ERP plan, phase E3 (ADR-0008): each row is an asset at one of a
+  // customer's sites, numbered and given a tag as it is imported.
+  assets: [
+    ...customerReference,
+    {
+      name: 'site_name',
+      required: true,
+      description: 'One of the customer’s sites, by name.',
+      example: 'Block A',
+    },
+    {
+      name: 'name',
+      required: true,
+      description: 'What the asset is.',
+      example: 'Boiler, flat 4',
+    },
+    { name: 'make', required: false, description: 'Manufacturer.', example: 'Vaillant' },
+    { name: 'model', required: false, description: 'Model.', example: 'ecoTEC plus 832' },
+    {
+      name: 'serial_number',
+      required: false,
+      description: 'Unique across the company; a row repeating one is refused.',
+      example: 'SN-4471',
+    },
+    {
+      name: 'location',
+      required: false,
+      description: 'Where on the site it is.',
+      example: 'Plant room, level -1',
+    },
+    {
+      name: 'install_date',
+      required: false,
+      description: 'The day it was installed: 2021-05-01.',
+      example: '2021-05-01',
+    },
+    {
+      name: 'warranty_expires_on',
+      required: false,
+      description: 'The last day of its warranty: 2026-11-30.',
+      example: '2026-11-30',
+    },
+    {
+      name: 'condition',
+      required: false,
+      description: 'good, fair, poor or unusable, if known.',
+      example: 'good',
+    },
+    { name: 'notes', required: false, description: 'Anything else.', example: '' },
+  ],
 };
 
 /** The template to download: a header row and one example row. */
