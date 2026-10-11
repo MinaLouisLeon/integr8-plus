@@ -1,4 +1,5 @@
 import type { PullPage, SyncSubmission, WorkOrderDetail } from '../api-types.js';
+import { applyPulledAssets } from '../assets.js';
 import type { LocalDatabase } from '../database.js';
 import { evict, type EvictionOutcome, type RetentionPolicy } from '../eviction.js';
 import { identity } from '../queries.js';
@@ -53,6 +54,8 @@ const PULL_TABLES = [
   'form_versions',
   'submissions',
   'files',
+  'assets',
+  'asset_links',
 ] as const;
 
 /**
@@ -191,6 +194,9 @@ async function applyPage(
       }
     }
   }
+
+  // The assets of the page's sites, each with its whole history (phase E3).
+  await applyPulledAssets(sql, page, at);
 
   let removed = 0;
   if (page.removedWorkOrderIds.length > 0) {

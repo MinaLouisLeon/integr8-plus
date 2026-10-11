@@ -1,3 +1,4 @@
+import { assetSyncSchema } from './assets.js';
 import { SYNC_OUTCOMES, SYNC_TRIGGERS, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { defineRoute, noSchema } from '../../http/routes.js';
@@ -75,6 +76,10 @@ export const pullRoute = defineRoute({
             items: z.array(z.object({ item: itemSummarySchema, onHand: z.string() })),
           })
           .nullable(),
+        /** The sites whose assets this page holds in full; the phone replaces exactly those (phase E3). */
+        assetSiteIds: z.array(z.uuid()),
+        /** The assets of those sites, each with its whole history. */
+        assets: z.array(assetSyncSchema),
       }),
     },
     422: { description: 'A cursor or page token the server did not issue.' },
@@ -86,6 +91,7 @@ export const pullRoute = defineRoute({
         ...(query.page === undefined ? {} : { page: query.page }),
         retentionDays: query.retentionDays,
         now: new Date(),
+        webAppUrl: context.config.WEB_APP_URL,
       }),
     );
     return { status: 200, body };

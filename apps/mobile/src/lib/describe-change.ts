@@ -52,6 +52,17 @@ export function describeChange(t: TFunction, change: DescribedChange): string {
         job,
         quantity: typeof change.payload.quantity === 'string' ? change.payload.quantity : '',
       });
+    case 'asset.register':
+      return t('mobile.change.assetRegistered', {
+        name: typeof change.payload.name === 'string' ? change.payload.name : '',
+        job,
+      });
+    case 'asset.condition':
+      return t('mobile.change.assetCondition', {
+        condition: t(`assets.condition.${String(change.payload.condition) as 'good'}`),
+      });
+    case 'asset.link':
+      return t('mobile.change.assetLinked', { job });
   }
 }
 

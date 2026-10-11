@@ -1,6 +1,7 @@
 import { holds, type Principal } from '@integr8/core';
 import type { Shift, Submission, TenantTransaction } from '@integr8/db';
 import { unprocessable } from '../http/errors.js';
+import { assetsForSites } from '../routes/v1/assets.js';
 import { customerDetailBody } from '../routes/v1/customers.js';
 import { formDetailBody } from '../routes/v1/forms.js';
 import { isFeatureEnabled } from '../http/features.js';
@@ -90,7 +91,14 @@ export function submissionSyncBody(submission: Submission, people: Map<string, s
 export async function pullPage(
   tx: TenantTransaction,
   principal: Principal,
-  options: { cursor?: string; page?: string; retentionDays: number; now: Date },
+  options: {
+    cursor?: string;
+    page?: string;
+    retentionDays: number;
+    now: Date;
+    /** Where the web app lives, for the asset tag links the phone shows. */
+    webAppUrl?: string | undefined;
+  },
 ) {
   let token: Omit<PageToken, 'after'> & { after?: string };
   if (options.page !== undefined) {
@@ -177,6 +185,15 @@ export async function pullPage(
   // page: the phone's parts picker works offline from it.
   const vanStock = options.page === undefined ? await vanStockBody(tx, principal) : null;
 
+  // The assets of the sites of these jobs, each with its whole history
+  // (CRM/ERP plan, phase E3; ADR-0008): a tag scanned with no signal opens
+  // from the phone. `assetSiteIds` says which sites' assets are complete here,
+  // so the phone replaces exactly those.
+  const assetSiteIds = (await isFeatureEnabled(principal.tenantId, 'assets'))
+    ? [...new Set(jobs.map((job) => job.siteId))]
+    : [];
+  const assets = await assetsForSites(tx, principal, options.webAppUrl, assetSiteIds);
+
   const last = changed.ids.at(-1);
   return {
     reset: token.reset,
@@ -198,6 +215,8 @@ export async function pullPage(
     submissions,
     shifts: shifts.map(shiftBody),
     vanStock,
+    assetSiteIds: holdsAssets(principal) ? assetSiteIds : [],
+    assets,
   };
 }
 
@@ -236,3 +255,5 @@ export function shiftBody(shift: Shift) {
     endLocation: shift.endLocation,
   };
 }
+
+const holdsAssets = (principal: Principal) => holds(principal, 'asset.read');

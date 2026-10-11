@@ -3346,6 +3346,33 @@ export const en = {
       discardBody:
         'The office’s version stays, and your change is removed from this phone. This cannot be undone.',
     },
+    assets: {
+      onJob: 'Assets on this job',
+      noneOnJob: 'No asset is linked to this job yet.',
+      scan: 'Scan a tag',
+      linkHere: 'Link one from this site',
+      register: 'Register an asset',
+      registerHint:
+        'For a machine on site with no tag yet. It gets its number when it is sent; the office prints its tag.',
+      scanSerial: 'Scan the serial number',
+      linkFailed: 'The asset could not be linked',
+      linkToJob: 'Link to this job',
+      notYetNumbered: 'Not numbered yet',
+      notSent: 'Not sent yet',
+      notOnPhone:
+        'This asset is not on this phone. Only the assets at your jobs’ sites are kept here.',
+      failed: 'That did not save',
+      details: 'Details',
+      filesHint: 'Photos and documents open once they have downloaded to this phone.',
+      openFile: 'Open file {{number}}',
+      scanTitle: 'Scan an asset tag',
+      scanHint:
+        'Point the camera at the QR code on the tag, or at the barcode of the serial number.',
+      notFound: 'No asset on this phone has that tag or serial number.',
+      notFoundHint:
+        'It may be at a site where you have no job, or its tag was printed after your last sync.',
+      scanAgain: 'Scan again',
+    },
     change: {
       transition: 'Marked {{job}} as {{state}}',
       checklistDone: 'Ticked “{{item}}” on {{job}}',
@@ -3362,6 +3389,9 @@ export const en = {
       shiftStart: 'Clocked in',
       shiftEnd: 'Clocked out',
       partUsed: 'Used {{quantity}} of a part on {{job}}',
+      assetRegistered: 'Registered {{name}} on {{job}}',
+      assetCondition: 'Recorded an asset as {{condition}}',
+      assetLinked: 'Linked an asset to {{job}}',
       someJob: 'a job',
       someForm: 'a form',
       someSite: 'a site',

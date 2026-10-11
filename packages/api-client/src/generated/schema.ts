@@ -3071,7 +3071,7 @@ export interface paths {
         };
         /**
          * Everything an asset has been through
-         * @description Newest first: its own events, the jobs linked to it, and the submissions, parts and files that name it or whose job has no other asset. An engineer sees the records of their own jobs.
+         * @description Newest first: its own events, the jobs linked to it, and the submissions, parts and files that name it or whose job has no other asset. Anyone who may read the asset sees all of it, whoever did the work.
          */
         get: operations["getAssetTimeline"];
         put?: never;
@@ -32170,6 +32170,7 @@ export interface operations {
                                     /** Format: uuid */
                                     mediaId: string;
                                     contentType: string;
+                                    byteSize: number;
                                 }[];
                             };
                         } | {
@@ -40307,6 +40308,297 @@ export interface operations {
                                 onHand: string;
                             }[];
                         } | null;
+                        assetSiteIds: string[];
+                        assets: {
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                name: string;
+                                make: string | null;
+                                model: string | null;
+                                serialNumber: string | null;
+                                /** @enum {string} */
+                                status: "active" | "out_of_service" | "retired";
+                                /** @enum {string|null} */
+                                condition: "good" | "fair" | "poor" | "unusable" | null;
+                                customer: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                site: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                locationNote: string | null;
+                                /** Format: date */
+                                warrantyExpiresOn: string | null;
+                                /** @enum {string} */
+                                warranty: "none" | "covered" | "expiring" | "expired";
+                                tagCode: string;
+                                tagLink: string | null;
+                                version: number;
+                                item: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    sku: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    kind: "stock_item" | "non_stock_item" | "service";
+                                    /** @enum {string} */
+                                    unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                } | null;
+                                /** Format: date */
+                                installDate: string | null;
+                                notes: string | null;
+                                /** Format: date-time */
+                                conditionRecordedAt: string | null;
+                                conditionRecordedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                createdBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                /** Format: date-time */
+                                retiredAt: string | null;
+                                retiredBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                            };
+                            workOrders: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: number;
+                                referenceLabel: string;
+                                title: string;
+                                /** @enum {string} */
+                                state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                /** @enum {string} */
+                                priority: "low" | "normal" | "high" | "urgent";
+                                dueFrom: string | null;
+                                dueBy: string | null;
+                                customer: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                site: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    city: string | null;
+                                };
+                                jobType: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    code: string;
+                                };
+                                crew: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    lead: boolean;
+                                }[];
+                                revision: number;
+                                stateChangedAt: string;
+                                createdAt: string;
+                                updatedAt: string;
+                                /** Format: date-time */
+                                linkedAt: string;
+                            }[];
+                            can: {
+                                edit: boolean;
+                                record: boolean;
+                                attach: boolean;
+                            };
+                            timeline: ({
+                                /** @enum {string} */
+                                kind: "event";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                                event: {
+                                    /** @enum {string} */
+                                    kind: "registered" | "updated" | "relocated" | "status_changed" | "condition_recorded" | "tag_reissued";
+                                    fromSite: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        customer: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            name: string;
+                                        };
+                                    } | null;
+                                    /** @enum {string|null} */
+                                    fromStatus: "active" | "out_of_service" | "retired" | null;
+                                    /** @enum {string|null} */
+                                    toStatus: "active" | "out_of_service" | "retired" | null;
+                                    /** @enum {string|null} */
+                                    condition: "good" | "fair" | "poor" | "unusable" | null;
+                                    changes: {
+                                        [key: string]: (unknown | unknown)[];
+                                    } | null;
+                                    /** Format: uuid */
+                                    workOrderId: string | null;
+                                    note: string | null;
+                                    by: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                kind: "job";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                                workOrder: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: number;
+                                    referenceLabel: string;
+                                    title: string;
+                                    /** @enum {string} */
+                                    state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                    /** @enum {string} */
+                                    priority: "low" | "normal" | "high" | "urgent";
+                                    dueFrom: string | null;
+                                    dueBy: string | null;
+                                    customer: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                    site: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        city: string | null;
+                                    };
+                                    jobType: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        code: string;
+                                    };
+                                    crew: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        lead: boolean;
+                                    }[];
+                                    revision: number;
+                                    stateChangedAt: string;
+                                    createdAt: string;
+                                    updatedAt: string;
+                                };
+                            } | {
+                                /** @enum {string} */
+                                kind: "submission";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                                submission: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    form: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                    /** Format: uuid */
+                                    workOrderId: string | null;
+                                    status: string;
+                                    explicit: boolean;
+                                    by: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                    photos: {
+                                        /** Format: uuid */
+                                        mediaId: string;
+                                        contentType: string;
+                                        byteSize: number;
+                                    }[];
+                                };
+                            } | {
+                                /** @enum {string} */
+                                kind: "part";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                                part: {
+                                    item: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        sku: string;
+                                        name: string;
+                                        /** @enum {string} */
+                                        kind: "stock_item" | "non_stock_item" | "service";
+                                        /** @enum {string} */
+                                        unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                    };
+                                    quantity: string;
+                                    returnedQuantity: string;
+                                    /** Format: uuid */
+                                    workOrderId: string;
+                                    explicit: boolean;
+                                    by: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                kind: "attachment";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                                attachment: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    fileId: string;
+                                    title: string;
+                                    /** @enum {string} */
+                                    kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                                    /** @enum {string|null} */
+                                    stage: "before" | "after" | null;
+                                    contentType: string;
+                                    byteSize: number;
+                                    addedBy: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                    createdAt: string;
+                                    /** Format: uuid */
+                                    workOrderId: string | null;
+                                };
+                            })[];
+                        }[];
                     };
                 };
             };
@@ -40642,6 +40934,55 @@ export interface operations {
                             itemId: string;
                             quantity: string;
                             note?: string | null;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "asset.register";
+                        payload: {
+                            /** Format: uuid */
+                            workOrderId: string;
+                            name: string;
+                            make?: string | null;
+                            model?: string | null;
+                            serialNumber?: string | null;
+                            locationNote?: string | null;
+                            /** @enum {string} */
+                            condition?: "good" | "fair" | "poor" | "unusable";
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "asset.condition";
+                        payload: {
+                            /** @enum {string} */
+                            condition: "good" | "fair" | "poor" | "unusable";
+                            note?: string | null;
+                            /** Format: uuid */
+                            workOrderId?: string | null;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "asset.link";
+                        payload: {
+                            /** Format: uuid */
+                            assetId: string;
                         };
                     })[];
                 };

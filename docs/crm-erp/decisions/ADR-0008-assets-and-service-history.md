@@ -83,7 +83,10 @@ site_id)` composite foreign key to `sites`), is numbered `AS-000001` onwards
 ## Decision — who
 
 - `asset.read`: owners, admins, dispatchers and viewers read every asset;
-  engineers read the assets of sites they have a job at.
+  engineers read the assets of sites they have a job at. Whoever reads an
+  asset reads its whole history, including jobs other engineers worked: the
+  history is the point of the register. Opening one of those jobs is still
+  subject to the job's own access.
 - `asset.manage`: owners, admins and dispatchers create, edit, move, retire,
   reissue tags, print, link to any job and import.
 - `asset.record`: the above plus engineers, who may register an asset at a job's

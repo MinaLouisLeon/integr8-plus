@@ -140,7 +140,9 @@ const submissionEntry = z.object({
     explicit: z.boolean(),
     by: personSchema,
     /** Images answered on it, for thumbnails. */
-    photos: z.array(z.object({ mediaId: z.uuid(), contentType: z.string() })),
+    photos: z.array(
+      z.object({ mediaId: z.uuid(), contentType: z.string(), byteSize: z.number().int() }),
+    ),
   }),
 });
 
@@ -245,18 +247,24 @@ async function assetDetail(
   context: RequestContext,
   asset: Asset,
 ): Promise<z.infer<typeof assetDetailSchema>> {
-  const { principal } = context;
+  return assetDetailFor(tx, context.principal, context.config.WEB_APP_URL, asset);
+}
+
+/** The asset as the detail screen and the phone show it. */
+export async function assetDetailFor(
+  tx: TenantTransaction,
+  principal: Principal,
+  webAppUrl: string | undefined,
+  asset: Asset,
+): Promise<z.infer<typeof assetDetailSchema>> {
   const [[summary], people, items, links] = await Promise.all([
-    assetSummaries(tx, [asset], context.config.WEB_APP_URL),
+    assetSummaries(tx, [asset], webAppUrl),
     peopleOf(tx),
     asset.itemId === null ? Promise.resolve([]) : tx.inventoryCatalogue.findItems([asset.itemId]),
     tx.assets.linksOfAsset(asset.id),
   ]);
-  const jobs = await visibleJobs(
-    tx,
-    principal,
-    links.map((link) => link.workOrderId),
-  );
+  // Every job the asset was on, whoever worked it: the history is the point.
+  const jobs = await tx.workOrders.findMany([...new Set(links.map((link) => link.workOrderId))]);
   const summaries = new Map(
     (await workOrderSummaries(tx, jobs, people)).map((job) => [job.id, job]),
   );
@@ -288,22 +296,11 @@ async function assetDetail(
   };
 }
 
-/** The jobs among these the person may see: all of them for the office, their own for an engineer. */
-async function visibleJobs(tx: TenantTransaction, principal: Principal, ids: readonly string[]) {
-  const jobs = await tx.workOrders.findMany([...new Set(ids)]);
-  if (seesAll(principal)) {
-    return jobs;
-  }
-  const mine = await Promise.all(
-    jobs.map(async (job) =>
-      (await tx.workOrders.isAssigned(job.id, principal.userId)) ? job : undefined,
-    ),
-  );
-  return mine.filter((job) => job !== undefined);
-}
-
 /** Image references anywhere in a submission's answers. */
-function photosIn(value: unknown, found: { mediaId: string; contentType: string }[] = []) {
+function photosIn(
+  value: unknown,
+  found: { mediaId: string; contentType: string; byteSize: number }[] = [],
+) {
   if (Array.isArray(value)) {
     for (const entry of value) {
       photosIn(entry, found);
@@ -315,7 +312,11 @@ function photosIn(value: unknown, found: { mediaId: string; contentType: string 
       typeof record.contentType === 'string' &&
       record.contentType.startsWith('image/')
     ) {
-      found.push({ mediaId: record.mediaId, contentType: record.contentType });
+      found.push({
+        mediaId: record.mediaId,
+        contentType: record.contentType,
+        byteSize: typeof record.byteSize === 'number' ? record.byteSize : 0,
+      });
     } else {
       for (const entry of Object.values(record)) {
         photosIn(entry, found);
@@ -357,15 +358,12 @@ function eventEntryOf(
 }
 
 /**
- * Everything the asset has been through, newest first. Records of jobs this
- * person may not see are left out, so an engineer reads what their own jobs
- * and the asset's own events say.
+ * Everything the asset has been through, newest first, whoever did it: an
+ * engineer arriving at a machine sees what every visit before theirs found
+ * and fitted (product decision, 2026-10-11: the full history). Opening one of
+ * those jobs is still subject to the job's own access.
  */
-export async function assetTimeline(
-  tx: TenantTransaction,
-  principal: Principal,
-  asset: Asset,
-): Promise<TimelineEntry[]> {
+export async function assetTimeline(tx: TenantTransaction, asset: Asset): Promise<TimelineEntry[]> {
   const [events, links, submissions, parts, attachments, people] = await Promise.all([
     tx.assets.events(asset.id),
     tx.assets.linksOfAsset(asset.id),
@@ -380,9 +378,9 @@ export async function assetTimeline(
     ...parts.map((row) => row.workOrderId),
     ...attachments.flatMap((row) => ('workOrderId' in row.owner ? [row.owner.workOrderId] : [])),
   ];
-  const jobs = await visibleJobs(tx, principal, jobIds);
-  const visible = new Set(jobs.map((job) => job.id));
-  const seen = (workOrderId: string | null) => workOrderId === null || visible.has(workOrderId);
+  const jobs = await tx.workOrders.findMany([...new Set(jobIds)]);
+  const known = new Set(jobs.map((job) => job.id));
+  const seen = (workOrderId: string | null) => workOrderId === null || known.has(workOrderId);
   const fromSites = [
     ...new Set(events.flatMap((event) => (event.fromSiteId === null ? [] : [event.fromSiteId]))),
   ];
@@ -502,7 +500,7 @@ async function requireFreeSerial(
 }
 
 /** A fresh tag code nobody holds; a collision of 60 random bits is retried, not trusted. */
-async function freshTagCode(tx: TenantTransaction): Promise<string> {
+export async function freshTagCode(tx: TenantTransaction): Promise<string> {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const code = newTagCode();
     if ((await tx.assets.findByTag(code)) === undefined) {
@@ -510,6 +508,43 @@ async function freshTagCode(tx: TenantTransaction): Promise<string> {
     }
   }
   throw new Error('Could not mint a fresh tag code');
+}
+
+// ---------------------------------------------------------------------------
+// The phone's copy
+// ---------------------------------------------------------------------------
+
+export const assetSyncSchema = assetDetailSchema.extend({
+  /** Everything it has been through, newest first: the phone shows it with no signal. */
+  timeline: z.array(timelineEntrySchema),
+});
+
+/**
+ * The assets of these sites, each with its whole history, for the phone's
+ * pull: an engineer scanning a tag in a plant room reads it from the phone.
+ * Empty when the company has no assets module or the seat may not read them.
+ */
+export async function assetsForSites(
+  tx: TenantTransaction,
+  principal: Principal,
+  webAppUrl: string | undefined,
+  siteIds: readonly string[],
+): Promise<z.infer<typeof assetSyncSchema>[]> {
+  if (siteIds.length === 0 || !holds(principal, 'asset.read')) {
+    return [];
+  }
+  const assets: Asset[] = [];
+  for (const siteId of [...new Set(siteIds)]) {
+    assets.push(...(await tx.assets.list({ siteId, limit: 200 })).items);
+  }
+  const bodies = [];
+  for (const asset of assets) {
+    bodies.push({
+      ...(await assetDetailFor(tx, principal, webAppUrl, asset)),
+      timeline: await assetTimeline(tx, asset),
+    });
+  }
+  return bodies;
 }
 
 // ---------------------------------------------------------------------------
@@ -763,7 +798,7 @@ export const assetTimelineRoute = defineRoute({
   operationId: 'getAssetTimeline',
   summary: 'Everything an asset has been through',
   description:
-    'Newest first: its own events, the jobs linked to it, and the submissions, parts and files that name it or whose job has no other asset. An engineer sees the records of their own jobs.',
+    'Newest first: its own events, the jobs linked to it, and the submissions, parts and files that name it or whose job has no other asset. Anyone who may read the asset sees all of it, whoever did the work.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'asset.read',
@@ -781,11 +816,7 @@ export const assetTimelineRoute = defineRoute({
   handler: async ({ params }, context) => {
     const { principal } = context;
     const body = await withTenant(principal.tenantId, async (tx) => ({
-      entries: await assetTimeline(
-        tx,
-        principal,
-        await readableAsset(tx, principal, params.assetId),
-      ),
+      entries: await assetTimeline(tx, await readableAsset(tx, principal, params.assetId)),
     }));
     return { status: 200, body };
   },

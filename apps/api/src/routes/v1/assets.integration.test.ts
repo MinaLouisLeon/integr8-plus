@@ -519,3 +519,92 @@ describe('warranties', () => {
     expect(await ids('warranty=expired')).toContain(expired.asset.id);
   });
 });
+
+describe('from the phone', () => {
+  it('pulls the assets of the engineer’s job sites with their whole history', async () => {
+    const job = await newJob();
+    const boiler = await register({ name: 'Pulled boiler', serialNumber: `PULL-${tag()}` });
+    expect(
+      (
+        await call(dispatcher, 'POST', `/v1/assets/${boiler.asset.id}/condition`, {
+          condition: 'fair',
+          note: 'Seen by the office',
+        })
+      ).statusCode,
+    ).toBe(200);
+    const away = await register({ name: 'Away chiller', siteId: otherSiteId });
+    const pulled = json<{
+      assetSiteIds: string[];
+      assets: { asset: { id: string; tagCode: string }; timeline: { kind: string }[] }[];
+    }>(await call(engineer, 'GET', '/v1/sync/pull'));
+    expect(pulled.assetSiteIds).toContain(siteId);
+    expect(pulled.assetSiteIds).not.toContain(otherSiteId);
+    const mine = pulled.assets.find((entry) => entry.asset.id === boiler.asset.id);
+    expect(mine?.timeline.map((entry) => entry.kind)).toEqual(expect.arrayContaining(['event']));
+    expect(pulled.assets.some((entry) => entry.asset.id === away.asset.id)).toBe(false);
+    expect(job.id).toBeDefined();
+  });
+
+  it('registers, records and links from the outbox, each once', async () => {
+    const job = await newJob();
+    const push = (mutations: Record<string, unknown>[]) =>
+      call(engineer, 'POST', '/v1/sync/push', { sentAt: new Date().toISOString(), mutations });
+    const assetId = randomUUID();
+    const registration = {
+      id: randomUUID(),
+      entityId: assetId,
+      recordedAt: new Date().toISOString(),
+      kind: 'asset.register',
+      payload: { workOrderId: job.id, name: 'Found pump', condition: 'poor' },
+    };
+    const first = json<{ results: { outcome: string; alreadyApplied: boolean }[] }>(
+      await push([registration]),
+    );
+    expect(first.results[0]).toMatchObject({ outcome: 'applied', alreadyApplied: false });
+    const again = json<{ results: { outcome: string; alreadyApplied: boolean }[] }>(
+      await push([{ ...registration, id: randomUUID() }]),
+    );
+    expect(again.results[0]).toMatchObject({ outcome: 'applied', alreadyApplied: true });
+    const found = json<AssetDetail>(await call(engineer, 'GET', `/v1/assets/${assetId}`));
+    expect(found.asset).toMatchObject({
+      name: 'Found pump',
+      condition: 'poor',
+      site: { id: siteId },
+    });
+    expect(found.workOrders.map((linked) => linked.id)).toEqual([job.id]);
+
+    const condition = {
+      id: randomUUID(),
+      entityId: assetId,
+      recordedAt: new Date().toISOString(),
+      kind: 'asset.condition',
+      payload: { condition: 'good', note: 'Fixed', workOrderId: job.id },
+    };
+    expect(
+      json<{ results: { outcome: string }[] }>(await push([condition, condition])).results.map(
+        (result) => result.outcome,
+      ),
+    ).toEqual(['applied', 'applied']);
+    const timeline = json<Timeline>(await call(engineer, 'GET', `/v1/assets/${assetId}/timeline`));
+    expect(
+      timeline.entries.filter((entry) => entry.event?.kind === 'condition_recorded'),
+    ).toHaveLength(2);
+
+    const other = await register({ name: 'Second asset' });
+    const link = {
+      id: randomUUID(),
+      entityId: job.id,
+      recordedAt: new Date().toISOString(),
+      kind: 'asset.link',
+      payload: { assetId: other.asset.id },
+    };
+    expect(json<{ results: { outcome: string }[] }>(await push([link])).results[0]).toMatchObject({
+      outcome: 'applied',
+    });
+    const away = await register({ name: 'Elsewhere', siteId: otherSiteId });
+    const refused = json<{ results: { outcome: string; code: string }[] }>(
+      await push([{ ...link, id: randomUUID(), payload: { assetId: away.asset.id } }]),
+    );
+    expect(refused.results[0]).toMatchObject({ outcome: 'rejected', code: 'asset_not_at_site' });
+  });
+});

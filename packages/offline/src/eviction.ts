@@ -1,3 +1,4 @@
+import { evictAssets } from './assets.js';
 import type { SqlConnection } from './sql.js';
 import { UNSENT_FORM_VERSION_IDS, UNSENT_SITE_IDS, UNSENT_WORK_ORDER_IDS } from './unsent.js';
 
@@ -102,6 +103,8 @@ export async function evict(
   const sites = await sql.run(
     `delete from sites where customer_id not in (select id from customers)`,
   );
+  // Assets go with their site (phase E3); their photos are filed under it.
+  await evictAssets(sql);
 
   const formVersions = await sql.run(
     `delete from form_versions

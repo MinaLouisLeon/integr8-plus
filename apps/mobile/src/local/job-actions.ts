@@ -1,10 +1,15 @@
 import type { WorkOrderState } from '@integr8/core';
 import {
   type ChangeContext,
+  type ConditionValue,
   downloadedFiles,
+  fetchAssetFile,
   fetchAttachment,
   markOpened,
   recordPhoto,
+  recordAssetCondition,
+  recordAssetLink,
+  recordAssetRegistered,
   recordMaterial,
   recordPhotoRemoved,
   recordShiftEnd,
@@ -78,6 +83,71 @@ export async function recordPart(input: {
 }): Promise<void> {
   await recordMaterial(context(), input);
   sent();
+}
+
+/** An asset found on site, registered on the job (CRM/ERP plan, phase E3). Resolves its id. */
+export async function registerAsset(input: {
+  workOrderId: string;
+  name: string;
+  make?: string;
+  model?: string;
+  serialNumber?: string;
+  locationNote?: string;
+  condition?: ConditionValue;
+}): Promise<string> {
+  const id = await recordAssetRegistered(context(), input);
+  sent();
+  return id;
+}
+
+export async function recordCondition(input: {
+  assetId: string;
+  condition: ConditionValue;
+  note?: string;
+  workOrderId?: string;
+}): Promise<void> {
+  await recordAssetCondition(context(), input);
+  sent();
+}
+
+export async function linkAsset(input: { workOrderId: string; assetId: string }): Promise<void> {
+  await recordAssetLink(context(), input);
+  sent();
+}
+
+/** Opens a photo or document from an asset's history: from the phone, or fetched now. */
+export async function openAssetFile(
+  siteId: string,
+  file: { fileId: string; title: string; contentType: string; byteSize: number },
+): Promise<boolean> {
+  const status = localData.status();
+  if (status.phase !== 'open') {
+    return false;
+  }
+  const { db } = status;
+  let path = (await db.read((sql) => downloadedFiles(sql, [file.fileId]))).get(file.fileId);
+  if (path === undefined) {
+    const fetched = await fetchAssetFile(
+      db,
+      syncApiFor(session().client),
+      deviceTransport,
+      { ...file, siteId },
+      new Date(),
+    ).catch(() => false);
+    if (!fetched) {
+      return false;
+    }
+    path = (await db.read((sql) => downloadedFiles(sql, [file.fileId]))).get(file.fileId);
+  }
+  if (path === undefined || !localFile(path).exists) {
+    return false;
+  }
+  await markOpened(db, file.fileId, new Date());
+  await Sharing.shareAsync(localFile(path).uri, {
+    mimeType: file.contentType,
+    dialogTitle: file.title,
+  });
+  return true;
 }
 
 export async function moveJob(workOrderId: string, to: WorkOrderState): Promise<void> {

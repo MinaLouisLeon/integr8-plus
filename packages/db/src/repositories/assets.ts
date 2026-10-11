@@ -70,6 +70,8 @@ export interface AssetDetailsInput {
 }
 
 export interface AssetRegistration extends AssetDetailsInput {
+  /** Chosen by a phone that registered it offline, so its later changes can name it. */
+  id?: string | undefined;
   name: string;
   customerId: string;
   siteId: string;
@@ -271,6 +273,7 @@ export class AssetsRepository extends TenantScopedRepository {
       row = await this.db
         .insertInto('erp_assets')
         .values({
+          ...(input.id === undefined ? {} : { id: input.id }),
           tenant_id: this.tenantId,
           customer_id: input.customerId,
           site_id: input.siteId,
