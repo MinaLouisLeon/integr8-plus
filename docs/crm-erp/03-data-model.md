@@ -64,3 +64,18 @@ relying on RLS. `update` takes the expected `version` and returns
 `created_at` truncated to milliseconds, then `id`, so the keyset cursor (which
 carries a JavaScript date) never skips or repeats rows created in the same
 millisecond. Phase C1 added no migration.
+
+### Conversion (phase C2)
+
+No migration: 0024 already holds the conversion columns, the pairing checks and
+the trigger that makes a conversion final. The repository adds:
+
+- `findForUpdate(id)` — `select … for update`, so two conversions of one lead
+  run one after the other inside their transactions.
+- `markConverted(id, expectedVersion, …)` — one statement that checks the
+  version and that the lead is not converted yet, and writes the conversion.
+- `customerMatches(lead)` — customers sharing the lead's normalised email,
+  phone digits (on the customer or a current contact) or name. Customers have
+  no normalised columns, so this compares expressions; fine at today's sizes,
+  and an expression index is the follow-up if it is ever slow.
+- `convertedInto(customerId)` — for the customer's CRM summary.

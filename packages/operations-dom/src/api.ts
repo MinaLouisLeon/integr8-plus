@@ -34,6 +34,7 @@ export interface OperationsConfig {
     crm: string;
     crmLeads: string;
     crmLead: (id: string) => string;
+    crmLeadConvert: (id: string) => string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -127,12 +128,17 @@ export type Lead = LeadPage['items'][number];
 export type LeadDetail = Json<'/v1/crm/leads/{leadId}', 'get', 200>;
 export type LeadStatus = Lead['status'];
 export type LeadSource = Lead['source'];
+export type LeadMatch = Json<'/v1/crm/leads/{leadId}/matches', 'get', 200>['items'][number];
+export type LeadConversion = Json<'/v1/crm/leads/{leadId}/convert', 'post', 201>;
+export type CustomerCrm = Json<'/v1/customers/{customerId}/crm', 'get', 200>;
 
 export const keys = {
   me: ['me'] as const,
   members: ['members'] as const,
   leads: (query: object) => ['crm', 'leads', query] as const,
   lead: (id: string) => ['crm', 'lead', id] as const,
+  leadMatches: (id: string) => ['crm', 'lead', id, 'matches'] as const,
+  customerCrm: (id: string) => ['crm', 'customer', id] as const,
   forms: ['forms'] as const,
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,

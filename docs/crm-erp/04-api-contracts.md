@@ -65,3 +65,74 @@ Creating a lead never creates a customer (ADR-0002).
 `crm_lead.created`, `crm_lead.updated` (with the changed field names and the
 new version), `crm_lead.status_changed` (from, to), `crm_lead.archived`,
 `crm_lead.restored`. Resource type `crm_lead`.
+
+## Converting a lead (phase C2)
+
+Source: `apps/api/src/routes/v1/crm.ts`. Tests:
+`apps/api/src/routes/v1/crm-conversion.integration.test.ts`. Decision:
+[ADR-0002](./decisions/) — `customers` stays the only customer record.
+
+| Method and path                       | Permission         | What it does                                                        |
+| ------------------------------------- | ------------------ | ------------------------------------------------------------------- |
+| `GET /v1/crm/leads/{leadId}/matches`  | `crm.lead.convert` | Up to ten existing customers that look like the lead, with reasons  |
+| `POST /v1/crm/leads/{leadId}/convert` | `crm.lead.convert` | Convert, in one transaction; **`Idempotency-Key` required**         |
+| `GET /v1/customers/{customerId}/crm`  | `crm.read`         | The customer's CRM summary: the leads that became it (C3 adds more) |
+
+### Matches
+
+Suggestions only; nothing is merged. A customer matches on the **email**
+(trimmed, case-insensitive), the **phone** (digits only, at least seven), on
+the customer itself or one of its current contacts, or on the **name** (the
+lead's company or the lead's own name, case-insensitive).
+
+### Convert request
+
+```json
+{
+  "expectedVersion": 2,
+  "customer": { "mode": "existing", "customerId": "UUID" },
+  "contact": { "mode": "existing", "contactId": "UUID" }
+}
+```
+
+- `customer`: `{ "mode": "existing", "customerId" }` or
+  `{ "mode": "new", "name", "accountNumber?", "email?", "phone?" }`.
+- `contact` (optional, default none): `{ "mode": "none" }`,
+  `{ "mode": "existing", "contactId" }` (one of the chosen customer's current
+  contacts), or `{ "mode": "new", "name", "jobTitle?", "email?", "phone?",
+"isPrimary?" }`.
+- Response 201: `{ lead, customerId, contactId, customerCreated, contactCreated }`.
+- The plan's optional opportunity on conversion arrives with opportunities in C3.
+
+### Convert rules
+
+| Rule                                                                                         | Refusal                                                 |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| The request carries an `Idempotency-Key`                                                     | 400 `idempotency_key_required`                          |
+| The same key and body again returns the first response (`idempotent-replay: true`)           | —                                                       |
+| The same key with a different body                                                           | 409 `idempotency_key_reused`                            |
+| A lead converts once, whatever the key; concurrent conversions serialise on a row lock       | 409 `lead_already_converted`                            |
+| The lead is still at `expectedVersion`                                                       | 409 `version_conflict`                                  |
+| The lead is open (`new`, `contacted`, `qualified`) and not archived                          | 422 `lead_not_convertible`                              |
+| An existing customer is in this company (another company's id reads as missing)              | 404 `customer_not_found`                                |
+| An existing customer is not closed                                                           | 422 `customer_closed`                                   |
+| A kept contact belongs to the chosen customer                                                | 422 `contact_not_found`                                 |
+| A new contact does not repeat an existing contact's email or phone on that customer          | 409 `duplicate_contact` (`details[0].params.contactId`) |
+| A new customer's account number is free                                                      | 422 `account_number_taken`                              |
+| Creating a customer also needs `customer.manage` (every role with `crm.lead.convert` has it) | 403 `forbidden`                                         |
+
+Linking an existing customer never changes the customer's own details. Any
+refusal rolls the whole conversion back: no customer, contact or lead change
+survives a failed request.
+
+### Audit actions
+
+`crm_lead.converted` (customer, contact, whether each was created, the status
+converted from) on the lead, and `customer.created` (with `fromLead`) when a
+customer was created. Both carry `impersonatedBy` when Integr8 staff acted.
+
+### Required idempotency
+
+`idempotent: 'required'` on a route (`apps/api/src/http/routes.ts`) makes the
+server refuse a request without the header before running it, and marks the
+header `required` in OpenAPI. Converting is the first route to use it.

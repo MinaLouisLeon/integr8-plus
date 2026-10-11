@@ -1455,6 +1455,66 @@ export interface paths {
         patch: operations["updateLead"];
         trace?: never;
     };
+    "/v1/crm/leads/{leadId}/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Existing customers that look like a lead
+         * @description Suggestions for the conversion screen, by email, phone or name. Nothing is merged: the person converting chooses.
+         */
+        get: operations["listLeadCustomerMatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/crm/leads/{leadId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Convert a lead into an existing or a new customer
+         * @description One transaction: links an existing customer or creates exactly one, optionally keeps a contact, and marks the lead converted. Needs `Idempotency-Key`; a lead converts once, so a second conversion is refused with 409 `lead_already_converted` whatever its key.
+         */
+        post: operations["convertLead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{customerId}/crm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the CRM knows about a customer
+         * @description For the CRM section of the customer screen. Needs `crm.read` and the CRM module, unlike the customer itself, so deal data never shows to someone who may only read customers.
+         */
+        get: operations["getCustomerCrm"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -12049,6 +12109,408 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listLeadCustomerMatches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description At most ten customers, alphabetical. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                accountNumber: string | null;
+                                /** @enum {string} */
+                                status: "active" | "on_hold" | "closed";
+                                email: string | null;
+                                phone: string | null;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                                tags: string[];
+                                notes: string | null;
+                                createdAt: string;
+                                updatedAt: string;
+                            };
+                            reasons: ("email" | "phone" | "name")[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such lead. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    convertLead: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                leadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    customer: {
+                        /** @enum {string} */
+                        mode: "existing";
+                        /** Format: uuid */
+                        customerId: string;
+                    } | {
+                        name: string;
+                        accountNumber?: string | null;
+                        email?: (string | null) | "";
+                        phone?: string | null;
+                        /** @enum {string} */
+                        mode: "new";
+                    };
+                    contact?: {
+                        /** @enum {string} */
+                        mode: "none";
+                    } | {
+                        /** @enum {string} */
+                        mode: "existing";
+                        /** Format: uuid */
+                        contactId: string;
+                    } | {
+                        name: string;
+                        jobTitle?: string | null;
+                        email?: (string | null) | "";
+                        phone?: string | null;
+                        isPrimary?: boolean;
+                        /** @enum {string} */
+                        mode: "new";
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The converted lead and what it became. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        lead: {
+                            /** Format: uuid */
+                            id: string;
+                            displayName: string;
+                            companyName: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            /** @enum {string} */
+                            source: "manual" | "referral" | "web" | "import" | "other";
+                            /** @enum {string} */
+                            status: "new" | "contacted" | "qualified" | "unqualified" | "converted";
+                            /** Format: uuid */
+                            assignedTo: string | null;
+                            estimatedValue: string | null;
+                            currencyCode: string | null;
+                            notes: string | null;
+                            unqualifiedReason: string | null;
+                            /** Format: uuid */
+                            convertedCustomerId: string | null;
+                            /** Format: uuid */
+                            convertedContactId: string | null;
+                            /** Format: date-time */
+                            convertedAt: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        };
+                        /** Format: uuid */
+                        customerId: string;
+                        /** Format: uuid */
+                        contactId: string | null;
+                        customerCreated: boolean;
+                        contactCreated: boolean;
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such lead (`not_found`) or customer (`customer_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already converted (`lead_already_converted`), changed since it was read (`version_conflict`), or the customer already has this contact (`duplicate_contact`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid; the lead is ruled out or archived (`lead_not_convertible`); the customer is closed (`customer_closed`); the contact is not the customer’s (`contact_not_found`); or the account number is taken (`account_number_taken`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getCustomerCrm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The customer’s CRM summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        leads: {
+                            /** Format: uuid */
+                            id: string;
+                            displayName: string;
+                            companyName: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            /** @enum {string} */
+                            source: "manual" | "referral" | "web" | "import" | "other";
+                            /** @enum {string} */
+                            status: "new" | "contacted" | "qualified" | "unqualified" | "converted";
+                            /** Format: uuid */
+                            assignedTo: string | null;
+                            estimatedValue: string | null;
+                            currencyCode: string | null;
+                            notes: string | null;
+                            unqualifiedReason: string | null;
+                            /** Format: uuid */
+                            convertedCustomerId: string | null;
+                            /** Format: uuid */
+                            convertedContactId: string | null;
+                            /** Format: date-time */
+                            convertedAt: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such customer. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description Rate limit exceeded. */
             429: {

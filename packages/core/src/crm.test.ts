@@ -4,6 +4,7 @@ import {
   decimalAmountSchema,
   hasFeature,
   isLeadOpen,
+  leadConvertible,
   LEAD_STATUSES,
   leadTransitionAllowed,
   OPEN_LEAD_STATUSES,
@@ -65,6 +66,10 @@ describe('lead statuses', () => {
 
   it('counts a lead as open until it is converted or ruled out', () => {
     expect(LEAD_STATUSES.filter(isLeadOpen)).toEqual(['new', 'contacted', 'qualified']);
+    expect(LEAD_STATUSES.filter((status) => leadConvertible({ status, archivedAt: null }))).toEqual(
+      ['new', 'contacted', 'qualified'],
+    );
+    expect(leadConvertible({ status: 'qualified', archivedAt: new Date() })).toBe(false);
   });
 });
 

@@ -20,3 +20,5 @@ export { AccessNotesPanel } from './access-notes.js';
 export { CrmOverviewScreen } from './crm/crm-overview.js';
 export { LeadListScreen } from './crm/lead-list.js';
 export { LeadScreen } from './crm/lead-screen.js';
+export { LeadConvertScreen } from './crm/lead-convert.js';
+export { CustomerCrmSection } from './crm/customer-crm.js';

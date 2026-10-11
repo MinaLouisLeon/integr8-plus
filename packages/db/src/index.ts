@@ -330,10 +330,14 @@ export {
 export {
   type CrmLeadsRepository,
   type Lead,
+  type LeadConversionRefusal,
+  type LeadCustomerMatch,
   type LeadInput,
   type LeadPage,
   type LeadQuery,
   type LeadUpdateRefusal,
+  normaliseEmail,
+  phoneDigits,
   trimDecimal,
 } from './repositories/crm-leads.js';
 

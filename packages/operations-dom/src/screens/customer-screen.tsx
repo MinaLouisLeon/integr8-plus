@@ -27,6 +27,7 @@ import {
   type AddressDraft,
   type CustomerDraft,
 } from './customer-fields.js';
+import { CustomerCrmSection } from '../crm/customer-crm.js';
 
 /** A customer: details, contacts, sites, and recent jobs. */
 export function CustomerScreen({ customerId }: { customerId: string }) {
@@ -224,6 +225,8 @@ export function CustomerScreen({ customerId }: { customerId: string }) {
           </ul>
         )}
       </section>
+
+      <CustomerCrmSection customerId={customerId} />
 
       {editing === undefined ? null : (
         <Dialog

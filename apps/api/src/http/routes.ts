@@ -132,8 +132,12 @@ interface RouteShape {
    * Declared per route rather than inferred from the verb: a POST that only
    * reads needs no dedupe row, and one that charges money needs it whatever
    * verb it uses.
+   *
+   * `'required'` refuses a request without the header (400
+   * `idempotency_key_required`), for effects a blind retry must never repeat —
+   * converting a lead creates a customer.
    */
-  idempotent?: boolean;
+  idempotent?: boolean | 'required';
 
   /** Largest request body, in bytes, where this route needs more than `API_MAX_BODY_BYTES` — a CSV import. */
   bodyLimit?: number;

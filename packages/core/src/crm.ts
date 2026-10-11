@@ -73,6 +73,20 @@ export function isLeadOpen(status: LeadStatus): boolean {
   return status !== 'converted' && status !== 'unqualified';
 }
 
+/**
+ * Whether a lead can be converted into a customer: it is still open (new,
+ * contacted or qualified) and not archived. A lead ruled out is reconsidered
+ * (moved back to an open status), and an archived one restored, before it
+ * becomes a customer, so nobody converts one by accident.
+ */
+export function leadConvertible(lead: { status: LeadStatus; archivedAt: unknown }): boolean {
+  return lead.archivedAt === null && isLeadOpen(lead.status);
+}
+
+/** Why an existing customer is suggested for a lead. Suggestions only: nothing is merged. */
+export const LEAD_MATCH_REASONS = ['email', 'phone', 'name'] as const;
+export type LeadMatchReason = (typeof LEAD_MATCH_REASONS)[number];
+
 // ---------------------------------------------------------------------------
 // Money
 // ---------------------------------------------------------------------------

@@ -73,7 +73,7 @@ async function audit(
 }
 
 /** Refused with a message a person can act on, rather than a constraint name. */
-function duplicateAccountNumber(error: unknown): never {
+export function duplicateAccountNumber(error: unknown): never {
   const { code, constraint } = error as { code?: string; constraint?: string };
   if (code === '23505' && constraint === 'customers_account_number_unique') {
     throw unprocessable(

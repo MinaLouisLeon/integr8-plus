@@ -56,6 +56,7 @@ export function OperationsScreens({ children }: { children: ReactNode }) {
         crm: '/crm',
         crmLeads: '/crm/leads',
         crmLead: (id) => `/crm/leads/${id}`,
+        crmLeadConvert: (id) => `/crm/leads/${id}/convert`,
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),

@@ -15,6 +15,7 @@ import { LocalDiskStorage, LOCAL_MEDIA_PREFIX } from './media/local-disk.js';
 import { assessClientVersion, outdatedClientMessage } from './http/client-version.js';
 import {
   ApiError,
+  badRequest,
   forbidden,
   internal,
   isClientError,
@@ -348,8 +349,17 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
 
         // 8. Idempotency, then the handler.
         const run = async () => route.handler({ params, query, body }, context);
+        if (
+          route.idempotent === 'required' &&
+          (context.idempotencyKey === null || context.idempotencyKey === '')
+        ) {
+          throw badRequest(
+            'idempotency_key_required',
+            'This request needs an Idempotency-Key header, so that a retry cannot repeat it.',
+          );
+        }
         const result =
-          route.idempotent === true && context.principal !== null
+          route.idempotent !== undefined && route.idempotent !== false && context.principal !== null
             ? await withIdempotency(
                 context as RequestContext,
                 { method: request.method, path: request.url, body },

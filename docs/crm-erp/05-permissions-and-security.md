@@ -51,6 +51,19 @@ Tests: `packages/core/src/crm.test.ts` pins the table above;
 - The detail response says what the seat may do (`can.edit`, `can.convert`);
   screens use it to hide actions, and the API refuses them anyway.
 
+## Converting (phase C2)
+
+- `crm.lead.convert` to see suggested customers and to convert; the lead screen
+  shows the action only when `can.convert` is true (the permission, and the
+  lead open and not archived).
+- Creating a customer during conversion also checks `customer.manage`, so the
+  CRM can never become a back door for adding customers.
+- A customer id from another company answers 404 `customer_not_found`, as one
+  that does not exist; the response says nothing more about it.
+- The customer's CRM summary (`/v1/customers/{id}/crm`) needs `crm.read` and the
+  module, while the customer itself needs only `customer.read`: engineers read
+  customers for their jobs and never see CRM data through them.
+
 ## Database
 
 See [03-data-model.md](./03-data-model.md): row-level security on every CRM

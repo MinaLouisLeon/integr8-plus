@@ -19,7 +19,7 @@ for review.** Nothing after C3 starts without a new instruction.
 | F0    | Repository assessment, architecture, feature matrix, dependency audit, ADRs            | `DONE`           | —          | first commit on the branch  |
 | F1    | CRM switch (feature flag), CRM permissions, navigation, EN/AR keys, first CRM tables   | `DONE`           | 0024       | second commit on the branch |
 | C1    | Leads: list, filters, create, edit, detail, status changes, archive (web + desktop)    | `DONE`           | —          | third commit on the branch  |
-| C2    | Lead conversion to an existing or new customer, once only; CRM summary on the customer | `NOT STARTED`    | —          | —                           |
+| C2    | Lead conversion to an existing or new customer, once only; CRM summary on the customer | `DONE`           | —          | fourth commit on the branch |
 | C3    | Opportunities, pipeline and stages, activities and follow-ups, Customer 360, dashboard | `NOT STARTED`    | —          | —                           |
 | E1    | Catalogue and immutable stock ledger (aligns with `plan/v1.1-inventory/P22`)           | `NOT STARTED`    | —          | —                           |
 | E2    | Suppliers, purchasing, goods receipts, van stock, work-order materials (aligns P23)    | `NOT STARTED`    | —          | —                           |
@@ -35,10 +35,10 @@ Every numbered item in PLAN.md §4–§5, so none is forgotten.
 
 | Spec item                                  | Phase(s)   | Status           | Notes                                                         |
 | ------------------------------------------ | ---------- | ---------------- | ------------------------------------------------------------- |
-| CRM-01 Leads                               | F1, C1, C2 | `IN PROGRESS`    | C1 done (leads); conversion is C2                             |
+| CRM-01 Leads                               | F1, C1, C2 | `DONE`           | Leads (C1) and conversion (C2)                                |
 | CRM-02 Opportunities                       | C3         | `NOT STARTED`    |                                                               |
 | CRM-03 Activities and tasks                | C3         | `NOT STARTED`    | In-app due list only; email reminders after email is set up   |
-| CRM-04 Customer 360                        | C2, C3     | `NOT STARTED`    | Quotes, orders, invoices and assets tabs arrive with S1/B1/E3 |
+| CRM-04 Customer 360                        | C2, C3     | `IN PROGRESS`    | Quotes, orders, invoices and assets tabs arrive with S1/B1/E3 |
 | CRM-05 Quotes and pipeline analytics       | S1         | `NOT STARTED`    | Simple pipeline counts come with the C3 dashboard             |
 | CRM-06 Campaigns and automations           | —          | `DEFERRED`       | P2; no marketing platform or bulk email                       |
 | ERP-01 Products and services catalogue     | E1         | `NOT STARTED`    |                                                               |
@@ -64,6 +64,8 @@ or a decision before the pilot (phase L).
 - [ ] Licence-policy check in CI (PLAN.md §10.3); no new dependencies so far.
 - [ ] Self-hosting audit of production-required services (PLAN.md §10.4).
 - [x] API test of the module gate end to end (`feature_disabled`): landed with C1 (`crm-leads.integration.test.ts`).
+- [ ] Optional opportunity created by lead conversion (PLAN.md §7.3): lands with opportunities in C3.
+- [ ] Show API refusals in the reader's language: shared screens show the server's English message for 4xx errors (existing behaviour across operations screens); map CRM codes to `errors.*` keys.
 - [ ] Update `plan/ROADMAP.md` and `plan/v1.1-inventory/P22–P24` when the ERP phases start.
 
 ## Decisions taken with the product owner (2026-10-11)

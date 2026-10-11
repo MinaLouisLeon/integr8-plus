@@ -125,6 +125,7 @@ export function renderScreen(
       crm: '/crm',
       crmLeads: '/crm/leads',
       crmLead: (id) => `/crm/leads/${id}`,
+      crmLeadConvert: (id) => `/crm/leads/${id}/convert`,
       ...pathOverrides,
     },
     ...rest,

@@ -1,4 +1,5 @@
 import {
+  type LeadMatchReason,
   type LeadSource,
   type LeadStatus,
   type TenantId,
@@ -83,6 +84,30 @@ export interface LeadPage {
 /** Why an edit changed nothing. */
 export type LeadUpdateRefusal = 'not_found' | 'version_conflict';
 
+/** Why a conversion changed nothing. */
+export type LeadConversionRefusal = LeadUpdateRefusal | 'already_converted';
+
+/** An existing customer that looks like the lead, and why. A suggestion; nothing merges by itself. */
+export interface LeadCustomerMatch {
+  customerId: string;
+  reasons: LeadMatchReason[];
+}
+
+/** An email as matching compares it: trimmed, lower case. */
+export function normaliseEmail(email: string | null | undefined): string | null {
+  const trimmed = email?.trim().toLowerCase() ?? '';
+  return trimmed === '' ? null : trimmed;
+}
+
+/**
+ * A phone number as matching compares it: its digits only. Fewer than seven
+ * digits says too little about a person to suggest a match on.
+ */
+export function phoneDigits(phone: string | null | undefined): string | null {
+  const digits = phone?.replace(/\D/gu, '') ?? '';
+  return digits.length < 7 ? null : digits;
+}
+
 export class CrmLeadsRepository extends TenantScopedRepository {
   constructor(scope: TenantScope) {
     super(scope);
@@ -140,6 +165,120 @@ export class CrmLeadsRepository extends TenantScopedRepository {
       return toLead(row);
     }
     return (await this.find(leadId)) === undefined ? 'not_found' : 'version_conflict';
+  }
+
+  /**
+   * The lead, locked until the transaction ends. Converting reads the lead
+   * this way, so two conversions of the same lead run one after the other and
+   * the second sees the first one's result instead of creating a second customer.
+   */
+  async findForUpdate(leadId: string): Promise<Lead | undefined> {
+    const row = await this.#leads()
+      .selectAll()
+      .where('id', '=', leadId)
+      .forUpdate()
+      .executeTakeFirst();
+    return row === undefined ? undefined : toLead(row);
+  }
+
+  /**
+   * Records what the lead became, once. The version check, the "not converted
+   * yet" check and the write are one statement; the database refuses to undo
+   * or change a conversion afterwards (`crm_leads_guard_conversion`).
+   */
+  async markConverted(
+    leadId: string,
+    expectedVersion: number,
+    conversion: { customerId: string; contactId: string | null; convertedBy: UserId | string },
+  ): Promise<Lead | LeadConversionRefusal> {
+    const row = await this.db
+      .updateTable('crm_leads')
+      .set({
+        status: 'converted',
+        converted_customer_id: conversion.customerId,
+        converted_contact_id: conversion.contactId,
+        converted_at: sql<Date>`now()`,
+        converted_by: toUserId(conversion.convertedBy),
+        version: sql<number>`version + 1`,
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', leadId)
+      .where('version', '=', expectedVersion)
+      .where('status', '<>', 'converted')
+      .returningAll()
+      .executeTakeFirst();
+    if (row !== undefined) {
+      return toLead(row);
+    }
+    const current = await this.find(leadId);
+    if (current === undefined) {
+      return 'not_found';
+    }
+    return current.status === 'converted' ? 'already_converted' : 'version_conflict';
+  }
+
+  /**
+   * Customers of this company that look like the lead: the same email or phone
+   * (on the customer or one of its current contacts), or the same name as the
+   * lead's company or the lead itself. At most `limit`, alphabetical.
+   */
+  async customerMatches(lead: Lead, limit = 10): Promise<LeadCustomerMatch[]> {
+    const email = normaliseEmail(lead.email);
+    const phone = phoneDigits(lead.phone);
+    const names = [lead.companyName, lead.displayName]
+      .map((name) => name?.trim().toLowerCase() ?? '')
+      .filter((name) => name !== '');
+
+    const byEmail = sql<boolean>`(${email}::text is not null and (
+      lower(btrim(c.email)) = ${email}
+      or exists (
+        select 1 from customer_contacts cc
+        where cc.tenant_id = c.tenant_id and cc.customer_id = c.id and cc.archived_at is null
+          and lower(btrim(cc.email)) = ${email})))`;
+    const byPhone = sql<boolean>`(${phone}::text is not null and (
+      regexp_replace(coalesce(c.phone, ''), '[^0-9]', '', 'g') = ${phone}
+      or exists (
+        select 1 from customer_contacts cc
+        where cc.tenant_id = c.tenant_id and cc.customer_id = c.id and cc.archived_at is null
+          and regexp_replace(coalesce(cc.phone, ''), '[^0-9]', '', 'g') = ${phone})))`;
+    const byName =
+      names.length === 0
+        ? sql<boolean>`false`
+        : sql<boolean>`lower(btrim(c.name)) in (${sql.join(names)})`;
+
+    const { rows } = await sql<{
+      id: string;
+      by_email: boolean;
+      by_phone: boolean;
+      by_name: boolean;
+    }>`
+      select c.id, ${byEmail} as by_email, ${byPhone} as by_phone, ${byName} as by_name
+      from customers c
+      where c.tenant_id = ${this.tenantId} and (${byEmail} or ${byPhone} or ${byName})
+      order by lower(c.name), c.id
+      limit ${Math.min(Math.max(limit, 1), 50)}
+    `.execute(this.db);
+
+    return rows.map((row) => ({
+      customerId: row.id,
+      reasons: [
+        ...(row.by_email ? (['email'] as const) : []),
+        ...(row.by_phone ? (['phone'] as const) : []),
+        ...(row.by_name ? (['name'] as const) : []),
+      ],
+    }));
+  }
+
+  /** The leads that became this customer, most recent first. */
+  async convertedInto(customerId: string, limit = 50): Promise<Lead[]> {
+    const rows = await this.#leads()
+      .selectAll()
+      .where('converted_customer_id', '=', customerId)
+      .orderBy('converted_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(Math.min(Math.max(limit, 1), 100))
+      .execute();
+    return rows.map(toLead);
   }
 
   /** Newest first, a page at a time. */

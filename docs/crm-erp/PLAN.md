@@ -649,7 +649,7 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase C2 — Lead conversion + customers
 
-**Status:** `NOT STARTED` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `DONE` — the optional opportunity on conversion arrives with C3 — see the [phase tracker](./README.md#phase-tracker).
 
 - [ ] Conversion service transaction, existing customer match/new customer path, optional contact creation, idempotency, optimistic version guard.
 - [ ] Conversion UI wizard with preview and explicit choice.

@@ -2,20 +2,38 @@ import {
   currencyCodeSchema,
   decimalAmountSchema,
   holds,
+  LEAD_MATCH_REASONS,
+  leadConvertible,
   leadSourceSchema,
   leadStatusSchema,
   leadTransitionAllowed,
   OPEN_LEAD_STATUSES,
 } from '@integr8/core';
-import { type Lead, type LeadInput, type TenantTransaction, withTenant } from '@integr8/db';
+import {
+  type Lead,
+  type LeadInput,
+  normaliseEmail,
+  phoneDigits,
+  type TenantTransaction,
+  withTenant,
+} from '@integr8/db';
 import { z } from 'zod';
-import { conflict, notFound, unprocessable } from '../../http/errors.js';
+import { ApiError, conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
-import { booleanQuery, many } from './operations.js';
+import { duplicateAccountNumber, stripUndefined } from './customers.js';
+import {
+  booleanQuery,
+  contactInputSchema,
+  customerBody,
+  customerInputSchema,
+  customerSchema,
+  many,
+} from './operations.js';
 import { iso, isoOrNull } from './schemas.js';
 
 /**
- * The CRM (CRM/ERP plan): leads in phase C1.
+ * The CRM (CRM/ERP plan): leads in phase C1, converting them into customers
+ * and the CRM summary on a customer in phase C2.
  *
  * Every route here needs the company's `crm` module as well as the seat's
  * permission (`feature: 'crm'`); see `http/features.ts`. Leads are archived,
@@ -78,6 +96,12 @@ async function requireAssignableMember(tx: TenantTransaction, userId: string): P
     );
   }
 }
+
+const alreadyConverted = () =>
+  conflict(
+    'lead_already_converted',
+    'This lead has already been converted. Its details now live on the customer.',
+  );
 
 const versionConflict = () =>
   conflict(
@@ -350,10 +374,7 @@ export const getLeadRoute = defineRoute({
         lead: leadBody(lead),
         can: {
           edit: holds(principal, 'crm.lead.manage'),
-          convert:
-            holds(principal, 'crm.lead.convert') &&
-            lead.status !== 'converted' &&
-            lead.archivedAt === null,
+          convert: holds(principal, 'crm.lead.convert') && leadConvertible(lead),
         },
       },
     };
@@ -458,4 +479,303 @@ export const updateLeadRoute = defineRoute({
   },
 });
 
-export const crmRoutes = [listLeadsRoute, createLeadRoute, getLeadRoute, updateLeadRoute];
+// ---------------------------------------------------------------------------
+// Conversion (phase C2)
+// ---------------------------------------------------------------------------
+
+const leadMatchSchema = z.object({
+  customer: customerSchema,
+  /** Why it was suggested: the same email or phone (on the customer or a contact), or the same name. */
+  reasons: z.array(z.enum(LEAD_MATCH_REASONS)),
+});
+
+export const leadMatchesRoute = defineRoute({
+  method: 'get',
+  path: '/v1/crm/leads/:leadId/matches',
+  operationId: 'listLeadCustomerMatches',
+  summary: 'Existing customers that look like a lead',
+  description:
+    'Suggestions for the conversion screen, by email, phone or name. Nothing is merged: the person converting chooses.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'crm.lead.convert',
+  feature: FEATURE,
+  params: leadParams,
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: {
+      description: 'At most ten customers, alphabetical.',
+      schema: z.object({ items: z.array(leadMatchSchema) }),
+    },
+    404: { description: 'No such lead.' },
+  },
+  handler: async ({ params }, context) => {
+    const items = await withTenant(context.principal.tenantId, async (tx) => {
+      const lead = await tx.crmLeads.find(params.leadId);
+      if (lead === undefined) {
+        throw notFound('This lead does not exist.');
+      }
+      const matches = await tx.crmLeads.customerMatches(lead);
+      const customers = new Map(
+        (await tx.customers.findMany(matches.map((match) => match.customerId))).map((customer) => [
+          customer.id,
+          customer,
+        ]),
+      );
+      return matches.flatMap((match) => {
+        const customer = customers.get(match.customerId);
+        return customer === undefined
+          ? []
+          : [{ customer: customerBody(customer), reasons: match.reasons }];
+      });
+    });
+    return { status: 200, body: { items } };
+  },
+});
+
+const convertLeadSchema = z
+  .object({
+    /** The `version` of the lead as it was read. */
+    expectedVersion: z.number().int().positive(),
+    customer: z.discriminatedUnion('mode', [
+      z.object({ mode: z.literal('existing'), customerId: z.uuid() }),
+      customerInputSchema
+        .pick({ name: true, accountNumber: true, email: true, phone: true })
+        .extend({ mode: z.literal('new') }),
+    ]),
+    /** Who to keep as the customer's contact. Defaults to nobody. */
+    contact: z
+      .discriminatedUnion('mode', [
+        z.object({ mode: z.literal('none') }),
+        z.object({ mode: z.literal('existing'), contactId: z.uuid() }),
+        contactInputSchema
+          .pick({ name: true, jobTitle: true, email: true, phone: true, isPrimary: true })
+          .extend({ mode: z.literal('new') }),
+      ])
+      .optional(),
+  })
+  .strict();
+
+export const leadConversionSchema = z.object({
+  lead: leadSchema,
+  customerId: z.uuid(),
+  contactId: z.uuid().nullable(),
+  /** True when converting created the customer, false when it linked an existing one. */
+  customerCreated: z.boolean(),
+  contactCreated: z.boolean(),
+});
+
+const customerNotFound = () =>
+  new ApiError(404, 'customer_not_found', 'This customer does not exist.', [
+    {
+      field: 'body.customer.customerId',
+      code: 'customer_not_found',
+      message: 'This customer does not exist.',
+    },
+  ]);
+
+export const convertLeadRoute = defineRoute({
+  method: 'post',
+  path: '/v1/crm/leads/:leadId/convert',
+  operationId: 'convertLead',
+  summary: 'Convert a lead into an existing or a new customer',
+  description:
+    'One transaction: links an existing customer or creates exactly one, optionally keeps a contact, and marks the lead converted. Needs `Idempotency-Key`; a lead converts once, so a second conversion is refused with 409 `lead_already_converted` whatever its key.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'crm.lead.convert',
+  feature: FEATURE,
+  idempotent: 'required',
+  params: leadParams,
+  query: noSchema,
+  body: convertLeadSchema,
+  responses: {
+    201: { description: 'The converted lead and what it became.', schema: leadConversionSchema },
+    404: { description: 'No such lead (`not_found`) or customer (`customer_not_found`).' },
+    409: {
+      description:
+        'Already converted (`lead_already_converted`), changed since it was read (`version_conflict`), or the customer already has this contact (`duplicate_contact`).',
+    },
+    422: {
+      description:
+        'Invalid; the lead is ruled out or archived (`lead_not_convertible`); the customer is closed (`customer_closed`); the contact is not the customer’s (`contact_not_found`); or the account number is taken (`account_number_taken`).',
+    },
+  },
+  handler: async ({ params, body }, context) => {
+    const { principal } = context;
+    const result = await withTenant(principal.tenantId, async (tx) => {
+      // Locked until this transaction ends: a second conversion of the same
+      // lead waits here, then finds it converted and creates nothing.
+      const lead = await tx.crmLeads.findForUpdate(params.leadId);
+      if (lead === undefined) {
+        throw notFound('This lead does not exist.');
+      }
+      if (lead.status === 'converted') {
+        throw alreadyConverted();
+      }
+      if (lead.version !== body.expectedVersion) {
+        throw versionConflict();
+      }
+      if (!leadConvertible(lead)) {
+        throw unprocessable(
+          'lead_not_convertible',
+          lead.archivedAt === null
+            ? 'This lead was ruled out. Move it back to an open status before converting it.'
+            : 'This lead is archived. Restore it before converting it.',
+        );
+      }
+
+      // The customer: one that exists, or exactly one new one.
+      let customerId: string;
+      let customerCreated = false;
+      if (body.customer.mode === 'existing') {
+        const customer = await tx.customers.find(body.customer.customerId);
+        if (customer === undefined) {
+          throw customerNotFound();
+        }
+        if (customer.status === 'closed') {
+          throw unprocessable(
+            'customer_closed',
+            'This customer is closed. Reopen it, or convert the lead into another customer.',
+          );
+        }
+        customerId = customer.id;
+      } else {
+        if (!holds(principal, 'customer.manage')) {
+          throw forbidden('You may not add customers.');
+        }
+        const { mode: _mode, ...fields } = body.customer;
+        const created = await tx.customers
+          .create(stripUndefined(fields), principal.userId)
+          .catch(duplicateAccountNumber);
+        await crmAudit(tx, context, 'customer.created', 'customer', created.id, {
+          name: created.name,
+          fromLead: lead.id,
+        });
+        customerId = created.id;
+        customerCreated = true;
+      }
+
+      // The contact: nobody, one the customer already has, or a new one.
+      let contactId: string | null = null;
+      let contactCreated = false;
+      const contact = body.contact ?? { mode: 'none' as const };
+      if (contact.mode === 'existing') {
+        const contacts = customerCreated ? [] : await tx.customers.listContacts(customerId);
+        if (!contacts.some((candidate) => candidate.id === contact.contactId)) {
+          throw unprocessable('contact_not_found', 'This contact is not one of the customer’s.', [
+            {
+              field: 'body.contact.contactId',
+              code: 'contact_not_found',
+              message: 'This contact is not one of the customer’s.',
+            },
+          ]);
+        }
+        contactId = contact.contactId;
+      } else if (contact.mode === 'new') {
+        if (!customerCreated) {
+          const email = normaliseEmail(contact.email);
+          const phone = phoneDigits(contact.phone);
+          const duplicate = (await tx.customers.listContacts(customerId)).find(
+            (candidate) =>
+              (email !== null && normaliseEmail(candidate.email) === email) ||
+              (phone !== null && phoneDigits(candidate.phone) === phone),
+          );
+          if (duplicate !== undefined) {
+            throw new ApiError(
+              409,
+              'duplicate_contact',
+              `${duplicate.name} already has this email or phone on this customer. Choose them instead.`,
+              [
+                {
+                  field: 'body.contact',
+                  code: 'duplicate_contact',
+                  message: 'The customer already has a contact with this email or phone.',
+                  params: { contactId: duplicate.id },
+                },
+              ],
+            );
+          }
+        }
+        const { mode: _mode, ...fields } = contact;
+        const added = await tx.customers.addContact(customerId, stripUndefined(fields));
+        contactId = added.id;
+        contactCreated = true;
+      }
+
+      const converted = await tx.crmLeads.markConverted(lead.id, body.expectedVersion, {
+        customerId,
+        contactId,
+        convertedBy: principal.userId,
+      });
+      if (converted === 'not_found') {
+        throw notFound('This lead does not exist.');
+      }
+      if (converted === 'already_converted') {
+        throw alreadyConverted();
+      }
+      if (converted === 'version_conflict') {
+        throw versionConflict();
+      }
+
+      await crmAudit(tx, context, 'crm_lead.converted', 'crm_lead', lead.id, {
+        customerId,
+        contactId,
+        customerCreated,
+        contactCreated,
+        from: lead.status,
+      });
+      return { lead: converted, customerId, contactId, customerCreated, contactCreated };
+    });
+    return { status: 201, body: { ...result, lead: leadBody(result.lead) } };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// A customer's CRM summary (phase C2; opportunities and activities join in C3)
+// ---------------------------------------------------------------------------
+
+export const customerCrmSchema = z.object({
+  /** The leads that became this customer, most recent first. */
+  leads: z.array(leadSchema),
+});
+
+export const customerCrmRoute = defineRoute({
+  method: 'get',
+  path: '/v1/customers/:customerId/crm',
+  operationId: 'getCustomerCrm',
+  summary: 'What the CRM knows about a customer',
+  description:
+    'For the CRM section of the customer screen. Needs `crm.read` and the CRM module, unlike the customer itself, so deal data never shows to someone who may only read customers.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'crm.read',
+  feature: FEATURE,
+  params: z.object({ customerId: z.uuid() }),
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: { description: 'The customer’s CRM summary.', schema: customerCrmSchema },
+    404: { description: 'No such customer.' },
+  },
+  handler: async ({ params }, context) => {
+    const leads = await withTenant(context.principal.tenantId, async (tx) => {
+      if ((await tx.customers.find(params.customerId)) === undefined) {
+        throw notFound('This customer does not exist.');
+      }
+      return tx.crmLeads.convertedInto(params.customerId);
+    });
+    return { status: 200, body: { leads: leads.map(leadBody) } };
+  },
+});
+
+export const crmRoutes = [
+  listLeadsRoute,
+  createLeadRoute,
+  getLeadRoute,
+  updateLeadRoute,
+  leadMatchesRoute,
+  convertLeadRoute,
+  customerCrmRoute,
+];

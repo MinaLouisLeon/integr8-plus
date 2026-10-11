@@ -6,6 +6,7 @@ import {
   ImportsScreen,
   JobTypesScreen,
   LeadListScreen,
+  LeadConvertScreen,
   LeadScreen,
   type OperationsConfig,
   OperationsContext,
@@ -53,6 +54,7 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         crm: '/crm',
         crmLeads: '/crm/leads',
         crmLead: (id) => `/crm/leads/${id}`,
+        crmLeadConvert: (id) => `/crm/leads/${id}/convert`,
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -125,6 +127,15 @@ export function LeadsRoute() {
   return (
     <OperationsScreens>
       <LeadListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function LeadConvertRoute() {
+  const { leadId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <LeadConvertScreen key={leadId} leadId={leadId} />
     </OperationsScreens>
   );
 }

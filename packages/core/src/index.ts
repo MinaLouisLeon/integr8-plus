@@ -133,4 +133,7 @@ export {
   isLeadOpen,
   decimalAmountSchema,
   currencyCodeSchema,
+  leadConvertible,
+  LEAD_MATCH_REASONS,
+  type LeadMatchReason,
 } from './crm.js';

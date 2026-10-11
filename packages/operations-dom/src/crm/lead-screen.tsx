@@ -93,8 +93,17 @@ export function LeadScreen({ leadId }: { leadId: string }) {
             )}
           </div>
         </div>
-        {can.edit && editing === null ? (
+        {(can.edit || can.convert) && editing === null ? (
           <div className="flex flex-wrap gap-2">
+            {can.convert ? (
+              <button
+                type="button"
+                className={buttonClass.primary}
+                onClick={() => navigate(paths.crmLeadConvert(lead.id))}
+              >
+                {t('crm.leads.convert')}
+              </button>
+            ) : null}
             {editable ? (
               <button
                 type="button"
@@ -107,14 +116,16 @@ export function LeadScreen({ leadId }: { leadId: string }) {
                 {t('crm.leads.edit')}
               </button>
             ) : null}
-            <button
-              type="button"
-              className={buttonClass.secondary}
-              disabled={save.isPending}
-              onClick={() => save.mutate({ archived: lead.archivedAt === null })}
-            >
-              {lead.archivedAt === null ? t('crm.leads.archive') : t('crm.leads.restore')}
-            </button>
+            {can.edit ? (
+              <button
+                type="button"
+                className={buttonClass.secondary}
+                disabled={save.isPending}
+                onClick={() => save.mutate({ archived: lead.archivedAt === null })}
+              >
+                {lead.archivedAt === null ? t('crm.leads.archive') : t('crm.leads.restore')}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </header>
