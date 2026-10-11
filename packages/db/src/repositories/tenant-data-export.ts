@@ -85,6 +85,13 @@ export const EXPORTED_TABLES = [
   'erp_sales_orders',
   'erp_sales_order_lines',
   'erp_sales_order_work_orders',
+  'erp_finance_settings',
+  'erp_invoices',
+  'erp_invoice_lines',
+  'erp_credit_notes',
+  'erp_credit_note_lines',
+  'erp_payment_receipts',
+  'erp_payment_allocations',
   'audit_log',
 ] as const;
 

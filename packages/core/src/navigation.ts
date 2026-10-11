@@ -39,10 +39,20 @@ export type NavIcon =
   | 'layout'
   | 'package'
   | 'file-text'
+  | 'receipt'
+  | 'wallet'
   | 'heart';
 
 export type NavGroup =
-  'overview' | 'work' | 'crm' | 'sales' | 'inventory' | 'operations' | 'setup' | 'company';
+  | 'overview'
+  | 'work'
+  | 'crm'
+  | 'sales'
+  | 'finance'
+  | 'inventory'
+  | 'operations'
+  | 'setup'
+  | 'company';
 
 /** One entry in the side menu. */
 export interface NavSection {
@@ -92,13 +102,16 @@ export type NavPath =
   | 'suppliers'
   | 'purchaseOrders'
   | 'quotes'
-  | 'salesOrders';
+  | 'salesOrders'
+  | 'invoices'
+  | 'payments';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   'overview',
   'work',
   'crm',
   'sales',
+  'finance',
   'inventory',
   'operations',
   'setup',
@@ -182,6 +195,24 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     icon: 'clipboard',
     permission: 'sales.read',
     feature: 'sales',
+  },
+
+  // Finance (CRM/ERP plan, phase B1): the company's `finance` module.
+  {
+    key: 'invoices',
+    group: 'finance',
+    path: 'invoices',
+    icon: 'receipt',
+    permission: 'finance.read',
+    feature: 'finance',
+  },
+  {
+    key: 'payments',
+    group: 'finance',
+    path: 'payments',
+    icon: 'wallet',
+    permission: 'finance.read',
+    feature: 'finance',
   },
 
   // Inventory (CRM/ERP plan, phase E1): the company's `inventory` module.

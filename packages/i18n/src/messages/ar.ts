@@ -3187,6 +3187,7 @@ export const ar: Catalogue<Messages> = {
       company: 'الشركة',
       crm: 'إدارة علاقات العملاء',
       sales: 'المبيعات',
+      finance: 'المالية',
       inventory: 'المخزون',
     },
     section: {
@@ -3216,6 +3217,8 @@ export const ar: Catalogue<Messages> = {
       purchaseOrders: 'أوامر الشراء',
       quotes: 'عروض الأسعار',
       salesOrders: 'أوامر البيع',
+      invoices: 'الفواتير',
+      payments: 'المدفوعات',
     },
     hint: {
       dashboard: 'أين أنت، وما الذي يحتاج إلى إنجاز.',
@@ -3244,6 +3247,8 @@ export const ar: Catalogue<Messages> = {
       purchaseOrders: 'ما هو مطلوب، ومعتمد، ومستلم.',
       quotes: 'الأسعار المعروضة على العملاء، وردودهم.',
       salesOrders: 'ما طلبه العملاء، وما حُجز وسُلِّم.',
+      invoices: 'ما يدين به العملاء: الفواتير الصادرة والإشعارات الدائنة والأرصدة.',
+      payments: 'الأموال المستلمة، والفواتير التي سددتها.',
     },
   },
 

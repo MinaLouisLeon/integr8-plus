@@ -438,6 +438,25 @@ export {
   SalesOrdersRepository,
   type ShortLine,
 } from './repositories/sales-orders.js';
+export {
+  type CreditNote,
+  type CreditNoteIssueRefusal,
+  type CreditNoteLine,
+  type CreditNoteLineInput,
+  DEFAULT_FINANCE_SETTINGS,
+  FinanceInvoicesRepository,
+  type FinanceSettings,
+  type FinanceSettingsInput,
+  type Invoice,
+  type InvoiceAmounts,
+  type InvoiceInput,
+  type InvoiceLine,
+  type InvoiceLineInput,
+  type InvoicePage,
+  type InvoiceQuery,
+  type InvoiceRefusal,
+  type IssuerSnapshot,
+} from './repositories/finance-invoices.js';
 
 export {
   addressLine,

@@ -3128,6 +3128,7 @@ export const en = {
       company: 'Company',
       crm: 'CRM',
       sales: 'Sales',
+      finance: 'Finance',
       inventory: 'Inventory',
     },
     section: {
@@ -3157,6 +3158,8 @@ export const en = {
       purchaseOrders: 'Purchase orders',
       quotes: 'Quotes',
       salesOrders: 'Sales orders',
+      invoices: 'Invoices',
+      payments: 'Payments',
     },
     hint: {
       dashboard: 'Where you are, and what needs doing.',
@@ -3185,6 +3188,8 @@ export const en = {
       purchaseOrders: 'What is on order, approved and received.',
       quotes: 'Prices offered to customers, and their answers.',
       salesOrders: 'What customers have ordered, reserved and delivered.',
+      invoices: 'What customers owe: issued invoices, credit notes and balances.',
+      payments: 'Money received, and the invoices it paid.',
     },
   },
 

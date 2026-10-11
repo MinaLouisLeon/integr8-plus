@@ -146,7 +146,7 @@ export interface QuoteSnapshot {
 }
 
 /** Each line's figures and the document's, in one SQL expression set. */
-const LINE_MATH = sql`
+export const LINE_MATH = sql`
   round(l.quantity * l.unit_price, 4) as gross,
   round(round(l.quantity * l.unit_price, 4) * l.discount_bp / 10000, 4) as discount,
   round(round(l.quantity * l.unit_price, 4) - round(round(l.quantity * l.unit_price, 4) * l.discount_bp / 10000, 4), 4) as net,
@@ -580,18 +580,35 @@ export function addDecimals(a: string, b: string): string {
  */
 export async function documentTotals(
   db: TenantScopedRepository['db'],
-  table: 'crm_quote_lines' | 'erp_sales_order_lines',
-  parentColumn: 'quote_id' | 'order_id',
+  table:
+    'crm_quote_lines' | 'erp_sales_order_lines' | 'erp_invoice_lines' | 'erp_credit_note_lines',
+  parentColumn: 'quote_id' | 'order_id' | 'invoice_id' | 'credit_note_id',
   tenantId: string,
   parentId: string,
 ): Promise<DocumentTotals> {
-  const source =
-    table === 'crm_quote_lines'
-      ? sql`crm_quote_lines l where l.tenant_id = ${tenantId} and l.quote_id = ${parentId}`
-      : sql`erp_sales_order_lines l where l.tenant_id = ${tenantId} and l.order_id = ${parentId}`;
-  if ((table === 'crm_quote_lines') !== (parentColumn === 'quote_id')) {
+  const sources = {
+    crm_quote_lines: {
+      column: 'quote_id',
+      sql: sql`crm_quote_lines l where l.tenant_id = ${tenantId} and l.quote_id = ${parentId}`,
+    },
+    erp_sales_order_lines: {
+      column: 'order_id',
+      sql: sql`erp_sales_order_lines l where l.tenant_id = ${tenantId} and l.order_id = ${parentId}`,
+    },
+    erp_invoice_lines: {
+      column: 'invoice_id',
+      sql: sql`erp_invoice_lines l where l.tenant_id = ${tenantId} and l.invoice_id = ${parentId}`,
+    },
+    erp_credit_note_lines: {
+      column: 'credit_note_id',
+      sql: sql`erp_credit_note_lines l where l.tenant_id = ${tenantId} and l.credit_note_id = ${parentId}`,
+    },
+  } as const;
+  const chosen = sources[table];
+  if (chosen.column !== parentColumn) {
     throw new Error('documentTotals: the parent column does not belong to the table');
   }
+  const source = chosen.sql;
   const { rows } = await sql<{ gross: string; discount: string; net: string; tax: string }>`
     select coalesce(sum(gross), 0)::text as gross,
            coalesce(sum(discount), 0)::text as discount,

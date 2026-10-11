@@ -179,6 +179,22 @@ export const PERMISSIONS = [
    * can hold the company to is approved by the people who answer for it.
    */
   'sales.issue',
+
+  // A company's invoices, credit notes and payment receipts (CRM/ERP plan,
+  // phase B1; ADR-0004, ADR-0007). Each also needs the company's `finance`
+  // module switched on. Not Integr8's own billing (`billing.*`).
+
+  /** See invoices, credit notes, payments and customer balances. */
+  'finance.read',
+  /** Draft invoices (blank, from an order or from a job) and credit notes. */
+  'finance.manage',
+  /**
+   * Issue and void invoices, issue credit notes, record payments and allocate
+   * them, and set the invoice issuer details and labour rates. Owners and
+   * admins only (product decision, 2026-10-11): money the company claims or
+   * received is answered for by the people who own it.
+   */
+  'finance.issue',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -238,6 +254,9 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'sales.read',
     'sales.manage',
     'sales.issue',
+    'finance.read',
+    'finance.manage',
+    'finance.issue',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -287,6 +306,9 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'sales.read',
     'sales.manage',
     'sales.issue',
+    'finance.read',
+    'finance.manage',
+    'finance.issue',
   ],
 
   // Runs the day: needs to see who is available, not to change who they are.
@@ -324,6 +346,10 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     // customer's answer; issuing and confirming are left to owners and admins.
     'sales.read',
     'sales.manage',
+    // Product decision (2026-10-11): drafts invoices and credit notes; issuing,
+    // voiding and recording money are left to owners and admins.
+    'finance.read',
+    'finance.manage',
   ],
 
   // Does the work. Sees colleagues so a job can be handed over, their own
@@ -355,6 +381,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'inventory.read',
     'purchasing.read',
     'sales.read',
+    'finance.read',
   ],
 });
 
