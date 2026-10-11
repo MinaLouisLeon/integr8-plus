@@ -78,7 +78,7 @@ jobs:
       mobile_platforms: ${{ steps.inputs.outputs.mobile_platforms }}
       build_mobile: ${{ steps.inputs.outputs.build_mobile }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - id: inputs
         env:
@@ -160,7 +160,7 @@ jobs:
         company: ${{ fromJSON(needs.resolve.outputs.companies) }}
         platform: ${{ fromJSON(needs.resolve.outputs.desktop_platforms) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -236,7 +236,7 @@ jobs:
 
       - name: Build the installer
         id: tauri
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           VITE_API_BASE_URL: ${{ needs.resolve.outputs.api_url }}
           VITE_APP_ENV: production
@@ -266,7 +266,7 @@ jobs:
             }
           '
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: company-${{ matrix.company }}-desktop-${{ matrix.platform }}
           path: collected/*
@@ -287,7 +287,7 @@ jobs:
       matrix:
         company: ${{ fromJSON(needs.resolve.outputs.companies) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -431,7 +431,7 @@ jobs:
           EXPO_ASC_API_KEY_PATH="$PWD/asc-api-key.p8" eas submit --platform ios --id "$id" --profile production --non-interactive
           rm -f asc-api-key.p8
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: company-${{ matrix.company }}-mobile
           path: mobile-out/*
@@ -456,9 +456,9 @@ jobs:
       matrix:
         company: ${{ fromJSON(needs.resolve.outputs.companies) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           pattern: company-${{ matrix.company }}-*
           path: dist

@@ -68,7 +68,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -110,7 +110,7 @@ jobs:
           cp apps/api/openapi.json "artifacts/openapi-${VERSION}.json"
           ls -la artifacts
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: server-${{ inputs.version }}
           path: artifacts/*
@@ -132,7 +132,7 @@ jobs:
       matrix:
         platform: ${{ fromJSON(inputs.desktop-platforms) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -226,7 +226,7 @@ jobs:
       # apps/desktop/.env.example lists them. None may be a secret.
       - name: Build the installer
         id: tauri
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           VITE_API_BASE_URL: ${{ inputs.api-url }}
           VITE_APP_ENV: ${{ inputs.app-env }}
@@ -264,7 +264,7 @@ jobs:
             }
           '
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: desktop-${{ matrix.platform }}-${{ inputs.version }}
           path: collected/*
@@ -290,7 +290,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
