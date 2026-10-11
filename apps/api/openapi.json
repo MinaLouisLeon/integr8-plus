@@ -53868,6 +53868,775 @@
         ]
       }
     },
+    "/v1/public/quotes/{token}": {
+      "get": {
+        "operationId": "getPublicQuote",
+        "summary": "An issued quote, for the customer holding its link",
+        "description": "Public. The quote as issued — company, customer, lines, totals, terms, expiry — and whether it can still be answered. A link that is spent, revised, withdrawn or unknown is 404.",
+        "tags": [
+          "sales"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The quote.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "company": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "logoPath": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "brandColour": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "logoPath",
+                        "brandColour"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "quote": {
+                      "type": "object",
+                      "properties": {
+                        "reference": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "issued",
+                            "accepted",
+                            "rejected"
+                          ]
+                        },
+                        "expired": {
+                          "type": "boolean"
+                        },
+                        "currencyCode": {
+                          "type": "string"
+                        },
+                        "validUntil": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "issuedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "customerName": {
+                          "type": "string"
+                        },
+                        "customerAddress": {
+                          "type": "object",
+                          "properties": {
+                            "line1": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "line2": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "city": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "region": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "postcode": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "countryCode": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "line1",
+                            "line2",
+                            "city",
+                            "region",
+                            "postcode",
+                            "countryCode"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "contactName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "introduction": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "terms": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "answer": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "accepted",
+                                "rejected"
+                              ]
+                            },
+                            "at": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "name": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "at",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "reference",
+                        "title",
+                        "status",
+                        "expired",
+                        "currencyCode",
+                        "validUntil",
+                        "issuedAt",
+                        "customerName",
+                        "customerAddress",
+                        "contactName",
+                        "introduction",
+                        "terms",
+                        "answer"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "position": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "itemId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "quantity": {
+                            "type": "string"
+                          },
+                          "unit": {
+                            "type": "string",
+                            "enum": [
+                              "each",
+                              "pair",
+                              "set",
+                              "box",
+                              "pack",
+                              "roll",
+                              "m",
+                              "m2",
+                              "m3",
+                              "l",
+                              "kg",
+                              "g",
+                              "hour"
+                            ]
+                          },
+                          "unitPrice": {
+                            "type": "string"
+                          },
+                          "discountBp": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "taxRateBp": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "gross": {
+                            "type": "string"
+                          },
+                          "discount": {
+                            "type": "string"
+                          },
+                          "net": {
+                            "type": "string"
+                          },
+                          "tax": {
+                            "type": "string"
+                          },
+                          "total": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "position",
+                          "itemId",
+                          "description",
+                          "quantity",
+                          "unit",
+                          "unitPrice",
+                          "discountBp",
+                          "taxRateBp",
+                          "gross",
+                          "discount",
+                          "net",
+                          "tax",
+                          "total"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "totals": {
+                      "type": "object",
+                      "properties": {
+                        "gross": {
+                          "type": "string"
+                        },
+                        "discount": {
+                          "type": "string"
+                        },
+                        "net": {
+                          "type": "string"
+                        },
+                        "tax": {
+                          "type": "string"
+                        },
+                        "total": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "gross",
+                        "discount",
+                        "net",
+                        "tax",
+                        "total"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "canAnswer": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "company",
+                    "quote",
+                    "lines",
+                    "totals",
+                    "canAnswer"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "This link is not valid."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/quotes/{token}/answer": {
+      "post": {
+        "operationId": "answerPublicQuote",
+        "summary": "Accept or reject a quote through its link",
+        "description": "Public. Records the customer’s answer with the name they typed and the moment, spends the link, and — for an acceptance — wins the quote’s opportunity. Refused once the quote has expired (409 `quote_expired`).",
+        "tags": [
+          "sales"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "accepted",
+                      "rejected"
+                    ]
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "status",
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The quote, answered.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "company": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "logoPath": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "brandColour": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "logoPath",
+                        "brandColour"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "quote": {
+                      "type": "object",
+                      "properties": {
+                        "reference": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "issued",
+                            "accepted",
+                            "rejected"
+                          ]
+                        },
+                        "expired": {
+                          "type": "boolean"
+                        },
+                        "currencyCode": {
+                          "type": "string"
+                        },
+                        "validUntil": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "issuedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "customerName": {
+                          "type": "string"
+                        },
+                        "customerAddress": {
+                          "type": "object",
+                          "properties": {
+                            "line1": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "line2": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "city": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "region": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "postcode": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "countryCode": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "line1",
+                            "line2",
+                            "city",
+                            "region",
+                            "postcode",
+                            "countryCode"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "contactName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "introduction": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "terms": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "answer": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "accepted",
+                                "rejected"
+                              ]
+                            },
+                            "at": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "name": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "at",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "reference",
+                        "title",
+                        "status",
+                        "expired",
+                        "currencyCode",
+                        "validUntil",
+                        "issuedAt",
+                        "customerName",
+                        "customerAddress",
+                        "contactName",
+                        "introduction",
+                        "terms",
+                        "answer"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "position": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "itemId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "quantity": {
+                            "type": "string"
+                          },
+                          "unit": {
+                            "type": "string",
+                            "enum": [
+                              "each",
+                              "pair",
+                              "set",
+                              "box",
+                              "pack",
+                              "roll",
+                              "m",
+                              "m2",
+                              "m3",
+                              "l",
+                              "kg",
+                              "g",
+                              "hour"
+                            ]
+                          },
+                          "unitPrice": {
+                            "type": "string"
+                          },
+                          "discountBp": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "taxRateBp": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "gross": {
+                            "type": "string"
+                          },
+                          "discount": {
+                            "type": "string"
+                          },
+                          "net": {
+                            "type": "string"
+                          },
+                          "tax": {
+                            "type": "string"
+                          },
+                          "total": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "position",
+                          "itemId",
+                          "description",
+                          "quantity",
+                          "unit",
+                          "unitPrice",
+                          "discountBp",
+                          "taxRateBp",
+                          "gross",
+                          "discount",
+                          "net",
+                          "tax",
+                          "total"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "totals": {
+                      "type": "object",
+                      "properties": {
+                        "gross": {
+                          "type": "string"
+                        },
+                        "discount": {
+                          "type": "string"
+                        },
+                        "net": {
+                          "type": "string"
+                        },
+                        "tax": {
+                          "type": "string"
+                        },
+                        "total": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "gross",
+                        "discount",
+                        "net",
+                        "tax",
+                        "total"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "canAnswer": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "company",
+                    "quote",
+                    "lines",
+                    "totals",
+                    "canAnswer"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "This link is not valid."
+          },
+          "409": {
+            "description": "The quote has expired (`quote_expired`) or is no longer open (`quote_not_issued`)."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/job-types": {
       "get": {
         "operationId": "listJobTypes",

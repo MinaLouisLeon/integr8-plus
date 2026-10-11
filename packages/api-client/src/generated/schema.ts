@@ -2554,6 +2554,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/quotes/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An issued quote, for the customer holding its link
+         * @description Public. The quote as issued — company, customer, lines, totals, terms, expiry — and whether it can still be answered. A link that is spent, revised, withdrawn or unknown is 404.
+         */
+        get: operations["getPublicQuote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/quotes/{token}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept or reject a quote through its link
+         * @description Public. Records the customer’s answer with the name they typed and the moment, spends the link, and — for an acceptance — wins the quote’s opportunity. Refused once the quote has expired (409 `quote_expired`).
+         */
+        post: operations["answerPublicQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -25584,6 +25624,280 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPublicQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quote. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        company: {
+                            name: string;
+                            logoPath: string | null;
+                            brandColour: string | null;
+                        };
+                        quote: {
+                            reference: string;
+                            title: string;
+                            /** @enum {string} */
+                            status: "issued" | "accepted" | "rejected";
+                            expired: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            validUntil: string | null;
+                            /** Format: date-time */
+                            issuedAt: string;
+                            customerName: string;
+                            customerAddress: {
+                                line1: string | null;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            contactName: string | null;
+                            introduction: string | null;
+                            terms: string | null;
+                            answer: {
+                                /** @enum {string} */
+                                status: "accepted" | "rejected";
+                                /** Format: date-time */
+                                at: string;
+                                name: string | null;
+                            } | null;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                        }[];
+                        totals: {
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                        };
+                        canAnswer: boolean;
+                    };
+                };
+            };
+            /** @description This link is not valid. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    answerPublicQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "accepted" | "rejected";
+                    name: string;
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The quote, answered. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        company: {
+                            name: string;
+                            logoPath: string | null;
+                            brandColour: string | null;
+                        };
+                        quote: {
+                            reference: string;
+                            title: string;
+                            /** @enum {string} */
+                            status: "issued" | "accepted" | "rejected";
+                            expired: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            validUntil: string | null;
+                            /** Format: date-time */
+                            issuedAt: string;
+                            customerName: string;
+                            customerAddress: {
+                                line1: string | null;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            contactName: string | null;
+                            introduction: string | null;
+                            terms: string | null;
+                            answer: {
+                                /** @enum {string} */
+                                status: "accepted" | "rejected";
+                                /** Format: date-time */
+                                at: string;
+                                name: string | null;
+                            } | null;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                        }[];
+                        totals: {
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                        };
+                        canAnswer: boolean;
+                    };
+                };
+            };
+            /** @description This link is not valid. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The quote has expired (`quote_expired`) or is no longer open (`quote_not_issued`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed validation. */
             422: {

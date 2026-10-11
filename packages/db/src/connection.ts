@@ -33,7 +33,7 @@ import { InventoryMaterialsRepository } from './repositories/inventory-materials
 import { InventoryPurchasingRepository } from './repositories/inventory-purchasing.js';
 import { InventoryStockRepository } from './repositories/inventory-stock.js';
 import { SalesOrdersRepository } from './repositories/sales-orders.js';
-import { SalesQuotesRepository } from './repositories/sales-quotes.js';
+import { PublicQuotesLookup, SalesQuotesRepository } from './repositories/sales-quotes.js';
 import { CustomersRepository } from './repositories/customers.js';
 import { FilesRepository } from './repositories/files.js';
 import { ImportsRepository } from './repositories/imports.js';
@@ -227,6 +227,8 @@ export interface PlatformDataSource {
   readonly signup: SignupRepository;
   /** Creates a company's settings row when the company is made (P18). */
   readonly tenantSettings: TenantSettingsWriter;
+  /** Which company a quote's customer link belongs to (CRM/ERP plan, S1; ADR-0006). */
+  readonly publicQuotes: PublicQuotesLookup;
 }
 
 /**
@@ -466,6 +468,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     billing: new BillingRepository(db),
     signup: new SignupRepository(db),
     tenantSettings: new TenantSettingsWriter(db),
+    publicQuotes: new PublicQuotesLookup(db),
     jobs: {
       claim: (options) => claimJobs(db, options),
       complete: (jobId, options) => completeJob(db, jobId, options),

@@ -161,6 +161,29 @@ export class TenantSettingsWriter {
     return { ...settings, tenantId: row.tenant_id, name };
   }
 
+  /** The brand of one company by id, with its slug, for a public page that found the company another way. */
+  async brandByTenantId(
+    tenantId: string,
+  ): Promise<(TenantSettings & { name: string; slug: string }) | undefined> {
+    const row = await this.db
+      .selectFrom('tenants')
+      .leftJoin('tenant_settings', 'tenant_settings.tenant_id', 'tenants.id')
+      .select(['tenants.id as tenant_id', 'tenants.name', 'tenants.slug'])
+      .selectAll('tenant_settings')
+      .where('tenants.id', '=', tenantId)
+      .where('tenants.deleted_at', 'is', null)
+      .executeTakeFirst();
+    if (row === undefined) {
+      return undefined;
+    }
+    const { name, slug, ...rest } = row;
+    const settings =
+      rest.tenant_id === null || rest.default_theme === null
+        ? { tenantId: row.tenant_id, ...DEFAULT_SETTINGS }
+        : toSettings(rest as Selectable<TenantSettingsTable>);
+    return { ...settings, tenantId: row.tenant_id, name, slug };
+  }
+
   /** Every live company whose apps the pipeline builds (0022). */
   async companiesWithApps(): Promise<{ tenantId: string; slug: string; name: string }[]> {
     const rows = await this.db

@@ -134,7 +134,7 @@ export function DashboardShell({
         {/* The menu, on md and up. Sticky so it stays put while a long page scrolls. */}
         <aside
           className={[
-            'sticky top-0 hidden h-dvh shrink-0 flex-col border-e border-shell-border bg-shell text-shell-text md:flex',
+            'sticky top-0 hidden h-dvh shrink-0 flex-col border-e border-shell-border bg-shell text-shell-text md:flex print:hidden',
             'transition-[width] duration-200 motion-reduce:transition-none',
             collapsed ? 'w-16' : 'w-64',
           ].join(' ')}
@@ -315,7 +315,7 @@ function TopBar({
     (resolved === null ? t('nav.back') : t('nav.backTo', { title: resolved.route.label }));
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border-subtle bg-background/95 px-3 backdrop-blur sm:px-4">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border-subtle bg-background/95 px-3 backdrop-blur sm:px-4 print:hidden">
       <button
         ref={openButton}
         type="button"

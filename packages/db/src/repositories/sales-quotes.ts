@@ -6,8 +6,8 @@ import {
   parseSalesReference,
   toUserId,
 } from '@integr8/core';
-import { type Selectable, sql } from 'kysely';
-import type { CrmQuotesTable } from '../schema.js';
+import { type Kysely, type Selectable, sql } from 'kysely';
+import type { CrmQuotesTable, Database } from '../schema.js';
 import { toDayString, trimDecimal } from './crm-leads.js';
 import type { Address } from './customers.js';
 import { prefixQuery } from './customers.js';
@@ -673,4 +673,31 @@ function toQuote(row: Selectable<CrmQuotesTable>): Quote {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+// ---------------------------------------------------------------------------
+// The customer's link, before any tenant is known
+// ---------------------------------------------------------------------------
+
+/**
+ * Finds the quote a link token names (ADR-0006). Platform connection: the
+ * customer who opens the link has no session and belongs to no company, so
+ * the hash is looked up across every company first and the quote is then
+ * read on that company's own connection. Only a live token matches: an
+ * answered, revised or cancelled quote has none.
+ */
+export class PublicQuotesLookup {
+  constructor(private readonly db: Kysely<Database>) {}
+
+  async byTokenHash(tokenHash: string): Promise<{ tenantId: string; quoteId: string } | undefined> {
+    const row = await this.db
+      .selectFrom('crm_quotes')
+      .innerJoin('tenants', 'tenants.id', 'crm_quotes.tenant_id')
+      .select(['crm_quotes.tenant_id', 'crm_quotes.id'])
+      .where('crm_quotes.access_token_hash', '=', tokenHash)
+      .where('tenants.deleted_at', 'is', null)
+      .where('tenants.status', '=', 'active')
+      .executeTakeFirst();
+    return row === undefined ? undefined : { tenantId: row.tenant_id, quoteId: row.id };
+  }
 }

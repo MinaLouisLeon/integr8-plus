@@ -423,6 +423,7 @@ export {
   type QuoteQuery,
   type QuoteRefusal,
   type QuoteSnapshot,
+  PublicQuotesLookup,
   SalesQuotesRepository,
 } from './repositories/sales-quotes.js';
 export {

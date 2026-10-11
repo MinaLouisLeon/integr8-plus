@@ -14,6 +14,7 @@ import { stockRoutes } from './v1/inventory-stock.js';
 import { catalogueRoutes } from './v1/inventory.js';
 import { purchasingRoutes } from './v1/purchasing.js';
 import { salesOrderRoutes } from './v1/sales-orders.js';
+import { salesPublicRoutes } from './v1/sales-public.js';
 import { quoteRoutes } from './v1/sales-quotes.js';
 import { materialRoutes } from './v1/work-order-materials.js';
 import { customerRoutes } from './v1/customers.js';
@@ -60,6 +61,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...materialRoutes,
     ...quoteRoutes,
     ...salesOrderRoutes,
+    ...salesPublicRoutes,
     ...jobTypeRoutes,
     ...workOrderRoutes,
     ...importRoutes,

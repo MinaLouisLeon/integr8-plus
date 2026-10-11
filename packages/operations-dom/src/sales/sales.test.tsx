@@ -24,6 +24,7 @@ const me = (permissions: string[]) => () => ({
     role: 'dispatcher',
     permissions,
     features: { crm: true, inventory: true, sales: true },
+    company: { name: 'Riverside Services', slug: 'riverside' },
   },
 });
 const MANAGE = ['crm.read', 'inventory.read', 'sales.read', 'sales.manage'];
@@ -263,12 +264,12 @@ describe('quotes', { timeout: 20_000 }, () => {
     const { container } = renderScreen(<QuoteScreen quoteId={QUOTE} />, client);
 
     expect(await screen.findByRole('heading', { name: /QT-000007/u })).toBeInTheDocument();
-    expect(screen.getByText('Boiler service, two flats')).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: '2 each' })).toBeInTheDocument();
-    expect(screen.getByText('10%')).toBeInTheDocument();
-    expect(screen.getByText('14%')).toBeInTheDocument();
-    expect(screen.getByText('EGP 240.00')).toBeInTheDocument();
-    expect(screen.getByText('−EGP 24.00')).toBeInTheDocument();
+    expect(screen.getAllByText('Boiler service, two flats').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('cell', { name: '2 each' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('10%').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('14%').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('EGP 240.00').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('−EGP 24.00').length).toBeGreaterThan(0);
     expect(screen.getAllByText('EGP 246.24').length).toBeGreaterThan(0);
     expect(screen.getByText('Second flat may need a new valve.')).toBeInTheDocument();
     expect(await accessibilityViolations(container)).toEqual([]);
@@ -346,7 +347,7 @@ describe('quotes', { timeout: 20_000 }, () => {
 
     expect(await screen.findByText('Accepted')).toBeInTheDocument();
     expect(screen.getByText(/recorded by Dee/u)).toBeInTheDocument();
-    expect(screen.getByText(/Mrs Hassan/u)).toBeInTheDocument();
+    expect(screen.getAllByText(/Mrs Hassan/u).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Convert to order' })).toBeInTheDocument();
     expect(calls.find((call) => call.path.endsWith('/answer'))!.body).toEqual({
       expectedVersion: 2,

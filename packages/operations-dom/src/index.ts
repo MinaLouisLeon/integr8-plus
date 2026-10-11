@@ -37,5 +37,6 @@ export { SupplierListScreen } from './purchasing/supplier-list.js';
 export { SupplierScreen } from './purchasing/supplier-screen.js';
 export { NewQuoteDialog, QuoteListScreen } from './sales/quote-list.js';
 export { QuoteScreen } from './sales/quote-screen.js';
+export { QuoteDocument, type QuoteDocumentData } from './sales/quote-document.js';
 export { NewSalesOrderDialog, SalesOrderListScreen } from './sales/order-list.js';
 export { SalesOrderScreen } from './sales/order-screen.js';

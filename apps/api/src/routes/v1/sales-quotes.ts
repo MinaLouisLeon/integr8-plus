@@ -462,12 +462,20 @@ export function acceptUrl(context: RequestContext, token: string): string | null
 /**
  * Marks the quote's opportunity won when the customer accepts, through the
  * pipeline's own won stage — the same move the CRM screen makes, audited the
- * same way. An opportunity already closed is left as it is.
+ * same way. An opportunity already closed is left as it is. The actor is the
+ * seat that recorded the answer, or the issuer when the customer answered
+ * through their link.
  */
 export async function winOpportunity(
   tx: TenantTransaction,
-  context: RequestContext,
   quote: Quote,
+  actorId: string,
+  record: (
+    action: string,
+    resourceType: string,
+    resourceId: string,
+    metadata: Record<string, unknown>,
+  ) => Promise<void>,
 ): Promise<void> {
   if (quote.opportunityId === null) {
     return;
@@ -487,10 +495,10 @@ export async function winOpportunity(
     to,
     kind: opportunityEventKind(from.outcome, to.outcome),
     lostReason: null,
-    actorId: context.principal.userId,
+    actorId,
   });
   if (typeof moved !== 'string') {
-    await audit(tx, context, 'crm_opportunity.won_by_quote', 'crm_opportunity', opportunity.id, {
+    await record('crm_opportunity.won_by_quote', 'crm_opportunity', opportunity.id, {
       quoteId: quote.id,
       reference: formatQuoteReference(quote.reference, quote.revision),
     });
@@ -885,7 +893,13 @@ export const answerQuoteRoute = defineRoute({
         name: body.name ?? null,
       });
       if (body.status === 'accepted') {
-        await winOpportunity(tx, context, answered);
+        await winOpportunity(
+          tx,
+          answered,
+          context.principal.userId,
+          (action, resourceType, resourceId, metadata) =>
+            audit(tx, context, action, resourceType, resourceId, metadata),
+        );
       }
       return quoteDetail(tx, context.principal, answered);
     });
