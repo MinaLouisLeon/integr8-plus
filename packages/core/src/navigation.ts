@@ -41,6 +41,7 @@ export type NavIcon =
   | 'file-text'
   | 'receipt'
   | 'wallet'
+  | 'qr-code'
   | 'heart';
 
 export type NavGroup =
@@ -104,7 +105,8 @@ export type NavPath =
   | 'quotes'
   | 'salesOrders'
   | 'invoices'
-  | 'payments';
+  | 'payments'
+  | 'assets';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   'overview',
@@ -264,6 +266,15 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'customers',
     icon: 'users',
     permission: 'customer.read',
+  },
+  // Assets (CRM/ERP plan, phase E3): the company's `assets` module.
+  {
+    key: 'assets',
+    group: 'operations',
+    path: 'assets',
+    icon: 'qr-code',
+    permission: 'asset.read',
+    feature: 'assets',
   },
   {
     key: 'imports',

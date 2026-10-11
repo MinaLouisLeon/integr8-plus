@@ -3357,6 +3357,7 @@ export const en = {
       salesOrders: 'Sales orders',
       invoices: 'Invoices',
       payments: 'Payments',
+      assets: 'Assets',
     },
     hint: {
       dashboard: 'Where you are, and what needs doing.',
@@ -3387,6 +3388,7 @@ export const en = {
       salesOrders: 'What customers have ordered, reserved and delivered.',
       invoices: 'What customers owe: issued invoices, credit notes and balances.',
       payments: 'Money received, and the invoices it paid.',
+      assets: 'The machines you service, their tags and their history.',
     },
   },
 

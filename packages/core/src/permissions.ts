@@ -195,6 +195,24 @@ export const PERMISSIONS = [
    * received is answered for by the people who own it.
    */
   'finance.issue',
+
+  // A company's register of the machines it services, their tags and their
+  // service history (CRM/ERP plan, phase E3; ADR-0008). Each also needs the
+  // company's `assets` module switched on.
+
+  /**
+   * See assets and their history. Engineers hold it for the sites they have a
+   * job at; everyone else who holds it sees every asset.
+   */
+  'asset.read',
+  /**
+   * Register an asset at a job's site, record its condition and link it to the
+   * job, from the phone or the office. Held by engineers for their own jobs
+   * (product decision, 2026-10-11): the machine is usually found on site.
+   */
+  'asset.record',
+  /** Edit, move, retire and tag assets, link them to any job, and import them. */
+  'asset.manage',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -257,6 +275,9 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'finance.read',
     'finance.manage',
     'finance.issue',
+    'asset.read',
+    'asset.record',
+    'asset.manage',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -309,6 +330,9 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'finance.read',
     'finance.manage',
     'finance.issue',
+    'asset.read',
+    'asset.record',
+    'asset.manage',
   ],
 
   // Runs the day: needs to see who is available, not to change who they are.
@@ -350,6 +374,9 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     // voiding and recording money are left to owners and admins.
     'finance.read',
     'finance.manage',
+    'asset.read',
+    'asset.record',
+    'asset.manage',
   ],
 
   // Does the work. Sees colleagues so a job can be handed over, their own
@@ -366,6 +393,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     // their own jobs, from the van assigned to them.
     'inventory.read',
     'inventory.consume',
+    'asset.read',
+    'asset.record',
   ],
 
   // Reads, and only reads: every submission and every job, and nothing to fill.
@@ -382,6 +411,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'purchasing.read',
     'sales.read',
     'finance.read',
+    'asset.read',
   ],
 });
 

@@ -3408,6 +3408,7 @@ export const ar: Catalogue<Messages> = {
       salesOrders: 'أوامر البيع',
       invoices: 'الفواتير',
       payments: 'المدفوعات',
+      assets: 'الأصول',
     },
     hint: {
       dashboard: 'أين أنت، وما الذي يحتاج إلى إنجاز.',
@@ -3438,6 +3439,7 @@ export const ar: Catalogue<Messages> = {
       salesOrders: 'ما طلبه العملاء، وما حُجز وسُلِّم.',
       invoices: 'ما يدين به العملاء: الفواتير الصادرة والإشعارات الدائنة والأرصدة.',
       payments: 'الأموال المستلمة، والفواتير التي سددتها.',
+      assets: 'المعدات التي تخدمها، وملصقاتها، وسجلها.',
     },
   },
 

@@ -92,6 +92,10 @@ export const EXPORTED_TABLES = [
   'erp_credit_note_lines',
   'erp_payment_receipts',
   'erp_payment_allocations',
+  'erp_asset_settings',
+  'erp_assets',
+  'erp_asset_events',
+  'erp_work_order_assets',
   'audit_log',
 ] as const;
 

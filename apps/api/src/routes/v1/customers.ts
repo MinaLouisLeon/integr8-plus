@@ -10,6 +10,8 @@ import { z } from 'zod';
 import { conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { GEOCODE_QUEUE } from '../../geo/geocode-site.js';
+import { assertFeatureEnabled } from '../../http/features.js';
+import { readableAsset } from './assets.js';
 import {
   accessInputSchema,
   addressInputSchema,
@@ -718,6 +720,8 @@ const ownerSchema = z.union([
   z.object({ customerId: z.uuid() }).strict(),
   z.object({ siteId: z.uuid() }).strict(),
   z.object({ workOrderId: z.uuid() }).strict(),
+  /** A machine on the asset register (CRM/ERP plan, phase E3); needs the `assets` module. */
+  z.object({ assetId: z.uuid() }).strict(),
 ]);
 
 /** Whether this person may add to or remove from what `owner` names. */
@@ -730,6 +734,14 @@ async function requireAttachable(
   if ('workOrderId' in owner) {
     const job = await readableWorkOrder(tx, principal, owner.workOrderId);
     await requireWork(tx, principal, job);
+    return;
+  }
+  if ('assetId' in owner) {
+    await assertFeatureEnabled(principal.tenantId, 'assets');
+    if (!holds(principal, 'asset.record')) {
+      throw forbidden('Only those who record assets can attach files to them.');
+    }
+    await readableAsset(tx, principal, owner.assetId);
     return;
   }
   if (!holds(principal, 'customer.manage')) {

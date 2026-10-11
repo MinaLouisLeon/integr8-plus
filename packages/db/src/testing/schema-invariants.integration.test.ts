@@ -11,6 +11,9 @@ import {
   INVOICE_STORED_STATUSES,
   CREDIT_NOTE_STATUSES,
   PAYMENT_METHODS,
+  ASSET_STATUSES,
+  ASSET_CONDITIONS,
+  ASSET_EVENT_KINDS,
   SALES_ORDER_STATUSES,
   STOCK_COUNT_STATUSES,
   SUPPLIER_STATUSES,
@@ -511,6 +514,10 @@ describe('vocabularies shared with the application', () => {
       ['erp_invoices_status_known', INVOICE_STORED_STATUSES],
       ['erp_credit_notes_status_known', CREDIT_NOTE_STATUSES],
       ['erp_payment_receipts_method_known', PAYMENT_METHODS],
+      // Assets (0031).
+      ['erp_assets_status_known', ASSET_STATUSES],
+      ['erp_assets_condition_known', ASSET_CONDITIONS],
+      ['erp_asset_events_kind_known', ASSET_EVENT_KINDS],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,
