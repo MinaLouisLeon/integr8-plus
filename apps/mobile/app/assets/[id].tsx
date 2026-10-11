@@ -1,5 +1,5 @@
 import { ASSET_CONDITIONS } from '@integr8/core';
-import { useTranslation } from '@integr8/i18n';
+import { formatCalendarDate, useTranslation } from '@integr8/i18n';
 import {
   type AssetTimelineEntry,
   type ConditionValue,
@@ -130,12 +130,12 @@ function Asset() {
         )}
         {data.asset.installDate === null ? null : (
           <Detail label={t('assets.fields.installDate')}>
-            {formatWhen(data.asset.installDate, i18n.language)}
+            {formatCalendarDate(data.asset.installDate, { locale: i18n.language })}
           </Detail>
         )}
         {data.asset.warrantyExpiresOn === null ? null : (
           <Detail label={t('assets.fields.warrantyExpiresOn')}>
-            {formatWhen(data.asset.warrantyExpiresOn, i18n.language)}
+            {formatCalendarDate(data.asset.warrantyExpiresOn, { locale: i18n.language })}
           </Detail>
         )}
         {data.asset.notes === null ? null : (

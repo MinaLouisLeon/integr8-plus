@@ -20,6 +20,7 @@ import {
   SalesOrderScreen,
   FinanceSettingsScreen,
   AssetListScreen,
+  WarrantyAlertsPanel,
   AssetScreen,
   InvoiceListScreen,
   InvoiceScreen,
@@ -435,10 +436,23 @@ export function FinanceSettingsRoute() {
   );
 }
 
-export function AssetsRoute() {
+/** The dashboard's list of assets whose warranty ends soon (E3). */
+export function WarrantyAlerts() {
   return (
     <OperationsScreens>
-      <AssetListScreen />
+      <WarrantyAlertsPanel />
+    </OperationsScreens>
+  );
+}
+
+export function AssetsRoute() {
+  // `?warranty=expiring` opens the register filtered, as the dashboard's list does.
+  const [search] = useSearchParams();
+  const filter = search.get('warranty');
+  const warranty = filter === 'expiring' || filter === 'expired' ? filter : '';
+  return (
+    <OperationsScreens>
+      <AssetListScreen key={warranty} initialWarranty={warranty} />
     </OperationsScreens>
   );
 }

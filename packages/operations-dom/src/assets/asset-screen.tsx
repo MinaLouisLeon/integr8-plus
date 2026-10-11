@@ -1,6 +1,6 @@
 import { apiMediaAdapter } from '@integr8/form-renderer-dom/screens';
 import { ASSET_CONDITIONS, ASSET_STATUSES } from '@integr8/core';
-import { formatDate, formatDateTime, useTranslation } from '@integr8/i18n';
+import { formatCalendarDate, formatDate, formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useId, useMemo, useState } from 'react';
 import {
@@ -203,13 +203,13 @@ export function AssetScreen({ assetId }: { assetId: string }) {
             )}
             {fact(
               t('assets.fields.installDate'),
-              asset.installDate === null ? null : formatDate(asset.installDate, { locale }),
+              asset.installDate === null ? null : formatCalendarDate(asset.installDate, { locale }),
             )}
             {fact(
               t('assets.fields.warrantyExpiresOn'),
               asset.warrantyExpiresOn === null
                 ? null
-                : formatDate(asset.warrantyExpiresOn, { locale }),
+                : formatCalendarDate(asset.warrantyExpiresOn, { locale }),
             )}
             {fact(
               t('assets.lastCondition'),

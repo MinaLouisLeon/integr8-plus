@@ -1,5 +1,5 @@
 import { ASSET_STATUSES } from '@integr8/core';
-import { formatDate, useTranslation } from '@integr8/i18n';
+import { formatCalendarDate, useTranslation } from '@integr8/i18n';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { type AssetStatus, keys, useOperations } from '../api.js';
@@ -20,13 +20,17 @@ import {
   WarrantyBadge,
 } from './asset-parts.js';
 import { AssetTagSheet } from './asset-tag.js';
+import { AssetSettingsDialog } from './warranty.js';
 
 /**
  * The company's asset register (CRM/ERP plan, phase E3): every machine it
  * services, found by number, tag, serial, name or customer, with those whose
- * warranty needs attention flagged.
+ * warranty needs attention flagged. `initialWarranty` opens it filtered, as
+ * the dashboard's warranty list does.
  */
-export function AssetListScreen() {
+export function AssetListScreen({
+  initialWarranty = '',
+}: { initialWarranty?: 'expiring' | 'expired' | '' } = {}) {
   const { t } = useTranslation();
   const { client, navigate, paths, locale } = useOperations();
   const access = useAssetAccess();
@@ -34,8 +38,9 @@ export function AssetListScreen() {
   const [text, setText] = useState('');
   const [searched, setSearched] = useState('');
   const [status, setStatus] = useState<AssetStatus | ''>('');
-  const [warranty, setWarranty] = useState<'' | 'expiring' | 'expired'>('');
+  const [warranty, setWarranty] = useState<'' | 'expiring' | 'expired'>(initialWarranty);
   const [creating, setCreating] = useState(false);
+  const [configuring, setConfiguring] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const me = useQuery({
     queryKey: keys.me,
@@ -82,6 +87,13 @@ export function AssetListScreen() {
           <h1 className="text-2xl font-semibold text-content">{t('assets.title')}</h1>
           {access.manage ? (
             <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={buttonClass.ghost}
+                onClick={() => setConfiguring(true)}
+              >
+                {t('assets.settings.title')}
+              </button>
               <button
                 type="button"
                 className={buttonClass.secondary}
@@ -230,7 +242,7 @@ export function AssetListScreen() {
                     {asset.warrantyExpiresOn === null ? null : (
                       <span>
                         {t('assets.warrantyUntil', {
-                          date: formatDate(asset.warrantyExpiresOn, { locale }),
+                          date: formatCalendarDate(asset.warrantyExpiresOn, { locale }),
                         })}
                       </span>
                     )}
@@ -252,6 +264,7 @@ export function AssetListScreen() {
         )}
 
         {creating ? <NewAssetDialog onClose={() => setCreating(false)} /> : null}
+        {configuring ? <AssetSettingsDialog onClose={() => setConfiguring(false)} /> : null}
       </div>
     </>
   );

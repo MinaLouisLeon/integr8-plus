@@ -7,6 +7,8 @@ import {
   assetsOfJob,
   type AssetSync,
   localAsset,
+  markWarrantyAlerted,
+  warrantyAlertsDue,
 } from '../assets.js';
 import { evict } from '../eviction.js';
 import { applySnapshot } from '../snapshot.js';
@@ -247,5 +249,60 @@ describe('assets on the phone', () => {
     await expect(
       recordAssetLink(context, { workOrderId: job.workOrder.id, assetId: OTHER }),
     ).rejects.toMatchObject({ code: 'asset_not_at_site' });
+  });
+
+  it('announces a warranty ending soon once per asset and expiry date', async () => {
+    const { db, siteId, customerId } = await phone();
+    const pull = (expiresOn: string, warranty: AssetSync['asset']['warranty']) =>
+      db.write(['assets', 'asset_links'], (sql) =>
+        applyPulledAssets(
+          sql,
+          {
+            assetSiteIds: [siteId],
+            assets: [
+              synced(ASSET, { siteId, customerId }, { warrantyExpiresOn: expiresOn, warranty }),
+              synced(
+                OTHER,
+                { siteId, customerId },
+                { tagCode: 'ABCDEFGHJKMN', serialNumber: null, warranty: 'covered' },
+              ),
+            ],
+          },
+          NOW.toISOString(),
+        ),
+      );
+    const due = () => db.read((sql) => warrantyAlertsDue(sql));
+    const mark = (alerts: Awaited<ReturnType<typeof due>>) =>
+      db.write(['meta'], (sql) => markWarrantyAlerted(sql, alerts, '2026-10-11'));
+
+    await pull('2026-11-20', 'expiring');
+    const first = await due();
+    expect(first).toEqual([
+      {
+        assetId: ASSET,
+        reference: 'AS-000012',
+        name: 'Boiler',
+        siteName: 'Block A',
+        warrantyExpiresOn: '2026-11-20',
+      },
+    ]);
+    await mark(first);
+    expect(await due()).toEqual([]);
+    // The next pull says the same: still nothing to say.
+    await pull('2026-11-20', 'expiring');
+    expect(await due()).toEqual([]);
+    // The warranty was extended, then comes round again: a new date, a new alert.
+    await pull('2027-11-20', 'covered');
+    expect(await due()).toEqual([]);
+    await pull('2026-12-01', 'expiring');
+    expect((await due()).map((alert) => alert.warrantyExpiresOn)).toEqual(['2026-12-01']);
+    // Keys for dates already past are dropped as new ones are recorded.
+    await db.write(['meta'], (sql) =>
+      markWarrantyAlerted(sql, [{ assetId: OTHER, warrantyExpiresOn: '2026-12-31' }], '2026-11-25'),
+    );
+    const kept = await db.read((sql) =>
+      sql.get<{ value: string }>(`select value from meta where key = 'warranty_alerted'`),
+    );
+    expect(JSON.parse(kept?.value ?? '[]')).toEqual([`${OTHER}:2026-12-31`]);
   });
 });

@@ -65,6 +65,18 @@ export function formatDate(value: Date | string, options: FormatOptions = {}): s
   ).format(toDate(value));
 }
 
+/**
+ * A calendar date with no time, `2026-11-20`, as `20 November 2026` wherever
+ * the reader is. Read as midnight UTC it would be the 19th west of Greenwich;
+ * noon UTC in UTC is the same day everywhere.
+ */
+export function formatCalendarDate(
+  value: string,
+  options: Omit<FormatOptions, 'timeZone'> = {},
+): string {
+  return formatDate(`${value.slice(0, 10)}T12:00:00Z`, { ...options, timeZone: 'UTC' });
+}
+
 /** A date and a time. `10 September 2026 at 14:02`. */
 export function formatDateTime(value: Date | string, options: FormatOptions = {}): string {
   const locale = options.locale ?? DEFAULT_LOCALE;

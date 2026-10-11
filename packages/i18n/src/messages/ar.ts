@@ -2892,6 +2892,25 @@ export const ar: Catalogue<Messages> = {
     link: 'ربط',
     unlink: 'إلغاء الربط',
     unlinkConfirm: 'إزالة هذا الأصل من العمل؟ يحتفظ سجله بما سُجّل.',
+    settings: {
+      title: 'تنبيهات الضمان',
+      alertDays: 'التنبيه قبل انتهاء الضمان بهذا العدد من الأيام',
+      alertDaysHint:
+        'من 0 إلى 365. تُعرض الأصول التي تقع ضمن هذه المدة في لوحة المعلومات وتحمل شارة، ويُصدر هاتف كل فني إشعارًا واحدًا لكل منها.',
+    },
+    alerts: {
+      title: 'ضمانات تنتهي قريبًا',
+      window_zero: 'خلال اليوم.',
+      window_one: 'خلال اليوم القادم.',
+      window_two: 'خلال اليومين القادمين.',
+      window_few: 'خلال الأيام الـ{{count}} القادمة.',
+      window_many: 'خلال الـ{{count}} يومًا القادمة.',
+      window_other: 'خلال الـ{{count}} يوم القادمة.',
+      none: 'لا ينتهي أي ضمان خلال هذه المدة.',
+      endsOn: 'ينتهي {{date}}',
+      seeAll: 'عرضها كلها',
+      more: 'تُعرض الأقرب انتهاءً. اعرضها كلها لرؤية البقية.',
+    },
     tags: {
       unknownTitle: 'لا يوجد أصل بهذا الملصق',
       unknown:
@@ -3432,6 +3451,14 @@ export const ar: Catalogue<Messages> = {
       notFound: 'لا يوجد أصل على هذا الهاتف بهذا الملصق أو الرقم التسلسلي.',
       notFoundHint: 'قد يكون في موقع ليست لك فيه مهمة، أو طُبع ملصقه بعد آخر مزامنة.',
       scanAgain: 'المسح مرة أخرى',
+      warrantyTitle: 'ضمان ينتهي قريبًا',
+      warrantyBody: '{{asset}} في {{site}}: ينتهي الضمان في {{date}}.',
+      warrantySummary_zero: 'لا أصول في مواقعك ينتهي ضمانها قريبًا.',
+      warrantySummary_one: 'أصل واحد في مواقعك ينتهي ضمانه قريبًا.',
+      warrantySummary_two: 'أصلان في مواقعك ينتهي ضمانهما قريبًا.',
+      warrantySummary_few: '{{count}} أصول في مواقعك تنتهي ضماناتها قريبًا.',
+      warrantySummary_many: '{{count}} أصلًا في مواقعك تنتهي ضماناتها قريبًا.',
+      warrantySummary_other: '{{count}} أصل في مواقعك تنتهي ضماناتها قريبًا.',
     },
     change: {
       transition: 'تعليم {{job}} بالحالة {{state}}',

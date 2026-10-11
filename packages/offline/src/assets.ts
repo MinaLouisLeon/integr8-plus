@@ -348,3 +348,86 @@ export function assetFilesIn(data: AssetSync): Omit<AssetFileToFetch, 'siteId'>[
   }
   return files;
 }
+
+// ---------------------------------------------------------------------------
+// Warranty alerts
+// ---------------------------------------------------------------------------
+
+/** An asset whose warranty ends soon, for the phone's notification. */
+export interface WarrantyAlert {
+  assetId: string;
+  reference: string;
+  name: string;
+  siteName: string;
+  warrantyExpiresOn: string;
+}
+
+const ALERTED = 'warranty_alerted';
+
+function alertKey(alert: Pick<WarrantyAlert, 'assetId' | 'warrantyExpiresOn'>): string {
+  return `${alert.assetId}:${alert.warrantyExpiresOn}`;
+}
+
+async function alerted(sql: SqlConnection): Promise<string[]> {
+  const row = await sql.get<{ value: string }>('select value from meta where key = ?', [ALERTED]);
+  if (row === undefined) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(row.value) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((key) => typeof key === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The assets on the phone whose warranty ends within the company's window
+ * (as the server judged it at the last pull) and that this phone has not yet
+ * announced for that expiry date: one notification per asset and date
+ * (ADR-0008). A new expiry date announces again.
+ */
+export async function warrantyAlertsDue(sql: SqlConnection): Promise<WarrantyAlert[]> {
+  const done = new Set(await alerted(sql));
+  const rows = await sql.all<{ data: string }>(
+    `select data from assets where local = 0 order by reference`,
+  );
+  const due: WarrantyAlert[] = [];
+  for (const row of rows) {
+    const { asset } = JSON.parse(row.data) as AssetSync;
+    if (asset.warranty !== 'expiring' || asset.warrantyExpiresOn === null) {
+      continue;
+    }
+    const alert = {
+      assetId: asset.id,
+      reference: asset.reference,
+      name: asset.name,
+      siteName: asset.site.name,
+      warrantyExpiresOn: asset.warrantyExpiresOn,
+    };
+    if (!done.has(alertKey(alert))) {
+      due.push(alert);
+    }
+  }
+  return due.sort((a, b) => a.warrantyExpiresOn.localeCompare(b.warrantyExpiresOn));
+}
+
+/**
+ * Records that these alerts were announced, so they are not again. Entries
+ * for dates already past are dropped as it goes: they can never be due.
+ */
+export async function markWarrantyAlerted(
+  sql: SqlConnection,
+  alerts: readonly Pick<WarrantyAlert, 'assetId' | 'warrantyExpiresOn'>[],
+  today: string,
+): Promise<void> {
+  const keys = new Set((await alerted(sql)).filter((key) => (key.split(':')[1] ?? '') >= today));
+  for (const alert of alerts) {
+    keys.add(alertKey(alert));
+  }
+  await sql.run(
+    `insert into meta (key, value) values (?, ?)
+     on conflict (key) do update set value = excluded.value`,
+    [ALERTED, JSON.stringify([...keys].sort())],
+  );
+}

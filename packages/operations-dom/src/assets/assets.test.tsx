@@ -9,6 +9,7 @@ import { AssetScreen } from './asset-screen.js';
 import { AssetTag, groupedCode } from './asset-tag.js';
 import { AssetTagOpener } from './asset-tag-open.js';
 import { JobAssetsPanel } from './job-assets.js';
+import { AssetSettingsDialog, WarrantyAlertsPanel } from './warranty.js';
 
 const USER = '00000000-0000-4000-8000-000000000401';
 const TENANT = '00000000-0000-4000-8000-000000000301';
@@ -335,5 +336,81 @@ describe('assets', { timeout: 20_000 }, () => {
     expect(await screen.findAllByRole('heading', { name: 'No asset has this tag' })).toHaveLength(
       2,
     );
+  });
+
+  it('lists warranties ending soon on the dashboard, soonest first', async () => {
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(ENGINEER),
+      'GET /v1/assets': () => ({
+        body: {
+          items: [
+            row(),
+            row({
+              id: OTHER,
+              reference: 'AS-000013',
+              name: 'Chiller',
+              warrantyExpiresOn: '2026-10-20',
+            }),
+          ],
+          nextCursor: null,
+        },
+      }),
+      'GET /v1/assets/settings': () => ({
+        body: { warrantyAlertDays: 60, version: 1, can: { edit: false } },
+      }),
+    });
+    const { container } = renderScreen(<WarrantyAlertsPanel />, client);
+    await screen.findByRole('heading', { name: 'Warranties ending soon' });
+    const links = await screen.findAllByRole('link', { name: /AS-0000/u });
+    expect(links.map((link) => link.textContent)).toEqual([
+      'AS-000013 · Chiller',
+      'AS-000012 · Boiler',
+    ]);
+    expect(screen.getByText(/ends 20 October 2026|ends October 20, 2026/u)).toBeInTheDocument();
+    expect(await screen.findByText('Within the next 60 days.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'See them all' })).toHaveAttribute(
+      'href',
+      '/assets?warranty=expiring',
+    );
+    expect(calls.find((call) => call.path === '/v1/assets')?.query.get('warranty')).toBe(
+      'expiring',
+    );
+    expect(await accessibilityViolations(container)).toEqual([]);
+  });
+
+  it('shows nothing on the dashboard without the assets module', async () => {
+    const { client, calls } = fakeApi({ 'GET /v1/me': me(MANAGE, {}) });
+    const { container } = renderScreen(<WarrantyAlertsPanel />, client);
+    await waitFor(() => expect(calls.some((call) => call.path === '/v1/me')).toBe(true));
+    expect(container).toBeEmptyDOMElement();
+    expect(calls.some((call) => call.path === '/v1/assets')).toBe(false);
+  });
+
+  it('sets how far ahead warranties are flagged, refusing a window over a year', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(MANAGE),
+      'GET /v1/assets/settings': () => ({
+        body: { warrantyAlertDays: 60, version: 2, can: { edit: true } },
+      }),
+      'PUT /v1/assets/settings': () => ({
+        body: { warrantyAlertDays: 30, version: 3, can: { edit: true } },
+      }),
+    });
+    renderScreen(<AssetSettingsDialog onClose={onClose} />, client);
+    const field = await screen.findByLabelText('Warn this many days before a warranty ends');
+    await waitFor(() => expect(field).toHaveValue('60'));
+    await user.clear(field);
+    await user.type(field, '400');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await user.clear(field);
+    await user.type(field, '30');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(calls.find((call) => call.method === 'PUT')?.body).toEqual({
+      expectedVersion: 2,
+      warrantyAlertDays: 30,
+    });
   });
 });

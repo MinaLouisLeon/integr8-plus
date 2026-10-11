@@ -2,9 +2,11 @@
 
 import { ApiRequestError } from '@integr8/api-client';
 import { useTranslation } from '@integr8/i18n';
+import { WarrantyAlertsPanel } from '@integr8/operations-dom';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { CompanyMark } from '~/components/company-brand';
+import { OperationsScreens } from '~/components/operations-screens';
 import { ErrorState, LoadingState } from '~/components/ui';
 import { apiClient } from '~/lib/session';
 
@@ -51,6 +53,11 @@ export default function DashboardPage() {
         </h1>
         {person === undefined ? null : <CompanyMark company={person.company} />}
       </header>
+
+      {/* Assets whose warranty ends soon (E3); shown only with the assets module. */}
+      <OperationsScreens>
+        <WarrantyAlertsPanel />
+      </OperationsScreens>
 
       <nav aria-label={t('submissions.nav')} className="grid gap-4 sm:grid-cols-2">
         <Link

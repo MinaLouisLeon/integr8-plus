@@ -2884,6 +2884,21 @@ export const en = {
     link: 'Link',
     unlink: 'Unlink',
     unlinkConfirm: 'Take this asset off the job? Its history keeps what was recorded.',
+    settings: {
+      title: 'Warranty alerts',
+      alertDays: 'Warn this many days before a warranty ends',
+      alertDaysHint:
+        'From 0 to 365. Assets inside this window are listed on the dashboard, carry a badge, and engineers’ phones raise one notification for each.',
+    },
+    alerts: {
+      title: 'Warranties ending soon',
+      window_one: 'Within the next {{count}} day.',
+      window_other: 'Within the next {{count}} days.',
+      none: 'No warranty ends within the window.',
+      endsOn: 'ends {{date}}',
+      seeAll: 'See them all',
+      more: 'Showing the soonest. See them all for the rest.',
+    },
     tags: {
       unknownTitle: 'No asset has this tag',
       unknown:
@@ -3372,6 +3387,10 @@ export const en = {
       notFoundHint:
         'It may be at a site where you have no job, or its tag was printed after your last sync.',
       scanAgain: 'Scan again',
+      warrantyTitle: 'Warranty ending soon',
+      warrantyBody: '{{asset}} at {{site}}: the warranty ends on {{date}}.',
+      warrantySummary_one: '{{count}} asset at your sites has a warranty ending soon.',
+      warrantySummary_other: '{{count}} assets at your sites have warranties ending soon.',
     },
     change: {
       transition: 'Marked {{job}} as {{state}}',
