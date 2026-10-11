@@ -682,8 +682,8 @@ The report says development/tests run with recording/local adapters, **but produ
 
 **Status:** `IN PROGRESS` — see the [phase tracker](./README.md#phase-tracker).
 
-- [ ] Supplier directory, PO lines and approvals, goods receipt and partial receipt.
-- [ ] Receipts post inventory movements exactly once; returns/adjustments audited.
+- [x] Supplier directory, PO lines and approvals, goods receipt and partial receipt.
+- [x] Receipts post inventory movements exactly once; returns/adjustments audited.
 - [ ] Work-order materials model; online consumption in web/desktop first.
 - [ ] Only after explicit approval: add engineer/mobile outbox consumption with conflict-safe sync.
 - **Done when:** parts are received, transferred to a van, and consumed on a work order without stock drift.

@@ -1985,6 +1985,182 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/purchasing/suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find suppliers
+         * @description Alphabetical, a page at a time. `q` matches words or their beginnings in the name, contact, email or tax reference. Active suppliers only unless `status` says otherwise.
+         */
+        get: operations["listSuppliers"];
+        put?: never;
+        /**
+         * Add a supplier
+         * @description Honours `Idempotency-Key`.
+         */
+        post: operations["createSupplier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchasing/suppliers/{supplierId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a supplier
+         * @description The supplier with its most recent orders and what this seat may do.
+         */
+        get: operations["getSupplier"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a supplier
+         * @description Send `expectedVersion` as read. Setting `status` to `inactive` keeps the supplier on record but stops new orders to it.
+         */
+        patch: operations["updateSupplier"];
+        trace?: never;
+    };
+    "/v1/purchasing/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find purchase orders
+         * @description Newest first, a page at a time. `q` matches the reference (`PO-000123`, `123`) or words of the supplier name.
+         */
+        get: operations["listPurchaseOrders"];
+        put?: never;
+        /**
+         * Draft a purchase order
+         * @description A draft in the company currency, numbered `PO-000001` onwards. Lines name catalogue items; a line without a `description` takes the item name. Honours `Idempotency-Key`.
+         */
+        post: operations["createPurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchasing/orders/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a purchase order
+         * @description The order, its lines, every receipt against it and what this seat may do.
+         */
+        get: operations["getPurchaseOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a draft purchase order
+         * @description Send `expectedVersion` as read. `lines`, when sent, replaces every line. Only a draft changes (409 `order_not_draft`).
+         */
+        patch: operations["updatePurchaseOrder"];
+        trace?: never;
+    };
+    "/v1/purchasing/orders/{orderId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a purchase order
+         * @description Owners and admins approve. From then on the lines are fixed and goods may be received against it. A draft with no lines cannot be approved (422 `order_empty`).
+         */
+        post: operations["approvePurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchasing/orders/{orderId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a purchase order
+         * @description Closes an order that will not be (fully) delivered. What was already received stays in stock. A received or cancelled order does not change (409 `order_closed`).
+         */
+        post: operations["cancelPurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchasing/orders/{orderId}/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record goods received against an order
+         * @description Each line names an order line and what arrived, at the order's price unless `unitCost` says otherwise. Stock items are written to the ledger at the location given (or the order's delivery location) and the cost folds into the item's average. The order becomes partially or fully received. Needs `Idempotency-Key`.
+         */
+        post: operations["receivePurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchasing/receipts/{receiptId}/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Return goods from a receipt to the supplier
+         * @description Takes the quantity back out of the location it was received at, as a reversal of the receipt movement, and frees that much of the order line to be received again. Needs `Idempotency-Key`.
+         */
+        post: operations["returnToSupplier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -14900,6 +15076,9 @@ export interface operations {
                             defaultUnitCost: string | null;
                             salePrice: string | null;
                             averageUnitCost: string | null;
+                            /** Format: uuid */
+                            preferredSupplierId: string | null;
+                            supplierPartNumber: string | null;
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -14994,6 +15173,9 @@ export interface operations {
                     barcode?: string | null;
                     defaultUnitCost?: string | null;
                     salePrice?: string | null;
+                    /** Format: uuid */
+                    preferredSupplierId?: string | null;
+                    supplierPartNumber?: string | null;
                 };
             };
         };
@@ -15020,6 +15202,9 @@ export interface operations {
                         defaultUnitCost: string | null;
                         salePrice: string | null;
                         averageUnitCost: string | null;
+                        /** Format: uuid */
+                        preferredSupplierId: string | null;
+                        supplierPartNumber: string | null;
                         version: number;
                         /** Format: date-time */
                         createdAt: string;
@@ -15048,7 +15233,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description No such category (`category_not_found`). */
+            /** @description No such category (`category_not_found`) or supplier (`supplier_not_found`). */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -15134,6 +15319,9 @@ export interface operations {
                             defaultUnitCost: string | null;
                             salePrice: string | null;
                             averageUnitCost: string | null;
+                            /** Format: uuid */
+                            preferredSupplierId: string | null;
+                            supplierPartNumber: string | null;
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -15248,6 +15436,9 @@ export interface operations {
                     barcode?: string | null;
                     defaultUnitCost?: string | null;
                     salePrice?: string | null;
+                    /** Format: uuid */
+                    preferredSupplierId?: string | null;
+                    supplierPartNumber?: string | null;
                     expectedVersion: number;
                     archived?: boolean;
                 };
@@ -15276,6 +15467,9 @@ export interface operations {
                         defaultUnitCost: string | null;
                         salePrice: string | null;
                         averageUnitCost: string | null;
+                        /** Format: uuid */
+                        preferredSupplierId: string | null;
+                        supplierPartNumber: string | null;
                         version: number;
                         /** Format: date-time */
                         createdAt: string;
@@ -15304,7 +15498,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description No such item or category. */
+            /** @description No such item, category or supplier. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -15400,6 +15594,9 @@ export interface operations {
                             defaultUnitCost: string | null;
                             salePrice: string | null;
                             averageUnitCost: string | null;
+                            /** Format: uuid */
+                            preferredSupplierId: string | null;
+                            supplierPartNumber: string | null;
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -15521,6 +15718,9 @@ export interface operations {
                         defaultUnitCost: string | null;
                         salePrice: string | null;
                         averageUnitCost: string | null;
+                        /** Format: uuid */
+                        preferredSupplierId: string | null;
+                        supplierPartNumber: string | null;
                         version: number;
                         /** Format: date-time */
                         createdAt: string;
@@ -17265,6 +17465,2023 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listSuppliers: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: ("active" | "inactive") | ("active" | "inactive")[];
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of suppliers. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            status: "active" | "inactive";
+                            contactName: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            taxReference: string | null;
+                            paymentTerms: string | null;
+                            leadTimeDays: number | null;
+                            address: {
+                                line1: string | null;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            notes: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createSupplier: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    contactName?: string | null;
+                    /** Format: email */
+                    email?: string | null;
+                    phone?: string | null;
+                    taxReference?: string | null;
+                    paymentTerms?: string | null;
+                    leadTimeDays?: number | null;
+                    address?: {
+                        line1?: string | null;
+                        line2?: string | null;
+                        city?: string | null;
+                        region?: string | null;
+                        postcode?: string | null;
+                        countryCode?: string | null;
+                    };
+                    /** @enum {string} */
+                    status?: "active" | "inactive";
+                    notes?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The supplier. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** @enum {string} */
+                        status: "active" | "inactive";
+                        contactName: string | null;
+                        email: string | null;
+                        phone: string | null;
+                        taxReference: string | null;
+                        paymentTerms: string | null;
+                        leadTimeDays: number | null;
+                        address: {
+                            line1: string | null;
+                            line2: string | null;
+                            city: string | null;
+                            region: string | null;
+                            postcode: string | null;
+                            countryCode: string | null;
+                        };
+                        notes: string | null;
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The name is taken (`supplier_name_taken`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getSupplier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The supplier. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        supplier: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            status: "active" | "inactive";
+                            contactName: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            taxReference: string | null;
+                            paymentTerms: string | null;
+                            leadTimeDays: number | null;
+                            address: {
+                                line1: string | null;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            notes: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        };
+                        orders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            manage: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such supplier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateSupplier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    contactName?: string | null;
+                    /** Format: email */
+                    email?: string | null;
+                    phone?: string | null;
+                    taxReference?: string | null;
+                    paymentTerms?: string | null;
+                    leadTimeDays?: number | null;
+                    address?: {
+                        line1?: string | null;
+                        line2?: string | null;
+                        city?: string | null;
+                        region?: string | null;
+                        postcode?: string | null;
+                        countryCode?: string | null;
+                    };
+                    /** @enum {string} */
+                    status?: "active" | "inactive";
+                    notes?: string | null;
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The supplier as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** @enum {string} */
+                        status: "active" | "inactive";
+                        contactName: string | null;
+                        email: string | null;
+                        phone: string | null;
+                        taxReference: string | null;
+                        paymentTerms: string | null;
+                        leadTimeDays: number | null;
+                        address: {
+                            line1: string | null;
+                            line2: string | null;
+                            city: string | null;
+                            region: string | null;
+                            postcode: string | null;
+                            countryCode: string | null;
+                        };
+                        notes: string | null;
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such supplier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`) or the name is taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listPurchaseOrders: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: ("draft" | "approved" | "partially_received" | "received" | "cancelled") | ("draft" | "approved" | "partially_received" | "received" | "cancelled")[];
+                supplierId?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of orders. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    supplierId: string;
+                    /** Format: date */
+                    expectedDate?: string | null;
+                    /** Format: uuid */
+                    deliveryLocationId?: string | null;
+                    notes?: string | null;
+                    currencyCode?: string;
+                    /** @default [] */
+                    lines?: {
+                        /** Format: uuid */
+                        itemId: string;
+                        description?: string;
+                        quantityOrdered: string;
+                        unitPrice: string;
+                        taxRateBp?: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The order. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such supplier (`supplier_not_found`), item (`item_not_found`) or location (`location_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Invalid, or the supplier is inactive (`supplier_inactive`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updatePurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    supplierId?: string;
+                    /** Format: date */
+                    expectedDate?: string | null;
+                    /** Format: uuid */
+                    deliveryLocationId?: string | null;
+                    notes?: string | null;
+                    lines?: {
+                        /** Format: uuid */
+                        itemId: string;
+                        description?: string;
+                        quantityOrdered: string;
+                        unitPrice: string;
+                        taxRateBp?: number;
+                    }[];
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The order as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order, supplier, item or location. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`) or no longer a draft (`order_not_draft`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    approvePurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The order, approved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`) or not a draft (`order_not_draft`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No lines (`order_empty`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The order, cancelled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`) or closed (`order_closed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    receivePurchaseOrder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** Format: uuid */
+                    locationId?: string;
+                    supplierNote?: string | null;
+                    notes?: string | null;
+                    lines: {
+                        /** Format: uuid */
+                        orderLineId: string;
+                        quantity: string;
+                        unitCost?: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The order after the receipt. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order, order line or location. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`), not approved (`order_not_receivable`), or already posted (`already_posted`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description More than is left to receive (`over_received`), no location (`location_required`), or a line named twice (`line_repeated`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    returnToSupplier: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                receiptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                    lines: {
+                        /** Format: uuid */
+                        receiptLineId: string;
+                        quantity: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The order after the return. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "approved" | "partially_received" | "received" | "cancelled";
+                            currencyCode: string;
+                            /** Format: date */
+                            expectedDate: string | null;
+                            totals: {
+                                subtotal: string;
+                                tax: string;
+                                total: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deliveryLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            approvedBy: string | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            /** Format: uuid */
+                            cancelledBy: string | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            quantityOrdered: string;
+                            quantityReceived: string;
+                            unitPrice: string | null;
+                            taxRateBp: number;
+                            subtotal: string | null;
+                            tax: string | null;
+                        }[];
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            supplierNote: string | null;
+                            notes: string | null;
+                            /** Format: uuid */
+                            receivedBy: string;
+                            /** Format: date-time */
+                            receivedAt: string;
+                            lines: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                orderLineId: string;
+                                quantity: string;
+                                unitCost: string | null;
+                                returnedQuantity: string;
+                            }[];
+                        }[];
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            cancel: boolean;
+                            receive: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `purchasing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such receipt or receipt line. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not enough stock left there (`insufficient_stock`) or already posted. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description More than the line brought in (`over_returned`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {

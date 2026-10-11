@@ -421,6 +421,17 @@ export class InventoryStockRepository extends TenantScopedRepository {
     ).map(toMovement);
   }
 
+  /** The movement a posting wrote under this `sourceKey`, if any. */
+  async findMovementBySourceKey(sourceKey: string): Promise<Movement | undefined> {
+    const row = await this.db
+      .selectFrom('erp_stock_movements')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('source_key', '=', sourceKey)
+      .executeTakeFirst();
+    return row === undefined ? undefined : toMovement(row);
+  }
+
   // -------------------------------------------------------------------------
   // Balances and reorder levels
   // -------------------------------------------------------------------------

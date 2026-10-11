@@ -25,6 +25,10 @@ export function InventoryOverviewScreen() {
   const allowed = permissions.includes('inventory.read');
   const canMove = permissions.includes('inventory.move');
   const canManage = permissions.includes('inventory.manage');
+  const purchasing =
+    me.data !== undefined &&
+    hasFeature(me.data.features, 'purchasing') &&
+    permissions.includes('purchasing.read');
 
   const low = useQuery({
     queryKey: keys.balances({ belowMinimum: true }),
@@ -82,6 +86,20 @@ export function InventoryOverviewScreen() {
               title={t('inventory.locations.title')}
               note={t('nav.hint.stockLocations')}
             />
+            {purchasing ? (
+              <>
+                <Card
+                  to={paths.suppliers}
+                  title={t('purchasing.suppliers.title')}
+                  note={t('nav.hint.suppliers')}
+                />
+                <Card
+                  to={paths.purchaseOrders}
+                  title={t('purchasing.orders.title')}
+                  note={t('nav.hint.purchaseOrders')}
+                />
+              </>
+            ) : null}
           </div>
 
           <section aria-labelledby="inventory-low" className={cardClass}>

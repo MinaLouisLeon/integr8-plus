@@ -389,6 +389,23 @@ export {
   type StockLocation,
   type StockRefusal,
 } from './repositories/inventory-stock.js';
+export {
+  type GoodsReceipt,
+  type GoodsReceiptLine,
+  InventoryPurchasingRepository,
+  parsePurchaseOrderReference,
+  type PurchaseOrder,
+  type PurchaseOrderInput,
+  type PurchaseOrderLine,
+  type PurchaseOrderLineInput,
+  type PurchaseOrderPage,
+  type PurchaseOrderQuery,
+  type PurchaseOrderTotals,
+  type PurchaseRefusal,
+  type Supplier,
+  type SupplierInput,
+  type SupplierQuery,
+} from './repositories/inventory-purchasing.js';
 
 export {
   addressLine,

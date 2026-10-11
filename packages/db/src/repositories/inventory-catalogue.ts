@@ -39,6 +39,8 @@ export interface Item {
   defaultUnitCost: string | null;
   salePrice: string | null;
   averageUnitCost: string;
+  preferredSupplierId: string | null;
+  supplierPartNumber: string | null;
   version: number;
   createdBy: UserId;
   createdAt: Date;
@@ -61,6 +63,8 @@ export interface ItemInput {
   barcode?: string | null;
   defaultUnitCost?: string | null;
   salePrice?: string | null;
+  preferredSupplierId?: string | null;
+  supplierPartNumber?: string | null;
 }
 
 export interface ItemQuery {
@@ -288,6 +292,12 @@ function itemColumns(input: Partial<ItemInput>) {
       ? {}
       : { default_unit_cost: blankToNull(input.defaultUnitCost) }),
     ...(input.salePrice === undefined ? {} : { sale_price: blankToNull(input.salePrice) }),
+    ...(input.preferredSupplierId === undefined
+      ? {}
+      : { preferred_supplier_id: input.preferredSupplierId }),
+    ...(input.supplierPartNumber === undefined
+      ? {}
+      : { supplier_part_number: blankToNull(input.supplierPartNumber) }),
   };
 }
 
@@ -309,6 +319,8 @@ export function toItem(row: Omit<Selectable<ErpItemsTable>, 'search'>): Item {
     defaultUnitCost: row.default_unit_cost === null ? null : trimDecimal(row.default_unit_cost),
     salePrice: row.sale_price === null ? null : trimDecimal(row.sale_price),
     averageUnitCost: trimDecimal(row.average_unit_cost),
+    preferredSupplierId: row.preferred_supplier_id,
+    supplierPartNumber: row.supplier_part_number,
     version: row.version,
     createdBy: toUserId(row.created_by),
     createdAt: row.created_at,

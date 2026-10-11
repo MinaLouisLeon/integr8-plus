@@ -54,6 +54,9 @@ export const itemSchema = itemSummarySchema.extend({
   defaultUnitCost: z.string().nullable(),
   salePrice: z.string().nullable(),
   averageUnitCost: z.string().nullable(),
+  /** Set once the `purchasing` module is in use (phase E2). */
+  preferredSupplierId: z.uuid().nullable(),
+  supplierPartNumber: z.string().nullable(),
   version: z.number().int(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -73,6 +76,8 @@ export function itemBody(item: Item, seeCosts: boolean): z.infer<typeof itemSche
     defaultUnitCost: seeCosts ? item.defaultUnitCost : null,
     salePrice: item.salePrice,
     averageUnitCost: seeCosts ? item.averageUnitCost : null,
+    preferredSupplierId: item.preferredSupplierId,
+    supplierPartNumber: item.supplierPartNumber,
     version: item.version,
     createdAt: iso(item.createdAt),
     updatedAt: iso(item.updatedAt),
@@ -168,6 +173,22 @@ function uniqueRefusal(error: unknown): never {
     }
   }
   throw error;
+}
+
+/** A supplier of this company, when one is named. */
+async function requireSupplier(tx: TenantTransaction, supplierId: string | null | undefined) {
+  if (
+    typeof supplierId === 'string' &&
+    (await tx.inventoryPurchasing.findSupplier(supplierId)) === undefined
+  ) {
+    throw new ApiError(404, 'supplier_not_found', 'This supplier does not exist.', [
+      {
+        field: 'body.preferredSupplierId',
+        code: 'supplier_not_found',
+        message: 'This supplier does not exist.',
+      },
+    ]);
+  }
 }
 
 async function requireCategory(tx: TenantTransaction, categoryId: string | null | undefined) {
@@ -296,6 +317,8 @@ const itemFields = {
   barcode: z.string().trim().max(64).nullable().optional(),
   defaultUnitCost: decimalAmountSchema.nullable().optional(),
   salePrice: decimalAmountSchema.nullable().optional(),
+  preferredSupplierId: z.uuid().nullable().optional(),
+  supplierPartNumber: z.string().trim().max(64).nullable().optional(),
 };
 
 /** What the request carries, without what it left out. */
@@ -374,12 +397,15 @@ export const createItemRoute = defineRoute({
   body: z.object(itemFields),
   responses: {
     201: { description: 'The item.', schema: itemSchema },
-    404: { description: 'No such category (`category_not_found`).' },
+    404: {
+      description: 'No such category (`category_not_found`) or supplier (`supplier_not_found`).',
+    },
     409: { description: 'The SKU (`sku_taken`) or barcode (`barcode_taken`) is taken.' },
   },
   handler: async ({ body }, context) => {
     const item = await withTenant(context.principal.tenantId, async (tx) => {
       await requireCategory(tx, body.categoryId);
+      await requireSupplier(tx, body.preferredSupplierId);
       const created = await tx.inventoryCatalogue
         .createItem(
           { ...itemInput(body), sku: body.sku, name: body.name },
@@ -495,7 +521,7 @@ export const updateItemRoute = defineRoute({
     .strict(),
   responses: {
     200: { description: 'The item as it is now.', schema: itemSchema },
-    404: { description: 'No such item or category.' },
+    404: { description: 'No such item, category or supplier.' },
     409: {
       description:
         'Changed by somebody else (`version_conflict`), SKU or barcode taken, or it holds stock (`item_has_stock`).',
@@ -508,6 +534,7 @@ export const updateItemRoute = defineRoute({
         throw notFound('This item does not exist.');
       }
       await requireCategory(tx, body.categoryId);
+      await requireSupplier(tx, body.preferredSupplierId);
       if (body.kind !== undefined && body.kind !== 'stock_item' && current.kind === 'stock_item') {
         const held = await tx.inventoryStock.balances({ itemId: current.id });
         if (held.some((row) => row.onHand !== '0')) {

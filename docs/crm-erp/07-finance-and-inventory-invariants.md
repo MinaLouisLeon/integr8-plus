@@ -37,14 +37,16 @@ page when it starts.
 
 ## Purchasing
 
-| Rule                                                                                                                     | Where                                    |
-| ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
-| `draft → approved → partially_received → received`, or `cancelled` before anything is received                           | purchase-order service, check constraint |
-| Only owners and admins approve; approving is audited with who and when                                                   | `purchasing.approve`, audit log          |
-| Goods are received only against an approved order, never more than ordered on a line                                     | service, `check (received <= ordered)`   |
-| Each receipt line posts one `receipt` movement, once                                                                     | `source_key = receipt-line:<id>`         |
-| Returns to a supplier are `return_to_supplier` movements against the receipt line they reverse, never more than received | service                                  |
-| Line, tax and order totals are derived, never typed                                                                      | SQL                                      |
+| Rule                                                                                                                  | Where                                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `draft → approved → partially_received → received`, or `cancelled` from any open status; what was received stays      | `purchasing.ts`, `erp_purchase_orders_status_known`, `_approved_pairing`, `_cancelled_pairing`                                  |
+| Only owners and admins approve; approving is audited with who and when; an empty draft is not approved                | `purchasing.approve`, `approved_by/at`, audit `purchase_order.approved`                                                         |
+| An approved order's lines never change; only what was received moves                                                  | trigger `erp_purchase_order_lines_guard` (`erp_purchase_order_lines_frozen`)                                                    |
+| Goods are received only against an approved order, never more than ordered on a line                                  | 409 `order_not_receivable`; `erp_purchase_order_lines_received_range` (422 `over_received`)                                     |
+| Each stock-item receipt line posts one `receipt` movement, once, at the price received, folding into the average cost | `source_key = receipt-line:<id>`; `applyReceiptCost` under the item's row lock                                                  |
+| Returns to a supplier are `return_to_supplier` movements reversing the receipt movement, never more than received     | `reversal_of`; `erp_goods_receipt_lines_returned_range` (422 `over_returned`); 409 `insufficient_stock` when the goods are gone |
+| References are `PO-000001` onwards per company, never reused, never shared by two drafts                              | `assign_purchase_order_reference()` locks the company's counter row                                                             |
+| Line, tax and order totals are derived, never typed; tax is a rate in basis points per line                           | SQL in `orderLines` / `orderTotals`, `erp_purchase_order_lines_tax_range`                                                       |
 
 ## Parts used on jobs
 

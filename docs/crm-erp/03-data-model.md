@@ -209,3 +209,44 @@ is posted once (`not_draft` afterwards) or cancelled.
 
 Every inventory table but `erp_stock_balances` (derived from the exported
 ledger) is in `EXPORTED_TABLES`.
+
+## 0027 — suppliers, purchase orders and goods receipts (phase E2, first half)
+
+### `erp_suppliers`
+
+Name unique per company (case-insensitive), contact, email, phone, tax
+reference, payment terms, lead time, address, `active` or `inactive`, notes,
+`version`. Never deleted: an inactive supplier stays on every order it
+supplied. `erp_items` gains `preferred_supplier_id` (tenant composite FK) and
+`supplier_part_number`.
+
+### `erp_purchase_orders` and `erp_purchase_order_lines`
+
+| Column / rule   | Meaning                                                                                                                                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `reference`     | `PO-000001` onwards per company, assigned by the trigger `assign_purchase_order_reference()` (security definer) from `erp_purchase_order_counters`, which locks the company's counter row so two drafts never share a number                     |
+| `supplier_name` | A snapshot at the time of the order; the supplier may be renamed later                                                                                                                                                                           |
+| `status`        | `draft → approved → partially_received → received`, or `cancelled` from any open status; `erp_purchase_orders_approved_pairing` and `_cancelled_pairing` keep `approved_by/at` and `cancelled_by/at` together with the status                    |
+| `currency_code` | The company currency when drafted; one currency per order                                                                                                                                                                                        |
+| Lines           | `position` unique per order, item (tenant FK), `description` (defaults to the item name), `quantity_ordered > 0`, `quantity_received` between 0 and ordered (`erp_purchase_order_lines_received_range`), `unit_price ≥ 0`, `tax_rate_bp` 0–10000 |
+| Lines frozen    | Trigger `erp_purchase_order_lines_guard`: once the order is not a draft, no line is inserted, deleted or changed except `quantity_received` (error names constraint `erp_purchase_order_lines_frozen`)                                           |
+| Totals          | Derived in SQL (`orderLines`, `orderTotals`): `subtotal = round(quantity × price, 4)`, `tax = round(subtotal × bp / 10000, 4)`; never typed, never floats                                                                                        |
+
+### `erp_goods_receipts` and `erp_goods_receipt_lines`
+
+A receipt names the order, the location the goods went into, the supplier's
+delivery note, who received it and when. Each receipt line names an order
+line, `quantity > 0`, the `unit_cost` received at, and `returned_quantity`
+between 0 and `quantity` (`erp_goods_receipt_lines_returned_range`). Receipts
+are `select, insert` only; receipt lines may also be updated (returns). A
+stock item's receipt line posts one `receipt` movement with
+`source_key = receipt-line:<id>`; a return posts a `return_to_supplier`
+movement with `reversal_of` the receipt movement and
+`source_key = return:<idempotency key>:<receipt line>`. Services and non-stock
+items are recorded as received without touching the ledger.
+
+### Company data export
+
+`erp_suppliers`, `erp_purchase_orders`, `erp_purchase_order_lines`,
+`erp_goods_receipts` and `erp_goods_receipt_lines` are in `EXPORTED_TABLES`;
+the counter table is derived and not exported.

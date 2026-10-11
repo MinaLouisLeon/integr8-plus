@@ -12,7 +12,11 @@ import {
   ItemScreen,
   LocationListScreen,
   LocationScreen,
+  OrderListScreen,
+  OrderScreen,
   StockCountScreen,
+  SupplierListScreen,
+  SupplierScreen,
   LeadConvertScreen,
   OpportunityBoardScreen,
   OpportunityScreen,
@@ -73,6 +77,10 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         stockLocations: '/inventory/locations',
         stockLocation: (id) => `/inventory/locations/${id}`,
         stockCount: (id) => `/inventory/counts/${id}`,
+        suppliers: '/purchasing/suppliers',
+        supplier: (id) => `/purchasing/suppliers/${id}`,
+        purchaseOrders: '/purchasing/orders',
+        purchaseOrder: (id) => `/purchasing/orders/${id}`,
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -291,6 +299,40 @@ export function TimesheetsRoute() {
   return (
     <OperationsScreens>
       <TimesheetsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function SuppliersRoute() {
+  return (
+    <OperationsScreens>
+      <SupplierListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function SupplierRoute() {
+  const { supplierId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <SupplierScreen key={supplierId} supplierId={supplierId} />
+    </OperationsScreens>
+  );
+}
+
+export function PurchaseOrdersRoute() {
+  return (
+    <OperationsScreens>
+      <OrderListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function PurchaseOrderRoute() {
+  const { orderId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <OrderScreen key={orderId} orderId={orderId} />
     </OperationsScreens>
   );
 }

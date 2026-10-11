@@ -12,6 +12,7 @@ import { opportunityRoutes } from './v1/crm-opportunities.js';
 import { crmRoutes } from './v1/crm.js';
 import { stockRoutes } from './v1/inventory-stock.js';
 import { catalogueRoutes } from './v1/inventory.js';
+import { purchasingRoutes } from './v1/purchasing.js';
 import { customerRoutes } from './v1/customers.js';
 import { importRoutes } from './v1/imports.js';
 import { jobTypeRoutes } from './v1/job-types.js';
@@ -52,6 +53,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...activityRoutes,
     ...catalogueRoutes,
     ...stockRoutes,
+    ...purchasingRoutes,
     ...jobTypeRoutes,
     ...workOrderRoutes,
     ...importRoutes,

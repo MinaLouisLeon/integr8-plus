@@ -147,7 +147,7 @@ describe('the ledger', () => {
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(2);
     const refused = results.filter((result) => result.status === 'rejected');
     expect(refused).toHaveLength(1);
-    expect((refused[0] as PromiseRejectedResult).reason).toBeInstanceOf(InsufficientStockError);
+    expect(refused[0]!.reason).toBeInstanceOf(InsufficientStockError);
     expect(await onHand(northwind, pump.id, store.id)).toBe('2');
   });
 

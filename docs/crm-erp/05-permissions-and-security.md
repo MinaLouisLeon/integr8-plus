@@ -100,8 +100,16 @@ needs the company's `inventory` (or `purchasing`) module.
 
 Two security-definer functions back the ledger: `erp_stock_apply_movement`
 (the balance trigger) and `erp_stock_lock_balance`, which refuses a company
-other than the transaction's own. Both pin `search_path` and are listed in
+other than the transaction's own. A third, `assign_purchase_order_reference`
+(0027), numbers purchase orders from a per-company counter the runtime role
+cannot read or write directly. All pin `search_path` and are listed in
 `SECURITY_DEFINER_FUNCTIONS`; the schema-invariant suite checks both facts.
+
+Purchasing (E2): prices are shown to seats holding `purchasing.manage` or
+`inventory.move`; viewers read orders without them. Approval is a separate
+permission so that a dispatcher's own draft needs an owner or admin before
+goods are received against it; the trigger `erp_purchase_order_lines_guard`
+makes the approved lines immutable whatever the role.
 
 ## Database
 

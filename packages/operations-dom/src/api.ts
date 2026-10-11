@@ -44,6 +44,11 @@ export interface OperationsConfig {
     stockLocations: string;
     stockLocation: (id: string) => string;
     stockCount: (id: string) => string;
+    /** Purchasing (CRM/ERP plan, phase E2). */
+    suppliers: string;
+    supplier: (id: string) => string;
+    purchaseOrders: string;
+    purchaseOrder: (id: string) => string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -79,7 +84,9 @@ export interface RowTarget {
     | 'lead'
     | 'opportunity'
     | 'item'
-    | 'stockLocation';
+    | 'stockLocation'
+    | 'supplier'
+    | 'purchaseOrder';
   id: string;
   label: string;
 }
@@ -171,6 +178,14 @@ export type StockMovement = Json<'/v1/inventory/movements', 'get', 200>['items']
 export type StockBalance = Json<'/v1/inventory/balances', 'get', 200>['items'][number];
 export type StockCountDetail = Json<'/v1/inventory/counts/{countId}', 'get', 200>;
 export type StockCountRow = Json<'/v1/inventory/counts', 'get', 200>['items'][number];
+export type Supplier = Json<'/v1/purchasing/suppliers', 'get', 200>['items'][number];
+export type SupplierDetail = Json<'/v1/purchasing/suppliers/{supplierId}', 'get', 200>;
+export type SupplierStatus = Supplier['status'];
+export type PurchaseOrderRow = Json<'/v1/purchasing/orders', 'get', 200>['items'][number];
+export type PurchaseOrderStatus = PurchaseOrderRow['status'];
+export type PurchaseOrderDetail = Json<'/v1/purchasing/orders/{orderId}', 'get', 200>;
+export type PurchaseOrderLine = PurchaseOrderDetail['lines'][number];
+export type GoodsReceipt = PurchaseOrderDetail['receipts'][number];
 
 export const keys = {
   me: ['me'] as const,
@@ -193,6 +208,10 @@ export const keys = {
   balances: (query: object) => ['inventory', 'balances', query] as const,
   stockCounts: (query: object) => ['inventory', 'counts', query] as const,
   stockCount: (id: string) => ['inventory', 'count', id] as const,
+  suppliers: (query: object) => ['purchasing', 'suppliers', query] as const,
+  supplier: (id: string) => ['purchasing', 'supplier', id] as const,
+  purchaseOrders: (query: object) => ['purchasing', 'orders', query] as const,
+  purchaseOrder: (id: string) => ['purchasing', 'order', id] as const,
   forms: ['forms'] as const,
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,

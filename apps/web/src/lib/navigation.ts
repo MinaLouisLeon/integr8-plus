@@ -31,6 +31,8 @@ export const NAV_PATHS: Readonly<Record<Exclude<NavPath, 'forms' | 'branding'>, 
   inventory: '/inventory',
   items: '/inventory/items',
   stockLocations: '/inventory/locations',
+  suppliers: '/purchasing/suppliers',
+  purchaseOrders: '/purchasing/orders',
 };
 
 /**

@@ -73,6 +73,12 @@ export const EXPORTED_TABLES = [
   'erp_stock_count_lines',
   'erp_stock_movements',
   'erp_reorder_levels',
+  // Purchasing (0027). The reference counter is working state and is left out.
+  'erp_suppliers',
+  'erp_purchase_orders',
+  'erp_purchase_order_lines',
+  'erp_goods_receipts',
+  'erp_goods_receipt_lines',
   'audit_log',
 ] as const;
 

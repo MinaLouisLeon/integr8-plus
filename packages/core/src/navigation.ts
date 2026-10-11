@@ -22,6 +22,7 @@ export type NavIcon =
   | 'briefcase'
   | 'users'
   | 'map-pin'
+  | 'truck'
   | 'upload'
   | 'clock'
   | 'tag'
@@ -86,7 +87,9 @@ export type NavPath =
   | 'activities'
   | 'inventory'
   | 'items'
-  | 'stockLocations';
+  | 'stockLocations'
+  | 'suppliers'
+  | 'purchaseOrders';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   'overview',
@@ -183,6 +186,23 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     icon: 'map-pin',
     permission: 'inventory.read',
     feature: 'inventory',
+  },
+  // Purchasing (CRM/ERP plan, phase E2): the company's `purchasing` module.
+  {
+    key: 'suppliers',
+    group: 'inventory',
+    path: 'suppliers',
+    icon: 'truck',
+    permission: 'purchasing.read',
+    feature: 'purchasing',
+  },
+  {
+    key: 'purchaseOrders',
+    group: 'inventory',
+    path: 'purchaseOrders',
+    icon: 'clipboard',
+    permission: 'purchasing.read',
+    feature: 'purchasing',
   },
 
   {
