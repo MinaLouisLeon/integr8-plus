@@ -1,4 +1,4 @@
-import type { Permission, PlatformPrincipal, Principal } from '@integr8/core';
+import type { ModuleFeature, Permission, PlatformPrincipal, Principal } from '@integr8/core';
 import { z } from 'zod';
 import type { Services } from '../composition.js';
 import type { ApiConfig } from '../config.js';
@@ -105,6 +105,13 @@ interface RouteShape {
 
   /** Checked after authentication, against the permission matrix in core. */
   permission?: Permission;
+
+  /**
+   * A module the company must have switched on (the CRM). Checked after the
+   * permission; a company without it is refused with 403 `feature_disabled`
+   * whatever the seat's role. See `http/features.ts`.
+   */
+  feature?: ModuleFeature;
 
   /**
    * Whether this route still works while a company is read-only for

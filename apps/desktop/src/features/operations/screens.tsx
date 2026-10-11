@@ -1,5 +1,6 @@
 import { useTranslation } from '@integr8/i18n';
 import {
+  CrmOverviewScreen,
   CustomerListScreen,
   CustomerScreen,
   ImportsScreen,
@@ -102,6 +103,15 @@ export function WorkOrderRoute() {
   return (
     <OperationsScreens>
       <WorkOrderScreen key={workOrderId} workOrderId={workOrderId} />
+    </OperationsScreens>
+  );
+}
+
+/** The CRM's front page (CRM/ERP plan, phase F1). */
+export function CrmRoute() {
+  return (
+    <OperationsScreens>
+      <CrmOverviewScreen />
     </OperationsScreens>
   );
 }

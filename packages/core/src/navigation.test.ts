@@ -39,4 +39,18 @@ describe('the dashboard map', () => {
       expect(group.sections.length).toBeGreaterThan(0);
     }
   });
+
+  it('shows the CRM only to a company that has it, and only to seats that may read it', () => {
+    const keysFor = (role: 'owner' | 'engineer' | 'viewer', features?: Record<string, boolean>) =>
+      visibleNavigation('web', permissionsFor(role), features)
+        .flatMap((g) => g.sections)
+        .map((s) => s.key);
+
+    // A caller that passes no flags shows no module-gated section at all.
+    expect(keysFor('owner')).not.toContain('crm');
+    expect(keysFor('owner', { crm: false })).not.toContain('crm');
+    expect(keysFor('owner', { crm: true })).toContain('crm');
+    expect(keysFor('viewer', { crm: true })).toContain('crm');
+    expect(keysFor('engineer', { crm: true })).not.toContain('crm');
+  });
 });

@@ -116,3 +116,21 @@ export {
   type ShiftSpan,
   type StateChange,
 } from './job-execution.js';
+export {
+  MODULE_FEATURES,
+  moduleFeatureSchema,
+  type ModuleFeature,
+  hasFeature,
+  LEAD_STATUSES,
+  leadStatusSchema,
+  type LeadStatus,
+  OPEN_LEAD_STATUSES,
+  type OpenLeadStatus,
+  LEAD_SOURCES,
+  leadSourceSchema,
+  type LeadSource,
+  leadTransitionAllowed,
+  isLeadOpen,
+  decimalAmountSchema,
+  currencyCodeSchema,
+} from './crm.js';

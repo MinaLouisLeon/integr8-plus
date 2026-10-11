@@ -531,6 +531,8 @@ export const en = {
     notFound: 'We could not find that.',
     forbidden: 'You do not have permission to do that.',
     clientTooOld: 'This version of the app is no longer supported. Please update to continue.',
+    featureDisabled:
+      'This part of Integr8 is not switched on for your company. Ask Integr8 to turn it on.',
     unexpected: 'An unexpected error occurred.',
   },
 
@@ -1805,6 +1807,17 @@ export const en = {
   },
 
   // The mobile app (P11): everything it shows is read from the phone.
+  crm: {
+    overview: {
+      title: 'CRM',
+      intro:
+        'Prospects before they are customers, the deals you are working on, and the follow-ups that keep them moving.',
+      notEnabled: 'The CRM is not switched on for your company. Ask Integr8 to turn it on.',
+      sections: 'In the CRM',
+      comingSoon: 'Leads, opportunities and follow-ups appear here as they are added.',
+    },
+  },
+
   mobile: {
     back: 'Back',
     readFailed:
@@ -2279,6 +2292,7 @@ export const en = {
       operations: 'Operations',
       setup: 'Set-up',
       company: 'Company',
+      crm: 'CRM',
     },
     section: {
       dashboard: 'Dashboard',
@@ -2296,6 +2310,7 @@ export const en = {
       companySettings: 'Company settings',
       storage: 'Storage',
       billing: 'Billing',
+      crm: 'CRM overview',
     },
     hint: {
       dashboard: 'Where you are, and what needs doing.',
@@ -2313,6 +2328,7 @@ export const en = {
       companySettings: 'Timezone, currency and working hours.',
       storage: 'What you are using, and how much is left.',
       billing: 'Your plan, your limits and your card.',
+      crm: 'Leads, opportunities and follow-ups.',
     },
   },
 

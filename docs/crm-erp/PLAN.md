@@ -627,7 +627,7 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase F1 — CRM shared foundation
 
-**Status:** `NOT STARTED` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `DONE` — pipeline tables moved to C3, where they are first used (see README.md) — see the [phase tracker](./README.md#phase-tracker).
 
 - [ ] Add `crm` tenant module flag / plan gate using existing flags and entitlements.
 - [ ] Add CRM permissions explicitly to all five roles and tests; default conservatively.

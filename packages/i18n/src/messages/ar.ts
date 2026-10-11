@@ -512,6 +512,7 @@ export const ar: Catalogue<Messages> = {
     notFound: 'لم نستطع العثور على ذلك.',
     forbidden: 'ليست لديك صلاحية القيام بذلك.',
     clientTooOld: 'لم يعد هذا الإصدار من التطبيق مدعومًا. يُرجى التحديث للمتابعة.',
+    featureDisabled: 'هذا الجزء من Integr8 غير مفعّل لشركتك. اطلب من Integr8 تفعيله.',
     unexpected: 'حدث خطأ غير متوقع.',
   },
 
@@ -1808,6 +1809,17 @@ export const ar: Catalogue<Messages> = {
     },
   },
 
+  crm: {
+    overview: {
+      title: 'إدارة علاقات العملاء',
+      intro:
+        'العملاء المحتملون قبل أن يصبحوا عملاء، والصفقات التي تعمل عليها، والمتابعات التي تُبقيها في تقدّم.',
+      notEnabled: 'إدارة علاقات العملاء غير مفعّلة لشركتك. اطلب من Integr8 تفعيلها.',
+      sections: 'في إدارة علاقات العملاء',
+      comingSoon: 'تظهر هنا العملاء المحتملون والفرص والمتابعات عند إضافتها.',
+    },
+  },
+
   mobile: {
     back: 'رجوع',
     readFailed: 'تعذّرت قراءة هذا من الهاتف. أعد تشغيل التطبيق، وتواصل مع الدعم إذا تكرر الأمر.',
@@ -2329,6 +2341,7 @@ export const ar: Catalogue<Messages> = {
       operations: 'العمليات',
       setup: 'الإعداد',
       company: 'الشركة',
+      crm: 'إدارة علاقات العملاء',
     },
     section: {
       dashboard: 'لوحة التحكم',
@@ -2346,6 +2359,7 @@ export const ar: Catalogue<Messages> = {
       companySettings: 'إعدادات الشركة',
       storage: 'التخزين',
       billing: 'الفوترة',
+      crm: 'نظرة عامة على إدارة علاقات العملاء',
     },
     hint: {
       dashboard: 'أين أنت، وما الذي يحتاج إلى إنجاز.',
@@ -2363,6 +2377,7 @@ export const ar: Catalogue<Messages> = {
       companySettings: 'المنطقة الزمنية والعملة وساعات العمل.',
       storage: 'ما تستخدمه، وما تبقّى.',
       billing: 'خطتك وحدودك وبطاقتك.',
+      crm: 'العملاء المحتملون والفرص والمتابعات.',
     },
   },
 

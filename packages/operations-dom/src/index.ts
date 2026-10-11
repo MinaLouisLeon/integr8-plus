@@ -17,3 +17,4 @@ export { JobTypesScreen } from './screens/job-types-screen.js';
 export { ImportsScreen } from './screens/imports-screen.js';
 export { TimesheetsScreen } from './screens/timesheets-screen.js';
 export { AccessNotesPanel } from './access-notes.js';
+export { CrmOverviewScreen } from './crm/crm-overview.js';

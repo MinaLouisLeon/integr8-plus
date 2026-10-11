@@ -26,6 +26,7 @@ import {
 import { withIdempotency } from './http/idempotency.js';
 import { createLogger, type Logger, principalContext } from './http/logger.js';
 import { assertTenantServable, assertTenantWritable } from './http/suspension.js';
+import { assertFeatureEnabled } from './http/features.js';
 import type { AnyRoute, ClientApp, PublicRequestContext, RequestContext } from './http/routes.js';
 import { captureException } from './observability/sentry.js';
 
@@ -325,6 +326,13 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
               }
               throw error;
             }
+          }
+
+          // 6b. The module, for routes that belong to one (the CRM). After the
+          // permission, so a seat that may not use the CRM learns that first,
+          // and before any work is done.
+          if (route.feature !== undefined) {
+            await assertFeatureEnabled(principal.tenantId, route.feature);
           }
 
           // 7. Per-tenant rate limit. One noisy company must not starve

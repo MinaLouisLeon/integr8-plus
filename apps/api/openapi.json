@@ -4086,7 +4086,12 @@
                           "work_order.review",
                           "import.run",
                           "billing.read",
-                          "billing.manage"
+                          "billing.manage",
+                          "crm.read",
+                          "crm.lead.manage",
+                          "crm.lead.convert",
+                          "crm.opportunity.manage",
+                          "crm.activity.manage"
                         ]
                       }
                     },

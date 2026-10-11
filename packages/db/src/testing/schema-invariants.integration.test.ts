@@ -1,4 +1,11 @@
-import { ROLES, WORK_ORDER_PRIORITIES, WORK_ORDER_STATES, findTransition } from '@integr8/core';
+import {
+  findTransition,
+  LEAD_SOURCES,
+  LEAD_STATUSES,
+  ROLES,
+  WORK_ORDER_PRIORITIES,
+  WORK_ORDER_STATES,
+} from '@integr8/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -459,6 +466,10 @@ describe('vocabularies shared with the application', () => {
       ['work_orders_state_known', WORK_ORDER_STATES],
       ['work_orders_priority_known', WORK_ORDER_PRIORITIES],
       ['job_types_priority_known', WORK_ORDER_PRIORITIES],
+      // CRM (0024): the lead vocabulary the screens offer is the one the
+      // database accepts.
+      ['crm_leads_status_known', LEAD_STATUSES],
+      ['crm_leads_source_known', LEAD_SOURCES],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,

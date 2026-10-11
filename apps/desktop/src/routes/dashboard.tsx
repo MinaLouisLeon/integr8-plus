@@ -40,7 +40,7 @@ export function DashboardRoute() {
     );
   }
 
-  const groups = desktopNavigation(me.data.permissions)
+  const groups = desktopNavigation(me.data.permissions, me.data.features)
     .map((entry) => ({
       ...entry,
       // The dashboard is where we are; a card leading here would lead nowhere.

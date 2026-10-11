@@ -1,3 +1,4 @@
+import { hasFeature, type ModuleFeature } from './crm.js';
 import type { Permission } from './permissions.js';
 
 /**
@@ -38,7 +39,7 @@ export type NavIcon =
   | 'package'
   | 'heart';
 
-export type NavGroup = 'overview' | 'work' | 'operations' | 'setup' | 'company';
+export type NavGroup = 'overview' | 'work' | 'crm' | 'operations' | 'setup' | 'company';
 
 /** One entry in the side menu. */
 export interface NavSection {
@@ -54,6 +55,12 @@ export interface NavSection {
   desktopOnly?: boolean;
   /** Only the web app has this screen (billing, storage, people, get started). */
   webOnly?: boolean;
+  /**
+   * Shown only to a company with this module switched on (the CRM). The
+   * permission still applies as well: the module says the company has it, the
+   * permission says this seat may use it.
+   */
+  feature?: ModuleFeature;
 }
 
 export type NavPath =
@@ -71,11 +78,13 @@ export type NavPath =
   | 'people'
   | 'companySettings'
   | 'storage'
-  | 'billing';
+  | 'billing'
+  | 'crm';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   'overview',
   'work',
+  'crm',
   'operations',
   'setup',
   'company',
@@ -107,6 +116,15 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'timesheets',
     icon: 'clock',
     permission: 'work_order.manage',
+  },
+
+  {
+    key: 'crm',
+    group: 'crm',
+    path: 'crm',
+    icon: 'funnel',
+    permission: 'crm.read',
+    feature: 'crm',
   },
 
   {
@@ -219,11 +237,18 @@ export type NavApp = 'web' | 'desktop';
 export function visibleNavigation(
   app: NavApp,
   permissions: readonly Permission[],
+  /**
+   * The company's resolved feature flags, as `/v1/me` returns them. A section
+   * gated on a module is hidden when this is left out, so a caller that has
+   * not been taught about modules shows nothing it should not.
+   */
+  features?: Readonly<Record<string, boolean>>,
 ): { group: NavGroup; sections: NavSection[] }[] {
   const held = new Set(permissions);
   const shown = NAV_SECTIONS.filter(
     (section) =>
       (section.permission === undefined || held.has(section.permission)) &&
+      (section.feature === undefined || hasFeature(features, section.feature)) &&
       !(section.desktopOnly === true && app !== 'desktop') &&
       !(section.webOnly === true && app !== 'web'),
   );

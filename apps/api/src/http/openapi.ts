@@ -178,7 +178,10 @@ function responses(route: AnyRoute): Record<string, unknown> {
   if (route.security === 'authenticated') {
     universal['401'] = { description: 'Authentication is required.', content: json(error) };
     universal['403'] = {
-      description: 'The caller lacks the required permission.',
+      description:
+        route.feature === undefined
+          ? 'The caller lacks the required permission.'
+          : `The caller lacks the required permission, or the company does not have the \`${route.feature}\` module switched on (\`feature_disabled\`).`,
       content: json(error),
     };
   }

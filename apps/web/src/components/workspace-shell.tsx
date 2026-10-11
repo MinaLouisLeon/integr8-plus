@@ -40,29 +40,31 @@ export function WorkspaceShell({
     },
   });
 
-  const groups: ShellNavGroup[] = visibleNavigation('web', me.data?.permissions ?? []).map(
-    (group) => ({
-      key: group.group,
-      label: t(`nav.group.${group.group}`),
-      items: group.sections.flatMap((section) => {
-        // Forms and branding are desktop-only and filtered out above; the
-        // check keeps the type honest about which paths this app has.
-        if (section.path === 'forms' || section.path === 'branding') {
-          return [];
-        }
-        const aliases = NAV_ALIASES[section.path];
-        return [
-          {
-            key: section.key,
-            href: NAV_PATHS[section.path],
-            ...(aliases === undefined ? {} : { aliases }),
-            label: t(`nav.section.${section.path}`),
-            icon: section.icon,
-          },
-        ];
-      }),
+  const groups: ShellNavGroup[] = visibleNavigation(
+    'web',
+    me.data?.permissions ?? [],
+    me.data?.features,
+  ).map((group) => ({
+    key: group.group,
+    label: t(`nav.group.${group.group}`),
+    items: group.sections.flatMap((section) => {
+      // Forms and branding are desktop-only and filtered out above; the
+      // check keeps the type honest about which paths this app has.
+      if (section.path === 'forms' || section.path === 'branding') {
+        return [];
+      }
+      const aliases = NAV_ALIASES[section.path];
+      return [
+        {
+          key: section.key,
+          href: NAV_PATHS[section.path],
+          ...(aliases === undefined ? {} : { aliases }),
+          label: t(`nav.section.${section.path}`),
+          icon: section.icon,
+        },
+      ];
     }),
-  );
+  }));
 
   const company = me.data?.company;
 

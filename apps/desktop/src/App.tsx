@@ -18,6 +18,7 @@ import { FormBuilderRoute } from '~/features/forms/routes/form-builder';
 import { FormVersionRoute } from '~/features/forms/routes/form-version';
 import { FormsListRoute } from '~/features/forms/routes/forms-list';
 import {
+  CrmRoute,
   CustomerRoute,
   CustomersRoute,
   ImportsRoute,
@@ -76,6 +77,7 @@ const SIGNED_IN_ROUTES: readonly { path: string; element: ReactNode }[] = [
   { path: '/work-orders', element: <WorkOrdersRoute /> },
   { path: '/work-orders/new', element: <NewWorkOrderRoute /> },
   { path: '/work-orders/:workOrderId', element: <WorkOrderRoute /> },
+  { path: '/crm', element: <CrmRoute /> },
   { path: '/customers', element: <CustomersRoute /> },
   { path: '/customers/:customerId', element: <CustomerRoute /> },
   { path: '/sites/:siteId', element: <SiteRoute /> },

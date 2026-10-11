@@ -1,4 +1,11 @@
-import { type Role, ROLES, type WorkOrderPriority, type WorkOrderState } from '@integr8/core';
+import {
+  type LeadSource,
+  type LeadStatus,
+  type Role,
+  ROLES,
+  type WorkOrderPriority,
+  type WorkOrderState,
+} from '@integr8/core';
 import type { ColumnType, Generated } from 'kysely';
 import { z } from 'zod';
 
@@ -873,6 +880,39 @@ export interface CustomersTable extends AddressColumns {
   is_demo: Generated<boolean>;
 }
 
+/**
+ * A prospect that is not a customer yet (0024, CRM phase F1). Converts once
+ * into a customer; archived, never deleted.
+ */
+export interface CrmLeadsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  display_name: string;
+  company_name: string | null;
+  email: string | null;
+  phone: string | null;
+  source: Generated<LeadSource>;
+  status: Generated<LeadStatus>;
+  assigned_to: string | null;
+  /** `numeric(20,4)`, which node-postgres returns as a string: never a JavaScript number. */
+  estimated_value: string | null;
+  currency_code: string | null;
+  notes: string | null;
+  unqualified_reason: string | null;
+  converted_customer_id: string | null;
+  converted_contact_id: string | null;
+  converted_at: Date | null;
+  converted_by: string | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  archived_at: Date | null;
+  email_normalized: ColumnType<string | null, never, never>;
+  phone_digits: ColumnType<string | null, never, never>;
+  search: ColumnType<string, never, never>;
+}
+
 export interface CustomerContactsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -1359,6 +1399,7 @@ export interface Database {
   subscriptions: SubscriptionsTable;
   billing_events: BillingEventsTable;
   customers: CustomersTable;
+  crm_leads: CrmLeadsTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -1533,6 +1574,7 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   files: true,
   tenant_storage_usage: true,
   customers: true,
+  crm_leads: true,
   customer_contacts: true,
   sites: true,
   job_types: true,
