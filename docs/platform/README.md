@@ -59,6 +59,44 @@ to enrol again — plan it.
 
 ---
 
+## Staff
+
+The dashboard's **Staff** page lists everybody who can sign in to it. Everybody signed in can
+see the list; only a **staff manager** can change it.
+
+A staff manager is an account made with the terminal command on the server:
+
+```bash
+docker compose -f deploy/compose.yml --env-file deploy/.env \
+  run --rm api node dist/platform/admin-cli.js create you@your-domain.example "Your Name"
+```
+
+From the Staff page a staff manager can:
+
+- **Add** somebody, by name and email address. The page shows a generated password and an
+  authenticator secret once; send them on privately. The new person can do everything in the
+  dashboard except manage staff, and never becomes a staff manager from the dashboard.
+- **Give them a new password and code**, when they have lost either. Their sessions end.
+- **Remove** them. The account is deactivated, not deleted, so the audit log keeps its name.
+  Their dashboard sessions end at once, and so does any company they were acting as. Adding
+  the same address again brings the account back with new credentials.
+
+A terminal account is never changed from the dashboard, the manager's own included. That stays
+with whoever holds the server:
+
+| Terminal command                  | What it does                                                                                           |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `admin-cli create <email> <name>` | Makes a staff manager, or resets one's password and code. Run for a dashboard account, it promotes it. |
+| `admin-cli remove <email>`        | Takes any account off the staff, terminal ones included, and ends its sessions.                        |
+| `admin-cli list`                  | Every account, whether it is a staff manager, and whether it is set up.                                |
+
+Removing a terminal account's second factor (support's "lost my phone" reset) also takes a staff
+manager. The API enforces all of this; the page only leaves out what would be refused. Each
+change is in the audit log as `staff.added`, `staff.restored`, `staff.credentials_reset` or
+`staff.removed`.
+
+---
+
 ## Onboarding a company
 
 One call, `POST /v1/platform/companies`, and a company is usable:
@@ -75,6 +113,24 @@ a database transaction, so it happens last and a failure there leaves a company 
 except for storage. That is recoverable and already handled: the media maintenance sweep
 provisions any company whose bucket is missing, and the response says what happened rather than
 pretending.
+
+### Inviting the owner when the company is ready
+
+Onboarding creates the owner's invitation but **does not email it unless asked**
+(`sendInvitation: true`, the "Email the owner's invitation now" box). Integr8 sets a company up
+first — its forms, job types and look — and the owner should arrive to a company that is ready,
+not to an empty one. The link is returned either way, to copy if wanted.
+
+The company's page lists every invitation nobody has accepted, with its expiry, and offers two
+actions, both through `POST /v1/platform/companies/:tenantId/invitations/:invitationId/resend`:
+
+| Action              | Body                     | Does                                                              |
+| ------------------- | ------------------------ | ----------------------------------------------------------------- |
+| **Send invitation** | `{}`                     | A fresh seven-day invitation, emailed from Integr8 through Resend |
+| **Copy a new link** | `{ "sendEmail": false }` | The same fresh invitation, nothing sent; the link is copied       |
+
+Both withdraw the previous invitation, so an old link that went astray stops working, and both
+work on an invitation that already expired while the company was being set up.
 
 ---
 

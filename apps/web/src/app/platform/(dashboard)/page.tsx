@@ -189,6 +189,9 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
   const [billingMode, setBillingMode] = useState<'self_serve' | 'invoiced'>('invoiced');
   const [ownerEmail, setOwnerEmail] = useState('');
   const [website, setWebsite] = useState('');
+  // Off by default: a company is set up first and its owner invited when there
+  // is something to log in to, from the company's page.
+  const [sendInvitation, setSendInvitation] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const effectiveSlug = slugTouched ? slug : suggestSlug(name);
@@ -204,6 +207,7 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
           billingMode,
           ownerEmail: ownerEmail.trim(),
           websiteUrl: website.trim() === '' ? null : website.trim(),
+          sendInvitation,
         },
       });
       return data;
@@ -224,7 +228,14 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
       <section className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface-muted p-4">
         <p className="text-content">{t('platform.onboard.done', { name: result.company.name })}</p>
         <p className="text-sm text-content-muted">
-          {t('platform.onboard.invitationSent', { email: result.ownerInvitation.email })}
+          {result.ownerInvitation.emailed
+            ? t('platform.onboard.invitationSent', { email: result.ownerInvitation.email })
+            : result.ownerInvitation.emailProblem !== null
+              ? t('platform.onboard.invitationNotSent', {
+                  email: result.ownerInvitation.email,
+                  problem: result.ownerInvitation.emailProblem,
+                })
+              : t('platform.onboard.invitationReady', { email: result.ownerInvitation.email })}
         </p>
 
         {result.storage.bucket === '' ? (
@@ -342,6 +353,24 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
           onChange={(event) => setWebsite(event.target.value)}
           {...(websiteOk ? {} : { error: t('platform.onboard.websiteInvalid') })}
         />
+        <div className="flex items-start gap-2 text-sm sm:col-span-2">
+          <input
+            id="onboard-send-invitation"
+            type="checkbox"
+            className="mt-1"
+            aria-describedby="onboard-send-invitation-hint"
+            checked={sendInvitation}
+            onChange={(event) => setSendInvitation(event.target.checked)}
+          />
+          <div className="flex flex-col gap-0.5">
+            <label htmlFor="onboard-send-invitation" className="font-medium text-content">
+              {t('platform.onboard.sendInvitation')}
+            </label>
+            <p id="onboard-send-invitation-hint" className="text-content-muted">
+              {t('platform.onboard.sendInvitationHint')}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="flex gap-2">

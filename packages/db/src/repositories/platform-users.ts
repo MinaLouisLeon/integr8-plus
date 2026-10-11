@@ -15,6 +15,13 @@ export interface PlatformUser {
   lastSignedInAt: Date | null;
   failedAttempts: number;
   lockedUntil: Date | null;
+  /**
+   * Made by the terminal command, so may add and remove other staff. Accounts
+   * added from the dashboard never may (0023).
+   */
+  canManageStaff: boolean;
+  /** The staff manager who added this account from the dashboard; null for terminal accounts. */
+  addedBy: PlatformUserId | null;
 }
 
 /**
@@ -38,6 +45,10 @@ export interface CreatePlatformUserInput {
   id?: PlatformUserId | string;
   email: string;
   displayName: string;
+  /** Only the terminal command sets this. Defaults to false. */
+  canManageStaff?: boolean;
+  /** The staff manager adding this account from the dashboard. */
+  addedBy?: PlatformUserId | string;
 }
 
 /**
@@ -58,6 +69,10 @@ export class PlatformUsersRepository {
         ...(input.id === undefined ? {} : { id: toPlatformUserId(input.id) }),
         email: input.email.trim().toLowerCase(),
         display_name: input.displayName.trim(),
+        ...(input.canManageStaff === undefined ? {} : { can_manage_staff: input.canManageStaff }),
+        ...(input.addedBy === undefined
+          ? {}
+          : { added_by_platform_user_id: toPlatformUserId(input.addedBy) }),
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -197,6 +212,52 @@ export class PlatformUsersRepository {
 
     return (result.numUpdatedRows ?? 0n) > 0n;
   }
+
+  /** Marks an account as one the terminal command made, so it may manage staff. */
+  async setCanManageStaff(id: PlatformUserId | string, canManageStaff: boolean): Promise<void> {
+    await this.db
+      .updateTable('platform_users')
+      .set({ can_manage_staff: canManageStaff })
+      .where('id', '=', toPlatformUserId(id))
+      .execute();
+  }
+
+  /**
+   * Ends every impersonation this account still has open, in any company.
+   *
+   * Removing somebody from the staff ends their dashboard sessions; this ends
+   * the company sessions they opened from it, which would otherwise run on
+   * until their grant expired. The owner connection reaches every company's
+   * grants, which is why this lives here and not on the tenant-scoped side.
+   */
+  async endLiveImpersonations(id: PlatformUserId | string, now = new Date()): Promise<number> {
+    const result = await this.db
+      .updateTable('impersonation_grants')
+      .set({ ended_at: now, ended_reason: 'ended_by_admin' })
+      .where('platform_user_id', '=', toPlatformUserId(id))
+      .where('ended_at', 'is', null)
+      .where('expires_at', '>', now)
+      .executeTakeFirst();
+
+    return Number(result.numUpdatedRows ?? 0n);
+  }
+
+  /** Brings a removed account back, recording who did it and clearing any lockout. */
+  async reactivate(
+    id: PlatformUserId | string,
+    addedBy: PlatformUserId | string | null,
+  ): Promise<void> {
+    await this.db
+      .updateTable('platform_users')
+      .set({
+        is_active: true,
+        failed_attempts: 0,
+        locked_until: null,
+        ...(addedBy === null ? {} : { added_by_platform_user_id: toPlatformUserId(addedBy) }),
+      })
+      .where('id', '=', toPlatformUserId(id))
+      .execute();
+  }
 }
 
 function toDomain(row: Selectable<PlatformUsersTable>): PlatformUser {
@@ -212,6 +273,11 @@ function toDomain(row: Selectable<PlatformUsersTable>): PlatformUser {
     lastSignedInAt: row.last_signed_in_at,
     failedAttempts: row.failed_attempts,
     lockedUntil: row.locked_until,
+    canManageStaff: row.can_manage_staff,
+    addedBy:
+      row.added_by_platform_user_id === null
+        ? null
+        : toPlatformUserId(row.added_by_platform_user_id),
   };
 }
 

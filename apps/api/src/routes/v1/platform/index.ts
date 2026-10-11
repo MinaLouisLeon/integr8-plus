@@ -5,6 +5,7 @@ import { platformCompanyRoutes } from './companies.js';
 import { platformImpersonationRoutes } from './impersonation.js';
 import { platformLifecycleRoutes } from './lifecycle.js';
 import { platformSettingsRoutes } from './settings.js';
+import { platformStaffRoutes } from './staff.js';
 import { platformStorageRoutes } from './storage.js';
 import { funnelRoutes } from './funnel.js';
 import { platformHealthRoutes } from './health.js';
@@ -29,6 +30,7 @@ export const platformRoutes: AnyRoute[] = [
   ...platformSettingsRoutes,
   ...platformTemplateRoutes,
   ...platformSupportRoutes,
+  ...platformStaffRoutes,
   ...platformStorageRoutes,
   ...platformHealthRoutes,
   ...funnelRoutes,

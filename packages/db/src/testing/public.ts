@@ -43,3 +43,29 @@ export async function rowAsText(table: ReadableTable, id: string): Promise<strin
     await client.end();
   }
 }
+
+/**
+ * Moves an invitation's expiry into the past, as if a week had gone by.
+ *
+ * An invitation lasts seven days, and "it expired while the company was being
+ * set up" is a real case a suite has to reach without waiting a week. No
+ * repository sets an expiry after the fact, deliberately, so this is the one
+ * way to do it.
+ */
+export async function expireInvitation(invitationId: string): Promise<void> {
+  requireDisposableDatabase();
+  const client = await connectAsOwner();
+  try {
+    await client.query(
+      // Both dates move: the table requires an invitation to expire after it
+      // was created, so this is the invitation as it was made eight days ago.
+      `update invitations
+          set created_at = now() - interval '8 days',
+              expires_at = now() - interval '1 day'
+        where id = $1`,
+      [invitationId],
+    );
+  } finally {
+    await client.end();
+  }
+}

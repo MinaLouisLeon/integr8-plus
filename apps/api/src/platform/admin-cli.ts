@@ -31,13 +31,26 @@ import { loadApiConfig } from '../config.js';
  * secret exactly once. Both are shown rather than stored anywhere: the person
  * types one into a password manager and the other into an authenticator app,
  * and signs in. Changing the password afterwards ends this session of it.
+ *
+ * An account this command makes is a staff manager: the only kind that can add
+ * and remove people on the dashboard's Staff screen. Running `create` for an
+ * address the dashboard added makes that account a manager too, and brings a
+ * removed account back — whoever has this terminal decides who manages staff.
+ *
+ *   node dist/platform/admin-cli.js remove <email>
+ *
+ * Takes any account off the staff, terminal-made ones included, which the
+ * dashboard cannot do. It ends every session the account has.
  */
 
 const USAGE = `
 Usage:
-  admin-cli create <email> <display name...>   Create a super admin, or reset an
-                                               existing one's password and second
-                                               factor, and print both once.
+  admin-cli create <email> <display name...>   Create a super admin who can manage
+                                               staff, or reset an existing one's
+                                               password and second factor, and
+                                               print both once.
+  admin-cli remove <email>                      Take an account off the staff and
+                                               end its sessions.
   admin-cli list                                Every platform account.
 `.trim();
 
@@ -77,7 +90,8 @@ async function main(argv: string[]): Promise<number> {
               : account.totpEnrolledAt === null
                 ? 'needs a second factor'
                 : 'ready';
-          console.log(`${account.email}\t${account.displayName}\t${state}`);
+          const kind = account.canManageStaff ? 'staff manager' : 'staff';
+          console.log(`${account.email}\t${account.displayName}\t${kind}\t${state}`);
         }
         return 0;
       }
@@ -91,7 +105,13 @@ async function main(argv: string[]): Promise<number> {
         }
 
         const existing = await platform.platformUsers.findByEmail(email);
-        const account = existing ?? (await platform.platformUsers.create({ email, displayName }));
+        const account =
+          existing ??
+          (await platform.platformUsers.create({ email, displayName, canManageStaff: true }));
+        if (existing !== undefined) {
+          await platform.platformUsers.setCanManageStaff(account.id, true);
+          await platform.platformUsers.reactivate(account.id, null);
+        }
 
         // 192 random bits as URL-safe text: well past the policy, and nothing a
         // person would choose. They change it after the first sign-in.
@@ -127,6 +147,38 @@ async function main(argv: string[]): Promise<number> {
             `Sign in at ${config.WEB_APP_URL ?? '<WEB_APP_URL>'}/platform/sign-in.`,
           ].join('\n'),
         );
+        return 0;
+      }
+
+      case 'remove': {
+        const [email] = rest;
+        if (!email?.includes('@')) {
+          console.error(USAGE);
+          return 1;
+        }
+        const account = await platform.platformUsers.findByEmail(email);
+        if (account === undefined) {
+          console.error(`No platform account ${email}.`);
+          return 1;
+        }
+
+        const now = new Date();
+        await platform.platformUsers.setActive(account.id, false);
+        const ended = await platform.platformSessions.revokeAllFor(
+          account.id,
+          'account_disabled',
+          now,
+        );
+        await platform.platformUsers.endLiveImpersonations(account.id, now);
+        await platform.platformAudit.append({
+          platformUserId: null,
+          actorLabel: 'terminal',
+          action: 'staff.removed',
+          targetKind: 'platform_user',
+          targetId: account.id,
+          metadata: { email: account.email, sessions: ended },
+        });
+        console.log(`Removed ${account.email}; ended ${ended} session(s).`);
         return 0;
       }
 

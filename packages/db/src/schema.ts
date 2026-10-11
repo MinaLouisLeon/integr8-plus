@@ -136,6 +136,10 @@ export interface PlatformUsersTable {
   last_signed_in_at: Date | null;
   failed_attempts: Generated<number>;
   locked_until: Date | null;
+  /** True for accounts made by the terminal command; only these add or remove staff (0023). */
+  can_manage_staff: Generated<boolean>;
+  /** Who added this account from the dashboard. Null for terminal accounts (0023). */
+  added_by_platform_user_id: string | null;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
