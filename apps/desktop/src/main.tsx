@@ -25,7 +25,15 @@ if (SENTRY_DSN !== undefined && SENTRY_DSN !== '') {
     // exit criterion is about.
     release: APP_VERSION,
     tracesSampleRate: 0.1,
-    sendDefaultPii: false,
+    // No personal data. Sentry 11 replaced `sendDefaultPii: false` with these
+    // per-category switches, and collects every one of them unless told not to.
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      httpBodies: [],
+      urlQueryParams: false,
+    },
   });
 }
 
