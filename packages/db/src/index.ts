@@ -425,6 +425,18 @@ export {
   type QuoteSnapshot,
   SalesQuotesRepository,
 } from './repositories/sales-quotes.js';
+export {
+  type OrderWorkOrderLink,
+  type Reservation,
+  type SalesOrder,
+  type SalesOrderInput,
+  type SalesOrderLine,
+  type SalesOrderPage,
+  type SalesOrderQuery,
+  type SalesOrderRefusal,
+  SalesOrdersRepository,
+  type ShortLine,
+} from './repositories/sales-orders.js';
 
 export {
   addressLine,

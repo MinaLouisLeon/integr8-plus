@@ -1,8 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import type { QuoteDetail, QuoteRow } from '../api.js';
+import type { QuoteDetail, QuoteRow, SalesOrderDetail, SalesOrderRow } from '../api.js';
 import { accessibilityViolations, fakeApi, renderScreen } from '../testing/render.js';
+import { SalesOrderListScreen } from './order-list.js';
+import { SalesOrderScreen } from './order-screen.js';
 import { QuoteListScreen } from './quote-list.js';
 import { QuoteScreen } from './quote-screen.js';
 
@@ -377,5 +379,268 @@ describe('quotes', { timeout: 20_000 }, () => {
     expect(screen.queryByRole('button', { name: 'Issue' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit lines' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Withdraw' })).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sales orders
+// ---------------------------------------------------------------------------
+
+const ORDER = '00000000-0000-4000-8000-00000000e001';
+const STORE = '00000000-0000-4000-8000-00000000f101';
+const JOB = '00000000-0000-4000-8000-00000000a901';
+const SITE = '00000000-0000-4000-8000-00000000c101';
+const JOB_TYPE = '00000000-0000-4000-8000-00000000c201';
+const ISSUE_INVENTORY = [...ISSUE, 'inventory.move', 'work_order.manage', 'work_order.read_all'];
+
+const orderRow = (overrides: Partial<SalesOrderRow> = {}): SalesOrderRow => ({
+  id: ORDER,
+  reference: 'SO-000003',
+  title: 'Boiler service, two flats',
+  customer: { id: CUSTOMER, name: 'Riverside Housing' },
+  status: 'confirmed',
+  currencyCode: 'EGP',
+  quote: { id: QUOTE, reference: 'QT-000007' },
+  totals,
+  toOrder: true,
+  createdAt: '2026-10-01T09:00:00.000Z',
+  updatedAt: '2026-10-01T09:00:00.000Z',
+  ...overrides,
+});
+
+const orderLine = (
+  overrides: Partial<SalesOrderDetail['lines'][number]> = {},
+): SalesOrderDetail['lines'][number] => ({
+  ...line(),
+  quantityReserved: '0',
+  quantityFulfilled: '0',
+  shortfall: '2',
+  reserveLocation: null,
+  stock: true,
+  ...overrides,
+});
+
+const orderDetail = (overrides: Partial<SalesOrderDetail> = {}): SalesOrderDetail => ({
+  order: {
+    ...orderRow({ status: 'draft', toOrder: false }),
+    site: null,
+    contact: null,
+    notes: null,
+    internalNotes: 'Second flat may need a new valve.',
+    reserveLocation: null,
+    confirmedTo: null,
+    confirmedBy: null,
+    confirmedAt: null,
+    fulfilledAt: null,
+    cancelledBy: null,
+    cancelledAt: null,
+    cancelReason: null,
+    version: 1,
+    createdBy: { id: USER, name: 'Dee' },
+  },
+  lines: [orderLine()],
+  workOrders: [],
+  can: {
+    edit: true,
+    confirm: true,
+    reserve: false,
+    cancel: true,
+    linkJobs: true,
+    createJobs: true,
+  },
+  ...overrides,
+});
+
+const job = () => ({
+  id: JOB,
+  reference: 42,
+  referenceLabel: 'WO-000042',
+  title: 'Fit the valves',
+  state: 'scheduled' as const,
+  priority: 'normal' as const,
+  dueFrom: null,
+  dueBy: null,
+  customer: { id: CUSTOMER, name: 'Riverside Housing' },
+  site: { id: SITE, name: 'Block A', city: null },
+  jobType: { id: JOB_TYPE, name: 'Boiler service', code: 'boiler' },
+  crew: [],
+  revision: 1,
+  stateChangedAt: '2026-10-01T09:00:00.000Z',
+  createdAt: '2026-10-01T09:00:00.000Z',
+  updatedAt: '2026-10-01T09:00:00.000Z',
+});
+
+describe('sales orders', { timeout: 20_000 }, () => {
+  it('lists orders, flagging the ones short of stock', async () => {
+    const { client } = fakeApi({
+      'GET /v1/me': me(MANAGE),
+      'GET /v1/sales/orders': () => ({ body: { items: [orderRow()], nextCursor: null } }),
+    });
+    const { container } = renderScreen(<SalesOrderListScreen />, client);
+
+    expect(await screen.findByRole('link', { name: 'SO-000003' })).toHaveAttribute(
+      'href',
+      `/sales/orders/${ORDER}`,
+    );
+    const item = screen.getByRole('listitem');
+    expect(within(item).getByText('Confirmed')).toBeInTheDocument();
+    expect(within(item).getByText('To order')).toBeInTheDocument();
+    expect(within(item).getByText(/QT-000007/u)).toBeInTheDocument();
+    expect(await accessibilityViolations(container)).toEqual([]);
+  });
+
+  it('confirms a draft at a location and shows what each line holds', async () => {
+    const user = userEvent.setup();
+    let current = orderDetail();
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(ISSUE_INVENTORY),
+      'GET /v1/sales/orders/:id': () => ({ body: current }),
+      'GET /v1/inventory/locations': () => ({
+        body: {
+          items: [
+            {
+              id: STORE,
+              name: 'Main store',
+              kind: 'warehouse',
+              assignedTo: null,
+              site: null,
+              notes: null,
+              version: 1,
+              archivedAt: null,
+            },
+          ],
+        },
+      }),
+      'POST /v1/sales/orders/:id/confirm': () => {
+        current = orderDetail({
+          order: {
+            ...orderDetail().order,
+            status: 'confirmed',
+            version: 2,
+            toOrder: true,
+            reserveLocation: { id: STORE, name: 'Main store' },
+            confirmedBy: { id: USER, name: 'Dee' },
+            confirmedAt: '2026-10-02T10:00:00.000Z',
+            confirmedTo: {
+              customerName: 'Riverside Housing',
+              customerAddress: {
+                line1: null,
+                line2: null,
+                city: null,
+                region: null,
+                postcode: null,
+                countryCode: null,
+              },
+            },
+          },
+          lines: [
+            orderLine({
+              quantityReserved: '1',
+              shortfall: '1',
+              reserveLocation: { id: STORE, name: 'Main store' },
+            }),
+          ],
+          can: {
+            edit: false,
+            confirm: false,
+            reserve: true,
+            cancel: true,
+            linkJobs: true,
+            createJobs: true,
+          },
+        });
+        return { body: current };
+      },
+    });
+    const { container } = renderScreen(<SalesOrderScreen orderId={ORDER} />, client);
+
+    expect(await screen.findByRole('heading', { name: /SO-000003/u })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'from QT-000007' })).toHaveAttribute(
+      'href',
+      `/sales/quotes/${QUOTE}`,
+    );
+    expect(await accessibilityViolations(container)).toEqual([]);
+
+    await user.click(screen.getByRole('button', { name: 'Confirm' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Confirm this order' });
+    const confirm = within(dialog).getByRole('button', { name: 'Confirm' });
+    expect(confirm).toBeDisabled();
+    await user.selectOptions(
+      within(dialog).getByLabelText('Reserve stock at'),
+      await within(dialog).findByRole('option', { name: 'Main store' }),
+    );
+    await user.click(confirm);
+
+    expect(await screen.findByText('Stock reserved at Main store.')).toBeInTheDocument();
+    expect(screen.getByText(/confirmed by Dee on/u)).toBeInTheDocument();
+    expect(screen.getAllByText('To order').length).toBeGreaterThan(0);
+    expect(screen.getByRole('columnheader', { name: 'Reserved' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Re-run reservation' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit lines' })).not.toBeInTheDocument();
+    expect(calls.find((call) => call.path.endsWith('/confirm'))!.body).toEqual({
+      expectedVersion: 1,
+      reserveLocationId: STORE,
+    });
+  });
+
+  it('links one of the customer’s open jobs to the order', async () => {
+    const user = userEvent.setup();
+    let current = orderDetail();
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(ISSUE_INVENTORY),
+      'GET /v1/sales/orders/:id': () => ({ body: current }),
+      'GET /v1/work-orders': () => ({
+        body: { items: [job()], nextCursor: null, counts: {} },
+      }),
+      'POST /v1/sales/orders/:id/work-orders': () => {
+        current = orderDetail({ workOrders: [job()] });
+        return { body: current };
+      },
+    });
+    renderScreen(<SalesOrderScreen orderId={ORDER} />, client);
+
+    await user.click(await screen.findByRole('button', { name: 'Link or create job' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Jobs for this order' });
+    await user.selectOptions(
+      within(dialog).getByRole('combobox', { name: 'Link an existing job' }),
+      await within(dialog).findByRole('option', { name: /WO-000042/u }),
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Link job' }));
+
+    expect(await screen.findByRole('link', { name: 'WO-000042' })).toHaveAttribute(
+      'href',
+      `/work-orders/${JOB}`,
+    );
+    expect(
+      calls.find((call) => call.method === 'POST' && call.path.endsWith('/work-orders'))!.body,
+    ).toEqual({ workOrderId: JOB });
+  });
+
+  it('converts an accepted quote into an order and opens it', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(MANAGE),
+      'GET /v1/sales/quotes/:id': () => ({
+        body: detail({
+          quote: quote({ status: 'accepted', version: 3 }),
+          can: {
+            edit: false,
+            issue: false,
+            revise: false,
+            answer: false,
+            convert: true,
+            cancel: false,
+          },
+        }),
+      }),
+      'POST /v1/sales/quotes/:id/convert': () => ({ status: 201, body: orderDetail() }),
+    });
+    const { navigate } = renderScreen(<QuoteScreen quoteId={QUOTE} />, client);
+
+    await user.click(await screen.findByRole('button', { name: 'Convert to order' }));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith(`/sales/orders/${ORDER}`));
+    expect(calls.find((call) => call.path.endsWith('/convert'))!.body).toEqual({
+      expectedVersion: 3,
+    });
   });
 });

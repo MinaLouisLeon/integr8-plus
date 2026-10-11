@@ -1,6 +1,12 @@
 import { UNITS } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
-import { type DocumentLine, type ItemRow, type QuoteStatus, useOperations } from '../api.js';
+import {
+  type DocumentLine,
+  type ItemRow,
+  type QuoteStatus,
+  type SalesOrderStatus,
+  useOperations,
+} from '../api.js';
 import { formatAmount } from '../crm/lead-parts.js';
 import { ItemPicker } from '../inventory/inventory-parts.js';
 import {
@@ -35,6 +41,35 @@ export function QuoteStatusBadge({ status, expired }: { status: QuoteStatus; exp
       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[status]}`}
     >
       {expired ? t('sales.expired') : t(`sales.status.${status}`)}
+    </span>
+  );
+}
+
+const ORDER_STATUS_STYLE: Record<SalesOrderStatus, string> = {
+  draft: 'border-border-subtle bg-surface-muted text-content',
+  confirmed: 'border-accent bg-surface text-content',
+  partially_fulfilled: 'border-accent bg-surface text-content',
+  fulfilled: 'border-success text-content',
+  cancelled: 'border-border-subtle bg-surface-muted text-content-muted line-through',
+};
+
+export function SalesOrderStatusBadge({ status }: { status: SalesOrderStatus }) {
+  const { t } = useTranslation();
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${ORDER_STATUS_STYLE[status]}`}
+    >
+      {t(`sales.orderStatus.${status}`)}
+    </span>
+  );
+}
+
+/** "To order": a stock line the location could not hold in full (ADR-0006). */
+export function ToOrderBadge() {
+  const { t } = useTranslation();
+  return (
+    <span className="inline-flex items-center rounded-full border border-danger px-2 py-0.5 text-xs font-medium text-danger">
+      {t('sales.orders.toOrderBadge')}
     </span>
   );
 }
@@ -249,14 +284,25 @@ export function SalesLinesEditor({
 // Reading lines and totals
 // ---------------------------------------------------------------------------
 
+/** A line with what an order holds and has delivered of it, when the document is an order. */
+export type FulfilmentLine = DocumentLine & {
+  quantityReserved?: string;
+  quantityFulfilled?: string;
+  shortfall?: string;
+  stock?: boolean;
+};
+
 export function DocumentLinesTable({
   lines,
   totals,
   currency,
+  fulfilment = false,
 }: {
-  lines: readonly DocumentLine[];
+  lines: readonly FulfilmentLine[];
   totals: { gross: string; discount: string; net: string; tax: string; total: string };
   currency: string;
+  /** Show what each line holds and has delivered (sales orders). */
+  fulfilment?: boolean;
 }) {
   const { t } = useTranslation();
   const { locale } = useOperations();
@@ -265,7 +311,7 @@ export function DocumentLinesTable({
     new Intl.NumberFormat(locale, { maximumFractionDigits: 4 }).format(value as unknown as number);
   const anyDiscount = lines.some((line) => line.discountBp !== 0);
   const anyTax = lines.some((line) => line.taxRateBp !== 0);
-  const columns = 4 + (anyDiscount ? 1 : 0) + (anyTax ? 1 : 0);
+  const columns = 4 + (anyDiscount ? 1 : 0) + (anyTax ? 1 : 0) + (fulfilment ? 2 : 0);
   return (
     <table className="w-full text-sm">
       <thead className="text-xs text-content-muted">
@@ -289,6 +335,16 @@ export function DocumentLinesTable({
               {t('sales.quotes.taxRate')}
             </th>
           ) : null}
+          {fulfilment ? (
+            <>
+              <th scope="col" className="py-1 text-end font-medium">
+                {t('sales.orders.reserved')}
+              </th>
+              <th scope="col" className="py-1 text-end font-medium">
+                {t('sales.orders.delivered')}
+              </th>
+            </>
+          ) : null}
           <th scope="col" className="py-1 text-end font-medium">
             {t('sales.quotes.total')}
           </th>
@@ -297,7 +353,14 @@ export function DocumentLinesTable({
       <tbody className="divide-y divide-border-subtle">
         {lines.map((line) => (
           <tr key={line.id}>
-            <td className="py-2 text-content">{line.description}</td>
+            <td className="py-2 text-content">
+              {line.description}
+              {fulfilment && line.stock === true && (line.shortfall ?? '0') !== '0' ? (
+                <span className="ms-2">
+                  <ToOrderBadge />
+                </span>
+              ) : null}
+            </td>
             <td className="py-2 text-end text-content tabular-nums">
               {quantity(line.quantity)} {t(`inventory.unit.${line.unit}`)}
             </td>
@@ -311,6 +374,16 @@ export function DocumentLinesTable({
               <td className="py-2 text-end text-content tabular-nums">
                 {line.taxRateBp === 0 ? '—' : `${percentOfBasisPoints(line.taxRateBp)}%`}
               </td>
+            ) : null}
+            {fulfilment ? (
+              <>
+                <td className="py-2 text-end text-content tabular-nums">
+                  {line.stock === true ? quantity(line.quantityReserved ?? '0') : '—'}
+                </td>
+                <td className="py-2 text-end text-content tabular-nums">
+                  {quantity(line.quantityFulfilled ?? '0')}
+                </td>
+              </>
             ) : null}
             <td className="py-2 text-end text-content tabular-nums">{money(line.total)}</td>
           </tr>

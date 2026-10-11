@@ -76,6 +76,20 @@ export function QuoteScreen({ quoteId }: { quoteId: string }) {
       await settle(next);
     },
   });
+  const convert = useMutation({
+    mutationFn: async () =>
+      (
+        await client.POST('/v1/sales/quotes/{quoteId}/convert', {
+          params: { path: { quoteId } },
+          body: { expectedVersion: detail.data!.quote.version },
+        })
+      ).data!,
+    onSuccess: async (order) => {
+      await queries.invalidateQueries({ queryKey: ['sales'] });
+      await queries.invalidateQueries({ queryKey: ['crm'] });
+      navigate(paths.salesOrder(order.order.id));
+    },
+  });
   const act = useMutation({
     mutationFn: async (action: 'revise' | 'cancel') =>
       (
@@ -107,7 +121,9 @@ export function QuoteScreen({ quoteId }: { quoteId: string }) {
 
   const { quote, can } = detail.data;
   const editing = lines !== null;
-  const error = [save.error, issue.error, act.error].find((candidate) => candidate !== null);
+  const error = [save.error, issue.error, act.error, convert.error].find(
+    (candidate) => candidate !== null,
+  );
   const totals = quote.totals;
 
   return (
@@ -178,11 +194,21 @@ export function QuoteScreen({ quoteId }: { quoteId: string }) {
               <button
                 type="button"
                 className={buttonClass.primary}
-                onClick={() => navigate(paths.salesOrders)}
+                disabled={convert.isPending}
+                onClick={() => convert.mutate()}
               >
-                {t('sales.quotes.convert')}
+                {convert.isPending ? t('sales.quotes.converting') : t('sales.quotes.convert')}
               </button>
             ) : null}
+            {quote.convertedOrderId === null ? null : (
+              <button
+                type="button"
+                className={buttonClass.secondary}
+                onClick={() => navigate(paths.salesOrder(quote.convertedOrderId!))}
+              >
+                {t('sales.quotes.viewOrder')}
+              </button>
+            )}
             {can.edit ? (
               <button
                 type="button"

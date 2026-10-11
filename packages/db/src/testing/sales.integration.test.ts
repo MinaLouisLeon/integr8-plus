@@ -1,4 +1,5 @@
 import { toTenantId } from '@integr8/core';
+import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { addDecimals } from '../repositories/sales-quotes.js';
@@ -13,9 +14,11 @@ import {
 } from './harness.js';
 
 /**
- * Migration 0029 (CRM/ERP plan, phase S1): quotes — the rules the database
- * keeps whatever the API does: numbering per company, exact totals, lines
- * frozen once issued, one answer, and one link token per quote.
+ * Migration 0029 (CRM/ERP plan, phase S1): quotes and sales orders — the
+ * rules the database keeps whatever the API does: numbering per company,
+ * exact totals, lines frozen once issued or confirmed, one answer and one
+ * link token per quote, one order per quote, and reservations that never
+ * promise more than a location holds (ADR-0006).
  */
 
 const USER = '00000000-0000-4000-8000-00000000f501';
@@ -298,5 +301,286 @@ describe('an issued quote', () => {
     expect(byCustomer.items.map((quote) => quote.id)).toContain(made.id);
     const elsewhere = await repos(southgate, (tx) => tx.salesQuotes.listQuotes({}));
     expect(elsewhere.items.map((quote) => quote.id)).not.toContain(made.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sales orders
+// ---------------------------------------------------------------------------
+
+async function stockItem(
+  tenant: TenantFixture,
+  sku: string,
+  kind: 'stock_item' | 'service' = 'stock_item',
+) {
+  return repos(tenant, (tx) =>
+    tx.inventoryCatalogue.createItem({ sku, name: `Item ${sku}`, kind, salePrice: '10' }, USER),
+  );
+}
+
+async function store(tenant: TenantFixture, name: string) {
+  return repos(tenant, (tx) => tx.inventoryStock.createLocation({ name, kind: 'warehouse' }));
+}
+
+async function receive(
+  tenant: TenantFixture,
+  itemId: string,
+  locationId: string,
+  quantity: string,
+) {
+  await repos(tenant, (tx) =>
+    tx.inventoryStock.post(
+      [{ itemId, locationId, kind: 'receipt', quantity, unitCost: '5', sourceKey: randomUUID() }],
+      { postingId: randomUUID(), actorId: USER },
+    ),
+  );
+}
+
+const CONFIRMATION = {
+  confirmedBy: USER,
+  customerName: 'Riverside Housing',
+  customerAddress: SNAPSHOT.customerAddress,
+};
+
+describe('a sales order', () => {
+  it('is made from an accepted quote once, and numbered SO-000001 onwards apart from quotes', async () => {
+    const riverside = await customer(northwind, 'Converted Ltd');
+    const quote = await repos(northwind, (tx) =>
+      tx.salesQuotes.createQuote(
+        { customerId: riverside.id, title: 'Pump', currencyCode: 'EGP' },
+        [{ description: 'Pump', quantity: '1', unitPrice: '100' }],
+        USER,
+      ),
+    );
+    // Issued and accepted first: only an accepted quote becomes an order.
+    await repos(northwind, async (tx) => {
+      await tx.salesQuotes.issue(quote.id, quote.version, {
+        issuedBy: USER,
+        snapshot: SNAPSHOT,
+        tokenHash: 'c'.repeat(64),
+      });
+      await tx.salesQuotes.answer(quote.id, {
+        status: 'accepted',
+        via: 'office',
+        answeredBy: USER,
+        name: null,
+        from: null,
+        reason: null,
+      });
+    });
+    const order = await repos(northwind, async (tx) => {
+      const lines = await tx.salesQuotes.quoteLines(quote.id);
+      const created = await tx.salesOrders.createOrder(
+        {
+          customerId: riverside.id,
+          quoteId: quote.id,
+          title: quote.title,
+          currencyCode: quote.currencyCode,
+        },
+        lines,
+        USER,
+      );
+      await tx.salesQuotes.markConverted(quote.id, created.id);
+      return created;
+    });
+    expect(order).toMatchObject({ status: 'draft', quoteId: quote.id, title: 'Pump' });
+    expect(order.reference).toBeGreaterThan(0);
+    expect(await repos(northwind, (tx) => tx.salesOrders.orderTotals(order.id))).toEqual({
+      gross: '100',
+      discount: '0',
+      net: '100',
+      tax: '0',
+      total: '100',
+    });
+    expect(await repos(northwind, (tx) => tx.salesQuotes.findQuote(quote.id))).toMatchObject({
+      status: 'converted',
+      convertedOrderId: order.id,
+    });
+    // The same quote cannot become a second order.
+    await expect(
+      repos(northwind, (tx) =>
+        tx.salesOrders.createOrder(
+          { customerId: riverside.id, quoteId: quote.id, title: 'Again', currencyCode: 'EGP' },
+          [],
+          USER,
+        ),
+      ),
+    ).rejects.toMatchObject({ constraint: 'erp_sales_orders_quote_unique' });
+    expect(await repos(northwind, (tx) => tx.salesOrders.findByQuote(quote.id))).toMatchObject({
+      id: order.id,
+    });
+  });
+
+  it('reserves what the location holds when confirmed, flags the rest, and shares stock fairly between orders', async () => {
+    const riverside = await customer(northwind, 'Reserving Ltd');
+    const valve = await stockItem(northwind, `VALVE-${randomUUID().slice(0, 6)}`);
+    const callout = await stockItem(northwind, `CALL-${randomUUID().slice(0, 6)}`, 'service');
+    const main = await store(northwind, `Main ${randomUUID().slice(0, 6)}`);
+    await receive(northwind, valve.id, main.id, '6');
+
+    const first = await repos(northwind, (tx) =>
+      tx.salesOrders.createOrder(
+        { customerId: riverside.id, title: 'Four valves', currencyCode: 'EGP' },
+        [
+          { itemId: valve.id, description: 'Valve', quantity: '4', unitPrice: '10' },
+          { itemId: callout.id, description: 'Fitting', quantity: '1', unitPrice: '50' },
+        ],
+        USER,
+      ),
+    );
+    const confirmed = await repos(northwind, async (tx) => {
+      const result = await tx.salesOrders.confirm(first.id, first.version, {
+        ...CONFIRMATION,
+        reserveLocationId: main.id,
+      });
+      expect(result).toMatchObject({ status: 'confirmed', customerName: 'Riverside Housing' });
+      return tx.salesOrders.reserve(first.id, main.id);
+    });
+    expect(confirmed.map((line) => [line.quantityReserved, line.shortfall])).toEqual([
+      ['4', '0'],
+      ['0', '1'], // a service: nothing to hold, delivered by the job
+    ]);
+
+    // A second order wants five more; only two are left to promise.
+    const second = await repos(northwind, (tx) =>
+      tx.salesOrders.createOrder(
+        { customerId: riverside.id, title: 'Five valves', currencyCode: 'EGP' },
+        [{ itemId: valve.id, description: 'Valve', quantity: '5', unitPrice: '10' }],
+        USER,
+      ),
+    );
+    const secondLines = await repos(northwind, async (tx) => {
+      await tx.salesOrders.confirm(second.id, second.version, {
+        ...CONFIRMATION,
+        reserveLocationId: main.id,
+      });
+      return tx.salesOrders.reserve(second.id, main.id);
+    });
+    expect(secondLines[0]).toMatchObject({ quantityReserved: '2', shortfall: '3' });
+    expect(
+      await repos(northwind, (tx) => tx.salesOrders.reservations({ itemId: valve.id })),
+    ).toEqual([{ itemId: valve.id, locationId: main.id, reserved: '6' }]);
+    expect(
+      await repos(northwind, (tx) =>
+        tx.salesOrders.reservedElsewhere(valve.id, main.id, [first.id]),
+      ),
+    ).toBe('2');
+    expect(
+      await repos(northwind, (tx) => tx.salesOrders.reservedElsewhere(valve.id, main.id, [])),
+    ).toBe('6');
+    const short = await repos(northwind, (tx) => tx.salesOrders.shortLines());
+    expect(short.filter((line) => line.orderId === second.id)).toEqual([
+      expect.objectContaining({ itemId: valve.id, shortfall: '3', locationId: main.id }),
+    ]);
+
+    // Goods arrive; the second order is re-run and now holds everything it needs.
+    await receive(northwind, valve.id, main.id, '10');
+    const rerun = await repos(northwind, (tx) => tx.salesOrders.reserve(second.id, main.id));
+    expect(rerun[0]).toMatchObject({ quantityReserved: '5', shortfall: '0' });
+    expect(
+      (await repos(northwind, (tx) => tx.salesOrders.shortLines())).filter(
+        (line) => line.orderId === second.id,
+      ),
+    ).toEqual([]);
+
+    // A confirmed order's lines are frozen; only what is reserved and fulfilled moves.
+    expect(
+      await repos(northwind, (tx) =>
+        tx.salesOrders.updateDraft(first.id, first.version + 2, {}, []),
+      ),
+    ).toBe('not_draft');
+    await expect(
+      owner.query(`update erp_sales_order_lines set unit_price = 1 where order_id = $1`, [
+        first.id,
+      ]),
+    ).rejects.toMatchObject({ constraint: 'erp_sales_order_lines_frozen' });
+
+    // Parts used on a linked job deliver the stock line and release what it held.
+    const consumed = await repos(northwind, (tx) =>
+      tx.salesOrders.consume(first.id, valve.id, '3'),
+    );
+    expect(consumed).toBe('3');
+    let lines = await repos(northwind, (tx) => tx.salesOrders.orderLines(first.id));
+    expect(lines[0]).toMatchObject({
+      quantityFulfilled: '3',
+      quantityReserved: '1',
+      shortfall: '0',
+    });
+    expect(await repos(northwind, (tx) => tx.salesOrders.refreshStatus(first.id))).toMatchObject({
+      status: 'partially_fulfilled',
+    });
+    // More than the order asked for: only the rest of the line counts.
+    expect(await repos(northwind, (tx) => tx.salesOrders.consume(first.id, valve.id, '5'))).toBe(
+      '1',
+    );
+    // The linked job completes: the service line is delivered with it.
+    expect(await repos(northwind, (tx) => tx.salesOrders.fulfilNonStockLines(first.id))).toBe(1);
+    const done = await repos(northwind, (tx) => tx.salesOrders.refreshStatus(first.id));
+    expect(done.status).toBe('fulfilled');
+    expect(done.fulfilledAt).not.toBeNull();
+    lines = await repos(northwind, (tx) => tx.salesOrders.orderLines(first.id));
+    expect(lines.map((line) => [line.quantityFulfilled, line.quantityReserved])).toEqual([
+      ['4', '0'],
+      ['1', '0'],
+    ]);
+
+    // Cancelling lets go of everything the order held.
+    const cancelled = await repos(northwind, (tx) =>
+      tx.salesOrders.cancel(
+        second.id,
+        rerun.length > 0 ? second.version + 3 : second.version,
+        USER,
+        'Customer changed their mind',
+      ),
+    );
+    expect(cancelled).toMatchObject({
+      status: 'cancelled',
+      cancelReason: 'Customer changed their mind',
+    });
+    expect(
+      await repos(northwind, (tx) => tx.salesOrders.reservations({ itemId: valve.id })),
+    ).toEqual([]);
+  });
+
+  it('links the jobs that deliver it, and lists them from either side', async () => {
+    const riverside = await customer(northwind, 'Linked Ltd');
+    const site = await repos(northwind, (tx) =>
+      tx.sites.create(riverside.id, { name: 'Block A', address: { line1: '1 River Road' } }, USER),
+    );
+    const type = await repos(northwind, (tx) =>
+      tx.jobTypes.create(
+        { name: `Type ${randomUUID().slice(0, 6)}`, code: randomUUID().slice(0, 8) },
+        USER,
+      ),
+    );
+    const job = await repos(northwind, (tx) =>
+      tx.workOrders.create(
+        { customerId: riverside.id, siteId: site.id, jobTypeId: type.id, title: 'Fit the pump' },
+        USER,
+      ),
+    );
+    const order = await repos(northwind, (tx) =>
+      tx.salesOrders.createOrder(
+        { customerId: riverside.id, title: 'Pump', currencyCode: 'EGP' },
+        [{ description: 'Pump', quantity: '1', unitPrice: '100' }],
+        USER,
+      ),
+    );
+    await repos(northwind, (tx) => tx.salesOrders.linkWorkOrder(order.id, job.id, USER));
+    await repos(northwind, (tx) => tx.salesOrders.linkWorkOrder(order.id, job.id, USER)); // twice is once
+    expect(await repos(northwind, (tx) => tx.salesOrders.workOrderLinks(order.id))).toEqual([
+      expect.objectContaining({ workOrderId: job.id, linkedBy: USER }),
+    ]);
+    expect(await repos(northwind, (tx) => tx.salesOrders.ordersOfWorkOrder(job.id))).toEqual([
+      expect.objectContaining({ id: order.id }),
+    ]);
+    expect(await repos(northwind, (tx) => tx.salesOrders.unlinkWorkOrder(order.id, job.id))).toBe(
+      true,
+    );
+    expect(await repos(northwind, (tx) => tx.salesOrders.unlinkWorkOrder(order.id, job.id))).toBe(
+      false,
+    );
+    // Another company cannot see it.
+    expect(await repos(southgate, (tx) => tx.salesOrders.findOrder(order.id))).toBeUndefined();
   });
 });

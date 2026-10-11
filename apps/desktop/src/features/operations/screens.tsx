@@ -16,6 +16,8 @@ import {
   OrderScreen,
   QuoteListScreen,
   QuoteScreen,
+  SalesOrderListScreen,
+  SalesOrderScreen,
   StockCountScreen,
   SupplierListScreen,
   SupplierScreen,
@@ -356,6 +358,23 @@ export function QuoteRoute() {
   return (
     <OperationsScreens>
       <QuoteScreen key={quoteId} quoteId={quoteId} />
+    </OperationsScreens>
+  );
+}
+
+export function SalesOrdersRoute() {
+  return (
+    <OperationsScreens>
+      <SalesOrderListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function SalesOrderRoute() {
+  const { orderId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <SalesOrderScreen key={orderId} orderId={orderId} />
     </OperationsScreens>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  formatSalesOrderReference,
   holds,
   type CompletionMissing,
   findTransition,
@@ -40,6 +41,7 @@ import {
 } from './operations.js';
 import { isFeatureEnabled } from '../../http/features.js';
 import { materialBodies, materialSchema, seesCosts, vanBody } from './materials.js';
+import { deliverOnCompletion } from './sales-fulfilment.js';
 import { iso, isoOrNull } from './schemas.js';
 
 /**
@@ -192,6 +194,10 @@ export const detailSchema = z.object({
   materialsCost: z.string().nullable(),
   /** The van assigned to this person, where their parts come from. */
   van: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+  /** The sales orders this job delivers (CRM/ERP plan, phase S1); empty without the sales module. */
+  salesOrders: z.array(
+    z.object({ id: z.uuid(), reference: z.string(), title: z.string(), status: z.string() }),
+  ),
   can: z.object({
     edit: z.boolean(),
     assign: z.boolean(),
@@ -247,6 +253,10 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
   const inventory = await isFeatureEnabled(principal.tenantId, 'inventory');
   const costs = inventory && seesCosts(principal);
   const materials = inventory ? await tx.inventoryMaterials.listForJob(job.id) : [];
+  const salesOrders =
+    (await isFeatureEnabled(principal.tenantId, 'sales')) && holds(principal, 'sales.read')
+      ? await tx.salesOrders.ordersOfWorkOrder(job.id)
+      : [];
   const closed = ['complete', 'reviewed', 'cancelled'].includes(job.state);
 
   return {
@@ -342,6 +352,12 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     materials: await materialBodies(tx, materials, costs, people),
     materialsCost: costs ? await tx.inventoryMaterials.costForJob(job.id) : null,
     van: inventory ? await vanBody(tx, principal) : null,
+    salesOrders: salesOrders.map((order) => ({
+      id: order.id,
+      reference: formatSalesOrderReference(order.reference),
+      title: order.title,
+      status: order.status,
+    })),
     can: {
       edit:
         holds(principal, 'work_order.manage') &&
@@ -596,7 +612,7 @@ export const listWorkOrdersRoute = defineRoute({
 // One job
 // ---------------------------------------------------------------------------
 
-const workOrderInputSchema = z.object({
+export const workOrderInputSchema = z.object({
   customerId: z.uuid(),
   siteId: z.uuid(),
   jobTypeId: z.uuid(),
@@ -650,73 +666,89 @@ export const createWorkOrderRoute = defineRoute({
   },
   handler: async ({ body }, context) => {
     const { principal } = context;
-    const window = dueWindow(body.dueFrom, body.dueBy);
-    const detail = await withTenant(principal.tenantId, async (tx) => {
-      const [customer, site, jobType] = await Promise.all([
-        tx.customers.find(body.customerId),
-        tx.sites.find(body.siteId),
-        tx.jobTypes.find(body.jobTypeId),
-      ]);
-      if (customer === undefined) {
-        throw unprocessable('customer_unknown', 'This customer does not exist.', [
-          { field: 'body.customerId', code: 'not_found', message: 'Choose a customer.' },
-        ]);
-      }
-      if (customer.status === 'closed') {
-        throw conflict('customer_closed', `${customer.name} is closed and takes no new work.`);
-      }
-      if (customer.status === 'on_hold' && body.acknowledgeOnHold !== true) {
-        throw conflict(
-          'customer_on_hold',
-          `${customer.name} is on hold. Check with accounts before creating work.`,
-        );
-      }
-      if (site?.customerId !== customer.id || site.archivedAt !== null) {
-        throw unprocessable(
-          'site_not_customers',
-          'The site must be one of the customer’s current sites.',
-          [
-            {
-              field: 'body.siteId',
-              code: 'site_not_customers',
-              message: 'Choose one of the customer’s sites.',
-            },
-          ],
-        );
-      }
-      if (jobType?.archivedAt !== null) {
-        throw unprocessable('job_type_unknown', 'This job type does not exist or is archived.', [
-          {
-            field: 'body.jobTypeId',
-            code: 'job_type_unknown',
-            message: 'Choose a current job type.',
-          },
-        ]);
-      }
-      await requireCrew(tx, body.crew ?? []);
-      const job = await tx.workOrders.create(
-        {
-          customerId: customer.id,
-          siteId: site.id,
-          jobTypeId: jobType.id,
-          ...(body.title === undefined ? {} : { title: body.title }),
-          ...(body.description === undefined ? {} : { description: body.description }),
-          ...(body.instructions === undefined ? {} : { instructions: body.instructions }),
-          ...(body.priority === undefined ? {} : { priority: body.priority }),
-          ...(window.from === undefined ? {} : { dueFrom: window.from }),
-          ...(window.by === undefined ? {} : { dueBy: window.by }),
-          ...(body.crew === undefined ? {} : { crew: body.crew }),
-        },
-        principal.userId,
-      );
-      await audit(tx, context, 'work_order.created', job.id, {
-        reference: formatWorkOrderReference(job.reference),
-      });
-      return detailBody(tx, principal, (await tx.workOrders.find(job.id))!);
-    });
+    const detail = await withTenant(principal.tenantId, async (tx) =>
+      detailBody(tx, principal, await createWorkOrder(tx, context, body)),
+    );
     return { status: 201, body: detail };
   },
 });
+
+export type WorkOrderInput = z.infer<typeof workOrderInputSchema>;
+
+/**
+ * Creates a job the way the route does — the same checks on the customer,
+ * site, job type and crew, the same audit entry — for anything else that
+ * makes jobs, such as a sales order (CRM/ERP plan, phase S1).
+ */
+export async function createWorkOrder(
+  tx: TenantTransaction,
+  context: RequestContext,
+  body: WorkOrderInput,
+): Promise<WorkOrder> {
+  const { principal } = context;
+  const window = dueWindow(body.dueFrom, body.dueBy);
+  const [customer, site, jobType] = await Promise.all([
+    tx.customers.find(body.customerId),
+    tx.sites.find(body.siteId),
+    tx.jobTypes.find(body.jobTypeId),
+  ]);
+  if (customer === undefined) {
+    throw unprocessable('customer_unknown', 'This customer does not exist.', [
+      { field: 'body.customerId', code: 'not_found', message: 'Choose a customer.' },
+    ]);
+  }
+  if (customer.status === 'closed') {
+    throw conflict('customer_closed', `${customer.name} is closed and takes no new work.`);
+  }
+  if (customer.status === 'on_hold' && body.acknowledgeOnHold !== true) {
+    throw conflict(
+      'customer_on_hold',
+      `${customer.name} is on hold. Check with accounts before creating work.`,
+    );
+  }
+  if (site?.customerId !== customer.id || site.archivedAt !== null) {
+    throw unprocessable(
+      'site_not_customers',
+      'The site must be one of the customer’s current sites.',
+      [
+        {
+          field: 'body.siteId',
+          code: 'site_not_customers',
+          message: 'Choose one of the customer’s sites.',
+        },
+      ],
+    );
+  }
+  if (jobType?.archivedAt !== null) {
+    throw unprocessable('job_type_unknown', 'This job type does not exist or is archived.', [
+      {
+        field: 'body.jobTypeId',
+        code: 'job_type_unknown',
+        message: 'Choose a current job type.',
+      },
+    ]);
+  }
+  await requireCrew(tx, body.crew ?? []);
+  const job = await tx.workOrders.create(
+    {
+      customerId: customer.id,
+      siteId: site.id,
+      jobTypeId: jobType.id,
+      ...(body.title === undefined ? {} : { title: body.title }),
+      ...(body.description === undefined ? {} : { description: body.description }),
+      ...(body.instructions === undefined ? {} : { instructions: body.instructions }),
+      ...(body.priority === undefined ? {} : { priority: body.priority }),
+      ...(window.from === undefined ? {} : { dueFrom: window.from }),
+      ...(window.by === undefined ? {} : { dueBy: window.by }),
+      ...(body.crew === undefined ? {} : { crew: body.crew }),
+    },
+    principal.userId,
+  );
+  await audit(tx, context, 'work_order.created', job.id, {
+    reference: formatWorkOrderReference(job.reference),
+  });
+  return (await tx.workOrders.find(job.id))!;
+}
 
 export const getWorkOrderRoute = defineRoute({
   method: 'get',
@@ -888,6 +920,9 @@ export const transitionWorkOrderRoute = defineRoute({
         to: body.to,
         ...(body.reason === undefined ? {} : { reason: body.reason }),
       });
+      if (body.to === 'complete') {
+        await deliverOnCompletion(tx, context, result.workOrder);
+      }
       return detailBody(tx, principal, result.workOrder);
     });
     return { status: 200, body: detail };

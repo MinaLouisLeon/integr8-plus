@@ -2369,6 +2369,191 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sales/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find sales orders
+         * @description Newest first, a page at a time. `q` matches a reference (`SO-000123`, `123`) or words of the title or customer name.
+         */
+        get: operations["listSalesOrders"];
+        put?: never;
+        /**
+         * Draft a sales order
+         * @description A draft in the company currency (or `currencyCode`), numbered `SO-000001` onwards, without a quote. Lines may name catalogue items, taking the item's name, unit and sale price unless given. Honours `Idempotency-Key`.
+         */
+        post: operations["createSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sales/quotes/{quoteId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a sales order from an accepted quote
+         * @description Once: the order carries the quote’s customer, site, contact, title, currency and lines as a draft, and the quote becomes `converted` pointing at it. Refused for a quote that is not accepted (409 `quote_not_accepted`) or already converted (409 `quote_converted`, with the order’s id).
+         */
+        post: operations["convertQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sales/orders/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A sales order, with its lines, reservations and jobs */
+        get: operations["getSalesOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a draft sales order
+         * @description Any of the fields, and the whole set of lines when `lines` is given. Only a draft changes (409 `order_not_draft`).
+         */
+        patch: operations["updateSalesOrder"];
+        trace?: never;
+    };
+    "/v1/sales/orders/{orderId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm a sales order, reserving its stock
+         * @description Owners and admins. Freezes the customer and lines and reserves each stock line at `reserveLocationId` — what the location holds is held for the order, the rest is flagged to order (ADR-0006). A location is required when any line is a stock item (422 `location_required`); an empty order cannot be confirmed (422 `order_empty`); only a draft confirms (409 `order_not_draft`).
+         */
+        post: operations["confirmSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sales/orders/{orderId}/reserve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-run an open order’s reservation
+         * @description After goods arrived, or to hold the stock at another location: every stock line is released and reserved again at `reserveLocationId` (the order’s own when omitted). Only an open order (409 `order_not_open`).
+         */
+        post: operations["reserveSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sales/orders/{orderId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a sales order
+         * @description A draft is cancelled by whoever manages sales; a confirmed order by an owner or admin, which releases everything it held. A fulfilled or cancelled order is closed (409 `order_closed`).
+         */
+        post: operations["cancelSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sales/orders/{orderId}/work-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link a job to the order, or create one for it
+         * @description Nothing links on its own: a dispatcher names an existing job of the same customer (`workOrderId`) or describes a new one (`create`, made the way `POST /v1/work-orders` makes it, needing `work_order.manage`). Not for a cancelled or fulfilled order (409 `order_closed`). Honours `Idempotency-Key`.
+         */
+        post: operations["linkSalesOrderWorkOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sales/orders/{orderId}/work-orders/{workOrderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unlink a job from the order
+         * @description The job itself is untouched; what it already delivered stays delivered.
+         */
+        delete: operations["unlinkSalesOrderWorkOrder"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sales/to-order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stock that confirmed orders need and no location could hold for them
+         * @description Every stock line of an open order with a shortfall (ADR-0006): what to buy, most recent order first.
+         */
+        get: operations["listStockToOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -15547,9 +15732,13 @@ export interface operations {
                                 kind: "warehouse" | "van" | "site";
                             };
                             onHand: string;
+                            reserved: string;
+                            available: string;
                             minimum: string | null;
                         }[];
                         onHand: string;
+                        reserved: string;
+                        available: string;
                         can: {
                             manage: boolean;
                             move: boolean;
@@ -15822,9 +16011,13 @@ export interface operations {
                                 kind: "warehouse" | "van" | "site";
                             };
                             onHand: string;
+                            reserved: string;
+                            available: string;
                             minimum: string | null;
                         }[];
                         onHand: string;
+                        reserved: string;
+                        available: string;
                         can: {
                             manage: boolean;
                             move: boolean;
@@ -16262,6 +16455,8 @@ export interface operations {
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
                             };
                             onHand: string;
+                            reserved: string;
+                            available: string;
                             minimum: string | null;
                         }[];
                         can: {
@@ -16781,6 +16976,8 @@ export interface operations {
                                 kind: "warehouse" | "van" | "site";
                             };
                             onHand: string;
+                            reserved: string;
+                            available: string;
                             minimum: string | null;
                         }[];
                     };
@@ -20061,6 +20258,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -20494,6 +20698,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -20915,6 +21126,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -22856,6 +23074,2555 @@ export interface operations {
             };
         };
     };
+    listSalesOrders: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: ("draft" | "confirmed" | "partially_fulfilled" | "fulfilled" | "cancelled") | ("draft" | "confirmed" | "partially_fulfilled" | "fulfilled" | "cancelled")[];
+                customerId?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of sales orders. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "confirmed" | "partially_fulfilled" | "fulfilled" | "cancelled";
+                            currencyCode: string;
+                            quote: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            toOrder: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    customerId: string;
+                    /** Format: uuid */
+                    siteId?: string | null;
+                    /** Format: uuid */
+                    contactId?: string | null;
+                    title: string;
+                    notes?: string | null;
+                    internalNotes?: string | null;
+                    currencyCode?: string;
+                    /** @default [] */
+                    lines?: {
+                        /** Format: uuid */
+                        itemId?: string | null;
+                        description?: string;
+                        quantity: string;
+                        /** @enum {string} */
+                        unit?: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        unitPrice?: string;
+                        discountBp?: number;
+                        taxRateBp?: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The sales order. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "confirmed" | "partially_fulfilled" | "fulfilled" | "cancelled";
+                            currencyCode: string;
+                            quote: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            toOrder: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            internalNotes: string | null;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            confirmedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                            } | null;
+                            confirmedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            confirmedAt: string | null;
+                            /** Format: date-time */
+                            fulfilledAt: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                            quantityReserved: string;
+                            quantityFulfilled: string;
+                            shortfall: string;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            stock: boolean;
+                        }[];
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            reserve: boolean;
+                            cancel: boolean;
+                            linkJobs: boolean;
+                            createJobs: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such customer or item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The site or contact is not the customer’s; a hand-written line has no description. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    convertQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quoteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The new sales order. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "confirmed" | "partially_fulfilled" | "fulfilled" | "cancelled";
+                            currencyCode: string;
+                            quote: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            toOrder: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            internalNotes: string | null;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            confirmedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                            } | null;
+                            confirmedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            confirmedAt: string | null;
+                            /** Format: date-time */
+                            fulfilledAt: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                            quantityReserved: string;
+                            quantityFulfilled: string;
+                            shortfall: string;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            stock: boolean;
+                        }[];
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            reserve: boolean;
+                            cancel: boolean;
+                            linkJobs: boolean;
+                            createJobs: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such quote. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not accepted (`quote_not_accepted`), already converted (`quote_converted`) or changed elsewhere (`version_conflict`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sales order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "confirmed" | "partially_fulfilled" | "fulfilled" | "cancelled";
+                            currencyCode: string;
+                            quote: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            toOrder: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            internalNotes: string | null;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            confirmedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                            } | null;
+                            confirmedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            confirmedAt: string | null;
+                            /** Format: date-time */
+                            fulfilledAt: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                            quantityReserved: string;
+                            quantityFulfilled: string;
+                            shortfall: string;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            stock: boolean;
+                        }[];
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            reserve: boolean;
+                            cancel: boolean;
+                            linkJobs: boolean;
+                            createJobs: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such sales order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** Format: uuid */
+                    customerId?: string;
+                    /** Format: uuid */
+                    siteId?: string | null;
+                    /** Format: uuid */
+                    contactId?: string | null;
+                    title?: string;
+                    notes?: string | null;
+                    internalNotes?: string | null;
+                    lines?: {
+                        /** Format: uuid */
+                        itemId?: string | null;
+                        description?: string;
+                        quantity: string;
+                        /** @enum {string} */
+                        unit?: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        unitPrice?: string;
+                        discountBp?: number;
+                        taxRateBp?: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The sales order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "confirmed" | "partially_fulfilled" | "fulfilled" | "cancelled";
+                            currencyCode: string;
+                            quote: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            toOrder: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            internalNotes: string | null;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            confirmedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                            } | null;
+                            confirmedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            confirmedAt: string | null;
+                            /** Format: date-time */
+                            fulfilledAt: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                            quantityReserved: string;
+                            quantityFulfilled: string;
+                            shortfall: string;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            stock: boolean;
+                        }[];
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            reserve: boolean;
+                            cancel: boolean;
+                            linkJobs: boolean;
+                            createJobs: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such sales order, customer or item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a draft (`order_not_draft`) or changed elsewhere (`version_conflict`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The site or contact is not the customer’s. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    confirmSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** Format: uuid */
+                    reserveLocationId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The confirmed order, with what each line holds. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "confirmed" | "partially_fulfilled" | "fulfilled" | "cancelled";
+                            currencyCode: string;
+                            quote: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            toOrder: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            internalNotes: string | null;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            confirmedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                            } | null;
+                            confirmedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            confirmedAt: string | null;
+                            /** Format: date-time */
+                            fulfilledAt: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                            quantityReserved: string;
+                            quantityFulfilled: string;
+                            shortfall: string;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            stock: boolean;
+                        }[];
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            reserve: boolean;
+                            cancel: boolean;
+                            linkJobs: boolean;
+                            createJobs: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such sales order or location. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a draft (`order_not_draft`) or changed elsewhere (`version_conflict`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nothing to confirm (`order_empty`), or stock lines without a location (`location_required`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reserveSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** Format: uuid */
+                    reserveLocationId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The order, with what each line now holds. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "confirmed" | "partially_fulfilled" | "fulfilled" | "cancelled";
+                            currencyCode: string;
+                            quote: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            toOrder: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            internalNotes: string | null;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            confirmedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                            } | null;
+                            confirmedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            confirmedAt: string | null;
+                            /** Format: date-time */
+                            fulfilledAt: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                            quantityReserved: string;
+                            quantityFulfilled: string;
+                            shortfall: string;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            stock: boolean;
+                        }[];
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            reserve: boolean;
+                            cancel: boolean;
+                            linkJobs: boolean;
+                            createJobs: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such sales order or location. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not open (`order_not_open`) or changed elsewhere (`version_conflict`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No location to reserve at (`location_required`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The cancelled order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "confirmed" | "partially_fulfilled" | "fulfilled" | "cancelled";
+                            currencyCode: string;
+                            quote: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            toOrder: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            internalNotes: string | null;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            confirmedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                            } | null;
+                            confirmedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            confirmedAt: string | null;
+                            /** Format: date-time */
+                            fulfilledAt: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                            quantityReserved: string;
+                            quantityFulfilled: string;
+                            shortfall: string;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            stock: boolean;
+                        }[];
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            reserve: boolean;
+                            cancel: boolean;
+                            linkJobs: boolean;
+                            createJobs: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Only an owner or admin cancels a confirmed order. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such sales order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Closed (`order_closed`) or changed elsewhere (`version_conflict`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    linkSalesOrderWorkOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    workOrderId: string;
+                } | {
+                    create: {
+                        /** Format: uuid */
+                        jobTypeId: string;
+                        title?: string;
+                        description?: string | null;
+                        instructions?: string | null;
+                        /** @enum {string} */
+                        priority?: "low" | "normal" | "high" | "urgent";
+                        /** Format: date-time */
+                        dueFrom?: string | null;
+                        /** Format: date-time */
+                        dueBy?: string | null;
+                        crew?: {
+                            /** Format: uuid */
+                            userId: string;
+                            /** @default false */
+                            lead?: boolean;
+                        }[];
+                        acknowledgeOnHold?: boolean;
+                        /** Format: uuid */
+                        siteId?: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The order with its jobs. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "confirmed" | "partially_fulfilled" | "fulfilled" | "cancelled";
+                            currencyCode: string;
+                            quote: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            toOrder: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            internalNotes: string | null;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            confirmedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                            } | null;
+                            confirmedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            confirmedAt: string | null;
+                            /** Format: date-time */
+                            fulfilledAt: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                            quantityReserved: string;
+                            quantityFulfilled: string;
+                            shortfall: string;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            stock: boolean;
+                        }[];
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            reserve: boolean;
+                            cancel: boolean;
+                            linkJobs: boolean;
+                            createJobs: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Creating a job needs `work_order.manage`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such sales order or job. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The order is closed (`order_closed`); or what creating a job refuses. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The job is another customer’s (`work_order_not_customers`); the new job has no site (`site_required`); or what creating a job refuses. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    unlinkSalesOrderWorkOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+                workOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The order with its remaining jobs. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "confirmed" | "partially_fulfilled" | "fulfilled" | "cancelled";
+                            currencyCode: string;
+                            quote: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            toOrder: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            notes: string | null;
+                            internalNotes: string | null;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            confirmedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                            } | null;
+                            confirmedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            confirmedAt: string | null;
+                            /** Format: date-time */
+                            fulfilledAt: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                            quantityReserved: string;
+                            quantityFulfilled: string;
+                            shortfall: string;
+                            reserveLocation: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            stock: boolean;
+                        }[];
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            reserve: boolean;
+                            cancel: boolean;
+                            linkJobs: boolean;
+                            createJobs: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such sales order, or the job is not linked to it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listStockToOrder: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Short lines. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            order: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            };
+                            /** Format: uuid */
+                            lineId: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            description: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            shortfall: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listJobTypes: {
         parameters: {
             query?: {
@@ -23831,6 +26598,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -24358,6 +27132,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -24781,6 +27562,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -25202,6 +27990,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -25621,6 +28416,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -26042,6 +28844,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -26460,6 +29269,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -26872,6 +29688,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -27283,6 +30106,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -27687,6 +30517,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -28110,6 +30947,13 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
+                        salesOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            status: string;
+                        }[];
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -29320,6 +32164,13 @@ export interface operations {
                                 id: string;
                                 name: string;
                             } | null;
+                            salesOrders: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                                status: string;
+                            }[];
                             can: {
                                 edit: boolean;
                                 assign: boolean;

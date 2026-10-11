@@ -197,6 +197,11 @@ export type QuoteRow = Json<'/v1/sales/quotes', 'get', 200>['items'][number];
 export type QuoteStatus = QuoteRow['status'];
 export type QuoteDetail = Json<'/v1/sales/quotes/{quoteId}', 'get', 200>;
 export type DocumentLine = QuoteDetail['lines'][number];
+export type SalesOrderRow = Json<'/v1/sales/orders', 'get', 200>['items'][number];
+export type SalesOrderStatus = SalesOrderRow['status'];
+export type SalesOrderDetail = Json<'/v1/sales/orders/{orderId}', 'get', 200>;
+export type SalesOrderLine = SalesOrderDetail['lines'][number];
+export type ToOrderLine = Json<'/v1/sales/to-order', 'get', 200>['items'][number];
 
 export const keys = {
   me: ['me'] as const,
@@ -227,6 +232,7 @@ export const keys = {
   quote: (id: string) => ['sales', 'quote', id] as const,
   salesOrders: (query: object) => ['sales', 'orders', query] as const,
   salesOrder: (id: string) => ['sales', 'order', id] as const,
+  toOrder: ['sales', 'to-order'] as const,
   forms: ['forms'] as const,
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,

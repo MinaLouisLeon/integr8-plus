@@ -138,7 +138,7 @@ export function ItemScreen({ itemId }: { itemId: string }) {
     );
   }
 
-  const { item, stock, onHand, can } = detail.data;
+  const { item, stock, onHand, reserved, available, can } = detail.data;
   const seesCosts = me.data?.permissions.includes('inventory.move') ?? false;
   const conflict = save.error instanceof ApiRequestError && save.error.code === 'version_conflict';
   const category = categories.data?.find((row) => row.id === item.categoryId);
@@ -270,6 +270,14 @@ export function ItemScreen({ itemId }: { itemId: string }) {
             {item.kind === 'stock_item' ? (
               <Detail label={t('inventory.items.onHand')}>
                 {formatQuantity(onHand, item.unit, locale, unitName)}
+                {reserved === '0' ? null : (
+                  <span className="block text-content-muted">
+                    {t('inventory.items.reservedLine', {
+                      reserved: formatQuantity(reserved, item.unit, locale, unitName),
+                      available: formatQuantity(available, item.unit, locale, unitName),
+                    })}
+                  </span>
+                )}
               </Detail>
             ) : null}
             {item.averageUnitCost === null ? null : (
@@ -405,6 +413,14 @@ export function ItemScreen({ itemId }: { itemId: string }) {
                     <span className="text-content">
                       {formatQuantity(row.onHand, item.unit, locale, unitName)}
                     </span>
+                    {row.reserved === '0' ? null : (
+                      <span className="text-xs text-content-muted">
+                        {t('inventory.items.reservedLine', {
+                          reserved: formatQuantity(row.reserved, item.unit, locale, unitName),
+                          available: formatQuantity(row.available, item.unit, locale, unitName),
+                        })}
+                      </span>
+                    )}
                     {row.minimum === null ? null : (
                       <span className="text-xs text-content-muted">
                         {t('inventory.items.minimumIs', {
