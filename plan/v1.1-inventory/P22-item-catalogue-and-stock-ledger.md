@@ -1,7 +1,10 @@
 # P22 — Item catalogue and stock ledger
 
 **Version:** v1.1 Inventory and Assets
-**Status:** `NOT STARTED`
+**Status:** `IN PROGRESS` — built as phase E1 of the CRM/ERP plan; the accepted model is
+[`docs/crm-erp/decisions/ADR-0003`](../../docs/crm-erp/decisions/ADR-0003-inventory-ledger.md) and
+[`docs/crm-erp/07-finance-and-inventory-invariants.md`](../../docs/crm-erp/07-finance-and-inventory-invariants.md).
+Tracked in [`docs/crm-erp/README.md`](../../docs/crm-erp/README.md).
 **Depends on:** P21
 
 ## Goal

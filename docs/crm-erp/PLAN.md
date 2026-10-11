@@ -669,7 +669,7 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase E1 — Catalog + stock ledger (align P22)
 
-**Status:** `NOT STARTED` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `IN PROGRESS` — see the [phase tracker](./README.md#phase-tracker).
 
 - [ ] Update `plan/v1.1-inventory/P22...` with accepted ERP model and dependencies; preserve ledger invariant.
 - [ ] Item categories, unit catalog, items/products/services, stock locations and ledger migrations.
@@ -680,7 +680,7 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase E2 — Purchasing and van/field integration (align P23)
 
-**Status:** `NOT STARTED` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `IN PROGRESS` — see the [phase tracker](./README.md#phase-tracker).
 
 - [ ] Supplier directory, PO lines and approvals, goods receipt and partial receipt.
 - [ ] Receipts post inventory movements exactly once; returns/adjustments audited.

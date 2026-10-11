@@ -1,7 +1,9 @@
 # P23 — Van stock and job consumption
 
 **Version:** v1.1 Inventory and Assets
-**Status:** `NOT STARTED`
+**Status:** `IN PROGRESS` — built as phase E2 of the CRM/ERP plan, with phone consumption per
+[`docs/crm-erp/decisions/ADR-0005`](../../docs/crm-erp/decisions/ADR-0005-phone-parts-consumption.md).
+Tracked in [`docs/crm-erp/README.md`](../../docs/crm-erp/README.md).
 **Depends on:** P22
 
 ## Goal
