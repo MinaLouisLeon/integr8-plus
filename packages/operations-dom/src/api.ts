@@ -38,6 +38,12 @@ export interface OperationsConfig {
     crmOpportunities: string;
     crmOpportunity: (id: string) => string;
     crmActivities: string;
+    inventory: string;
+    items: string;
+    item: (id: string) => string;
+    stockLocations: string;
+    stockLocation: (id: string) => string;
+    stockCount: (id: string) => string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -64,7 +70,16 @@ export interface OperationsConfig {
 
 /** What a row is about, for a row menu. */
 export interface RowTarget {
-  kind: 'workOrder' | 'customer' | 'site' | 'jobType' | 'timesheetShift' | 'lead' | 'opportunity';
+  kind:
+    | 'workOrder'
+    | 'customer'
+    | 'site'
+    | 'jobType'
+    | 'timesheetShift'
+    | 'lead'
+    | 'opportunity'
+    | 'item'
+    | 'stockLocation';
   id: string;
   label: string;
 }
@@ -143,6 +158,19 @@ export type ActivityPage = Json<'/v1/crm/activities', 'get', 200>;
 export type Activity = ActivityPage['items'][number];
 export type ActivityKind = Activity['kind'];
 export type CrmDashboard = Json<'/v1/crm/dashboard', 'get', 200>;
+export type ItemPage = Json<'/v1/inventory/items', 'get', 200>;
+export type ItemRow = ItemPage['items'][number];
+export type ItemDetail = Json<'/v1/inventory/items/{itemId}', 'get', 200>;
+export type InventoryItem = ItemDetail['item'];
+export type ItemKind = InventoryItem['kind'];
+export type Unit = InventoryItem['unit'];
+export type ItemCategory = Json<'/v1/inventory/categories', 'get', 200>['items'][number];
+export type StockLocation = Json<'/v1/inventory/locations', 'get', 200>['items'][number];
+export type StockLocationDetail = Json<'/v1/inventory/locations/{locationId}', 'get', 200>;
+export type StockMovement = Json<'/v1/inventory/movements', 'get', 200>['items'][number];
+export type StockBalance = Json<'/v1/inventory/balances', 'get', 200>['items'][number];
+export type StockCountDetail = Json<'/v1/inventory/counts/{countId}', 'get', 200>;
+export type StockCountRow = Json<'/v1/inventory/counts', 'get', 200>['items'][number];
 
 export const keys = {
   me: ['me'] as const,
@@ -156,6 +184,15 @@ export const keys = {
   opportunity: (id: string) => ['crm', 'opportunity', id] as const,
   activities: (query: object) => ['crm', 'activities', query] as const,
   dashboard: ['crm', 'dashboard'] as const,
+  categories: ['inventory', 'categories'] as const,
+  items: (query: object) => ['inventory', 'items', query] as const,
+  item: (id: string) => ['inventory', 'item', id] as const,
+  stockLocations: (query: object) => ['inventory', 'locations', query] as const,
+  stockLocation: (id: string) => ['inventory', 'location', id] as const,
+  movements: (query: object) => ['inventory', 'movements', query] as const,
+  balances: (query: object) => ['inventory', 'balances', query] as const,
+  stockCounts: (query: object) => ['inventory', 'counts', query] as const,
+  stockCount: (id: string) => ['inventory', 'count', id] as const,
   forms: ['forms'] as const,
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,

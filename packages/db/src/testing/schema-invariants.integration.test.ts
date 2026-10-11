@@ -2,6 +2,11 @@ import {
   findTransition,
   ACTIVITY_KINDS,
   ACTIVITY_STATUSES,
+  ITEM_KINDS,
+  LOCATION_KINDS,
+  MOVEMENT_KINDS,
+  STOCK_COUNT_STATUSES,
+  UNITS,
   LEAD_SOURCES,
   LEAD_STATUSES,
   OPPORTUNITY_EVENT_KINDS,
@@ -481,6 +486,12 @@ describe('vocabularies shared with the application', () => {
       ['crm_opportunity_events_kind_known', OPPORTUNITY_EVENT_KINDS],
       ['crm_activities_kind_known', ACTIVITY_KINDS],
       ['crm_activities_status_known', ACTIVITY_STATUSES],
+      // Inventory (0026).
+      ['erp_items_kind_known', ITEM_KINDS],
+      ['erp_items_unit_known', UNITS],
+      ['erp_stock_locations_kind_known', LOCATION_KINDS],
+      ['erp_stock_movements_kind_known', MOVEMENT_KINDS],
+      ['erp_stock_counts_status_known', STOCK_COUNT_STATUSES],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,
@@ -490,7 +501,7 @@ describe('vocabularies shared with the application', () => {
       for (const value of vocabulary) {
         expect(definition, `${constraint} rejects "${value}"`).toContain(`'${value}'`);
       }
-      expect((definition.match(/'[a-z_]+'/gu) ?? []).length, constraint).toBe(vocabulary.length);
+      expect((definition.match(/'[a-z0-9_]+'/gu) ?? []).length, constraint).toBe(vocabulary.length);
     }
   });
 

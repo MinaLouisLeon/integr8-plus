@@ -27,7 +27,7 @@ instruction.
 | C1    | Leads: list, filters, create, edit, detail, status changes, archive (web + desktop)    | `DONE`           | —          | third commit on the branch  |
 | C2    | Lead conversion to an existing or new customer, once only; CRM summary on the customer | `DONE`           | —          | fourth commit on the branch |
 | C3    | Opportunities, pipeline and stages, activities and follow-ups, Customer 360, dashboard | `DONE`           | 0025       | fifth commit on the branch  |
-| E1    | Catalogue and immutable stock ledger (aligns with `plan/v1.1-inventory/P22`)           | `IN PROGRESS`    | —          | —                           |
+| E1    | Catalogue and immutable stock ledger (aligns with `plan/v1.1-inventory/P22`)           | `DONE`           | 0026       | second commit on the branch |
 | E2    | Suppliers, purchasing, goods receipts, van stock, work-order materials (aligns P23)    | `IN PROGRESS`    | —          | —                           |
 | S1    | Quotes and sales orders, linked to work orders                                         | `NOT STARTED`    | —          | —                           |
 | B1    | Company invoices, payments, credit notes, job costing (not Integr8's own billing)      | `NOT STARTED`    | —          | —                           |
@@ -39,24 +39,24 @@ instruction.
 
 Every numbered item in PLAN.md §4–§5, so none is forgotten.
 
-| Spec item                                  | Phase(s)   | Status           | Notes                                                         |
-| ------------------------------------------ | ---------- | ---------------- | ------------------------------------------------------------- |
-| CRM-01 Leads                               | F1, C1, C2 | `DONE`           | Leads (C1) and conversion (C2)                                |
-| CRM-02 Opportunities                       | C3         | `DONE`           | Default pipeline; no pipeline editing screen yet              |
-| CRM-03 Activities and tasks                | C3         | `DONE`           | In-app due list only; email reminders after email is set up   |
-| CRM-04 Customer 360                        | C2, C3     | `DONE` (MVP)     | Quotes, orders, invoices and assets tabs arrive with S1/B1/E3 |
-| CRM-05 Quotes and pipeline analytics       | S1         | `NOT STARTED`    | C3 dashboard covers counts, totals and weighted forecast      |
-| CRM-06 Campaigns and automations           | —          | `DEFERRED`       | P2; no marketing platform or bulk email                       |
-| ERP-01 Products and services catalogue     | E1         | `NOT STARTED`    |                                                               |
-| ERP-02 Locations and inventory ledger      | E1         | `NOT STARTED`    | Update `plan/v1.1-inventory/P22` when E1 starts               |
-| ERP-03 Suppliers and purchasing            | E2         | `NOT STARTED`    | Update P23 when E2 starts                                     |
-| ERP-04 Quotes → sales orders → work orders | S1         | `NOT STARTED`    |                                                               |
-| ERP-05 Invoicing and payments              | B1         | `NOT STARTED`    | Internal ledger only; no e-invoicing or tax compliance claim  |
-| ERP-06 Work-order materials and costing    | E2, B1     | `NOT STARTED`    | Mobile consumption only after a separate sync design          |
-| ERP-07 Asset register                      | E3         | `NOT STARTED`    | Update P24 when E3 starts                                     |
-| ERP-08 General ledger                      | A1         | `NOT AUTHORIZED` |                                                               |
-| ERP-09 HR, expenses, payroll               | —          | `DEFERRED`       | No payroll without a country's legal review                   |
-| ERP-10 Manufacturing                       | —          | `DEFERRED`       |                                                               |
+| Spec item                                  | Phase(s)   | Status           | Notes                                                           |
+| ------------------------------------------ | ---------- | ---------------- | --------------------------------------------------------------- |
+| CRM-01 Leads                               | F1, C1, C2 | `DONE`           | Leads (C1) and conversion (C2)                                  |
+| CRM-02 Opportunities                       | C3         | `DONE`           | Default pipeline; no pipeline editing screen yet                |
+| CRM-03 Activities and tasks                | C3         | `DONE`           | In-app due list only; email reminders after email is set up     |
+| CRM-04 Customer 360                        | C2, C3     | `DONE` (MVP)     | Quotes, orders, invoices and assets tabs arrive with S1/B1/E3   |
+| CRM-05 Quotes and pipeline analytics       | S1         | `NOT STARTED`    | C3 dashboard covers counts, totals and weighted forecast        |
+| CRM-06 Campaigns and automations           | —          | `DEFERRED`       | P2; no marketing platform or bulk email                         |
+| ERP-01 Products and services catalogue     | E1         | `DONE`           | Images and datasheets on items are a follow-up                  |
+| ERP-02 Locations and inventory ledger      | E1         | `DONE`           | Serial and batch tracking deferred (P22 lists it; not in scope) |
+| ERP-03 Suppliers and purchasing            | E2         | `NOT STARTED`    | Update P23 when E2 starts                                       |
+| ERP-04 Quotes → sales orders → work orders | S1         | `NOT STARTED`    |                                                                 |
+| ERP-05 Invoicing and payments              | B1         | `NOT STARTED`    | Internal ledger only; no e-invoicing or tax compliance claim    |
+| ERP-06 Work-order materials and costing    | E2, B1     | `NOT STARTED`    | Mobile consumption only after a separate sync design            |
+| ERP-07 Asset register                      | E3         | `NOT STARTED`    | Update P24 when E3 starts                                       |
+| ERP-08 General ledger                      | A1         | `NOT AUTHORIZED` |                                                                 |
+| ERP-09 HR, expenses, payroll               | —          | `DEFERRED`       | No payroll without a country's legal review                     |
+| ERP-10 Manufacturing                       | —          | `DEFERRED`       |                                                                 |
 
 ### Follow-ups that must not be lost
 
@@ -75,6 +75,10 @@ or a decision before the pilot (phase L).
 - [ ] A screen for editing pipelines and stages (add, rename, reorder, archive); C3 ships the default pipeline only.
 - [ ] Customer 360 timeline mixing CRM activities with work-order and submission events as read-only entries (PLAN.md CRM-03); C3 shows them side by side.
 - [x] `plan/v1.1-inventory/P22` and `P23` point at the accepted model (E1/E2); P24 when E3 starts.
+- [ ] Site stock locations from the screens (the API takes `kind: 'site'` with a `siteId`; the list screen offers warehouses and vans only).
+- [ ] Item images and attached datasheets (P22), using the existing media storage.
+- [ ] Serial number and batch tracking (P22) — a scope decision before any schema.
+- [ ] Movement history export (P22 "filterable and exportable"), with the CSV protections above.
 - [ ] Update `plan/ROADMAP.md` when the round merges.
 
 ## Decisions taken with the product owner (2026-10-11)

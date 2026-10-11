@@ -148,3 +148,64 @@ All CRM tables (0024 and 0025) are in `EXPORTED_TABLES`
 (`packages/db/src/repositories/tenant-data-export.ts`): a company's prospects,
 deals and follow-ups are its own data. `crm_leads` was missing from the export
 after F1; C3 added it with the rest.
+
+## 0026 — the catalogue and the stock ledger (phase E1)
+
+Two module switches in `feature_flags`, both `default_enabled = false`:
+`inventory` and `purchasing`.
+
+### `erp_item_categories` and `erp_items`
+
+An item is a `stock_item` (counted, in the ledger), a `non_stock_item` (bought
+or used, never counted) or a `service`. SKU and barcode are unique per company
+(case-insensitive SKU). Units are the fixed list `UNITS` in `@integr8/core`.
+Costs and prices are `numeric(20,4)`; `average_unit_cost` is the company's
+weighted average for the item, written only by a priced receipt
+(`applyReceiptCost`, under the item's row lock). Items are archived, never
+deleted. Edits name their `version`.
+
+### `erp_stock_locations`
+
+`warehouse`, `van` or `site`. A van has at most one engineer and an engineer at
+most one live van (unique index); a site location names one of the company's
+customer sites. Archived, not deleted, and only when empty (API rule).
+
+### `erp_stock_movements` — the ledger (ADR-0003)
+
+| Column / rule    | Meaning                                                                                                                                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `posting_id`     | Movements written together: a transfer's two halves, a count's variances                                                                                                                                                 |
+| `kind`           | One of `MOVEMENT_KINDS`; the sign of `quantity` must match (`erp_stock_movements_quantity_signed`)                                                                                                                       |
+| `quantity`       | Signed `numeric(20,4)`, never zero                                                                                                                                                                                       |
+| `unit_cost`      | The cost of one unit when it moved; shown only to seats with `inventory.move`                                                                                                                                            |
+| `source_key`     | Unique per company: `manual:<idempotency key>`, `count:<count>:<item>`, later `receipt-line:<id>`, `phone:<action id>`                                                                                                   |
+| `reversal_of`    | The movement this one corrects                                                                                                                                                                                           |
+| Append-only      | `select, insert` grants only; trigger `erp_stock_movements_no_delete` refuses update and delete for every role. `purge_tenant()` (0015, replaced here) lifts it for a due company deletion, as it does for the audit log |
+| Stock items only | The balance trigger refuses a movement of a service or non-stock item                                                                                                                                                    |
+
+### `erp_stock_balances` — the projection
+
+One row per company, item and location. The runtime role may only `select` it.
+`erp_stock_apply_movement()` (security definer, pinned `search_path`) runs
+after every insert into the ledger: it updates the balance row (inserting it on
+the item's first movement there), which takes the row lock, so concurrent
+movements of one item at one place apply one after the other.
+`check (on_hand >= 0)` refuses the one that would go below zero, and the
+movement rolls back with it. (An `insert … on conflict do update` would not do:
+Postgres checks the constraint on the row it would insert before it finds the
+conflict.) `erp_stock_lock_balance(tenant, item, location)` (security definer)
+locks and reads a balance for the caller's own company, for a count or a use
+that must read a stable figure before posting. `reconcile()` replays the ledger
+and lists every balance that disagrees — tested over 100 000 movements.
+
+### `erp_reorder_levels`, `erp_stock_counts`, `erp_stock_count_lines`
+
+A reorder level is a minimum per item and location. A count is a draft until
+posted: posting locks each line's balance, records it as `expected_quantity`,
+and posts the difference as a `count_adjustment` naming who posted it; a count
+is posted once (`not_draft` afterwards) or cancelled.
+
+### Company data export
+
+Every inventory table but `erp_stock_balances` (derived from the exported
+ledger) is in `EXPORTED_TABLES`.

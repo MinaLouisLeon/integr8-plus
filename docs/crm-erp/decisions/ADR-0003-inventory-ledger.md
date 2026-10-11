@@ -29,8 +29,9 @@ consumption (E2) needs its own conflict-safe sync design before it is built.
   `insert` it; a trigger refuses any update.
 - `erp_stock_balances` (one row per company, item and location) is the
   projection. Nothing in the application writes it: an `after insert` trigger
-  on the ledger adds each movement's quantity with
-  `insert … on conflict do update`, which takes the balance row's lock, so two
+  on the ledger adds each movement's quantity with an `update` (inserting the
+  row only for an item's first movement at a place), which takes the balance
+  row's lock, so two
   concurrent issues of the same item from the same place run one after the
   other. A `check (on_hand >= 0)` on the balance refuses the second one if it
   would go negative, and the whole movement rolls back with it.

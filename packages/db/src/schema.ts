@@ -1,6 +1,11 @@
 import {
   type ActivityKind,
   type ActivityStatus,
+  type ItemKind,
+  type LocationKind,
+  type MovementKind,
+  type StockCountStatus,
+  type Unit,
   type LeadSource,
   type LeadStatus,
   type OpportunityEventKind,
@@ -1018,6 +1023,106 @@ export interface CrmActivityOpportunitiesTable {
   opportunity_id: string;
 }
 
+export interface ErpItemCategoriesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  archived_at: Date | null;
+}
+
+export interface ErpItemsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  sku: string;
+  name: string;
+  description: string | null;
+  kind: Generated<ItemKind>;
+  category_id: string | null;
+  unit: Generated<Unit>;
+  barcode: string | null;
+  /** `numeric(20,4)`, read as a string. */
+  default_unit_cost: string | null;
+  sale_price: string | null;
+  average_unit_cost: Generated<string>;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  archived_at: Date | null;
+  search: ColumnType<string, never, never>;
+}
+
+export interface ErpStockLocationsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  kind: LocationKind;
+  assigned_to: string | null;
+  site_id: string | null;
+  notes: string | null;
+  version: Generated<number>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  archived_at: Date | null;
+}
+
+export interface ErpStockCountsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  location_id: string;
+  status: Generated<StockCountStatus>;
+  notes: string | null;
+  version: Generated<number>;
+  created_by: string;
+  posted_by: string | null;
+  posted_at: Date | null;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface ErpStockCountLinesTable {
+  tenant_id: string;
+  count_id: string;
+  item_id: string;
+  counted_quantity: string;
+  expected_quantity: string | null;
+}
+
+export interface ErpStockMovementsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  posting_id: string;
+  item_id: string;
+  location_id: string;
+  kind: MovementKind;
+  /** Signed `numeric(20,4)`, read as a string. */
+  quantity: string;
+  unit_cost: string | null;
+  source_key: string;
+  reason: string | null;
+  stock_count_id: string | null;
+  reversal_of: string | null;
+  actor_id: string;
+  occurred_at: CreatedAt;
+}
+
+export interface ErpStockBalancesTable {
+  tenant_id: string;
+  item_id: string;
+  location_id: string;
+  on_hand: string;
+  updated_at: UpdatedAt;
+}
+
+export interface ErpReorderLevelsTable {
+  tenant_id: string;
+  item_id: string;
+  location_id: string;
+  minimum: string;
+}
+
 export interface CustomerContactsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -1513,6 +1618,14 @@ export interface Database {
   crm_activity_leads: CrmActivityLeadsTable;
   crm_activity_customers: CrmActivityCustomersTable;
   crm_activity_opportunities: CrmActivityOpportunitiesTable;
+  erp_item_categories: ErpItemCategoriesTable;
+  erp_items: ErpItemsTable;
+  erp_stock_locations: ErpStockLocationsTable;
+  erp_stock_counts: ErpStockCountsTable;
+  erp_stock_count_lines: ErpStockCountLinesTable;
+  erp_stock_movements: ErpStockMovementsTable;
+  erp_stock_balances: ErpStockBalancesTable;
+  erp_reorder_levels: ErpReorderLevelsTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -1639,6 +1752,12 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // Write and prune the sync change log, which the runtime role can only read; see 0011.
   'touch_sync',
   'prune_sync_touches',
+  // Applies each stock movement to its balance, which the runtime role can
+  // only read; see 0026 and ADR-0003.
+  'erp_stock_apply_movement',
+  // Locks a balance row for the caller's own company, which the runtime role
+  // can only read; see 0026.
+  'erp_stock_lock_balance',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -1696,6 +1815,14 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   crm_activity_leads: true,
   crm_activity_customers: true,
   crm_activity_opportunities: true,
+  erp_item_categories: true,
+  erp_items: true,
+  erp_stock_locations: true,
+  erp_stock_counts: true,
+  erp_stock_count_lines: true,
+  erp_stock_movements: true,
+  erp_stock_balances: true,
+  erp_reorder_levels: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

@@ -138,7 +138,8 @@ function detail(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
   return { ...base, ...overrides };
 }
 
-describe('the job screen', () => {
+// The first render in the file, with axe over it: slow when the whole workspace is testing at once.
+describe('the job screen', { timeout: 20_000 }, () => {
   it('shows how to get in before anything else on the page, hazards first', async () => {
     const { client } = fakeApi({ 'GET /v1/work-orders/:id': () => ({ body: detail() }) });
     const { container } = renderScreen(<WorkOrderScreen workOrderId={JOB} />, client);

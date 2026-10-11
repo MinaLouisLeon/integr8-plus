@@ -57,6 +57,11 @@ describe('the dashboard map', () => {
       expect.arrayContaining(['crm', 'leads', 'opportunities', 'activities']),
     );
     expect(keysFor('owner', { crm: false })).not.toContain('opportunities');
+    // Inventory: engineers see it (their van), viewers too; nobody without the module.
+    expect(keysFor('engineer', { inventory: true })).toEqual(
+      expect.arrayContaining(['inventory', 'items', 'stockLocations']),
+    );
+    expect(keysFor('owner', { crm: true })).not.toContain('inventory');
     expect(keysFor('viewer', { crm: true })).toContain('crm');
     expect(keysFor('engineer', { crm: true })).not.toContain('crm');
   });

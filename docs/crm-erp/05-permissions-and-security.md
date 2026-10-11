@@ -80,6 +80,29 @@ Tests: `packages/core/src/crm.test.ts` pins the table above;
 - Detail responses carry `can` flags; screens hide what the seat may not do,
   and the API refuses it regardless.
 
+## Inventory and purchasing (phases E1 and E2)
+
+| Permission           | Owner | Admin | Dispatcher | Engineer | Viewer |
+| -------------------- | :---: | :---: | :--------: | :------: | :----: |
+| `inventory.read`     |   ✓   |   ✓   |     ✓      |    ✓     |   ✓    |
+| `inventory.manage`   |   ✓   |   ✓   |     ✓      |    —     |   —    |
+| `inventory.move`     |   ✓   |   ✓   |     ✓      |    —     |   —    |
+| `inventory.consume`  |   ✓   |   ✓   |     ✓      |    ✓     |   —    |
+| `purchasing.read`    |   ✓   |   ✓   |     ✓      |    —     |   ✓    |
+| `purchasing.manage`  |   ✓   |   ✓   |     ✓      |    —     |   —    |
+| `purchasing.approve` |   ✓   |   ✓   |     —      |    —     |   —    |
+
+Decided with the product owner on 2026-10-11: dispatchers run stock and draft
+purchases; only owners and admins approve a purchase; engineers see stock and
+record parts used on their own jobs from the van assigned to them; viewers
+read. Costs are shown only to seats holding `inventory.move`. Every route also
+needs the company's `inventory` (or `purchasing`) module.
+
+Two security-definer functions back the ledger: `erp_stock_apply_movement`
+(the balance trigger) and `erp_stock_lock_balance`, which refuses a company
+other than the transaction's own. Both pin `search_path` and are listed in
+`SECURITY_DEFINER_FUNCTIONS`; the schema-invariant suite checks both facts.
+
 ## Database
 
 See [03-data-model.md](./03-data-model.md): row-level security on every CRM

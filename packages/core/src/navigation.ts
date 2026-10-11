@@ -39,7 +39,8 @@ export type NavIcon =
   | 'package'
   | 'heart';
 
-export type NavGroup = 'overview' | 'work' | 'crm' | 'operations' | 'setup' | 'company';
+export type NavGroup =
+  'overview' | 'work' | 'crm' | 'inventory' | 'operations' | 'setup' | 'company';
 
 /** One entry in the side menu. */
 export interface NavSection {
@@ -82,12 +83,16 @@ export type NavPath =
   | 'crm'
   | 'leads'
   | 'opportunities'
-  | 'activities';
+  | 'activities'
+  | 'inventory'
+  | 'items'
+  | 'stockLocations';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   'overview',
   'work',
   'crm',
+  'inventory',
   'operations',
   'setup',
   'company',
@@ -152,6 +157,32 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     icon: 'list',
     permission: 'crm.read',
     feature: 'crm',
+  },
+
+  // Inventory (CRM/ERP plan, phase E1): the company's `inventory` module.
+  {
+    key: 'inventory',
+    group: 'inventory',
+    path: 'inventory',
+    icon: 'package',
+    permission: 'inventory.read',
+    feature: 'inventory',
+  },
+  {
+    key: 'items',
+    group: 'inventory',
+    path: 'items',
+    icon: 'tag',
+    permission: 'inventory.read',
+    feature: 'inventory',
+  },
+  {
+    key: 'stockLocations',
+    group: 'inventory',
+    path: 'stockLocations',
+    icon: 'map-pin',
+    permission: 'inventory.read',
+    feature: 'inventory',
   },
 
   {
