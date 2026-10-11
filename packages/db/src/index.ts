@@ -328,6 +328,44 @@ export {
 } from './repositories/customers.js';
 
 export {
+  type CrmLeadsRepository,
+  type Lead,
+  type LeadConversionRefusal,
+  type LeadCustomerMatch,
+  type LeadInput,
+  type LeadPage,
+  type LeadQuery,
+  type LeadUpdateRefusal,
+  normaliseEmail,
+  phoneDigits,
+  trimDecimal,
+} from './repositories/crm-leads.js';
+
+export { type Pipeline, type PipelineStage } from './repositories/crm-pipelines.js';
+export {
+  type Opportunity,
+  type OpportunityEvent,
+  type OpportunityInput,
+  type OpportunityPage,
+  type OpportunityQuery,
+  type OpportunityRefusal,
+} from './repositories/crm-opportunities.js';
+export {
+  type Activity,
+  type ActivityDue,
+  type ActivityInput,
+  type ActivityLinks,
+  type ActivityPage,
+  type ActivityQuery,
+  type ActivityRefusal,
+} from './repositories/crm-activities.js';
+export {
+  type CrmDashboard,
+  type CurrencyTotal,
+  type StageSummary,
+} from './repositories/crm-reports.js';
+
+export {
   addressLine,
   type AccessNotes,
   type GeocodeResult,

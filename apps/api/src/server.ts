@@ -15,6 +15,7 @@ import { LocalDiskStorage, LOCAL_MEDIA_PREFIX } from './media/local-disk.js';
 import { assessClientVersion, outdatedClientMessage } from './http/client-version.js';
 import {
   ApiError,
+  badRequest,
   forbidden,
   internal,
   isClientError,
@@ -26,6 +27,7 @@ import {
 import { withIdempotency } from './http/idempotency.js';
 import { createLogger, type Logger, principalContext } from './http/logger.js';
 import { assertTenantServable, assertTenantWritable } from './http/suspension.js';
+import { assertFeatureEnabled } from './http/features.js';
 import type { AnyRoute, ClientApp, PublicRequestContext, RequestContext } from './http/routes.js';
 import { captureException } from './observability/sentry.js';
 
@@ -327,6 +329,13 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
             }
           }
 
+          // 6b. The module, for routes that belong to one (the CRM). After the
+          // permission, so a seat that may not use the CRM learns that first,
+          // and before any work is done.
+          if (route.feature !== undefined) {
+            await assertFeatureEnabled(principal.tenantId, route.feature);
+          }
+
           // 7. Per-tenant rate limit. One noisy company must not starve
           // another, and this runs after authentication because until then
           // there is no company to attribute the request to.
@@ -340,8 +349,17 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
 
         // 8. Idempotency, then the handler.
         const run = async () => route.handler({ params, query, body }, context);
+        if (
+          route.idempotent === 'required' &&
+          (context.idempotencyKey === null || context.idempotencyKey === '')
+        ) {
+          throw badRequest(
+            'idempotency_key_required',
+            'This request needs an Idempotency-Key header, so that a retry cannot repeat it.',
+          );
+        }
         const result =
-          route.idempotent === true && context.principal !== null
+          route.idempotent !== undefined && route.idempotent !== false && context.principal !== null
             ? await withIdempotency(
                 context as RequestContext,
                 { method: request.method, path: request.url, body },

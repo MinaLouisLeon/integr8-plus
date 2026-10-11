@@ -48,7 +48,8 @@ export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
   appIconMediaId: null,
   appsEnabled: false,
   timezone: 'UTC',
-  currency: 'GBP',
+  // EGP since 0024 (CRM/ERP plan decision, 2026-10-11), matching the column default.
+  currency: 'EGP',
   locale: 'en',
   workDayStarts: 8 * 60,
   workDayEnds: 17 * 60,

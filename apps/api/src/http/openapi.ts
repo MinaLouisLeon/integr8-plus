@@ -107,11 +107,11 @@ function operation(route: AnyRoute): Record<string, unknown> {
     });
   }
 
-  if (route.idempotent === true) {
+  if (route.idempotent !== undefined && route.idempotent !== false) {
     parameters.push({
       name: 'Idempotency-Key',
       in: 'header',
-      required: false,
+      required: route.idempotent === 'required',
       schema: { type: 'string', maxLength: 255 },
       description:
         'A client-generated key. Replaying a request with the same key returns the original response and repeats no effect.',
@@ -178,7 +178,10 @@ function responses(route: AnyRoute): Record<string, unknown> {
   if (route.security === 'authenticated') {
     universal['401'] = { description: 'Authentication is required.', content: json(error) };
     universal['403'] = {
-      description: 'The caller lacks the required permission.',
+      description:
+        route.feature === undefined
+          ? 'The caller lacks the required permission.'
+          : `The caller lacks the required permission, or the company does not have the \`${route.feature}\` module switched on (\`feature_disabled\`).`,
       content: json(error),
     };
   }
@@ -190,7 +193,14 @@ function responses(route: AnyRoute): Record<string, unknown> {
     };
   }
 
-  if (route.idempotent === true) {
+  if (route.idempotent === 'required') {
+    universal['400'] = {
+      description: 'The `Idempotency-Key` header is missing (`idempotency_key_required`).',
+      content: json(error),
+    };
+  }
+
+  if (route.idempotent !== undefined && route.idempotent !== false) {
     universal['409'] = {
       description:
         'The idempotency key is in use by a request still running, or was reused with a different body.',

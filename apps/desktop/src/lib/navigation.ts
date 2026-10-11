@@ -32,6 +32,10 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   companySettings: null,
   storage: null,
   billing: null,
+  crm: '/crm',
+  leads: '/crm/leads',
+  opportunities: '/crm/opportunities',
+  activities: '/crm/activities',
 };
 
 /**
@@ -52,8 +56,12 @@ export interface DesktopNavGroup {
 }
 
 /** The groups and sections this seat sees, each with its route. */
-export function desktopNavigation(permissions: readonly Permission[]): DesktopNavGroup[] {
-  return visibleNavigation('desktop', permissions)
+export function desktopNavigation(
+  permissions: readonly Permission[],
+  /** The company's resolved feature flags from `/v1/me`; module sections need them. */
+  features?: Readonly<Record<string, boolean>>,
+): DesktopNavGroup[] {
+  return visibleNavigation('desktop', permissions, features)
     .map(({ group, sections }) => ({
       group,
       sections: sections.flatMap((section) => {

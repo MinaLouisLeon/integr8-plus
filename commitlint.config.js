@@ -15,6 +15,8 @@ export default {
         'form-renderer',
         'form-input',
         'operations',
+        'crm',
+        'erp',
         'offline',
         'db',
         'auth',

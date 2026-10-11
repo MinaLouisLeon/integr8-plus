@@ -28,6 +28,8 @@ export function messageForError(failure: unknown, t: TFunction): string {
       return t('errors.clientTooOld');
     case 'forbidden':
       return t('errors.forbidden');
+    case 'feature_disabled':
+      return t('errors.featureDisabled');
     case 'not_found':
       return t('errors.notFound');
     default:

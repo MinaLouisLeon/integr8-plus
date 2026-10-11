@@ -2,6 +2,7 @@ import { toPlatformUserId } from '@integr8/core';
 import { ANNOUNCEMENT_SEVERITIES, type Announcement, getPlatformDataSource } from '@integr8/db';
 import { z } from 'zod';
 import { notFound } from '../../../http/errors.js';
+import { forgetTenantFeatures } from '../../../http/features.js';
 import { defineRoute, noSchema } from '../../../http/routes.js';
 import { iso, isoOrNull } from '../schemas.js';
 import { recordPlatformAction } from './audit.js';
@@ -88,6 +89,8 @@ export const upsertFlagRoute = defineRoute({
       targetId: flag.key,
       metadata: { defaultEnabled: body.defaultEnabled },
     });
+    // A default reaches every company without an answer of its own.
+    forgetTenantFeatures();
 
     return {
       status: 200,
@@ -135,6 +138,8 @@ export const setCompanyFlagRoute = defineRoute({
       metadata: { enabled: body.enabled },
     });
 
+    // The company sees the change on its next request, not after the cache's TTL.
+    forgetTenantFeatures(params.tenantId);
     return { status: 200, body: { flags: await settings.flagsFor(params.tenantId) } };
   },
 });

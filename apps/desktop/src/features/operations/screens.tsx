@@ -1,9 +1,16 @@
 import { useTranslation } from '@integr8/i18n';
 import {
+  CrmOverviewScreen,
   CustomerListScreen,
   CustomerScreen,
   ImportsScreen,
   JobTypesScreen,
+  LeadListScreen,
+  ActivitiesScreen,
+  LeadConvertScreen,
+  OpportunityBoardScreen,
+  OpportunityScreen,
+  LeadScreen,
   type OperationsConfig,
   OperationsContext,
   SiteScreen,
@@ -47,6 +54,13 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         imports: '/imports',
         submission: (id) => `/submissions/${id}`,
         submissionsForWorkOrder: (id) => `/submissions?workOrderId=${id}`,
+        crm: '/crm',
+        crmLeads: '/crm/leads',
+        crmLead: (id) => `/crm/leads/${id}`,
+        crmLeadConvert: (id) => `/crm/leads/${id}/convert`,
+        crmOpportunities: '/crm/opportunities',
+        crmOpportunity: (id) => `/crm/opportunities/${id}`,
+        crmActivities: '/crm/activities',
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -102,6 +116,66 @@ export function WorkOrderRoute() {
   return (
     <OperationsScreens>
       <WorkOrderScreen key={workOrderId} workOrderId={workOrderId} />
+    </OperationsScreens>
+  );
+}
+
+/** The CRM's front page (CRM/ERP plan, phase F1). */
+export function CrmRoute() {
+  return (
+    <OperationsScreens>
+      <CrmOverviewScreen />
+    </OperationsScreens>
+  );
+}
+
+export function LeadsRoute() {
+  return (
+    <OperationsScreens>
+      <LeadListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function OpportunitiesRoute() {
+  return (
+    <OperationsScreens>
+      <OpportunityBoardScreen />
+    </OperationsScreens>
+  );
+}
+
+export function OpportunityRoute() {
+  const { opportunityId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <OpportunityScreen key={opportunityId} opportunityId={opportunityId} />
+    </OperationsScreens>
+  );
+}
+
+export function ActivitiesRoute() {
+  return (
+    <OperationsScreens>
+      <ActivitiesScreen />
+    </OperationsScreens>
+  );
+}
+
+export function LeadConvertRoute() {
+  const { leadId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <LeadConvertScreen key={leadId} leadId={leadId} />
+    </OperationsScreens>
+  );
+}
+
+export function LeadRoute() {
+  const { leadId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <LeadScreen leadId={leadId} />
     </OperationsScreens>
   );
 }

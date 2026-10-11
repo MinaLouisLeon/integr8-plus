@@ -1,0 +1,140 @@
+# Dependencies and licences
+
+PLAN.md §0.5 and §10: before any package is added, record its version, licence,
+source and reason here. Paid, enterprise-gated and GPL/AGPL/SSPL packages are not
+allowed without explicit approval.
+
+## Added for the CRM and ERP work
+
+| Package | Version | Licence | Phase | Reason                                                                    |
+| ------- | ------- | ------- | ----- | ------------------------------------------------------------------------- |
+| _none_  |         |         |       | The CRM MVP (F1–C3) is built with the packages already in the repository. |
+
+Considered in PLAN.md §10.2 and **not installed**: `@tanstack/react-table`,
+`recharts`, `decimal.js`, `@react-pdf/renderer`, `xlsx`, `ag-grid-community`,
+`date-fns`, `react-hook-form`. Each is re-checked (exact version, licence file,
+transitive licences, fonts) only if a later phase needs it — `decimal.js` and a
+PDF renderer are the likely first, for quotes and invoices (S1, B1).
+
+## Licence audit of the existing direct dependencies
+
+Read on 2026-10-11 from each installed package's own `package.json`
+(`license` field), for every `dependencies` and `devDependencies` entry in the
+repository root, the four apps and the 13 packages. Transitive packages are not
+listed; PLAN.md §10.3 asks for a CI check that covers them (a follow-up in the
+[tracker](./README.md#follow-ups-that-must-not-be-lost)).
+
+| Licence           | Count |
+| ----------------- | ----- |
+| MIT               | 85    |
+| Apache-2.0        | 4     |
+| Apache-2.0 OR MIT | 2     |
+| MIT OR Apache-2.0 | 1     |
+| MPL-2.0           | 1     |
+| BSD-2-Clause      | 1     |
+
+**Needs a human look:** `axe-core` is **MPL-2.0** (file-level copyleft). It is a
+development dependency used only by tests to check accessibility, and it is not
+shipped in any app, so it creates no obligation for the product. Nothing is GPL,
+AGPL, SSPL or proprietary. The desktop app's Rust crates (`tauri`,
+`tauri-plugin-updater`, `serde`, `serde_json`, `keyring`) are MIT or
+Apache-2.0.
+
+### Every direct dependency
+
+| Package                                  | Version  | Licence           | Kind        | Used in                                                                                                                                                    |
+| ---------------------------------------- | -------- | ----------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@aws-sdk/client-s3`                     | 3.1131.0 | Apache-2.0        | runtime     | api                                                                                                                                                        |
+| `@aws-sdk/s3-request-presigner`          | 3.1131.0 | Apache-2.0        | runtime     | api                                                                                                                                                        |
+| `@commitlint/cli`                        | 21.2.3   | MIT               | dev         | .                                                                                                                                                          |
+| `@commitlint/config-conventional`        | 21.2.3   | MIT               | dev         | .                                                                                                                                                          |
+| `@dnd-kit/core`                          | 6.3.1    | MIT               | runtime     | desktop                                                                                                                                                    |
+| `@dnd-kit/sortable`                      | 10.0.0   | MIT               | runtime     | desktop                                                                                                                                                    |
+| `@dnd-kit/utilities`                     | 3.2.2    | MIT               | runtime     | desktop                                                                                                                                                    |
+| `@eslint/js`                             | 10.0.1   | MIT               | runtime     | eslint-config                                                                                                                                              |
+| `@expo/metro-runtime`                    | 57.0.16  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `@react-native-community/datetimepicker` | 9.1.0    | MIT               | runtime     | mobile                                                                                                                                                     |
+| `@sentry/nextjs`                         | 10.74.0  | MIT               | runtime     | web                                                                                                                                                        |
+| `@sentry/node`                           | 10.74.0  | MIT               | runtime     | api                                                                                                                                                        |
+| `@sentry/react`                          | 11.1.0   | MIT               | runtime     | desktop                                                                                                                                                    |
+| `@sentry/react-native`                   | 7.11.0   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `@tailwindcss/postcss`                   | 4.3.3    | MIT               | dev         | web                                                                                                                                                        |
+| `@tailwindcss/vite`                      | 4.3.3    | MIT               | dev         | desktop                                                                                                                                                    |
+| `@tanstack/react-query`                  | 5.102.8  | MIT               | runtime+dev | web, desktop, form-renderer-dom, operations-dom                                                                                                            |
+| `@tauri-apps/api`                        | 2.12.0   | Apache-2.0 OR MIT | runtime     | desktop                                                                                                                                                    |
+| `@tauri-apps/cli`                        | 2.11.4   | Apache-2.0 OR MIT | dev         | desktop                                                                                                                                                    |
+| `@tauri-apps/plugin-updater`             | 2.11.0   | MIT OR Apache-2.0 | runtime     | desktop                                                                                                                                                    |
+| `@testing-library/dom`                   | 10.4.2   | MIT               | dev         | form-renderer-dom, operations-dom                                                                                                                          |
+| `@testing-library/jest-dom`              | 7.0.1    | MIT               | dev         | form-renderer-dom, operations-dom                                                                                                                          |
+| `@testing-library/react`                 | 16.3.3   | MIT               | dev         | form-renderer-dom, operations-dom                                                                                                                          |
+| `@testing-library/user-event`            | 14.6.7   | MIT               | dev         | form-renderer-dom, operations-dom                                                                                                                          |
+| `@types/leaflet`                         | 1.9.22   | MIT               | dev         | operations-dom                                                                                                                                             |
+| `@types/node`                            | 26.6.4   | MIT               | dev         | api, web, desktop, mobile, api-client, auth, core, db, form-engine, form-input, form-renderer-dom, i18n, offline, operations-dom, tokens                   |
+| `@types/pg`                              | 8.15.6   | MIT               | dev         | db                                                                                                                                                         |
+| `@types/react`                           | 19.3.0   | MIT               | dev         | web, desktop, mobile, form-renderer-dom, i18n, operations-dom                                                                                              |
+| `@types/react-dom`                       | 19.3.0   | MIT               | dev         | web, desktop, form-renderer-dom, operations-dom                                                                                                            |
+| `@vitejs/plugin-react`                   | 6.1.1    | MIT               | dev         | desktop                                                                                                                                                    |
+| `@vitest/coverage-v8`                    | 5.0.0    | MIT               | dev         | form-engine                                                                                                                                                |
+| `axe-core`                               | 4.13.0   | MPL-2.0           | dev         | form-renderer-dom, operations-dom                                                                                                                          |
+| `esbuild`                                | 0.28.2   | MIT               | dev         | form-engine                                                                                                                                                |
+| `eslint`                                 | 10.12.0  | MIT               | dev         | ., api, web, desktop, mobile, api-client, auth, core, db, eslint-config, form-engine, form-input, form-renderer-dom, i18n, offline, operations-dom, tokens |
+| `eslint-config-prettier`                 | 10.1.8   | MIT               | runtime     | eslint-config                                                                                                                                              |
+| `eslint-plugin-jsx-a11y`                 | 6.10.2   | MIT               | runtime     | eslint-config                                                                                                                                              |
+| `eslint-plugin-react-hooks`              | 7.1.1    | MIT               | runtime     | eslint-config                                                                                                                                              |
+| `expo`                                   | 57.0.27  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-background-task`                   | 57.0.21  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-battery`                           | 57.0.3   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-camera`                            | 57.0.6   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-constants`                         | 57.0.21  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-crypto`                            | 57.0.3   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-device`                            | 57.0.2   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-document-picker`                   | 57.0.3   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-file-system`                       | 57.0.7   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-image-manipulator`                 | 57.0.21  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-image-picker`                      | 57.0.20  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-local-authentication`              | 57.0.3   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-localization`                      | 57.0.2   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-location`                          | 57.0.20  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-network`                           | 57.0.2   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-notifications`                     | 57.0.22  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-router`                            | 57.0.25  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-secure-store`                      | 57.0.4   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-sharing`                           | 57.0.22  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-sqlite`                            | 57.0.4   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-status-bar`                        | 57.0.1   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-task-manager`                      | 57.0.21  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-updates`                           | 57.0.25  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `expo-web-browser`                       | 57.0.3   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `fast-check`                             | 4.10.0   | MIT               | dev         | form-engine                                                                                                                                                |
+| `fastify`                                | 5.12.3   | MIT               | runtime     | api                                                                                                                                                        |
+| `husky`                                  | 9.1.7    | MIT               | dev         | .                                                                                                                                                          |
+| `i18next`                                | 26.4.2   | MIT               | runtime     | i18n                                                                                                                                                       |
+| `jose`                                   | 6.2.0    | MIT               | runtime     | auth                                                                                                                                                       |
+| `jsdom`                                  | 30.0.1   | MIT               | dev         | form-renderer-dom, operations-dom                                                                                                                          |
+| `kysely`                                 | 0.28.9   | MIT               | runtime     | db                                                                                                                                                         |
+| `leaflet`                                | 1.9.4    | BSD-2-Clause      | runtime     | operations-dom                                                                                                                                             |
+| `lint-staged`                            | 17.6.0   | MIT               | dev         | .                                                                                                                                                          |
+| `next`                                   | 16.3.4   | MIT               | runtime     | web                                                                                                                                                        |
+| `openapi-fetch`                          | 0.17.0   | MIT               | runtime     | api-client                                                                                                                                                 |
+| `openapi-typescript`                     | 7.13.0   | MIT               | dev         | api-client                                                                                                                                                 |
+| `pg`                                     | 8.16.3   | MIT               | runtime     | db                                                                                                                                                         |
+| `prettier`                               | 3.9.9    | MIT               | dev         | .                                                                                                                                                          |
+| `react`                                  | 19.3.0   | MIT               | runtime+dev | web, desktop, mobile, form-renderer-dom, i18n, operations-dom                                                                                              |
+| `react-dom`                              | 19.3.0   | MIT               | runtime+dev | web, desktop, mobile, form-renderer-dom, operations-dom                                                                                                    |
+| `react-i18next`                          | 17.0.13  | MIT               | runtime     | i18n                                                                                                                                                       |
+| `react-native`                           | 0.86.3   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `react-native-safe-area-context`         | 5.7.0    | MIT               | runtime     | mobile                                                                                                                                                     |
+| `react-native-screens`                   | 4.26.0   | MIT               | runtime     | mobile                                                                                                                                                     |
+| `react-native-svg`                       | 15.15.4  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `react-native-view-shot`                 | 5.1.0    | MIT               | runtime     | mobile                                                                                                                                                     |
+| `react-native-webview`                   | 13.16.1  | MIT               | runtime     | mobile                                                                                                                                                     |
+| `react-router`                           | 8.3.1    | MIT               | runtime     | desktop                                                                                                                                                    |
+| `sharp`                                  | 0.35.4   | Apache-2.0        | runtime     | api                                                                                                                                                        |
+| `tailwindcss`                            | 4.3.3    | MIT               | dev         | web, desktop                                                                                                                                               |
+| `tsx`                                    | 4.23.13  | MIT               | dev         | api, auth, db, form-engine, tokens                                                                                                                         |
+| `turbo`                                  | 2.11.7   | MIT               | dev         | .                                                                                                                                                          |
+| `typescript`                             | 6.0.3    | Apache-2.0        | dev         | ., api, web, desktop, mobile, api-client, auth, core, db, form-engine, form-input, form-renderer-dom, i18n, offline, operations-dom, tokens                |
+| `typescript-eslint`                      | 8.71.1   | MIT               | runtime     | eslint-config                                                                                                                                              |
+| `vite`                                   | 8.2.2    | MIT               | dev         | desktop                                                                                                                                                    |
+| `vitest`                                 | 5.0.3    | MIT               | dev         | api, web, desktop, mobile, api-client, auth, core, db, form-engine, form-input, form-renderer-dom, i18n, offline, operations-dom, tokens                   |
+| `zod`                                    | 4.6.1    | MIT               | runtime     | api, auth, core, db, form-engine                                                                                                                           |

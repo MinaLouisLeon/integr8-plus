@@ -76,7 +76,8 @@ export function AppFrame({
     };
   }, [drawerOpen]);
 
-  const groups = me.data === undefined ? [] : desktopNavigation(me.data.permissions);
+  const groups =
+    me.data === undefined ? [] : desktopNavigation(me.data.permissions, me.data.features);
   const chrome = routeChrome(location.pathname);
 
   return (

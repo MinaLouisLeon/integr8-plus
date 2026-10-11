@@ -111,6 +111,29 @@ export const PERMISSIONS = [
    * end it, and that is not everybody with an admin badge.
    */
   'billing.manage',
+
+  // CRM (CRM/ERP plan, phase F1). Every one of these also needs the company's
+  // `crm` module switched on (see MODULE_FEATURES in ./crm.ts): a permission
+  // says what the seat may do, the module says whether the company has it.
+
+  /**
+   * Read the CRM: leads, opportunities, activities and the pipeline figures.
+   * Separate from `customer.read` on purpose — an engineer reads a customer to
+   * do a job, and has no business seeing what the customer is worth.
+   */
+  'crm.read',
+  /** Add, edit, assign, qualify and archive leads. */
+  'crm.lead.manage',
+  /**
+   * Convert a lead into a customer: links an existing customer or creates one.
+   * Its own permission because it writes to the customer registry everybody
+   * else works from.
+   */
+  'crm.lead.convert',
+  /** Add and edit opportunities, and move them through the pipeline to won or lost. */
+  'crm.opportunity.manage',
+  /** Log calls, meetings and notes, and set and complete follow-ups. */
+  'crm.activity.manage',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -155,6 +178,11 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'work_order.progress',
     'work_order.review',
     'import.run',
+    'crm.read',
+    'crm.lead.manage',
+    'crm.lead.convert',
+    'crm.opportunity.manage',
+    'crm.activity.manage',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -189,6 +217,11 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'work_order.progress',
     'work_order.review',
     'import.run',
+    'crm.read',
+    'crm.lead.manage',
+    'crm.lead.convert',
+    'crm.opportunity.manage',
+    'crm.activity.manage',
   ],
 
   // Runs the day: needs to see who is available, not to change who they are.
@@ -207,6 +240,13 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'work_order.read_all',
     'work_order.manage',
     'work_order.progress',
+    // Product decision (2026-10-11): the dispatcher runs the CRM day to day,
+    // conversion included, as well as the jobs it leads to.
+    'crm.read',
+    'crm.lead.manage',
+    'crm.lead.convert',
+    'crm.opportunity.manage',
+    'crm.activity.manage',
   ],
 
   // Does the work. Sees colleagues so a job can be handed over, their own
@@ -229,6 +269,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'submission.read_all',
     'customer.read',
     'work_order.read_all',
+    // Reads the CRM and changes nothing in it, like everything else a viewer sees.
+    'crm.read',
   ],
 });
 
