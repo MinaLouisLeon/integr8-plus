@@ -381,3 +381,52 @@ What a receipt has not allocated stays **on the customer's account**; `customerA
 ### Company data export
 
 All seven company tables are in `EXPORTED_TABLES`. Grants: `select, insert, update` on settings; `select, insert, update, delete` on invoices, credit notes and their lines (drafts are discarded; the guards refuse anything else); `select, insert` on receipts; `select, insert, update` on allocations; `select` on the counters.
+
+## 0031 — assets, tags and service history (phase E3; ADR-0008)
+
+Adds the `assets` feature flag. An asset is a machine a company services, at one customer's site. It is never deleted — retired — and every change that matters appends an immutable event. The timeline an asset screen shows is read from the events, the jobs linked to it and the submissions, parts and files that belong to it; nothing is copied into it.
+
+### `erp_asset_settings`
+
+One row per company: `warranty_alert_days` (`0..365`, default 60 when there is no row — `DEFAULT_WARRANTY_ALERT_DAYS`), how far ahead a warranty is flagged. `version` for optimistic concurrency; the first save is `expectedVersion: 0`.
+
+### `asset_reference_counters` and `assign_asset_reference()`
+
+One counter per company. The security-definer trigger numbers an asset when it is created: `AS-000001` onwards (`formatAssetReference()`), never reused; a number never changes (`erp_assets_reference_fixed`). The runtime role may only read the counters.
+
+### `erp_assets`
+
+| Column / rule                                     | Meaning                                                                                                                                                                                           |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customer_id`, `site_id`                          | Composite FK to `sites (tenant_id, customer_id, id)`: the site is always the customer's (`erp_assets_site_fk`)                                                                                    |
+| `item_id`                                         | The catalogue item it is, if any (tenant composite FK)                                                                                                                                            |
+| `name`, `make`, `model`, `location_note`, `notes` | Lengths in `erp_assets_name_present` and `erp_assets_text_lengths`                                                                                                                                |
+| `serial_number`                                   | Unique per company ignoring case and surrounding spaces (`erp_assets_serial_unique` on `lower(btrim(serial_number))`); the routes check first and answer `serial_taken`                           |
+| `install_date`, `warranty_expires_on`             | Calendar dates; `warrantyState()` reads `none`, `covered`, `expiring` (inside the window) or `expired` against the company's today                                                                |
+| `status`                                          | `active`, `out_of_service`, `retired` (`erp_assets_status_known`); `retired_at/by` with `retired` only (`erp_assets_retired_pairing`)                                                             |
+| `condition`, `condition_recorded_at/by`           | The latest condition recorded — `good`, `fair`, `poor`, `unusable` — set together or not at all (`erp_assets_condition_pairing`); a condition recorded later in time wins, whatever arrives first |
+| `tag_code`                                        | Twelve Crockford base-32 characters (`erp_assets_tag_code_shape`), unique across Integr8 (`erp_assets_tag_code_unique`): the printed QR code links to `<web app>/a/<code>`; reissuing replaces it |
+| `client_action_id`                                | The phone's id for registering it, so a resent registration finds the first (`erp_assets_client_action_unique`)                                                                                   |
+| Trigger `erp_assets_touch_sync`                   | Touches the site in `sync_touches`, so the phones holding the site's jobs pull the asset again                                                                                                    |
+
+### `erp_asset_events`
+
+Appended, never changed: the runtime role may only insert and read. `kind` is `registered`, `updated` (`changes` holds `{ field: [before, after] }`), `relocated` (`from_customer_id`, `from_site_id`), `status_changed` (`from_status`, `to_status`), `condition_recorded` (`condition`, optional `work_order_id` and `note`) or `tag_reissued`; each shape is a check. `occurred_at` is when it happened (a phone's time for offline changes), `recorded_at` when the server had it; `client_action_id` makes a resent condition land once.
+
+### `erp_work_order_assets`
+
+Which assets a job is for: `(tenant_id, work_order_id, asset_id)` with who linked it and when. Only an asset at the job's site that is not retired (checked by the routes); unlinking deletes the row and keeps everything recorded. A trigger touches the job for sync.
+
+### Additions to existing tables
+
+- `submissions.asset_id`, `erp_work_order_materials.asset_id` and `attachments.asset_id` (tenant composite FKs): the asset a form, a part used or a file concerns. `attachments_one_owner` now counts the asset as a fourth owner. A submission, part or file on a job with exactly one asset that names none is that asset's too.
+- 0032: `submissions.carried_over` — `{ fromSubmissionId, fields }` when a form started for an asset took the marked answers of that asset's last submission of the same form; only with `asset_id` (`submissions_carried_over_shape`). Set when the draft is created.
+- 0032: `imports.kind` also allows `assets` (`imports_kind_known`).
+
+### Repositories
+
+`AssetsRepository` (`tx.assets`): `settings`, `saveSettings`, `register` (idempotent by `clientActionId`; `serial_taken`), `find`, `findMany`, `findByTag`, `findBySerial`, `lock`, `list` (words, customer, site, statuses, warranty window, an engineer's sites, paging), `personHasSite`, `update` (records the changed fields), `relocate`, `setStatus`, `recordCondition` (idempotent, latest by time wins), `reissueTag`, `events`, `link`, `unlink`, `linksOfWorkOrders`, `linksOfAsset`, `soleAssetOf`, and the timeline's records: `submissionsOf`, `lastSubmissionOf`, `partsOf`, `attachmentsOf`. `SubmissionsRepository.startDraft` takes `assetId` and `carriedOver`.
+
+### Company data export
+
+The four company tables (`erp_asset_settings`, `erp_assets`, `erp_asset_events`, `erp_work_order_assets`) are in `EXPORTED_TABLES`; the counter, like the finance counters, is not. Grants: `select, insert, update` on settings and assets (an asset is retired, never deleted); `select, insert` on events; `select, insert, delete` on job links; `select` on the counter.

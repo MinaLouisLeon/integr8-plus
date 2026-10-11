@@ -3,26 +3,27 @@
 ## Navigation
 
 `packages/core/src/navigation.ts` has a `crm` group, placed between Work and
-Operations, a `sales` group after it (S1) and a `finance` group after that (B1). A section can name a `feature`; `visibleNavigation(app,
+Operations, a `sales` group after it (S1) and a `finance` group after that (B1). Assets (E3) are a section of the existing `operations` group. A section can name a `feature`; `visibleNavigation(app,
 permissions, features)` shows it only when the company has the module and the
 seat holds the section's permission. Callers that pass no flags show no gated
 section.
 
-| Section key      | Group       | Permission        | Feature      | Web route               | Desktop route            | Phase |
-| ---------------- | ----------- | ----------------- | ------------ | ----------------------- | ------------------------ | ----- |
-| `crm`            | `crm`       | `crm.read`        | `crm`        | `/crm`                  | `#/crm`                  | F1    |
-| `leads`          | `crm`       | `crm.read`        | `crm`        | `/crm/leads`            | `#/crm/leads`            | C1    |
-| `opportunities`  | `crm`       | `crm.read`        | `crm`        | `/crm/opportunities`    | `#/crm/opportunities`    | C3    |
-| `activities`     | `crm`       | `crm.read`        | `crm`        | `/crm/activities`       | `#/crm/activities`       | C3    |
-| `inventory`      | `inventory` | `inventory.read`  | `inventory`  | `/inventory`            | `#/inventory`            | E1    |
-| `items`          | `inventory` | `inventory.read`  | `inventory`  | `/inventory/items`      | `#/inventory/items`      | E1    |
-| `stockLocations` | `inventory` | `inventory.read`  | `inventory`  | `/inventory/locations`  | `#/inventory/locations`  | E1    |
-| `suppliers`      | `inventory` | `purchasing.read` | `purchasing` | `/purchasing/suppliers` | `#/purchasing/suppliers` | E2    |
-| `purchaseOrders` | `inventory` | `purchasing.read` | `purchasing` | `/purchasing/orders`    | `#/purchasing/orders`    | E2    |
-| `quotes`         | `sales`     | `sales.read`      | `sales`      | `/sales/quotes`         | `#/sales/quotes`         | S1    |
-| `salesOrders`    | `sales`     | `sales.read`      | `sales`      | `/sales/orders`         | `#/sales/orders`         | S1    |
-| `invoices`       | `finance`   | `finance.read`    | `finance`    | `/finance/invoices`     | `#/finance/invoices`     | B1    |
-| `payments`       | `finance`   | `finance.read`    | `finance`    | `/finance/payments`     | `#/finance/payments`     | B1    |
+| Section key      | Group        | Permission        | Feature      | Web route               | Desktop route            | Phase |
+| ---------------- | ------------ | ----------------- | ------------ | ----------------------- | ------------------------ | ----- |
+| `crm`            | `crm`        | `crm.read`        | `crm`        | `/crm`                  | `#/crm`                  | F1    |
+| `leads`          | `crm`        | `crm.read`        | `crm`        | `/crm/leads`            | `#/crm/leads`            | C1    |
+| `opportunities`  | `crm`        | `crm.read`        | `crm`        | `/crm/opportunities`    | `#/crm/opportunities`    | C3    |
+| `activities`     | `crm`        | `crm.read`        | `crm`        | `/crm/activities`       | `#/crm/activities`       | C3    |
+| `inventory`      | `inventory`  | `inventory.read`  | `inventory`  | `/inventory`            | `#/inventory`            | E1    |
+| `items`          | `inventory`  | `inventory.read`  | `inventory`  | `/inventory/items`      | `#/inventory/items`      | E1    |
+| `stockLocations` | `inventory`  | `inventory.read`  | `inventory`  | `/inventory/locations`  | `#/inventory/locations`  | E1    |
+| `suppliers`      | `inventory`  | `purchasing.read` | `purchasing` | `/purchasing/suppliers` | `#/purchasing/suppliers` | E2    |
+| `purchaseOrders` | `inventory`  | `purchasing.read` | `purchasing` | `/purchasing/orders`    | `#/purchasing/orders`    | E2    |
+| `quotes`         | `sales`      | `sales.read`      | `sales`      | `/sales/quotes`         | `#/sales/quotes`         | S1    |
+| `salesOrders`    | `sales`      | `sales.read`      | `sales`      | `/sales/orders`         | `#/sales/orders`         | S1    |
+| `invoices`       | `finance`    | `finance.read`    | `finance`    | `/finance/invoices`     | `#/finance/invoices`     | B1    |
+| `payments`       | `finance`    | `finance.read`    | `finance`    | `/finance/payments`     | `#/finance/payments`     | B1    |
+| `assets`         | `operations` | `asset.read`      | `assets`     | `/assets`               | `#/assets`               | E3    |
 
 Web: `apps/web/src/lib/navigation.ts` (`NAV_PATHS`), menu in
 `apps/web/src/components/workspace-shell.tsx`. Desktop:
@@ -80,6 +81,18 @@ thin wrappers: `apps/web/src/app/(app)/crm/*` and
 | Customer (addition)           | `CustomerScreen` → `CustomerAccountSection`               | B1     | Owed, on account and the balance per currency; invoices still owing; payments with money on account; "New invoice" and "Record payment"                                                                                                                                                                                                                                       |
 | Job (addition)                | `WorkOrderScreen` → `JobFinancePanel`                     | B1     | The job's invoices; "Invoice this job" once complete; hours on site, and for those who see costs parts, labour, cost, invoiced and profit, with "parts only" said when no labour cost is set                                                                                                                                                                                  |
 | Sales order (addition)        | `SalesOrderScreen`                                        | B1     | "Invoice this order" for a confirmed or delivered order: everything ordered or what has been delivered                                                                                                                                                                                                                                                                        |
+| Assets                        | `AssetListScreen`                                         | E3     | Search by number, tag, serial, name or customer; status and warranty filters (`?warranty=expiring` opens it filtered); status, condition and warranty badges; tick assets and "Print tags"; "New asset" (pick a customer and site); "Warranty alerts" sets the window                                                                                                         |
+| Asset                         | `AssetScreen`                                             | E3     | Details, the jobs it is on, the last condition; edit, move, change status, record a condition, new tag, attach a photo or document, "Print tag"; the timeline newest first in words — events, jobs, submissions with photo counts, parts fitted, files                                                                                                                        |
+| Asset tag (print)             | `AssetTag`, `AssetTagSheet`                               | E3     | 63.5 × 38.1 mm labels, 21 to an A4 sheet: a QR code (level Q, quiet zone, one black path on white) of the tag link, the company, the number, the name and the code in groups of four to type                                                                                                                                                                                  |
+| Scanned tag (web)             | `AssetTagOpener` at `/a/[code]`                           | E3     | Opens the asset the code names, replacing the tag page in history; says plainly when no asset has it. Signed out, the sign-in page returns here                                                                                                                                                                                                                               |
+| Job (addition)                | `WorkOrderScreen` → `JobAssetsPanel`                      | E3     | The job's assets with badges, record a condition, unlink; link one of the site's assets; register one found here. The forms list adds "Fill forms for" an asset (the job's one asset is chosen)                                                                                                                                                                               |
+| Site (addition)               | `SiteScreen` → `SiteAssetsSection`                        | E3     | The site's assets; "New asset" with the site fixed                                                                                                                                                                                                                                                                                                                            |
+| Dashboard (addition)          | `WarrantyAlertsPanel`                                     | E3     | Warranties ending within the window, soonest first, with "See them all"                                                                                                                                                                                                                                                                                                       |
+| Submission (addition)         | `SubmissionScreen`                                        | E3     | "For asset AS-000012 · Boiler"; while filled, which answers were carried over from the asset's last visit                                                                                                                                                                                                                                                                     |
+| Form builder (addition)       | desktop config panel                                      | E3     | "Carry over from the asset's last visit" on every question that can carry (not evidence, calculated or read-only)                                                                                                                                                                                                                                                             |
+| Imports (addition)            | `ImportsScreen`                                           | E3     | An "Assets" kind for those who manage assets                                                                                                                                                                                                                                                                                                                                  |
+| Phone: home and job           | `app/home`, `JobAssets`                                   | E3     | "Scan a tag"; on a job: its assets, scan, link one of the site's, register one                                                                                                                                                                                                                                                                                                |
+| Phone: asset                  | `app/assets/[id]`, `scan`, `new`                          | E3     | The whole history offline, files opened from the phone or fetched; record a condition; link to the job; fill the job's forms for this asset; scan reads a tag link, a typed code or a serial barcode                                                                                                                                                                          |
 
 Routes: web `/sales/quotes`, `/sales/quotes/[id]`, `/sales/orders`,
 `/sales/orders/[id]` and the public `/q/[token]`; desktop the first four under
@@ -91,6 +104,15 @@ Routes: web `/finance/invoices`, `/finance/invoices/[id]`, `/finance/payments`,
 (B1). Printing works as for quotes: `InvoiceDocument` is hidden on screen and
 alone in print, and a draft prints marked "not issued". References and amounts
 are `dir="ltr"`, and amounts go through `formatAmount`, never a float.
+
+Routes: web `/assets`, `/assets/[id]` and `/a/[code]` (the tag link, inside the
+signed-in app); desktop `#/assets` and `#/assets/:assetId` (E3). The tag sheet
+is hidden on screen and alone in print, like the quote and invoice documents.
+Asset numbers, tag codes and serials are `dir="ltr"`. Warranty and install
+dates are calendar dates and are formatted with `formatCalendarDate` (noon UTC
+in UTC), so they read as the same day in every time zone. On the phone the
+warranty alert is one local notification per asset and expiry date, folded
+into one when more than three are due, and opens the asset.
 
 Routes: web `/inventory`, `/inventory/items`, `/inventory/items/[id]`,
 `/inventory/locations`, `/inventory/locations/[id]`, `/inventory/counts/[id]`,
@@ -120,6 +142,7 @@ English and Arabic, same keys (the parity test fails otherwise):
 - `crm.stage.*`, `crm.opportunityStatus.*`, `crm.opportunityEvent.*`, `crm.opportunities.*`, `crm.activityKind.*`, `crm.activities.*`, `crm.dashboard.*`, `nav.section|hint.opportunities|activities` (C3). Counts use i18next plurals: English `_one`/`_other`, Arabic all six forms.
 - `sales.*` (`status`, `orderStatus`, `quotes`, `orders`, `public`, `expired`), `nav.group.sales`, `nav.section|hint.quotes|salesOrders`, `inventory.items.reservedLine`, `inventory.overview.toOrder*` (S1).
 - `finance.*` (`status`, `method`, `amounts`, `invoices`, `credit`, `document`, `payments`, `account`, `job`, `settings`), `nav.group.finance`, `nav.section|hint.invoices|payments` (B1).
+- `assets.*` (`tags`, `status`, `condition`, `warranty`, `fields`, `events`, `entries`, `settings`, `alerts`; `photoCount` and `alerts.window` plural), `nav.section|hint.assets`, `mobile.assets.*` (`warrantySummary` plural), `mobile.change.assetRegistered|assetCondition|assetLinked`, `mobile.fill.start.carried`, `submissions.detail.forAsset|carriedOver`, `operations.workOrder.fillForAsset|noAsset`, `operations.imports.kinds.assets`, `forms.config.property.carryOver` (E3).
 - `errors.featureDisabled` — the web maps API code `feature_disabled` to it
   (`apps/web/src/lib/errors.ts`).
 

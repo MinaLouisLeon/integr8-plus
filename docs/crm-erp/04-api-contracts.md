@@ -399,3 +399,39 @@ recorded by hand; there is no payment gateway.
 
 Audit actions: `payment.recorded`, `payment.allocated`,
 `payment.allocation_removed`.
+
+## Assets (phase E3; ADR-0008)
+
+Source: `apps/api/src/routes/v1/assets.ts`. Tests:
+`apps/api/src/routes/v1/assets.integration.test.ts`. Every route needs the
+`assets` feature (403 `feature_disabled` otherwise). An engineer reads only the
+assets of sites they have a job at; anything else answers 404. Whoever reads an
+asset reads its whole history.
+
+| Method and path                                | Permission     | What it does                                                                                                                                                                                                                                                                         |
+| ---------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /v1/assets`                               | `asset.read`   | `q` (number `AS-000123`, tag code, serial, name, customer), `customerId`, `siteId`, `status` (repeatable), `warranty=expiring\|expired` (inside the company's window, or ended), cursor paging; each with `warranty` state and `tagLink`                                             |
+| `POST /v1/assets`                              | `asset.record` | Registers: `siteId` (`asset.manage`) or `workOrderId` (an engineer's own job, at its site), `name`, `make`, `model`, `serialNumber` (409 `serial_taken`), `itemId`, `locationNote`, `installDate`, `warrantyExpiresOn`, `notes`, `condition`. Numbered and tagged. `Idempotency-Key` |
+| `GET /v1/assets/by-tag/{code}`                 | `asset.read`   | The asset a tag code names, typed in groups or not; 404 for a reissued or unknown tag                                                                                                                                                                                                |
+| `GET /v1/assets/{id}`                          | `asset.read`   | The asset, the jobs it is linked to, and `can` (`edit`, `record`, `attach`)                                                                                                                                                                                                          |
+| `GET /v1/assets/{id}/timeline`                 | `asset.read`   | Newest first: events, linked jobs, submissions (with photos), parts fitted and files — its own, and those of jobs whose only asset it is                                                                                                                                             |
+| `PATCH /v1/assets/{id}`                        | `asset.manage` | Edits details with `expectedVersion` (409 `version_conflict`); records the changed fields                                                                                                                                                                                            |
+| `POST /v1/assets/{id}/relocate`                | `asset.manage` | Moves it to another site (of any customer); 422 `same_site`                                                                                                                                                                                                                          |
+| `POST /v1/assets/{id}/status`                  | `asset.manage` | `active`, `out_of_service` or `retired`, with a note; 422 `same_status`                                                                                                                                                                                                              |
+| `POST /v1/assets/{id}/condition`               | `asset.record` | Records `good`, `fair`, `poor` or `unusable`, with a note and the job; 409 `asset_retired`                                                                                                                                                                                           |
+| `POST /v1/assets/{id}/tag`                     | `asset.manage` | Issues a new tag; the old label stops opening it                                                                                                                                                                                                                                     |
+| `GET /v1/work-orders/{id}/assets`              | `asset.read`   | The job's assets, the other assets at its site, and `can` (`link`, `unlink`, `register`)                                                                                                                                                                                             |
+| `POST /v1/work-orders/{id}/assets`             | `asset.record` | Links an asset at the job's site that is not retired (409 `asset_not_at_site`, `asset_retired`); an engineer on their own job                                                                                                                                                        |
+| `DELETE /v1/work-orders/{id}/assets/{assetId}` | `asset.manage` | Unlinks; what was recorded stays on the asset                                                                                                                                                                                                                                        |
+| `GET` / `PUT /v1/assets/settings`              | read / manage  | `warrantyAlertDays` (0–365, default 60) with `expectedVersion`                                                                                                                                                                                                                       |
+
+Additions elsewhere:
+
+- `POST /v1/customers/.../attachments` and the job and site attachment routes accept an `{ assetId }` owner (`asset.record`).
+- `POST /v1/submissions` takes `assetId` (`asset.record`; one of the job's assets: 409 `asset_not_on_work_order`, `asset_retired`). Questions the form marks `carryOver` start from that asset's last submission of the same form; the answer's `carriedOver` (`{ fromSubmissionId, fields }`) and `asset` say which and for what, on every later read too.
+- `POST /v1/imports` with `kind: assets` needs the module and `asset.manage` as well as `import.run`; columns in `GET /v1/imports/columns/assets`.
+- The sync pull carries `assetSiteIds` and `assets`: every asset at the sites of the pulled jobs with its whole timeline and `carryOver` (per form: the version, the fields and the answers a form started for it would carry). The push takes `asset.register`, `asset.condition` and `asset.link`, idempotently, and `submission.start` may name `assetId` and `carriedOver`; an asset the server no longer allows on the job is dropped from the start rather than refusing the form.
+
+Audit actions: `asset.registered`, `asset.updated`, `asset.relocated`,
+`asset.status_changed`, `asset.condition_recorded`, `asset.tag_reissued`,
+`asset.linked`, `asset.unlinked`, `asset_settings.updated`.

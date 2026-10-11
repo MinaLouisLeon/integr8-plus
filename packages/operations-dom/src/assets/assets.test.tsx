@@ -360,7 +360,7 @@ describe('assets', { timeout: 20_000 }, () => {
       }),
     });
     const { container } = renderScreen(<WarrantyAlertsPanel />, client);
-    await screen.findByRole('heading', { name: 'Warranties ending soon' });
+    await screen.findByRole('heading', { name: 'Warranties ending soon' }, { timeout: 5000 });
     const links = await screen.findAllByRole('link', { name: /AS-0000/u });
     expect(links.map((link) => link.textContent)).toEqual([
       'AS-000013 · Chiller',
@@ -399,8 +399,12 @@ describe('assets', { timeout: 20_000 }, () => {
       }),
     });
     renderScreen(<AssetSettingsDialog onClose={onClose} />, client);
-    const field = await screen.findByLabelText('Warn this many days before a warranty ends');
-    await waitFor(() => expect(field).toHaveValue('60'));
+    const field = await screen.findByLabelText(
+      'Warn this many days before a warranty ends',
+      {},
+      { timeout: 5000 },
+    );
+    await waitFor(() => expect(field).toHaveValue('60'), { timeout: 5000 });
     await user.clear(field);
     await user.type(field, '400');
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();

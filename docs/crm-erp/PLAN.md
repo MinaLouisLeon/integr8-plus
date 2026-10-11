@@ -710,10 +710,12 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase E3 — Assets and service history (align P24)
 
-**Status:** `IN PROGRESS` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `DONE` — see the [phase tracker](./README.md#phase-tracker).
 
-- [ ] Asset master data, customer/site links, serial identity, install/warranty and service event timeline.
-- [ ] Work order/forms/parts history joins and movement audit.
+- [x] Asset master data, customer/site links, serial identity, install/warranty and service event timeline.
+- [x] Work order/forms/parts history joins and movement audit.
+- [x] Printable QR tags with a web link; scanning on the phone offline with the whole history (ADR-0008).
+- [x] Warranty alerts (dashboard, badges, one phone notification per asset and date), carry-over from the asset's last visit, CSV import.
 - **Done when:** field tech and office can trace service history of a serial-numbered asset within tenant and proper permissions.
 
 ### Phase A1 — General ledger (ONLY AFTER AUTHORIZATION)

@@ -1,6 +1,6 @@
 # ADR-0008 — Assets, tags and service history
 
-**Status:** Accepted (E3 planning, 2026-10-11)
+**Status:** Accepted (E3 planning, 2026-10-11); implemented in E3
 
 ## Context
 
@@ -72,10 +72,23 @@ site_id)` composite foreign key to `sites`), is numbered `AS-000001` onwards
   the asset and its jobs carry a badge; the phone raises one local
   notification per asset and expiry date for synced assets inside the window.
   No email: there is no mail sender in the product yet.
+  As built: more than three due at once (a new phone's first sync) fold into
+  one notification; an alert is recorded as given before it is shown, so a
+  crash costs one notification, never a repeat.
 - **Prefill:** a form field may be marked "carry over from the asset's last
   submission". Starting that form for an asset fills only those fields from the
   last submission of the same form on the same asset, and says which answers
-  came from last time. Photo, signature and file fields cannot be marked.
+  came from last time. Photo, signature, file and location fields cannot be
+  marked, nor calculated or read-only ones.
+
+  As built: the server works out the carried answers, moved onto the form's
+  current version, and records which on the draft (`submissions.carried_over`,
+  0032). The phone gets the same per asset and form in its pull and uses it
+  only while its own copy of the form is that version. A job's one asset is
+  chosen for you; with several, web and desktop offer a choice and the phone
+  starts the form from the asset's screen. A form a phone started offline for
+  an asset that has since left the job is kept, without the asset.
+
 - **Import:** a fourth CSV import kind, `assets`, matched to an existing
   customer and site, with the same preview, errors-by-row and template as the
   others.

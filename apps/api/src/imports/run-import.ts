@@ -626,7 +626,7 @@ async function importAsset(tx: TenantTransaction, row: Row, context: ImportConte
     ['model', 200],
     ['serial_number', 200],
     ['location', 500],
-    ['notes', 4000],
+    ['notes', 2000],
   ] as const) {
     length(problems, row, column, max);
   }
