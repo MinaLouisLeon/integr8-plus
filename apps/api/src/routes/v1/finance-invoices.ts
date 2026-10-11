@@ -7,6 +7,7 @@ import {
   dueDaysSchema,
   formatCreditNoteReference,
   formatInvoiceReference,
+  formatReceiptReference,
   formatSalesOrderReference,
   formatWorkOrderReference,
   holds,
@@ -16,6 +17,7 @@ import {
   invoiceStatus,
   invoiceStatusSchema,
   jobTimes,
+  paymentMethodSchema,
   type Principal,
   type InvoiceStatus,
   quantitySchema,
@@ -174,10 +176,21 @@ export const creditNoteSummarySchema = z.object({
   createdAt: z.iso.datetime(),
 });
 
+export const invoicePaymentSchema = z.object({
+  allocationId: z.uuid(),
+  receipt: z.object({ id: z.uuid(), reference: z.string() }),
+  receivedOn: z.iso.date(),
+  method: paymentMethodSchema,
+  amount: z.string(),
+  allocatedAt: z.iso.datetime(),
+});
+
 export const invoiceDetailSchema = z.object({
   invoice: invoiceSchema,
   lines: z.array(invoiceLineSchema),
   creditNotes: z.array(creditNoteSummarySchema),
+  /** Payments allocated to it, oldest first. */
+  payments: z.array(invoicePaymentSchema),
   can: z.object({
     edit: z.boolean(),
     discard: z.boolean(),
@@ -352,14 +365,20 @@ export async function invoiceDetail(
 ): Promise<z.infer<typeof invoiceDetailSchema>> {
   const today = await companyToday(tx);
   const names = people ?? (await peopleOf(tx));
-  const [summary, lines, totals, site, contacts, notes] = await Promise.all([
+  const [summary, lines, totals, site, contacts, notes, allocations] = await Promise.all([
     invoiceSummaries(tx, [invoice], today),
     tx.financeInvoices.invoiceLines(invoice.id),
     tx.financeInvoices.invoiceTotals(invoice.id),
     invoice.siteId === null ? undefined : tx.sites.find(invoice.siteId),
     invoice.contactId === null ? [] : tx.customers.findContacts([invoice.contactId]),
     tx.financeInvoices.creditNotesForInvoice(invoice.id),
+    tx.financePayments.allocationsForInvoice(invoice.id),
   ]);
+  const receipts = new Map(
+    (await tx.financePayments.findReceipts(allocations.map((row) => row.receiptId))).map(
+      (receipt) => [receipt.id, receipt],
+    ),
+  );
   const manage = holds(principal, 'finance.manage');
   const issueRight = holds(principal, 'finance.issue');
   const amounts = summary[0]!.amounts;
@@ -393,6 +412,17 @@ export async function invoiceDetail(
     },
     lines: invoiceLineBodies(lines),
     creditNotes: await creditNoteSummaries(tx, notes),
+    payments: allocations.map((allocation) => {
+      const receipt = receipts.get(allocation.receiptId)!;
+      return {
+        allocationId: allocation.id,
+        receipt: { id: receipt.id, reference: formatReceiptReference(receipt.reference) },
+        receivedOn: receipt.receivedOn,
+        method: receipt.method,
+        amount: allocation.amount,
+        allocatedAt: iso(allocation.allocatedAt),
+      };
+    }),
     can: {
       edit: manage && invoice.status === 'draft',
       discard: manage && invoice.status === 'draft',

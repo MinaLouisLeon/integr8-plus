@@ -239,4 +239,5 @@ export {
   dueDaysSchema,
   hoursOfMs,
   addDays,
+  multiplyDecimals,
 } from './finance.js';

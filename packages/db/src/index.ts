@@ -457,6 +457,15 @@ export {
   type InvoiceRefusal,
   type IssuerSnapshot,
 } from './repositories/finance-invoices.js';
+export {
+  type AllocationRefusal,
+  type CustomerAccount,
+  FinancePaymentsRepository,
+  type PaymentAllocation,
+  type PaymentReceipt,
+  type PaymentReceiptInput,
+  type ReceiptAmounts,
+} from './repositories/finance-payments.js';
 
 export {
   addressLine,

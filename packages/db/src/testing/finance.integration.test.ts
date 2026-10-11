@@ -419,6 +419,166 @@ describe('finding invoices', () => {
   });
 });
 
+async function receipt(
+  tenant: TenantFixture,
+  customerId: string,
+  amount: string,
+  currencyCode = 'EGP',
+) {
+  return repos(tenant, (tx) =>
+    tx.financePayments.recordReceipt(
+      {
+        customerId,
+        receivedOn: '2026-10-12',
+        amount,
+        currencyCode,
+        method: 'bank_transfer',
+        paymentReference: ' TRX-1 ',
+      },
+      USER,
+    ),
+  );
+}
+
+describe('a payment', () => {
+  it('is numbered when recorded, allocated within what it has and what the invoice owes, and the rest stays on account', async () => {
+    const riverside = await customer(northwind, 'Paying Ltd');
+    const first = await issue(northwind, await draft(northwind, riverside.id)); // 255.2
+    const second = await issue(northwind, await draft(northwind, riverside.id)); // 255.2
+    const paid = await receipt(northwind, riverside.id, '300');
+    expect(paid).toMatchObject({
+      amount: '300',
+      paymentReference: 'TRX-1',
+      receivedOn: '2026-10-12',
+    });
+    expect(paid.reference).toBeGreaterThan(0);
+    const later = await receipt(northwind, riverside.id, '1');
+    expect(later.reference).toBe(paid.reference + 1);
+
+    expect(
+      await repos(northwind, (tx) => tx.financePayments.allocate(paid.id, first.id, '300', USER)),
+    ).toBe('over_invoice');
+    const whole = await repos(northwind, (tx) =>
+      tx.financePayments.allocate(paid.id, first.id, '255.2', USER),
+    );
+    expect(whole).toMatchObject({ amount: '255.2', removedAt: null });
+    if (typeof whole === 'string') {
+      throw new Error(whole);
+    }
+    expect(
+      await repos(northwind, (tx) => tx.financePayments.allocate(paid.id, second.id, '50', USER)),
+    ).toBe('over_receipt');
+    expect(
+      await repos(northwind, (tx) => tx.financePayments.allocate(paid.id, second.id, '44.8', USER)),
+    ).toMatchObject({ amount: '44.8' });
+
+    const amounts = await repos(northwind, (tx) =>
+      tx.financeInvoices.invoiceAmounts([first.id, second.id]),
+    );
+    expect(amounts.get(first.id)).toMatchObject({ allocated: '255.2', balance: '0' });
+    expect(amounts.get(second.id)).toMatchObject({ allocated: '44.8', balance: '210.4' });
+    expect(
+      (await repos(northwind, (tx) => tx.financePayments.receiptAmounts([paid.id]))).get(paid.id),
+    ).toEqual({ amount: '300', allocated: '300', unallocated: '0' });
+    const paidPage = await repos(northwind, (tx) =>
+      tx.financeInvoices.listInvoices({ statuses: ['paid'], customerId: riverside.id }),
+    );
+    expect(paidPage.items.map((row) => row.id)).toEqual([first.id]);
+
+    // A paid invoice is not voided.
+    expect(
+      await repos(northwind, (tx) =>
+        tx.financeInvoices.voidInvoice(first.id, first.version, USER, 'No'),
+      ),
+    ).toBe('settled');
+
+    // Removing an allocation puts the money back on account; the record stays.
+    const removed = await repos(northwind, (tx) =>
+      tx.financePayments.removeAllocation(whole.id, USER),
+    );
+    expect(removed).toMatchObject({ removedBy: USER });
+    expect(
+      await repos(northwind, (tx) => tx.financePayments.removeAllocation(whole.id, USER)),
+    ).toBe('already_removed');
+    expect(
+      await repos(northwind, (tx) => tx.financePayments.customerAccount(riverside.id)),
+    ).toEqual([{ currencyCode: 'EGP', owed: '465.6', unallocated: '256.2', net: '209.4' }]);
+    expect(
+      (await repos(northwind, (tx) => tx.financePayments.allocationsForReceipt(paid.id))).map(
+        (row) => row.removedAt === null,
+      ),
+    ).toEqual([false, true]);
+  });
+
+  it('goes only to the same customer’s issued invoices in its currency', async () => {
+    const riverside = await customer(northwind, 'Strict Ltd');
+    const other = await customer(northwind, 'Other Ltd');
+    const theirs = await issue(northwind, await draft(northwind, other.id));
+    const drafted = await draft(northwind, riverside.id);
+    const paid = await receipt(northwind, riverside.id, '100');
+    const dollars = await receipt(northwind, riverside.id, '100', 'USD');
+    const mine = await issue(northwind, await draft(northwind, riverside.id));
+    expect(
+      await repos(northwind, (tx) => tx.financePayments.allocate(paid.id, theirs.id, '10', USER)),
+    ).toBe('mismatch');
+    expect(
+      await repos(northwind, (tx) => tx.financePayments.allocate(dollars.id, mine.id, '10', USER)),
+    ).toBe('mismatch');
+    expect(
+      await repos(northwind, (tx) => tx.financePayments.allocate(paid.id, drafted.id, '10', USER)),
+    ).toBe('invoice_not_open');
+    // Another company cannot even see the receipt.
+    expect(await repos(southgate, (tx) => tx.financePayments.findReceipt(paid.id))).toBeUndefined();
+  });
+
+  it('cannot be spent twice by two allocations at once', async () => {
+    const riverside = await customer(northwind, 'Racing Ltd');
+    const a = await issue(northwind, await draft(northwind, riverside.id));
+    const b = await issue(northwind, await draft(northwind, riverside.id));
+    const paid = await receipt(northwind, riverside.id, '100');
+    const results = await Promise.all([
+      repos(northwind, (tx) => tx.financePayments.allocate(paid.id, a.id, '60', USER)),
+      repos(northwind, (tx) => tx.financePayments.allocate(paid.id, b.id, '60', USER)),
+    ]);
+    expect(results.filter((result) => typeof result === 'string')).toEqual(['over_receipt']);
+    expect(
+      (await repos(northwind, (tx) => tx.financePayments.receiptAmounts([paid.id]))).get(paid.id),
+    ).toEqual({ amount: '100', allocated: '60', unallocated: '40' });
+  });
+
+  it('is never changed or deleted by the application, and an allocation only ever removed', async () => {
+    const riverside = await customer(northwind, 'Immutable Ltd');
+    const invoice = await issue(northwind, await draft(northwind, riverside.id));
+    const paid = await receipt(northwind, riverside.id, '10');
+    const allocation = await repos(northwind, (tx) =>
+      tx.financePayments.allocate(paid.id, invoice.id, '10', USER),
+    );
+    if (typeof allocation === 'string') {
+      throw new Error(allocation);
+    }
+    const app = await connectAsApp();
+    try {
+      await expect(
+        asTenant(app, northwind.id, () =>
+          app.query(`update erp_payment_receipts set amount = 1 where id = $1`, [paid.id]),
+        ),
+      ).rejects.toThrow(/permission denied/u);
+      await expect(
+        asTenant(app, northwind.id, () =>
+          app.query(`delete from erp_payment_receipts where id = $1`, [paid.id]),
+        ),
+      ).rejects.toThrow(/permission denied/u);
+      await expect(
+        asTenant(app, northwind.id, () =>
+          app.query(`update erp_payment_allocations set amount = 1 where id = $1`, [allocation.id]),
+        ),
+      ).rejects.toMatchObject({ constraint: 'erp_payment_allocations_frozen' });
+    } finally {
+      await app.end();
+    }
+  });
+});
+
 describe('deleting a company', () => {
   it('takes its issued quotes, orders, invoices and credit notes with it', async () => {
     const tenant = await createTenant('fin-purge');

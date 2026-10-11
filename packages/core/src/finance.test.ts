@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, hoursOfMs, invoiceStatus, parseFinanceReference } from './finance.js';
+import {
+  addDays,
+  hoursOfMs,
+  invoiceStatus,
+  multiplyDecimals,
+  parseFinanceReference,
+} from './finance.js';
 
 describe('finance vocabulary', () => {
   it('derives an issued invoice’s status from its balance and payments', () => {
@@ -29,5 +35,14 @@ describe('finance vocabulary', () => {
     expect(addDays('2026-10-11', 30)).toBe('2026-11-10');
     expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
     expect(addDays('2028-02-28', 1)).toBe('2028-02-29');
+  });
+
+  it('multiplies decimal text exactly, rounding half up to four places', () => {
+    expect(multiplyDecimals('1.5', '120.25')).toBe('180.375');
+    expect(multiplyDecimals('0.33', '150')).toBe('49.5');
+    expect(multiplyDecimals('2', '0')).toBe('0');
+    expect(multiplyDecimals('0.0001', '0.5')).toBe('0.0001');
+    expect(multiplyDecimals('0.0001', '0.4')).toBe('0');
+    expect(multiplyDecimals('12345678.9', '1000')).toBe('12345678900');
   });
 });

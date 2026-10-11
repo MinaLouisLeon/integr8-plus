@@ -112,3 +112,27 @@ export function addDays(day: string, days: number): string {
   const result = new Date(Date.UTC(year, month - 1, date + days));
   return result.toISOString().slice(0, 10);
 }
+
+/**
+ * `a × b` for non-negative decimal strings, rounded half up to four places,
+ * with integer arithmetic only: hours times an hourly cost never passes
+ * through a float. `multiplyDecimals('1.5', '120.25')` is `'180.375'`.
+ */
+export function multiplyDecimals(a: string, b: string): string {
+  const parse = (text: string) => {
+    const [whole = '0', fraction = ''] = text.trim().split('.');
+    return { digits: BigInt(`${whole}${fraction}`), places: fraction.length };
+  };
+  const left = parse(a);
+  const right = parse(b);
+  const places = left.places + right.places;
+  let product = left.digits * right.digits;
+  if (places > 4) {
+    const divisor = 10n ** BigInt(places - 4);
+    product = (product + divisor / 2n) / divisor;
+  } else {
+    product *= 10n ** BigInt(4 - places);
+  }
+  const text = product.toString().padStart(5, '0');
+  return `${text.slice(0, -4)}.${text.slice(-4)}`.replace(/\.?0+$/u, '') || '0';
+}

@@ -2855,6 +2855,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/finance/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find payments received
+         * @description Newest first. `q` matches a reference (`RC-000123`), the bank reference, or words of the customer’s name; `unallocated=true` keeps those with money left on account.
+         */
+        get: operations["listCustomerPayments"];
+        put?: never;
+        /**
+         * Record a payment received
+         * @description Owners and admins. Recorded by hand (cash, bank transfer, other) — no gateway — and never changed afterwards. `allocations` puts it against the customer’s issued invoices at once; anything left stays on account. The whole request is refused if any allocation is (422 `over_receipt`, `over_invoice`, `allocation_mismatch`; 409 `invoice_not_issued`). A date after today is 422 `received_in_future`. **`Idempotency-Key` required**: money is never recorded twice.
+         */
+        post: operations["recordCustomerPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/finance/payments/{receiptId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A payment, where it went, and the invoices it could still pay */
+        get: operations["getCustomerPayment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/finance/payments/{receiptId}/allocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Put part of a payment against an invoice
+         * @description Owners and admins. Never more than the payment has left (422 `over_receipt`) or the invoice owes (422 `over_invoice`); only the same customer’s issued invoices in the payment’s currency.
+         */
+        post: operations["allocateCustomerPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/finance/payments/{receiptId}/allocations/{allocationId}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take an allocation back
+         * @description Owners and admins. The money returns to the customer’s account and the invoice owes it again; the allocation stays on record as removed. 409 `allocation_removed` when already removed.
+         */
+        post: operations["removeCustomerPaymentAllocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/finance/customers/{customerId}/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What a customer owes and has on account
+         * @description Per currency: what issued invoices still owe, what payments have left unallocated, and the difference; with the invoices that still owe and the payments with money left.
+         */
+        get: operations["getCustomerAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/finance/work-orders/{workOrderId}/costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What a job cost, against what it earned
+         * @description Parts at their cost when used (net of returns), labour at the company’s hourly cost when set, and the net of the job’s issued invoices less credit notes. Costs and profit are shown to owners, admins and those who move stock; without a labour cost the figure is parts only and says so (`labour.costed: false`). An estimate for the office, not an accounting entry.
+         */
+        get: operations["getJobCosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -26704,6 +26825,22 @@ export interface operations {
                             /** Format: date-time */
                             createdAt: string;
                         }[];
+                        payments: {
+                            /** Format: uuid */
+                            allocationId: string;
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            amount: string;
+                            /** Format: date-time */
+                            allocatedAt: string;
+                        }[];
                         can: {
                             edit: boolean;
                             discard: boolean;
@@ -26958,6 +27095,22 @@ export interface operations {
                             /** Format: date-time */
                             createdAt: string;
                         }[];
+                        payments: {
+                            /** Format: uuid */
+                            allocationId: string;
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            amount: string;
+                            /** Format: date-time */
+                            allocatedAt: string;
+                        }[];
                         can: {
                             edit: boolean;
                             discard: boolean;
@@ -27205,6 +27358,22 @@ export interface operations {
                             /** Format: date-time */
                             createdAt: string;
                         }[];
+                        payments: {
+                            /** Format: uuid */
+                            allocationId: string;
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            amount: string;
+                            /** Format: date-time */
+                            allocatedAt: string;
+                        }[];
                         can: {
                             edit: boolean;
                             discard: boolean;
@@ -27443,6 +27612,22 @@ export interface operations {
                             total: string;
                             /** Format: date-time */
                             createdAt: string;
+                        }[];
+                        payments: {
+                            /** Format: uuid */
+                            allocationId: string;
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            amount: string;
+                            /** Format: date-time */
+                            allocatedAt: string;
                         }[];
                         can: {
                             edit: boolean;
@@ -27708,6 +27893,22 @@ export interface operations {
                             total: string;
                             /** Format: date-time */
                             createdAt: string;
+                        }[];
+                        payments: {
+                            /** Format: uuid */
+                            allocationId: string;
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            amount: string;
+                            /** Format: date-time */
+                            allocatedAt: string;
                         }[];
                         can: {
                             edit: boolean;
@@ -28050,6 +28251,22 @@ export interface operations {
                             /** Format: date-time */
                             createdAt: string;
                         }[];
+                        payments: {
+                            /** Format: uuid */
+                            allocationId: string;
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            amount: string;
+                            /** Format: date-time */
+                            allocatedAt: string;
+                        }[];
                         can: {
                             edit: boolean;
                             discard: boolean;
@@ -28295,6 +28512,22 @@ export interface operations {
                             total: string;
                             /** Format: date-time */
                             createdAt: string;
+                        }[];
+                        payments: {
+                            /** Format: uuid */
+                            allocationId: string;
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            amount: string;
+                            /** Format: date-time */
+                            allocatedAt: string;
                         }[];
                         can: {
                             edit: boolean;
@@ -29373,6 +29606,1150 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listCustomerPayments: {
+        parameters: {
+            query?: {
+                q?: string;
+                customerId?: string;
+                unallocated?: "true" | "false";
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of payments. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            amount: string;
+                            currencyCode: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            paymentReference: string | null;
+                            allocated: string;
+                            unallocated: string;
+                            /** Format: date-time */
+                            recordedAt: string;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `finance` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    recordCustomerPayment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    customerId: string;
+                    /** Format: date */
+                    receivedOn: string;
+                    amount: string;
+                    currencyCode?: string;
+                    /** @enum {string} */
+                    method: "cash" | "bank_transfer" | "other";
+                    paymentReference?: string | null;
+                    notes?: string | null;
+                    /** @default [] */
+                    allocations?: {
+                        /** Format: uuid */
+                        invoiceId: string;
+                        amount: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The payment. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        receipt: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            amount: string;
+                            currencyCode: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            paymentReference: string | null;
+                            allocated: string;
+                            unallocated: string;
+                            /** Format: date-time */
+                            recordedAt: string;
+                            notes: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        allocations: {
+                            /** Format: uuid */
+                            id: string;
+                            invoice: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string | null;
+                            };
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                /** Format: date */
+                                receivedOn: string;
+                                /** @enum {string} */
+                                method: "cash" | "bank_transfer" | "other";
+                            };
+                            amount: string;
+                            allocatedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            allocatedAt: string;
+                            removedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            removedAt: string | null;
+                        }[];
+                        openInvoices: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "partially_paid" | "paid" | "credited" | "void";
+                            overdue: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            issueDate: string | null;
+                            /** Format: date */
+                            dueDate: string | null;
+                            amounts: {
+                                total: string;
+                                allocated: string;
+                                credited: string;
+                                balance: string;
+                            };
+                            source: {
+                                /** @enum {string} */
+                                kind: "sales_order" | "work_order";
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            allocate: boolean;
+                            removeAllocation: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `finance` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such customer or invoice. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An invoice is not issued. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An allocation is refused, or the date is in the future. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getCustomerPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receiptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The payment. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        receipt: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            amount: string;
+                            currencyCode: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            paymentReference: string | null;
+                            allocated: string;
+                            unallocated: string;
+                            /** Format: date-time */
+                            recordedAt: string;
+                            notes: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        allocations: {
+                            /** Format: uuid */
+                            id: string;
+                            invoice: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string | null;
+                            };
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                /** Format: date */
+                                receivedOn: string;
+                                /** @enum {string} */
+                                method: "cash" | "bank_transfer" | "other";
+                            };
+                            amount: string;
+                            allocatedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            allocatedAt: string;
+                            removedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            removedAt: string | null;
+                        }[];
+                        openInvoices: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "partially_paid" | "paid" | "credited" | "void";
+                            overdue: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            issueDate: string | null;
+                            /** Format: date */
+                            dueDate: string | null;
+                            amounts: {
+                                total: string;
+                                allocated: string;
+                                credited: string;
+                                balance: string;
+                            };
+                            source: {
+                                /** @enum {string} */
+                                kind: "sales_order" | "work_order";
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            allocate: boolean;
+                            removeAllocation: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `finance` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such payment. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    allocateCustomerPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receiptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    invoiceId: string;
+                    amount: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The payment. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        receipt: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            amount: string;
+                            currencyCode: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            paymentReference: string | null;
+                            allocated: string;
+                            unallocated: string;
+                            /** Format: date-time */
+                            recordedAt: string;
+                            notes: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        allocations: {
+                            /** Format: uuid */
+                            id: string;
+                            invoice: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string | null;
+                            };
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                /** Format: date */
+                                receivedOn: string;
+                                /** @enum {string} */
+                                method: "cash" | "bank_transfer" | "other";
+                            };
+                            amount: string;
+                            allocatedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            allocatedAt: string;
+                            removedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            removedAt: string | null;
+                        }[];
+                        openInvoices: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "partially_paid" | "paid" | "credited" | "void";
+                            overdue: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            issueDate: string | null;
+                            /** Format: date */
+                            dueDate: string | null;
+                            amounts: {
+                                total: string;
+                                allocated: string;
+                                credited: string;
+                                balance: string;
+                            };
+                            source: {
+                                /** @enum {string} */
+                                kind: "sales_order" | "work_order";
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            allocate: boolean;
+                            removeAllocation: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `finance` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such payment or invoice. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The invoice is not issued. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description More than either has, or another customer or currency. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    removeCustomerPaymentAllocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receiptId: string;
+                allocationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The payment. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        receipt: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            amount: string;
+                            currencyCode: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            paymentReference: string | null;
+                            allocated: string;
+                            unallocated: string;
+                            /** Format: date-time */
+                            recordedAt: string;
+                            notes: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        allocations: {
+                            /** Format: uuid */
+                            id: string;
+                            invoice: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string | null;
+                            };
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                /** Format: date */
+                                receivedOn: string;
+                                /** @enum {string} */
+                                method: "cash" | "bank_transfer" | "other";
+                            };
+                            amount: string;
+                            allocatedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            allocatedAt: string;
+                            removedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            removedAt: string | null;
+                        }[];
+                        openInvoices: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "partially_paid" | "paid" | "credited" | "void";
+                            overdue: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            issueDate: string | null;
+                            /** Format: date */
+                            dueDate: string | null;
+                            amounts: {
+                                total: string;
+                                allocated: string;
+                                credited: string;
+                                balance: string;
+                            };
+                            source: {
+                                /** @enum {string} */
+                                kind: "sales_order" | "work_order";
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            allocate: boolean;
+                            removeAllocation: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `finance` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such payment or allocation. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already removed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getCustomerAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        accounts: {
+                            currencyCode: string;
+                            owed: string;
+                            unallocated: string;
+                            net: string;
+                        }[];
+                        openInvoices: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "partially_paid" | "paid" | "credited" | "void";
+                            overdue: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            issueDate: string | null;
+                            /** Format: date */
+                            dueDate: string | null;
+                            amounts: {
+                                total: string;
+                                allocated: string;
+                                credited: string;
+                                balance: string;
+                            };
+                            source: {
+                                /** @enum {string} */
+                                kind: "sales_order" | "work_order";
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        unallocatedPayments: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            amount: string;
+                            currencyCode: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            paymentReference: string | null;
+                            allocated: string;
+                            unallocated: string;
+                            /** Format: date-time */
+                            recordedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `finance` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such customer. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getJobCosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The job’s costs. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        };
+                        currencyCode: string;
+                        seesCosts: boolean;
+                        parts: {
+                            cost: string | null;
+                        };
+                        labour: {
+                            hours: string;
+                            hourlyCost: string | null;
+                            cost: string | null;
+                            costed: boolean;
+                        };
+                        cost: string | null;
+                        invoiced: {
+                            net: string;
+                            invoices: number;
+                        };
+                        profit: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `finance` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such job. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description Rate limit exceeded. */
             429: {
