@@ -690,7 +690,7 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase S1 — Quotes and sales orders
 
-**Status:** `NOT STARTED` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `IN PROGRESS` — see the [phase tracker](./README.md#phase-tracker).
 
 - [ ] Exact decimals/currency policy documented and tested; quote draft/issue/revision/accept/reject.
 - [ ] Line snapshots, server totals and tenant document counters; basic PDF printable format with local fonts.

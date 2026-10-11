@@ -14,9 +14,9 @@ Branch: `feat/crm-erp-foundation`, from `main` at `8db1c50` (version 0.1.4).
 Agreed scope for this branch: **F0 → F1 → C1 → C2 → C3 (the CRM MVP), then stop
 for review.** Nothing after C3 starts without a new instruction.
 
-**State: the CRM MVP is complete (F0–C3 `DONE`, merged in PR #73). The second
-round (E1, E2) is complete and awaiting review; S1 onwards wait for a new
-instruction.**
+**State: the CRM MVP (F0–C3) merged in PR #73 and the inventory and purchasing
+round (E1, E2) in PR #74. The third round, S1 (quotes and sales orders), is in
+progress on `feat/sales-quotes-orders`; B1 onwards wait for a new instruction.**
 
 Second round — branch `feat/erp-inventory-purchasing`, from `main` at `479d3d7`.
 Agreed scope: **E1 → E2, then stop for review.** S1 onwards wait for a new
@@ -31,7 +31,7 @@ instruction.
 | C3    | Opportunities, pipeline and stages, activities and follow-ups, Customer 360, dashboard | `DONE`           | 0025       | fifth commit on the branch                                                                                                  |
 | E1    | Catalogue and immutable stock ledger (aligns with `plan/v1.1-inventory/P22`)           | `DONE`           | 0026       | second commit on the branch                                                                                                 |
 | E2    | Suppliers, purchasing, goods receipts, van stock, work-order materials (aligns P23)    | `DONE`           | 0027, 0028 | third commit: suppliers, purchase orders, receipts, returns (E2a); fourth: parts used on jobs, web, desktop and phone (E2b) |
-| S1    | Quotes and sales orders, linked to work orders                                         | `NOT STARTED`    | —          | —                                                                                                                           |
+| S1    | Quotes and sales orders, linked to work orders                                         | `IN PROGRESS`    | —          | third round, branch `feat/sales-quotes-orders` from `main` at `6819a57`                                                     |
 | B1    | Company invoices, payments, credit notes, job costing (not Integr8's own billing)      | `NOT STARTED`    | —          | —                                                                                                                           |
 | E3    | Assets and service history (aligns P24)                                                | `NOT STARTED`    | —          | —                                                                                                                           |
 | A1    | General ledger                                                                         | `NOT AUTHORIZED` | —          | —                                                                                                                           |
@@ -47,12 +47,12 @@ Every numbered item in PLAN.md §4–§5, so none is forgotten.
 | CRM-02 Opportunities                       | C3         | `DONE`           | Default pipeline; no pipeline editing screen yet                            |
 | CRM-03 Activities and tasks                | C3         | `DONE`           | In-app due list only; email reminders after email is set up                 |
 | CRM-04 Customer 360                        | C2, C3     | `DONE` (MVP)     | Quotes, orders, invoices and assets tabs arrive with S1/B1/E3               |
-| CRM-05 Quotes and pipeline analytics       | S1         | `NOT STARTED`    | C3 dashboard covers counts, totals and weighted forecast                    |
+| CRM-05 Quotes and pipeline analytics       | S1         | `IN PROGRESS`    | Quotes in S1; the C3 dashboard covers counts, totals and weighted forecast  |
 | CRM-06 Campaigns and automations           | —          | `DEFERRED`       | P2; no marketing platform or bulk email                                     |
 | ERP-01 Products and services catalogue     | E1         | `DONE`           | Images and datasheets on items are a follow-up                              |
 | ERP-02 Locations and inventory ledger      | E1         | `DONE`           | Serial and batch tracking deferred (P22 lists it; not in scope)             |
 | ERP-03 Suppliers and purchasing            | E2         | `DONE`           | Supplier price lists and sending a PO to the supplier are follow-ups        |
-| ERP-04 Quotes → sales orders → work orders | S1         | `NOT STARTED`    |                                                                             |
+| ERP-04 Quotes → sales orders → work orders | S1         | `IN PROGRESS`    | Reservations on confirmation (ADR-0006); jobs created or linked explicitly  |
 | ERP-05 Invoicing and payments              | B1         | `NOT STARTED`    | Internal ledger only; no e-invoicing or tax compliance claim                |
 | ERP-06 Work-order materials and costing    | E2, B1     | `DONE` (parts)   | Parts and their cost on the job (E2); labour and job costing arrive with B1 |
 | ERP-07 Asset register                      | E3         | `NOT STARTED`    | Update P24 when E3 starts                                                   |
@@ -115,6 +115,22 @@ or a decision before the pilot (phase L).
 | Vans                                 | Stock locations a dispatcher creates and assigns to one engineer at a time (reassignable, audited)                                                      |
 | Tax on purchase orders               | Optional tax rate per line, computed exactly; a record, not a tax-compliance claim                                                                      |
 | Delivery                             | Same as the CRM: push after each phase, one pull request against `main` at the end                                                                      |
+
+### Third round: quotes and sales orders (2026-10-11)
+
+| Question                          | Decision                                                                                                                                                                               |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| How far before review             | S1 only, then stop                                                                                                                                                                     |
+| Who works with quotes and orders  | Dispatchers draft and revise quotes and orders and record a customer's answer; only owners and admins issue a quote and confirm an order. Engineers and viewers read                   |
+| Module switch                     | A new `sales` flag, off by default, independent of `crm`, `inventory` and `purchasing`                                                                                                 |
+| Recording acceptance              | Both: the office records it (phone, email, on site), and the customer can accept or reject through a signed link, recorded with time and address                                       |
+| How the link reaches the customer | Issuing mints a link valid until the quote's expiry date; the office copies and sends it. No system email until an email channel exists. Re-issuing invalidates the old link           |
+| Printable quote                   | A print-ready page in the app and on the customer link, in English or Arabic, saved as PDF through the browser. No server-side PDF and no new dependency                               |
+| Jobs from an order                | A dispatcher creates a job from the order (lines, job type, site) or links an existing one; zero or many jobs per order; nothing is created automatically                              |
+| Stock for a confirmed order       | Reserved on confirmation, per stock line at a chosen location, shown as reserved and available next to on-hand; using the part on a linked job consumes the reservation (ADR-0006)     |
+| Not enough to reserve             | The order still confirms; each line reserves what is there and the shortfall is flagged "to order" on the order and the inventory overview. Nothing goes negative                      |
+| Pricing                           | A line starts at the item's sale price (editable), with an optional discount % and tax rate in basis points per line; subtotal, discount, tax and total computed exactly on the server |
+| Delivery                          | Same as before: one branch, push after each slice, one pull request against `main` at the end                                                                                          |
 
 ## Documents
 
