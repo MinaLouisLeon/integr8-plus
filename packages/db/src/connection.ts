@@ -32,6 +32,8 @@ import { InventoryCatalogueRepository } from './repositories/inventory-catalogue
 import { InventoryMaterialsRepository } from './repositories/inventory-materials.js';
 import { InventoryPurchasingRepository } from './repositories/inventory-purchasing.js';
 import { InventoryStockRepository } from './repositories/inventory-stock.js';
+import { FinanceInvoicesRepository } from './repositories/finance-invoices.js';
+import { FinancePaymentsRepository } from './repositories/finance-payments.js';
 import { SalesOrdersRepository } from './repositories/sales-orders.js';
 import { PublicQuotesLookup, SalesQuotesRepository } from './repositories/sales-quotes.js';
 import { CustomersRepository } from './repositories/customers.js';
@@ -128,6 +130,8 @@ export interface TenantTransaction {
   readonly inventoryMaterials: InventoryMaterialsRepository;
   readonly salesQuotes: SalesQuotesRepository;
   readonly salesOrders: SalesOrdersRepository;
+  readonly financeInvoices: FinanceInvoicesRepository;
+  readonly financePayments: FinancePaymentsRepository;
   readonly sites: SitesRepository;
   readonly jobTypes: JobTypesRepository;
   readonly workOrders: WorkOrdersRepository;
@@ -382,6 +386,8 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     inventoryMaterials: new InventoryMaterialsRepository(scope),
     salesQuotes: new SalesQuotesRepository(scope),
     salesOrders: new SalesOrdersRepository(scope),
+    financeInvoices: new FinanceInvoicesRepository(scope),
+    financePayments: new FinancePaymentsRepository(scope),
     sites: new SitesRepository(scope),
     jobTypes: new JobTypesRepository(scope),
     workOrders: new WorkOrdersRepository(scope),

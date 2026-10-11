@@ -54,6 +54,12 @@ export interface OperationsConfig {
     quote: (id: string) => string;
     salesOrders: string;
     salesOrder: (id: string) => string;
+    /** Finance (CRM/ERP plan, phase B1). */
+    invoices: string;
+    invoice: (id: string) => string;
+    payments: string;
+    payment: (id: string) => string;
+    financeSettings: string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -93,7 +99,9 @@ export interface RowTarget {
     | 'supplier'
     | 'purchaseOrder'
     | 'quote'
-    | 'salesOrder';
+    | 'salesOrder'
+    | 'invoice'
+    | 'payment';
   id: string;
   label: string;
 }
@@ -202,6 +210,17 @@ export type SalesOrderStatus = SalesOrderRow['status'];
 export type SalesOrderDetail = Json<'/v1/sales/orders/{orderId}', 'get', 200>;
 export type SalesOrderLine = SalesOrderDetail['lines'][number];
 export type ToOrderLine = Json<'/v1/sales/to-order', 'get', 200>['items'][number];
+export type InvoiceRow = Json<'/v1/finance/invoices', 'get', 200>['items'][number];
+export type InvoiceStatus = InvoiceRow['status'];
+export type InvoiceDetail = Json<'/v1/finance/invoices/{invoiceId}', 'get', 200>;
+export type InvoiceLine = InvoiceDetail['lines'][number];
+export type CreditNoteRow = InvoiceDetail['creditNotes'][number];
+export type PaymentRow = Json<'/v1/finance/payments', 'get', 200>['items'][number];
+export type PaymentMethod = PaymentRow['method'];
+export type PaymentDetail = Json<'/v1/finance/payments/{receiptId}', 'get', 200>;
+export type CustomerAccount = Json<'/v1/finance/customers/{customerId}/account', 'get', 200>;
+export type JobCosts = Json<'/v1/finance/work-orders/{workOrderId}/costs', 'get', 200>;
+export type FinanceSettings = Json<'/v1/finance/settings', 'get', 200>;
 
 export const keys = {
   me: ['me'] as const,
@@ -233,6 +252,13 @@ export const keys = {
   salesOrders: (query: object) => ['sales', 'orders', query] as const,
   salesOrder: (id: string) => ['sales', 'order', id] as const,
   toOrder: ['sales', 'to-order'] as const,
+  invoices: (query: object) => ['finance', 'invoices', query] as const,
+  invoice: (id: string) => ['finance', 'invoice', id] as const,
+  payments: (query: object) => ['finance', 'payments', query] as const,
+  payment: (id: string) => ['finance', 'payment', id] as const,
+  customerAccount: (id: string) => ['finance', 'customer', id] as const,
+  jobCosts: (id: string) => ['finance', 'job', id] as const,
+  financeSettings: ['finance', 'settings'] as const,
   forms: ['forms'] as const,
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,

@@ -1,6 +1,10 @@
 import {
   type ActivityKind,
   type ActivityStatus,
+  type CreditNoteStatus,
+  type FinanceDocumentKind,
+  type InvoiceStoredStatus,
+  type PaymentMethod,
   type ItemKind,
   type LocationKind,
   type MovementKind,
@@ -1360,6 +1364,135 @@ export interface ErpSalesOrderWorkOrdersTable {
   linked_at: CreatedAt;
 }
 
+/** A company's invoice issuer details and labour rates (0030, CRM/ERP plan B1). */
+export interface ErpFinanceSettingsTable {
+  tenant_id: string;
+  legal_name: string | null;
+  address: string | null;
+  tax_reference: string | null;
+  payment_instructions: string | null;
+  footer: string | null;
+  default_due_days: Generated<number>;
+  labour_hourly_cost: string | null;
+  labour_hourly_rate: string | null;
+  version: Generated<number>;
+  updated_by: string | null;
+  updated_at: UpdatedAt;
+}
+
+export interface FinanceDocumentCountersTable {
+  tenant_id: string;
+  kind: FinanceDocumentKind;
+  last_reference: number;
+}
+
+export interface ErpInvoicesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  /** Given by trigger when issued. */
+  reference: Generated<number | null>;
+  customer_id: string;
+  site_id: string | null;
+  contact_id: string | null;
+  sales_order_id: string | null;
+  work_order_id: string | null;
+  status: Generated<InvoiceStoredStatus>;
+  currency_code: string;
+  issue_date: string | Date | null;
+  due_date: string | Date | null;
+  notes: string | null;
+  internal_notes: string | null;
+  customer_name: string | null;
+  customer_address: Jsonb<Record<string, string | null>> | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  issuer: Jsonb<Record<string, string | null>> | null;
+  issued_by: string | null;
+  issued_at: Date | null;
+  voided_by: string | null;
+  voided_at: Date | null;
+  void_reason: string | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface ErpInvoiceLinesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  invoice_id: string;
+  position: number;
+  item_id: string | null;
+  description: string;
+  quantity: string;
+  unit: Generated<Unit>;
+  unit_price: string;
+  discount_bp: Generated<number>;
+  tax_rate_bp: Generated<number>;
+  sales_order_line_id: string | null;
+  work_order_material_id: string | null;
+}
+
+export interface ErpCreditNotesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  reference: Generated<number | null>;
+  invoice_id: string;
+  status: Generated<CreditNoteStatus>;
+  reason: string;
+  issue_date: string | Date | null;
+  issued_by: string | null;
+  issued_at: Date | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface ErpCreditNoteLinesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  credit_note_id: string;
+  position: number;
+  invoice_line_id: string | null;
+  item_id: string | null;
+  description: string;
+  quantity: string;
+  unit: Generated<Unit>;
+  unit_price: string;
+  discount_bp: Generated<number>;
+  tax_rate_bp: Generated<number>;
+}
+
+export interface ErpPaymentReceiptsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  /** Given by trigger when recorded. */
+  reference: Generated<number | null>;
+  customer_id: string;
+  received_on: string | Date;
+  amount: string;
+  currency_code: string;
+  method: PaymentMethod;
+  payment_reference: string | null;
+  notes: string | null;
+  recorded_by: string;
+  recorded_at: CreatedAt;
+}
+
+export interface ErpPaymentAllocationsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  receipt_id: string;
+  invoice_id: string;
+  amount: string;
+  allocated_by: string;
+  allocated_at: CreatedAt;
+  removed_by: string | null;
+  removed_at: Date | null;
+}
+
 export interface CustomerContactsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -1876,6 +2009,14 @@ export interface Database {
   erp_sales_orders: ErpSalesOrdersTable;
   erp_sales_order_lines: ErpSalesOrderLinesTable;
   erp_sales_order_work_orders: ErpSalesOrderWorkOrdersTable;
+  erp_finance_settings: ErpFinanceSettingsTable;
+  finance_document_counters: FinanceDocumentCountersTable;
+  erp_invoices: ErpInvoicesTable;
+  erp_invoice_lines: ErpInvoiceLinesTable;
+  erp_credit_notes: ErpCreditNotesTable;
+  erp_credit_note_lines: ErpCreditNoteLinesTable;
+  erp_payment_receipts: ErpPaymentReceiptsTable;
+  erp_payment_allocations: ErpPaymentAllocationsTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -2011,6 +2152,11 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // Hands out purchase order references from a counter the runtime role cannot write; see 0027.
   'assign_purchase_order_reference',
   'assign_sales_reference',
+  // Numbers invoices, credit notes and payments from a counter the runtime role
+  // cannot write; locks a payment receipt and an invoice while an allocation is
+  // decided, which the runtime role may not do itself; see 0030.
+  'assign_finance_reference',
+  'erp_payment_allocations_guard',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -2089,6 +2235,14 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_sales_orders: true,
   erp_sales_order_lines: true,
   erp_sales_order_work_orders: true,
+  erp_finance_settings: true,
+  finance_document_counters: true,
+  erp_invoices: true,
+  erp_invoice_lines: true,
+  erp_credit_notes: true,
+  erp_credit_note_lines: true,
+  erp_payment_receipts: true,
+  erp_payment_allocations: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

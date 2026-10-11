@@ -328,3 +328,56 @@ The jobs that deliver an order: `(tenant_id, order_id, work_order_id)` primary k
 ### Company data export
 
 All six tables are in `EXPORTED_TABLES`. Grants: `select, insert, update` on quotes and orders (never deleted), `select, insert, update, delete` on lines (rewritten while a draft), `select, insert, delete` on the job links, `select` on the counters.
+
+## 0030 — invoices, credit notes and payments (phase B1; ADR-0007)
+
+Adds the `finance` feature flag. Money is `numeric(20,4)`; every total is computed in SQL from the lines (the same `LINE_MATH` as quotes, and `erp_line_total()` for the guards), never stored or typed. An invoice's status is stored as `draft`, `issued` or `void`; what the screens show (`partially_paid`, `paid`, `credited`) is derived from the payments allocated and the issued credit notes (`invoiceStatus()` in `@integr8/core`). Balance = total − active allocations − issued credit notes (`erp_invoice_balance()`).
+
+### `erp_finance_settings`
+
+One row per company (`tenant_id` primary key): `legal_name`, `address`, `tax_reference`, `payment_instructions`, `footer` (the issuer block, printed as typed), `default_due_days` (`0..365`, default 30), and the optional `labour_hourly_cost` (job profitability) and `labour_hourly_rate` (the labour line of an invoice made from a job), both `≥ 0`. `version` for optimistic concurrency; the first save is `expectedVersion: 0`.
+
+### `finance_document_counters` and `assign_finance_reference()`
+
+One counter per company per kind (`invoice`, `credit_note`, `payment`). The security-definer trigger numbers an invoice or credit note **when it is issued** (a draft has no number, so a discarded draft leaves no gap) and a receipt when it is recorded: `INV-000001`, `CN-000001`, `RC-000001` onwards, never reused. A number, once given, never changes (`finance_reference_fixed`). The runtime role may only read the counters.
+
+### `erp_invoices` and `erp_invoice_lines`
+
+| Column / rule                                                       | Meaning                                                                                                                                                                 |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customer_id`, `site_id`, `contact_id`                              | Tenant composite FKs; site and contact must belong to the customer (checked by the route)                                                                               |
+| `sales_order_id`, `work_order_id`                                   | The order or job it bills, if any; never both (`erp_invoices_one_source`)                                                                                               |
+| `status`                                                            | `draft`, `issued`, `void` (`erp_invoices_status_known`, checked against `@integr8/core` by the invariant suite)                                                         |
+| `issue_date`, `due_date`                                            | In the company's calendar; due never before issue (`erp_invoices_dates_ordered`)                                                                                        |
+| `customer_name`, `customer_address`, `contact_name/email`, `issuer` | Copied when issued: the customer as billed and the company's settings as the issuer block (`erp_invoices_issued_pairing`)                                               |
+| `voided_by/at`, `void_reason`                                       | `erp_invoices_void_pairing`                                                                                                                                             |
+| Trigger `erp_invoices_guard`                                        | An issued or void invoice never changes except to be voided (`erp_invoices_frozen`); voiding is refused once anything is paid or credited (`erp_invoices_void_settled`) |
+| Line `sales_order_line_id`, `work_order_material_id`                | The order line or the part used that a line bills; the routes refuse to bill more than was ordered, delivered or used, across every invoice that is not void            |
+| Trigger `erp_invoice_lines_guard`                                   | Lines change only while the invoice is a draft (`erp_invoice_lines_frozen`)                                                                                             |
+
+### `erp_credit_notes` and `erp_credit_note_lines`
+
+A credit note reduces one issued invoice: `status` `draft` or `issued`, a `reason`, lines that may name the invoice line they credit (`invoice_line_id`). Guard `erp_credit_notes_guard`: frozen once issued (`erp_credit_notes_frozen`), only against an issued invoice (`erp_credit_notes_invoice_not_open`), never empty (`_empty`), never more than the invoice still owes (`_over_balance`, checked under a lock of the invoice). Lines change only while a draft (`erp_credit_note_lines_guard`).
+
+### `erp_payment_receipts` and `erp_payment_allocations`
+
+| Column / rule                                   | Meaning                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Receipt `received_on`, `amount > 0`, `method`   | Money received, recorded by hand: `cash`, `bank_transfer`, `other` (`erp_payment_receipts_method_known`); `payment_reference` is the bank's; the runtime role may only insert and read receipts — a receipt is never edited or deleted                                                                                     |
+| Allocation `receipt_id`, `invoice_id`, `amount` | Part of a receipt put against one invoice of the same customer and currency                                                                                                                                                                                                                                                |
+| `removed_by/at`                                 | A wrong allocation is removed, not edited or deleted (`erp_payment_allocations_removed_pairing`); its money returns to the customer's account                                                                                                                                                                              |
+| Trigger `erp_payment_allocations_guard`         | Security definer; locks the receipt and the invoice, then refuses an allocation that is not to an issued invoice (`_invoice_not_open`), to another customer or currency (`_mismatch`), over what the receipt has left (`_over_receipt`) or the invoice owes (`_over_invoice`); only `removed_by/at` may change (`_frozen`) |
+
+What a receipt has not allocated stays **on the customer's account**; `customerAccount()` sums, per currency, what issued invoices owe and what receipts have left.
+
+### Purge
+
+`integr8_purging(tenant)` is true only while `purge_tenant` runs for that company and the session is not the runtime role. The S1 line guards and every B1 guard allow deletes only then, so a company with issued documents can still be purged and the app role cannot fake the marker. (This also fixes a latent S1 bug: its line guards blocked purging a company with confirmed orders.)
+
+### Repositories
+
+`FinanceInvoicesRepository` (`tx.financeInvoices`): settings, create, find, lock, list (reference, customer words, derived status, overdue, order or job), lines and totals, amounts, `updateDraft`, `discardDraft`, `issue`, `voidInvoice`, what an order's lines and a job's parts already bill, `lockSource` (an advisory lock per order or job, so two drafts never bill the same thing), and the same for credit notes. `FinancePaymentsRepository` (`tx.financePayments`): `recordReceipt`, find, list, amounts, `allocate`, `removeAllocation`, allocations by receipt or invoice, `customerAccount`.
+
+### Company data export
+
+All seven company tables are in `EXPORTED_TABLES`. Grants: `select, insert, update` on settings; `select, insert, update, delete` on invoices, credit notes and their lines (drafts are discarded; the guards refuse anything else); `select, insert` on receipts; `select, insert, update` on allocations; `select` on the counters.

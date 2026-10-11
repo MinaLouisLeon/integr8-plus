@@ -347,3 +347,55 @@ every route.
 The web page `/q/[token]` (`apps/web/src/app/q/[token]/page.tsx`) renders the
 same `QuoteDocument` the office prints, with the accept and decline form and a
 "Print or save as PDF" button that calls the browser's own print.
+
+## Invoices and credit notes (phase B1; ADR-0007)
+
+Source: `apps/api/src/routes/v1/finance-invoices.ts`. Tests:
+`apps/api/src/routes/v1/finance-invoices.integration.test.ts`. Every route
+needs the `finance` module. A company's own invoices to its customers, not
+Integr8's billing (`/v1/billing/*`); the operation ids say `CustomerInvoice` to
+keep them apart. Amounts are decimal strings; every total and balance comes
+from the server; `status` is derived (`draft`, `issued`, `partially_paid`,
+`paid`, `credited`, `void`) and `overdue` means issued, owing and past due.
+Every body carries `can`.
+
+| Method and path                                   | Permission       | What it does                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/finance/settings`                        | `finance.read`   | The issuer block, `defaultDueDays`, `labourHourlyRate`, `labourHourlyCost` (null to seats that may not see costs), `companyName`, `version`, `can.edit`                                                                                                                                   |
+| `PUT /v1/finance/settings`                        | `finance.issue`  | Saves them; `expectedVersion` (0 the first time); 409 `version_conflict`. Printed as typed: no tax or e-invoicing claim                                                                                                                                                                   |
+| `GET /v1/finance/invoices`                        | `finance.read`   | `q` (reference `INV-000123` or `123`, or words of the customer's name), `status` (derived, repeatable), `customerId`, `salesOrderId`, `workOrderId`, `overdue`; newest first, paged; each with `amounts` (`total`, `allocated`, `credited`, `balance`) and `source`                       |
+| `POST /v1/finance/invoices`                       | `finance.manage` | A blank draft for a customer, with optional `lines`, `dueDate`, site, contact, notes; company currency unless `currencyCode`                                                                                                                                                              |
+| `POST /v1/finance/invoices/from-order`            | `finance.manage` | `{salesOrderId, basis}`: `ordered` bills what the order holds, `delivered` what its jobs delivered; either way only what no other invoice (drafts included, voids not) already bills. 409 `order_not_billable` (draft or cancelled); 422 `nothing_to_invoice`. `Idempotency-Key` honoured |
+| `POST /v1/finance/invoices/from-job`              | `finance.manage` | `{workOrderId}`: one line per part used (net of returns, at the item's sale price) and one labour line for the time on site at the labour rate. 409 `job_not_complete`, `job_already_invoiced` (with the invoice's id in `details`); 422 `nothing_to_invoice`. `Idempotency-Key` honoured |
+| `GET /v1/finance/invoices/{id}`                   | `finance.read`   | The invoice (`billedTo` and `issuer` once issued), lines (with `salesOrderLineId` or `workOrderMaterialId`), `creditNotes`, `payments`, `can` (`edit`, `discard`, `issue`, `void`, `credit`, `recordPayment`); `internalNotes` null without `finance.manage`                              |
+| `PATCH /v1/finance/invoices/{id}`                 | `finance.manage` | Change a draft; `lines` replaces every line; 409 `invoice_not_draft`; 422 `over_invoiced` (more than the order holds or the job used, across every invoice), `line_not_from_source`, `customer_fixed`                                                                                     |
+| `POST /v1/finance/invoices/{id}/discard`          | `finance.manage` | Deletes a draft (204); it had no number, so none is lost                                                                                                                                                                                                                                  |
+| `POST /v1/finance/invoices/{id}/issue`            | `finance.issue`  | Draft → issued: numbers it, sets the issue date to the company's today and the due date (the body's, the draft's, or today plus `defaultDueDays`), copies the customer and the issuer. 422 `invoice_empty`, `due_before_issue`; 409 `invoice_not_draft`                                   |
+| `POST /v1/finance/invoices/{id}/void`             | `finance.issue`  | With a `reason`, while nothing is paid or credited; the number stays used. 409 `invoice_not_issued`, `invoice_settled`                                                                                                                                                                    |
+| `POST /v1/finance/invoices/{id}/credit-notes`     | `finance.manage` | A draft credit note with a `reason`: `whole: true` for everything still owed, or `lines` (each may name the invoice line). 409 `invoice_not_issued`; 422 `line_not_from_invoice`                                                                                                          |
+| `GET /v1/finance/credit-notes`, `/{id}`           | `finance.read`   | Credit notes, and one with its lines, totals and the invoice it reduces                                                                                                                                                                                                                   |
+| `PATCH /v1/finance/credit-notes/{id}`, `/discard` | `finance.manage` | Change or discard a draft; 409 `credit_note_not_draft`                                                                                                                                                                                                                                    |
+| `POST /v1/finance/credit-notes/{id}/issue`        | `finance.issue`  | Numbers it and reduces the invoice's balance; 422 `credit_over_balance`, `credit_note_empty`                                                                                                                                                                                              |
+
+Audit actions: `finance_settings.updated`, `invoice.created`, `.updated`,
+`.discarded`, `.issued`, `.voided`, `credit_note.created`, `.updated`,
+`.discarded`, `.issued`.
+
+## Payments, the customer's account and job cost (phase B1; ADR-0007)
+
+Source: `apps/api/src/routes/v1/finance-payments.ts`. Tests:
+`apps/api/src/routes/v1/finance-payments.integration.test.ts`. Payments are
+recorded by hand; there is no payment gateway.
+
+| Method and path                                                    | Permission      | What it does                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /v1/finance/payments`                                         | `finance.read`  | `q` (reference `RC-000123`, the bank reference, or customer words), `customerId`, `unallocated=true`; newest first; each with `allocated` and `unallocated`                                                                                                                                |
+| `POST /v1/finance/payments`                                        | `finance.issue` | Records money received: `customerId`, `receivedOn` (not in the future: 422 `received_in_future`), `amount`, `method`, `paymentReference`, `notes`, and `allocations` made in the same transaction. `Idempotency-Key` **required**                                                          |
+| `GET /v1/finance/payments/{id}`                                    | `finance.read`  | The payment, every allocation (removed ones included), the customer's issued invoices in its currency that still owe, `can` (`allocate`, `removeAllocation`)                                                                                                                               |
+| `POST /v1/finance/payments/{id}/allocations`                       | `finance.issue` | `{invoiceId, amount}`: never more than the payment has left (422 `over_receipt`) or the invoice owes (422 `over_invoice`); same customer and currency (422 `allocation_mismatch`); issued invoices only (409 `invoice_not_issued`)                                                         |
+| `POST /v1/finance/payments/{id}/allocations/{allocationId}/remove` | `finance.issue` | Takes an allocation back; the money returns to the customer's account and the invoice owes it again; kept on record as removed. 409 `allocation_removed`                                                                                                                                   |
+| `GET /v1/finance/customers/{id}/account`                           | `finance.read`  | Per currency: `owed`, `unallocated`, `net`; the invoices still owing and the payments with money on account                                                                                                                                                                                |
+| `GET /v1/finance/work-orders/{id}/costs`                           | `finance.read`  | Hours on site and working, parts at their cost (net of returns), labour at the hourly cost when set (`labour.costed`), the net of the job's issued invoices less credit notes, and the profit. Costs and profit are null unless the seat issues finance, moves stock or manages purchasing |
+
+Audit actions: `payment.recorded`, `payment.allocated`,
+`payment.allocation_removed`.

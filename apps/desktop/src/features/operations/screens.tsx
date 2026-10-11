@@ -18,6 +18,11 @@ import {
   QuoteScreen,
   SalesOrderListScreen,
   SalesOrderScreen,
+  FinanceSettingsScreen,
+  InvoiceListScreen,
+  InvoiceScreen,
+  PaymentListScreen,
+  PaymentScreen,
   StockCountScreen,
   SupplierListScreen,
   SupplierScreen,
@@ -89,6 +94,11 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         quote: (id) => `/sales/quotes/${id}`,
         salesOrders: '/sales/orders',
         salesOrder: (id) => `/sales/orders/${id}`,
+        invoices: '/finance/invoices',
+        invoice: (id) => `/finance/invoices/${id}`,
+        payments: '/finance/payments',
+        payment: (id) => `/finance/payments/${id}`,
+        financeSettings: '/finance/settings',
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -375,6 +385,48 @@ export function SalesOrderRoute() {
   return (
     <OperationsScreens>
       <SalesOrderScreen key={orderId} orderId={orderId} />
+    </OperationsScreens>
+  );
+}
+
+export function InvoicesRoute() {
+  return (
+    <OperationsScreens>
+      <InvoiceListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function InvoiceRoute() {
+  const { invoiceId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <InvoiceScreen key={invoiceId} invoiceId={invoiceId} />
+    </OperationsScreens>
+  );
+}
+
+export function PaymentsRoute() {
+  return (
+    <OperationsScreens>
+      <PaymentListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function PaymentRoute() {
+  const { paymentId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <PaymentScreen key={paymentId} paymentId={paymentId} />
+    </OperationsScreens>
+  );
+}
+
+export function FinanceSettingsRoute() {
+  return (
+    <OperationsScreens>
+      <FinanceSettingsScreen />
     </OperationsScreens>
   );
 }

@@ -8,6 +8,9 @@ import {
   MOVEMENT_KINDS,
   PURCHASE_ORDER_STATUSES,
   QUOTE_STATUSES,
+  INVOICE_STORED_STATUSES,
+  CREDIT_NOTE_STATUSES,
+  PAYMENT_METHODS,
   SALES_ORDER_STATUSES,
   STOCK_COUNT_STATUSES,
   SUPPLIER_STATUSES,
@@ -504,6 +507,10 @@ describe('vocabularies shared with the application', () => {
       // Sales (0029).
       ['crm_quotes_status_known', QUOTE_STATUSES],
       ['erp_sales_orders_status_known', SALES_ORDER_STATUSES],
+      // Finance (0030).
+      ['erp_invoices_status_known', INVOICE_STORED_STATUSES],
+      ['erp_credit_notes_status_known', CREDIT_NOTE_STATUSES],
+      ['erp_payment_receipts_method_known', PAYMENT_METHODS],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,
