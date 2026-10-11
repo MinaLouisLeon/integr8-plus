@@ -43,9 +43,9 @@
     "@integr8/typescript-config": "workspace:*",
     "@types/node": "22.20.2",
     "@types/pg": "8.15.6",
-    "eslint": "10.10.0",
+    "eslint": "10.12.0",
     "tsx": "4.23.13",
     "typescript": "6.0.3",
-    "vitest": "5.0.0"
+    "vitest": "5.0.3"
   }
 }
