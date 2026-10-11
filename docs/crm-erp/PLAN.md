@@ -700,12 +700,12 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase B1 — Tenant invoices, payments, job profitability
 
-**Status:** `IN PROGRESS` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `DONE` — see the [phase tracker](./README.md#phase-tracker).
 
-- [ ] Distinguish from SaaS subscription billing at code/model/UI level.
-- [ ] Invoice issue/immutable lines, partial payment receipt allocations, credit notes, PDF.
-- [ ] Job costing for consumed parts and optionally configured labor rates; reports label missing costs.
-- [ ] Document regulatory/non-statutory status; no e-invoicing claim.
+- [x] Distinguish from SaaS subscription billing at code/model/UI level.
+- [x] Invoice issue/immutable lines, partial payment receipt allocations, credit notes, PDF.
+- [x] Job costing for consumed parts and optionally configured labor rates; reports label missing costs.
+- [x] Document regulatory/non-statutory status; no e-invoicing claim.
 - **Done when:** invoice balance accurately derives from payments/credits and can be corrected without editing historical document.
 
 ### Phase E3 — Assets and service history (align P24)

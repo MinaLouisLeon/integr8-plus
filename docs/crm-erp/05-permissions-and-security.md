@@ -143,6 +143,44 @@ listed in `SECURITY_DEFINER_FUNCTIONS` and checked by the invariant suite. The
 triggers `crm_quote_lines_guard` and `erp_sales_order_lines_guard` make issued
 and confirmed lines immutable whatever the role.
 
+## Finance (phase B1)
+
+| Permission       | Owner | Admin | Dispatcher | Engineer | Viewer |
+| ---------------- | :---: | :---: | :--------: | :------: | :----: |
+| `finance.read`   |   ✓   |   ✓   |     ✓      |    —     |   ✓    |
+| `finance.manage` |   ✓   |   ✓   |     ✓      |    —     |   —    |
+| `finance.issue`  |   ✓   |   ✓   |     —      |    —     |   —    |
+
+Decided with the product owner on 2026-10-11: dispatchers draft invoices and
+credit notes (blank, from an order or from a completed job) and discard
+drafts; only owners and admins issue or void an invoice, issue a credit note,
+record a payment, allocate or take back an allocation, and change the invoice
+settings. Engineers see nothing of finance. Viewers read without internal
+notes. Every route also needs the company's `finance` module, independent of
+`sales`, `inventory` and `purchasing`.
+
+Job cost and profit (`GET /v1/finance/work-orders/{id}/costs`) and the labour
+cost per hour in the settings are shown only to seats that issue finance, move
+stock or manage purchasing, the same seats that see part costs elsewhere.
+Everyone else gets nulls.
+
+What the database enforces whatever the role: an issued or void invoice and an
+issued credit note never change (`erp_invoices_guard`,
+`erp_credit_notes_guard`, and the line guards); a receipt is never updated or
+deleted (the runtime role has `select, insert` only); an allocation is removed
+by stamping it, never deleted; no allocation exceeds what the receipt has left
+or the invoice owes, and none crosses customers or currencies
+(`erp_payment_allocations_guard`, security definer, locking both rows); no
+credit note exceeds what the invoice owes. Two more security-definer functions
+come with 0030, `assign_finance_reference` and `erp_payment_allocations_guard`,
+both listed in `SECURITY_DEFINER_FUNCTIONS`. Purging a company still works with
+issued documents. Deletes are allowed only while `purge_tenant` runs, and the
+runtime role cannot fake that marker (`integr8_purging`).
+
+The invoice is a commercial record. The issuer block is printed as the company
+typed it, and the settings screen says so; Integr8 makes no tax, e-invoicing
+or compliance claim.
+
 ## Database
 
 See [03-data-model.md](./03-data-model.md): row-level security on every CRM

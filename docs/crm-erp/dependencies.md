@@ -6,9 +6,9 @@ allowed without explicit approval.
 
 ## Added for the CRM and ERP work
 
-| Package | Version | Licence | Phase | Reason                                                                                                                                          |
-| ------- | ------- | ------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| _none_  |         |         |       | The CRM MVP (F1–C3), the inventory and purchasing round (E1–E2) and the sales round (S1) are built with the packages already in the repository. |
+| Package | Version | Licence | Phase | Reason                                                                                                                                                                  |
+| ------- | ------- | ------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _none_  |         |         |       | The CRM MVP (F1–C3), the inventory and purchasing round (E1–E2), the sales round (S1) and the finance round (B1) are built with the packages already in the repository. |
 
 Considered in PLAN.md §10.2 and **not installed**: `@tanstack/react-table`,
 `recharts`, `decimal.js`, `@react-pdf/renderer`, `xlsx`, `ag-grid-community`,
@@ -16,7 +16,10 @@ Considered in PLAN.md §10.2 and **not installed**: `@tanstack/react-table`,
 transitive licences, fonts) only if a later phase needs it. S1 needed neither:
 money stays `numeric` in SQL with a BigInt helper for the one addition done in
 code, and the quote prints through the browser's own print to PDF (decision,
-2026-10-11). A PDF renderer is re-checked only if B1 needs attachments.
+2026-10-11). B1 needed neither either: invoices print through the browser the same way and
+money stays in SQL `numeric`, with BigInt helpers for addition and
+multiplication in code. A PDF renderer is re-checked only if a later phase
+emails invoices as attachments.
 
 ## Licence audit of the existing direct dependencies
 
