@@ -1258,12 +1258,7 @@ async function startSubmission(
   if (mutation.payload.assetId !== undefined && mutation.payload.assetId !== null) {
     try {
       assetId = (
-        await assetToFillFor(
-          tx,
-          principal,
-          mutation.payload.assetId,
-          workOrderId ?? undefined,
-        )
+        await assetToFillFor(tx, principal, mutation.payload.assetId, workOrderId ?? undefined)
       ).id;
     } catch (error) {
       if (!(error instanceof ApiError) || error.status >= 500) {
