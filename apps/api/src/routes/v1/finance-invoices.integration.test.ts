@@ -484,6 +484,18 @@ describe('from a sales order', () => {
     expect(again.statusCode).toBe(422);
     expect(code(again)).toBe('nothing_to_invoice');
 
+    // Billed in full on what was ordered, nothing is left on what was
+    // delivered either: the remainder is negative, never a negative line.
+    const afterOrdered = await call(
+      dispatcher,
+      'POST',
+      '/v1/finance/invoices/from-order',
+      { salesOrderId: order.order.id, basis: 'delivered' },
+      randomUUID(),
+    );
+    expect(afterOrdered.statusCode).toBe(422);
+    expect(code(afterOrdered)).toBe('nothing_to_invoice');
+
     // Billing three of two by editing the draft is refused; one is fine.
     const line = fromOrder.lines[0]!;
     const tooMany = await call(

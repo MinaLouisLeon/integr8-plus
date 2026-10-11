@@ -26822,6 +26822,7 @@ export interface operations {
                             /** Format: date */
                             issueDate: string | null;
                             total: string;
+                            version: number;
                             /** Format: date-time */
                             createdAt: string;
                         }[];
@@ -27092,6 +27093,7 @@ export interface operations {
                             /** Format: date */
                             issueDate: string | null;
                             total: string;
+                            version: number;
                             /** Format: date-time */
                             createdAt: string;
                         }[];
@@ -27355,6 +27357,7 @@ export interface operations {
                             /** Format: date */
                             issueDate: string | null;
                             total: string;
+                            version: number;
                             /** Format: date-time */
                             createdAt: string;
                         }[];
@@ -27610,6 +27613,7 @@ export interface operations {
                             /** Format: date */
                             issueDate: string | null;
                             total: string;
+                            version: number;
                             /** Format: date-time */
                             createdAt: string;
                         }[];
@@ -27891,6 +27895,7 @@ export interface operations {
                             /** Format: date */
                             issueDate: string | null;
                             total: string;
+                            version: number;
                             /** Format: date-time */
                             createdAt: string;
                         }[];
@@ -28248,6 +28253,7 @@ export interface operations {
                             /** Format: date */
                             issueDate: string | null;
                             total: string;
+                            version: number;
                             /** Format: date-time */
                             createdAt: string;
                         }[];
@@ -28510,6 +28516,7 @@ export interface operations {
                             /** Format: date */
                             issueDate: string | null;
                             total: string;
+                            version: number;
                             /** Format: date-time */
                             createdAt: string;
                         }[];
@@ -28674,6 +28681,7 @@ export interface operations {
                             /** Format: date */
                             issueDate: string | null;
                             total: string;
+                            version: number;
                             /** Format: date-time */
                             createdAt: string;
                             issuedBy: {
@@ -28683,7 +28691,6 @@ export interface operations {
                             } | null;
                             /** Format: date-time */
                             issuedAt: string | null;
-                            version: number;
                             createdBy: {
                                 /** Format: uuid */
                                 id: string;
@@ -28874,6 +28881,7 @@ export interface operations {
                             /** Format: date */
                             issueDate: string | null;
                             total: string;
+                            version: number;
                             /** Format: date-time */
                             createdAt: string;
                         }[];
@@ -28976,6 +28984,7 @@ export interface operations {
                             /** Format: date */
                             issueDate: string | null;
                             total: string;
+                            version: number;
                             /** Format: date-time */
                             createdAt: string;
                             issuedBy: {
@@ -28985,7 +28994,6 @@ export interface operations {
                             } | null;
                             /** Format: date-time */
                             issuedAt: string | null;
-                            version: number;
                             createdBy: {
                                 /** Format: uuid */
                                 id: string;
@@ -29185,6 +29193,7 @@ export interface operations {
                             /** Format: date */
                             issueDate: string | null;
                             total: string;
+                            version: number;
                             /** Format: date-time */
                             createdAt: string;
                             issuedBy: {
@@ -29194,7 +29203,6 @@ export interface operations {
                             } | null;
                             /** Format: date-time */
                             issuedAt: string | null;
-                            version: number;
                             createdBy: {
                                 /** Format: uuid */
                                 id: string;
@@ -29481,6 +29489,7 @@ export interface operations {
                             /** Format: date */
                             issueDate: string | null;
                             total: string;
+                            version: number;
                             /** Format: date-time */
                             createdAt: string;
                             issuedBy: {
@@ -29490,7 +29499,6 @@ export interface operations {
                             } | null;
                             /** Format: date-time */
                             issuedAt: string | null;
-                            version: number;
                             createdBy: {
                                 /** Format: uuid */
                                 id: string;

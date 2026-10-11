@@ -25,6 +25,7 @@ import {
   when,
 } from '../ui.js';
 import { Parts } from './work-order-parts.js';
+import { JobFinancePanel } from '../finance/job-finance.js';
 
 /**
  * One job.
@@ -230,6 +231,7 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
 
       <Parts job={job} onChanged={refresh} />
       <Completion job={job} />
+      <JobFinancePanel workOrderId={workOrder.id} state={workOrder.state} />
       <Attachments job={job} onChanged={() => void detail.refetch()} />
       <Comments job={job} onChanged={refresh} />
       <History job={job} />

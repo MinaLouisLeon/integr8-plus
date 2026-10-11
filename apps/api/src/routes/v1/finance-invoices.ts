@@ -16,6 +16,7 @@ import {
   invoiceOrderBasisSchema,
   invoiceStatus,
   invoiceStatusSchema,
+  isZeroDecimal,
   jobTimes,
   paymentMethodSchema,
   type Principal,
@@ -74,6 +75,15 @@ import { iso, isoOrNull } from './schemas.js';
  * billed twice. An issued invoice never changes: a credit note reduces it,
  * and one nothing was paid or credited against may be voided.
  */
+
+/**
+ * Above zero. `compareDecimals` reads digits only, so a remainder that went
+ * negative (billed on `ordered`, then on `delivered` with less delivered) must
+ * be ruled out by its sign first.
+ */
+function isPositiveDecimal(value: string): boolean {
+  return !value.trim().startsWith('-') && !isZeroDecimal(value);
+}
 
 export const FINANCE_TAGS = ['finance'];
 export const FINANCE = 'finance' as const;
@@ -173,6 +183,7 @@ export const creditNoteSummarySchema = z.object({
   currencyCode: z.string(),
   issueDate: z.iso.date().nullable(),
   total: z.string(),
+  version: z.number().int(),
   createdAt: z.iso.datetime(),
 });
 
@@ -343,6 +354,7 @@ export async function creditNoteSummaries(
       currencyCode: invoice.currencyCode,
       issueDate: note.issueDate,
       total: totals[index]!.total,
+      version: note.version,
       createdAt: iso(note.createdAt),
     };
   });
@@ -899,7 +911,7 @@ export const invoiceFromOrderRoute = defineRoute({
       const lines: InvoiceLineInput[] = orderLines.flatMap((line) => {
         const due = body.basis === 'ordered' ? line.quantity : line.quantityFulfilled;
         const left = addDecimals(due, `-${already.get(line.id) ?? '0'}`);
-        return compareDecimals(left, '0') > 0
+        return isPositiveDecimal(left)
           ? [
               {
                 itemId: line.itemId,
@@ -1005,7 +1017,7 @@ export const invoiceFromJobRoute = defineRoute({
       const lines: InvoiceLineInput[] = materials.flatMap((material) => {
         const used = addDecimals(material.quantity, `-${material.returnedQuantity}`);
         const item = items.get(material.itemId);
-        return material.status === 'posted' && compareDecimals(used, '0') > 0 && item !== undefined
+        return material.status === 'posted' && isPositiveDecimal(used) && item !== undefined
           ? [
               {
                 itemId: item.id,

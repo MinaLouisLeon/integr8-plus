@@ -2,6 +2,8 @@ import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { keys, type SalesOrderDetail, useOperations } from '../api.js';
+import { InvoiceFromOrderDialog } from '../finance/invoice-list.js';
+import { useFinanceAccess } from '../finance/finance-parts.js';
 import { useLocations } from '../inventory/inventory-parts.js';
 import {
   BackLink,
@@ -40,6 +42,8 @@ export function SalesOrderScreen({ orderId }: { orderId: string }) {
   const [details, setDetails] = useState<Details | null>(null);
   const [confirming, setConfirming] = useState<'confirm' | 'reserve' | null>(null);
   const [linking, setLinking] = useState(false);
+  const [invoicing, setInvoicing] = useState(false);
+  const finance = useFinanceAccess();
 
   const detail = useQuery({
     queryKey: keys.salesOrder(orderId),
@@ -216,6 +220,17 @@ export function SalesOrderScreen({ orderId }: { orderId: string }) {
                 }}
               >
                 {t('sales.orders.editDetails')}
+              </button>
+            ) : null}
+            {finance.manage &&
+            detail.data.order.status !== 'draft' &&
+            detail.data.order.status !== 'cancelled' ? (
+              <button
+                type="button"
+                className={buttonClass.secondary}
+                onClick={() => setInvoicing(true)}
+              >
+                {t('finance.invoices.fromOrder')}
               </button>
             ) : null}
             {can.cancel ? (
@@ -444,6 +459,9 @@ export function SalesOrderScreen({ orderId }: { orderId: string }) {
             await settle(next);
           }}
         />
+      ) : null}
+      {invoicing ? (
+        <InvoiceFromOrderDialog orderId={orderId} onClose={() => setInvoicing(false)} />
       ) : null}
     </div>
   );
