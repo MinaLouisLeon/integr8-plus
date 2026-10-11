@@ -14,7 +14,8 @@ export type LocalTable =
   | 'uploads'
   | 'submissions'
   | 'sync_runs'
-  | 'shifts';
+  | 'shifts'
+  | 'van_stock';
 
 export class LocalDatabaseClosedError extends Error {
   constructor() {

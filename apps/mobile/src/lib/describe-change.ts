@@ -47,6 +47,11 @@ export function describeChange(t: TFunction, change: DescribedChange): string {
       return t('mobile.change.shiftStart');
     case 'shift.end':
       return t('mobile.change.shiftEnd');
+    case 'work_order.material':
+      return t('mobile.change.partUsed', {
+        job,
+        quantity: typeof change.payload.quantity === 'string' ? change.payload.quantity : '',
+      });
   }
 }
 

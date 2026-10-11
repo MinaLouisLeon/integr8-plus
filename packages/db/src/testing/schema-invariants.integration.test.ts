@@ -4,6 +4,7 @@ import {
   ACTIVITY_STATUSES,
   ITEM_KINDS,
   LOCATION_KINDS,
+  MATERIAL_STATUSES,
   MOVEMENT_KINDS,
   PURCHASE_ORDER_STATUSES,
   STOCK_COUNT_STATUSES,
@@ -497,6 +498,7 @@ describe('vocabularies shared with the application', () => {
       // Purchasing (0027).
       ['erp_suppliers_status_known', SUPPLIER_STATUSES],
       ['erp_purchase_orders_status_known', PURCHASE_ORDER_STATUSES],
+      ['erp_work_order_materials_status_known', MATERIAL_STATUSES],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,

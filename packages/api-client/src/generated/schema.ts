@@ -2161,6 +2161,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/work-orders/{workOrderId}/materials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a part used on a job
+         * @description A stock item is taken from the engineer's van (or the location a dispatcher names) and posted to the ledger at the item's average cost. When the location does not hold enough, nothing is posted and the use is kept as a conflict (`status: conflict`) for the office to resolve; stock never goes negative. Services and non-stock items are recorded without touching stock. Needs `Idempotency-Key`.
+         */
+        post: operations["recordWorkOrderMaterial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work-orders/{workOrderId}/materials/{materialId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Settle a part use the location could not cover
+         * @description `cancel` drops the use (the person who recorded it, or the office). `retry` posts it again, optionally with another quantity or location, after the stock has been put right (office only); it may be refused again and stay a conflict.
+         */
+        post: operations["resolveWorkOrderMaterial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work-orders/{workOrderId}/materials/{materialId}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Put an unused part back
+         * @description Returns part or all of a posted use to the location it came from, as a reversal of the use; never more than was used (422 `over_returned`). Needs `Idempotency-Key`.
+         */
+        post: operations["returnWorkOrderMaterial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/materials/conflicts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Part uses waiting for the office
+         * @description Every use a location could not cover, newest first, across jobs: what was asked for, what was there, and which job.
+         */
+        get: operations["listMaterialConflicts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -19512,6 +19592,1418 @@ export interface operations {
             };
         };
     };
+    recordWorkOrderMaterial: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                workOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    itemId: string;
+                    /** Format: uuid */
+                    locationId?: string;
+                    quantity: string;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The job, with the use recorded or kept as a conflict. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            description: string | null;
+                            instructions: string | null;
+                            lastReason: string | null;
+                            completedAt: string | null;
+                            reviewedAt: string | null;
+                            cancelledAt: string | null;
+                        };
+                        site: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            address: {
+                                line1: string;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            location: {
+                                latitude: number;
+                                longitude: number;
+                            } | null;
+                            /** @enum {string} */
+                            geocodeStatus: "pending" | "found" | "not_found" | "failed" | "manual";
+                            access: {
+                                gateCode: string | null;
+                                parking: string | null;
+                                askFor: string | null;
+                                hazards: string | null;
+                                notes: string | null;
+                                updatedAt: string | null;
+                                updatedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                            };
+                        };
+                        siteContact: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            jobTitle: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            isPrimary: boolean;
+                            notes: string | null;
+                            archived: boolean;
+                        } | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            accountNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "on_hold" | "closed";
+                            phone: string | null;
+                        };
+                        jobType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            code: string;
+                            expectedDurationMinutes: number | null;
+                        };
+                        crew: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            lead: boolean;
+                            assignedAt: string;
+                        }[];
+                        forms: {
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                            required: boolean;
+                            submission: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "reopened";
+                                submittedAt: string | null;
+                            } | null;
+                        }[];
+                        checklist: {
+                            /** Format: uuid */
+                            id: string;
+                            label: string;
+                            done: boolean;
+                            doneBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            doneAt: string | null;
+                        }[];
+                        comments: {
+                            /** Format: uuid */
+                            id: string;
+                            author: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            visibility: "internal" | "customer";
+                            body: string;
+                            createdAt: string;
+                        }[];
+                        events: {
+                            /** @enum {string} */
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            /** @enum {string|null} */
+                            fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            /** @enum {string|null} */
+                            toState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            person: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            actor: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            reason: string | null;
+                            details: {
+                                [key: string]: unknown;
+                            };
+                            occurredAt: string;
+                            recordedAt: string;
+                        }[];
+                        attachments: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
+                        previousAtSite: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        can: {
+                            edit: boolean;
+                            assign: boolean;
+                            work: boolean;
+                            comment: boolean;
+                            transitions: {
+                                /** @enum {string} */
+                                to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                requiresReason: boolean;
+                            }[];
+                            recordParts: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not on this job, or not your van. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such job (this person may see) or item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No van assigned (`no_van`), no location given by a dispatcher (`location_required`), or the item is archived. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    resolveWorkOrderMaterial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workOrderId: string;
+                materialId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    action: "cancel";
+                } | {
+                    /** @enum {string} */
+                    action: "retry";
+                    quantity?: string;
+                    /** Format: uuid */
+                    locationId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The job as it now is. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            description: string | null;
+                            instructions: string | null;
+                            lastReason: string | null;
+                            completedAt: string | null;
+                            reviewedAt: string | null;
+                            cancelledAt: string | null;
+                        };
+                        site: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            address: {
+                                line1: string;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            location: {
+                                latitude: number;
+                                longitude: number;
+                            } | null;
+                            /** @enum {string} */
+                            geocodeStatus: "pending" | "found" | "not_found" | "failed" | "manual";
+                            access: {
+                                gateCode: string | null;
+                                parking: string | null;
+                                askFor: string | null;
+                                hazards: string | null;
+                                notes: string | null;
+                                updatedAt: string | null;
+                                updatedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                            };
+                        };
+                        siteContact: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            jobTitle: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            isPrimary: boolean;
+                            notes: string | null;
+                            archived: boolean;
+                        } | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            accountNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "on_hold" | "closed";
+                            phone: string | null;
+                        };
+                        jobType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            code: string;
+                            expectedDurationMinutes: number | null;
+                        };
+                        crew: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            lead: boolean;
+                            assignedAt: string;
+                        }[];
+                        forms: {
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                            required: boolean;
+                            submission: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "reopened";
+                                submittedAt: string | null;
+                            } | null;
+                        }[];
+                        checklist: {
+                            /** Format: uuid */
+                            id: string;
+                            label: string;
+                            done: boolean;
+                            doneBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            doneAt: string | null;
+                        }[];
+                        comments: {
+                            /** Format: uuid */
+                            id: string;
+                            author: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            visibility: "internal" | "customer";
+                            body: string;
+                            createdAt: string;
+                        }[];
+                        events: {
+                            /** @enum {string} */
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            /** @enum {string|null} */
+                            fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            /** @enum {string|null} */
+                            toState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            person: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            actor: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            reason: string | null;
+                            details: {
+                                [key: string]: unknown;
+                            };
+                            occurredAt: string;
+                            recordedAt: string;
+                        }[];
+                        attachments: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
+                        previousAtSite: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        can: {
+                            edit: boolean;
+                            assign: boolean;
+                            work: boolean;
+                            comment: boolean;
+                            transitions: {
+                                /** @enum {string} */
+                                to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                requiresReason: boolean;
+                            }[];
+                            recordParts: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not allowed to resolve this use. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such job or part. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a conflict (`not_a_conflict`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    returnWorkOrderMaterial: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                workOrderId: string;
+                materialId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    quantity: string;
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The job as it now is. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            description: string | null;
+                            instructions: string | null;
+                            lastReason: string | null;
+                            completedAt: string | null;
+                            reviewedAt: string | null;
+                            cancelledAt: string | null;
+                        };
+                        site: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            address: {
+                                line1: string;
+                                line2: string | null;
+                                city: string | null;
+                                region: string | null;
+                                postcode: string | null;
+                                countryCode: string | null;
+                            };
+                            location: {
+                                latitude: number;
+                                longitude: number;
+                            } | null;
+                            /** @enum {string} */
+                            geocodeStatus: "pending" | "found" | "not_found" | "failed" | "manual";
+                            access: {
+                                gateCode: string | null;
+                                parking: string | null;
+                                askFor: string | null;
+                                hazards: string | null;
+                                notes: string | null;
+                                updatedAt: string | null;
+                                updatedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                            };
+                        };
+                        siteContact: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            jobTitle: string | null;
+                            email: string | null;
+                            phone: string | null;
+                            isPrimary: boolean;
+                            notes: string | null;
+                            archived: boolean;
+                        } | null;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            accountNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "on_hold" | "closed";
+                            phone: string | null;
+                        };
+                        jobType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            code: string;
+                            expectedDurationMinutes: number | null;
+                        };
+                        crew: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            lead: boolean;
+                            assignedAt: string;
+                        }[];
+                        forms: {
+                            /** Format: uuid */
+                            formId: string;
+                            title: string;
+                            required: boolean;
+                            submission: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "reopened";
+                                submittedAt: string | null;
+                            } | null;
+                        }[];
+                        checklist: {
+                            /** Format: uuid */
+                            id: string;
+                            label: string;
+                            done: boolean;
+                            doneBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            doneAt: string | null;
+                        }[];
+                        comments: {
+                            /** Format: uuid */
+                            id: string;
+                            author: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            visibility: "internal" | "customer";
+                            body: string;
+                            createdAt: string;
+                        }[];
+                        events: {
+                            /** @enum {string} */
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            /** @enum {string|null} */
+                            fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            /** @enum {string|null} */
+                            toState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
+                            person: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            actor: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            reason: string | null;
+                            details: {
+                                [key: string]: unknown;
+                            };
+                            occurredAt: string;
+                            recordedAt: string;
+                        }[];
+                        attachments: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        execution: {
+                            beforePhotos: number;
+                            afterPhotos: number;
+                            signatureRequired: boolean;
+                            signoff: {
+                                signedAt: string;
+                                signedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                fileId: string | null;
+                                name: string | null;
+                                role: string | null;
+                                unavailableReason: string | null;
+                            } | null;
+                            missing: {
+                                forms: {
+                                    /** Format: uuid */
+                                    formId: string;
+                                    title: string;
+                                }[];
+                                beforePhotos: number;
+                                afterPhotos: number;
+                                signoff: boolean;
+                            };
+                        };
+                        previousAtSite: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        can: {
+                            edit: boolean;
+                            assign: boolean;
+                            work: boolean;
+                            comment: boolean;
+                            transitions: {
+                                /** @enum {string} */
+                                to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                requiresReason: boolean;
+                            }[];
+                            recordParts: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such job or part. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a posted use (`not_posted`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description More than was used (`over_returned`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listMaterialConflicts: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The conflicts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                referenceLabel: string;
+                                title: string;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listJobTypes: {
         parameters: {
             query?: {
@@ -20439,6 +21931,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -20449,6 +21989,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -20917,6 +22458,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -20927,6 +22516,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -21291,6 +22881,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -21301,6 +22939,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -21663,6 +23302,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -21673,6 +23360,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -22033,6 +23721,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -22043,6 +23779,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -22405,6 +24142,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -22415,6 +24200,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -22774,6 +24560,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -22784,6 +24618,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -23137,6 +24972,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -23147,6 +25030,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -23499,6 +25383,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -23509,6 +25441,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -23854,6 +25787,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -23864,6 +25845,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -24228,6 +26210,54 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                         }[];
+                        materials: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            quantity: string;
+                            returnedQuantity: string;
+                            unitCost: string | null;
+                            /** @enum {string} */
+                            status: "posted" | "conflict" | "cancelled";
+                            availableQuantity: string | null;
+                            note: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            recordedAt: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            clientActionId: string | null;
+                            version: number;
+                        }[];
+                        materialsCost: string | null;
+                        van: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
                         can: {
                             edit: boolean;
                             assign: boolean;
@@ -24238,6 +26268,7 @@ export interface operations {
                                 to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                 requiresReason: boolean;
                             }[];
+                            recordParts: boolean;
                         };
                     };
                 };
@@ -25389,6 +27420,54 @@ export interface operations {
                                 createdAt: string;
                                 updatedAt: string;
                             }[];
+                            materials: {
+                                /** Format: uuid */
+                                id: string;
+                                item: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    sku: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    kind: "stock_item" | "non_stock_item" | "service";
+                                    /** @enum {string} */
+                                    unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                };
+                                location: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                quantity: string;
+                                returnedQuantity: string;
+                                unitCost: string | null;
+                                /** @enum {string} */
+                                status: "posted" | "conflict" | "cancelled";
+                                availableQuantity: string | null;
+                                note: string | null;
+                                recordedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: date-time */
+                                recordedAt: string;
+                                /** Format: date-time */
+                                occurredAt: string;
+                                cancelledBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                clientActionId: string | null;
+                                version: number;
+                            }[];
+                            materialsCost: string | null;
+                            van: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
                             can: {
                                 edit: boolean;
                                 assign: boolean;
@@ -25399,6 +27478,7 @@ export interface operations {
                                     to: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
                                     requiresReason: boolean;
                                 }[];
+                                recordParts: boolean;
                             };
                         }[];
                         removedWorkOrderIds: string[];
@@ -25654,6 +27734,26 @@ export interface operations {
                                 status: "denied" | "unavailable";
                             }) | null;
                         }[];
+                        vanStock: {
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            items: {
+                                item: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    sku: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    kind: "stock_item" | "non_stock_item" | "service";
+                                    /** @enum {string} */
+                                    unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                };
+                                onHand: string;
+                            }[];
+                        } | null;
                     };
                 };
             };
@@ -25972,6 +28072,23 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "denied" | "unavailable";
                             }) | null;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "work_order.material";
+                        payload: {
+                            /** Format: uuid */
+                            materialId: string;
+                            /** Format: uuid */
+                            itemId: string;
+                            quantity: string;
+                            note?: string | null;
                         };
                     })[];
                 };

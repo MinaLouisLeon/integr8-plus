@@ -38,6 +38,8 @@ import {
   workOrderSummaries,
   workOrderSummarySchema,
 } from './operations.js';
+import { isFeatureEnabled } from '../../http/features.js';
+import { materialBodies, materialSchema, seesCosts, vanBody } from './materials.js';
 import { iso, isoOrNull } from './schemas.js';
 
 /**
@@ -54,7 +56,7 @@ import { iso, isoOrNull } from './schemas.js';
 
 const TAGS = ['work-orders'];
 
-const workOrderParams = z.object({ workOrderId: z.uuid() });
+export const workOrderParams = z.object({ workOrderId: z.uuid() });
 
 const crewInputSchema = z
   .array(z.object({ userId: z.uuid(), lead: z.boolean().default(false) }))
@@ -184,12 +186,20 @@ export const detailSchema = z.object({
   }),
   /** Earlier jobs at the same site that this person may see: the previous reports. */
   previousAtSite: z.array(workOrderSummarySchema),
+  /** Parts used on the job (CRM/ERP plan, phase E2); empty for a company without the inventory module. */
+  materials: z.array(materialSchema),
+  /** What the posted parts cost, net of returns; null to seats that may not see costs. */
+  materialsCost: z.string().nullable(),
+  /** The van assigned to this person, where their parts come from. */
+  van: z.object({ id: z.uuid(), name: z.string() }).nullable(),
   can: z.object({
     edit: z.boolean(),
     assign: z.boolean(),
     work: z.boolean(),
     comment: z.boolean(),
     transitions: z.array(z.object({ to: workOrderStateSchema, requiresReason: z.boolean() })),
+    /** Record parts used: the inventory module is on, this seat consumes stock and works the job. */
+    recordParts: z.boolean(),
   }),
 });
 
@@ -234,6 +244,10 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
   const [summary] = await workOrderSummaries(tx, [job], people);
   const shapedSite = siteBody(site!, people);
   const working = await mayWork(tx, principal, job);
+  const inventory = await isFeatureEnabled(principal.tenantId, 'inventory');
+  const costs = inventory && seesCosts(principal);
+  const materials = inventory ? await tx.inventoryMaterials.listForJob(job.id) : [];
+  const closed = ['complete', 'reviewed', 'cancelled'].includes(job.state);
 
   return {
     workOrder: {
@@ -325,6 +339,9 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
       missing,
     },
     previousAtSite: await workOrderSummaries(tx, visiblePrevious, people),
+    materials: await materialBodies(tx, materials, costs, people),
+    materialsCost: costs ? await tx.inventoryMaterials.costForJob(job.id) : null,
+    van: inventory ? await vanBody(tx, principal) : null,
     can: {
       edit:
         holds(principal, 'work_order.manage') &&
@@ -333,6 +350,7 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
       work: working,
       comment: working,
       transitions: await allowedTransitions(tx, principal, job),
+      recordParts: inventory && holds(principal, 'inventory.consume') && working && !closed,
     },
   };
 }

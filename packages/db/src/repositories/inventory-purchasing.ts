@@ -636,6 +636,7 @@ export class InventoryPurchasingRepository extends TenantScopedRepository {
       .where('order_id', '=', orderId)
       .orderBy('received_at', 'desc')
       .orderBy('id', 'desc')
+      .orderBy('id', 'desc')
       .execute();
     if (receipts.length === 0) {
       return [];

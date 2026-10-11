@@ -24,6 +24,7 @@ import {
   usePermissions,
   when,
 } from '../ui.js';
+import { Parts } from './work-order-parts.js';
 
 /**
  * One job.
@@ -210,6 +211,7 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
         <Checklist job={job} onChanged={refresh} />
       </div>
 
+      <Parts job={job} onChanged={refresh} />
       <Completion job={job} />
       <Attachments job={job} onChanged={() => void detail.refetch()} />
       <Comments job={job} onChanged={refresh} />

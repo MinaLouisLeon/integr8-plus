@@ -1,8 +1,10 @@
-import { holds, findTransition, type Principal } from '@integr8/core';
+import { holds, findTransition, positiveQuantitySchema, type Principal } from '@integr8/core';
 import { type Submission, type TenantTransaction, type WorkOrder, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { ApiError, type ErrorDetail } from '../http/errors.js';
+import { isFeatureEnabled } from '../http/features.js';
 import { fingerprintRequest } from '../http/idempotency.js';
+import { recordUse } from '../routes/v1/materials.js';
 import type { RequestContext } from '../http/routes.js';
 import { updateAccessNotes } from '../routes/v1/customers.js';
 import {
@@ -168,6 +170,18 @@ export const mutationSchema = z.discriminatedUnion('kind', [
     payload: z.object({
       endedAt: z.iso.datetime({ offset: true }),
       location: submitLocationSchema.nullable(),
+    }),
+  }),
+  z.object({
+    ...common,
+    /** A part used on the job, from the engineer's van (CRM/ERP plan, phase E2; ADR-0005). */
+    kind: z.literal('work_order.material'),
+    payload: z.object({
+      /** The phone's id for this use; the server posts it once under this id. */
+      materialId: z.uuid(),
+      itemId: z.uuid(),
+      quantity: positiveQuantitySchema,
+      note: z.string().trim().max(1000).nullable().optional(),
     }),
   }),
 ]);
@@ -506,6 +520,8 @@ async function apply(
       return startShift(tx, mutation, push);
     case 'shift.end':
       return endShift(tx, mutation, push);
+    case 'work_order.material':
+      return material(tx, mutation, push);
   }
 }
 
@@ -853,6 +869,40 @@ async function startShift(
     case 'not_yours':
       return rejected('shift_id_taken', 'This shift id belongs to someone else.');
   }
+}
+
+/**
+ * A part used, recorded on the phone. The server decides under the lock: it
+ * posts when the van holds enough and keeps a conflict when it does not; either
+ * way the change is applied — the use is on record — and the job the next pull
+ * brings says which. The same id arriving again finds the first record.
+ */
+async function material(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'work_order.material' }>,
+  push: PushContext,
+): Promise<Outcome> {
+  const { context } = push;
+  const { principal } = context;
+  if (!(await isFeatureEnabled(principal.tenantId, 'inventory'))) {
+    return rejected('feature_disabled', 'Inventory is not switched on for your company.');
+  }
+  if (!holds(principal, 'inventory.consume')) {
+    return rejected('forbidden', 'You may not record parts.');
+  }
+  const job = await jobFor(tx, principal, mutation.entityId);
+  if (job === undefined) {
+    return unavailable();
+  }
+  await requireWork(tx, principal, job);
+  const result = await recordUse(tx, context, job, {
+    itemId: mutation.payload.itemId,
+    quantity: mutation.payload.quantity,
+    note: mutation.payload.note ?? null,
+    clientActionId: mutation.payload.materialId,
+    occurredAt: push.recordedAt(mutation),
+  });
+  return applied(null, result.outcome === 'already_recorded');
 }
 
 async function endShift(

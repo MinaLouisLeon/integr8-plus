@@ -30,6 +30,13 @@ export function InventoryOverviewScreen() {
     hasFeature(me.data.features, 'purchasing') &&
     permissions.includes('purchasing.read');
 
+  const attention = useQuery({
+    queryKey: ['inventory', 'material-conflicts'],
+    queryFn: async () =>
+      (await client.GET('/v1/inventory/materials/conflicts', { params: { query: { limit: 50 } } }))
+        .data!.items,
+    enabled: enabled && allowed && canMove,
+  });
   const low = useQuery({
     queryKey: keys.balances({ belowMinimum: true }),
     queryFn: async () =>
@@ -101,6 +108,49 @@ export function InventoryOverviewScreen() {
               </>
             ) : null}
           </div>
+
+          {canMove ? (
+            <section aria-labelledby="inventory-attention" className={cardClass}>
+              <h2 id="inventory-attention" className="text-base font-semibold text-content">
+                {t('inventory.parts.attention')}
+              </h2>
+              {attention.isPending ? (
+                <Loading />
+              ) : attention.isError ? (
+                <InlineError onRetry={() => void attention.refetch()} />
+              ) : attention.data.length === 0 ? (
+                <p className="text-sm text-content-muted">{t('inventory.parts.noAttention')}</p>
+              ) : (
+                <ul className="flex flex-col divide-y divide-border-subtle text-sm">
+                  {attention.data.map((row) => (
+                    <li
+                      key={row.id}
+                      className="flex flex-wrap items-center justify-between gap-2 py-2"
+                    >
+                      <span>
+                        <AppLink to={paths.workOrder(row.workOrder.id)}>
+                          {row.workOrder.referenceLabel}
+                        </AppLink>
+                        <span className="text-content-muted"> · {row.workOrder.title}</span>
+                      </span>
+                      <span className="text-content tabular-nums">
+                        {t('inventory.parts.conflictLine', {
+                          asked: formatQuantity(row.quantity, row.item.unit, locale, unitName),
+                          location: row.location?.name ?? '—',
+                          available: formatQuantity(
+                            row.availableQuantity ?? '0',
+                            row.item.unit,
+                            locale,
+                            unitName,
+                          ),
+                        })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ) : null}
 
           <section aria-labelledby="inventory-low" className={cardClass}>
             <h2 id="inventory-low" className="text-base font-semibold text-content">

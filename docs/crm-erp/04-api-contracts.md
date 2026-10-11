@@ -249,3 +249,24 @@ Prices and costs (`unitPrice`, `subtotal`, `tax`, `totals`, a receipt line's
 `purchasing.manage` nor `inventory.move`. Audit actions: `supplier.created`,
 `supplier.updated`, `purchase_order.created`, `.updated`, `.approved`,
 `.cancelled`, `.received`, `.returned`.
+
+## Parts used on jobs (phase E2, second half)
+
+Source: `apps/api/src/routes/v1/materials.ts` (the rules, shared with the
+phone's sync) and `work-order-materials.ts` (the routes). Tests:
+`apps/api/src/routes/v1/materials.integration.test.ts`. Every route needs the
+`inventory` module. Every route answers with the job detail, which now carries
+`materials`, `materialsCost` (null to seats without `inventory.move` or
+`purchasing.manage`), `van` (the caller's) and `can.recordParts`.
+
+| Method and path                                            | Permission          | What it does                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /v1/work-orders/{id}/materials`                      | `inventory.consume` | **`Idempotency-Key` required.** `itemId`, `quantity`, optional `note`, `locationId` (a dispatcher must name it: 422 `location_required`; an engineer's is their van: 422 `no_van`, 403 when another is named). Posts under the balance lock or records a `conflict`; services and non-stock items never touch stock. The caller must work the job (crew or office). |
+| `POST /v1/work-orders/{id}/materials/{materialId}/resolve` | `inventory.consume` | `{action: 'cancel'}` by the recorder or someone with `inventory.move`; `{action: 'retry', quantity?, locationId?}` by `inventory.move` only, posting if the stock is now there and staying a conflict if not. 409 `not_a_conflict`                                                                                                                                  |
+| `POST /v1/work-orders/{id}/materials/{materialId}/return`  | `inventory.consume` | **`Idempotency-Key` required.** `quantity`, optional `reason`: a `consumption_return` reversing the use; 422 `over_returned`; 409 `not_posted`                                                                                                                                                                                                                      |
+| `GET /v1/inventory/materials/conflicts`                    | `inventory.move`    | Every refused use across jobs, newest first, each with its job                                                                                                                                                                                                                                                                                                      |
+| `POST /v1/sync/push` — `work_order.material`               | `inventory.consume` | The phone's change: `payload.materialId` (the client action id), `itemId`, `quantity`, `note`. Applied once; `alreadyApplied` when the action was seen before. A short van is still `applied` — the use is on record as a conflict — never a sync `conflict`, so the job's later changes are not held up                                                            |
+| `GET /v1/sync/pull` — `vanStock`                           | `customer.read`     | On the first page: the caller's van and what it holds, or `{location: null, items: []}`; null on later pages                                                                                                                                                                                                                                                        |
+
+Audit actions: `work_order.part_used`, `.part_conflict`, `.part_retried`,
+`.part_cancelled`, `.part_returned`.

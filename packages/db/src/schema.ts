@@ -4,6 +4,7 @@ import {
   type ItemKind,
   type LocationKind,
   type MovementKind,
+  type MaterialStatus,
   type PurchaseOrderStatus,
   type StockCountStatus,
   type SupplierStatus,
@@ -1214,6 +1215,28 @@ export interface ErpGoodsReceiptLinesTable {
   returned_quantity: Generated<string>;
 }
 
+/** A part used on a job (CRM/ERP plan, phase E2; ADR-0005). */
+export interface ErpWorkOrderMaterialsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  work_order_id: string;
+  item_id: string;
+  location_id: string | null;
+  quantity: string;
+  returned_quantity: Generated<string>;
+  unit_cost: string | null;
+  status: Generated<MaterialStatus>;
+  available_quantity: string | null;
+  client_action_id: string | null;
+  note: string | null;
+  recorded_by: string;
+  recorded_at: CreatedAt;
+  occurred_at: Generated<Date>;
+  cancelled_by: string | null;
+  cancelled_at: Date | null;
+  version: Generated<number>;
+}
+
 export interface CustomerContactsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -1723,6 +1746,7 @@ export interface Database {
   erp_purchase_order_lines: ErpPurchaseOrderLinesTable;
   erp_goods_receipts: ErpGoodsReceiptsTable;
   erp_goods_receipt_lines: ErpGoodsReceiptLinesTable;
+  erp_work_order_materials: ErpWorkOrderMaterialsTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -1928,6 +1952,7 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_purchase_order_lines: true,
   erp_goods_receipts: true,
   erp_goods_receipt_lines: true,
+  erp_work_order_materials: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

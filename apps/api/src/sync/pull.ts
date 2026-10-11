@@ -3,6 +3,8 @@ import type { Shift, Submission, TenantTransaction } from '@integr8/db';
 import { unprocessable } from '../http/errors.js';
 import { customerDetailBody } from '../routes/v1/customers.js';
 import { formDetailBody } from '../routes/v1/forms.js';
+import { isFeatureEnabled } from '../http/features.js';
+import { itemSummary } from '../routes/v1/inventory.js';
 import { peopleOf } from '../routes/v1/operations.js';
 import { mayRead } from '../routes/v1/submissions.js';
 import { detailBody } from '../routes/v1/work-orders.js';
@@ -171,6 +173,10 @@ export async function pullPage(
         })
       : [];
 
+  // The caller's van and what it holds (CRM/ERP plan, phase E2), with the first
+  // page: the phone's parts picker works offline from it.
+  const vanStock = options.page === undefined ? await vanStockBody(tx, principal) : null;
+
   const last = changed.ids.at(-1);
   return {
     reset: token.reset,
@@ -191,6 +197,32 @@ export async function pullPage(
     forms,
     submissions,
     shifts: shifts.map(shiftBody),
+    vanStock,
+  };
+}
+
+/** The engineer's van and its stock, or an empty answer for a company without the module. */
+export async function vanStockBody(tx: TenantTransaction, principal: Principal) {
+  if (!(await isFeatureEnabled(principal.tenantId, 'inventory'))) {
+    return { location: null, items: [] };
+  }
+  const van = await tx.inventoryStock.vanOf(principal.userId);
+  if (van?.archivedAt !== null) {
+    return { location: null, items: [] };
+  }
+  const balances = await tx.inventoryStock.balances({ locationId: van.id, limit: 2000 });
+  const items = new Map(
+    (await tx.inventoryCatalogue.findItems(balances.map((row) => row.itemId))).map((item) => [
+      item.id,
+      item,
+    ]),
+  );
+  return {
+    location: { id: van.id, name: van.name },
+    items: balances.flatMap((row) => {
+      const item = items.get(row.itemId);
+      return item?.archivedAt !== null ? [] : [{ item: itemSummary(item), onHand: row.onHand }];
+    }),
   };
 }
 

@@ -79,6 +79,7 @@ export const EXPORTED_TABLES = [
   'erp_purchase_order_lines',
   'erp_goods_receipts',
   'erp_goods_receipt_lines',
+  'erp_work_order_materials',
   'audit_log',
 ] as const;
 

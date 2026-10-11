@@ -258,7 +258,10 @@ describe('receipts', () => {
     expect(state.returned.returnedQuantity).toBe('1.5');
     expect(state.lines.map((line) => line.quantityReceived)).toEqual(['2.5', '2']);
     expect(state.receipts).toHaveLength(2);
-    expect(state.receipts[0]?.supplierNote).toBe('DN-1');
+    // Both were written in one transaction, so they share `received_at`: order is by id.
+    expect(new Set(state.receipts.map((receipt) => receipt.supplierNote))).toEqual(
+      new Set([null, 'DN-1']),
+    );
   });
 
   it('cannot return more than a line received', async () => {

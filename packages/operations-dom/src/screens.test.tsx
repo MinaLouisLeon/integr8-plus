@@ -124,6 +124,9 @@ function detail(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
       },
     },
     previousAtSite: [],
+    materials: [],
+    materialsCost: null,
+    van: null,
     can: {
       edit: false,
       assign: false,
@@ -133,6 +136,7 @@ function detail(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
         { to: 'awaiting_parts', requiresReason: false },
         { to: 'complete', requiresReason: false },
       ],
+      recordParts: false,
     },
   };
   return { ...base, ...overrides };
@@ -221,7 +225,14 @@ describe('the job screen', { timeout: 20_000 }, () => {
         state: 'cancelled',
         cancelledAt: '2026-10-01T10:00:00.000Z',
       },
-      can: { edit: false, assign: true, work: true, comment: true, transitions: [] },
+      can: {
+        edit: false,
+        assign: true,
+        work: true,
+        comment: true,
+        transitions: [],
+        recordParts: false,
+      },
     });
     const { client, calls } = fakeApi({
       'GET /v1/work-orders/:id': () => ({
@@ -236,6 +247,7 @@ describe('the job screen', { timeout: 20_000 }, () => {
               { to: 'dispatched', requiresReason: false },
               { to: 'cancelled', requiresReason: true },
             ],
+            recordParts: false,
           },
         }),
       }),
@@ -263,7 +275,14 @@ describe('the job screen', { timeout: 20_000 }, () => {
     const { client } = fakeApi({
       'GET /v1/work-orders/:id': () => ({
         body: detail({
-          can: { edit: false, assign: false, work: false, comment: false, transitions: [] },
+          can: {
+            edit: false,
+            assign: false,
+            work: false,
+            comment: false,
+            transitions: [],
+            recordParts: false,
+          },
         }),
       }),
     });
@@ -331,7 +350,14 @@ describe('the job screen', { timeout: 20_000 }, () => {
           createdAt: '2026-10-01T09:35:00.000Z',
         },
       ],
-      can: { edit: false, assign: false, work: true, comment: true, transitions: [] },
+      can: {
+        edit: false,
+        assign: false,
+        work: true,
+        comment: true,
+        transitions: [],
+        recordParts: false,
+      },
       execution: {
         beforePhotos: 1,
         afterPhotos: 2,
@@ -874,7 +900,14 @@ describe('a job’s forms', () => {
   const OTHER_FORM = '00000000-0000-4000-8000-000000000502';
   const editable = () =>
     detail({
-      can: { edit: true, assign: true, work: true, comment: true, transitions: [] },
+      can: {
+        edit: true,
+        assign: true,
+        work: true,
+        comment: true,
+        transitions: [],
+        recordParts: false,
+      },
     });
   const formList = {
     items: [
@@ -1029,5 +1062,134 @@ describe('row menus', () => {
     renderScreen(<CustomerListScreen />, fakeApi(customers).client);
     const link = await screen.findByRole('link', { name: 'Riverside Housing' });
     expect(fireEvent.contextMenu(link.closest('li')!)).toBe(true);
+  });
+});
+
+describe('parts used on the job', { timeout: 20_000 }, () => {
+  const VALVE = {
+    id: '00000000-0000-4000-8000-00000000f001',
+    sku: 'VAL-15',
+    name: 'Ball valve 15mm',
+    kind: 'stock_item',
+    unit: 'each',
+  } as const;
+  const VAN = { id: '00000000-0000-4000-8000-00000000f102', name: 'Van 1' };
+  const used = (overrides: Partial<WorkOrderDetail['materials'][number]> = {}) => ({
+    id: '00000000-0000-4000-8000-00000000e001',
+    item: VALVE,
+    location: VAN,
+    quantity: '2',
+    returnedQuantity: '0',
+    unitCost: '12',
+    status: 'posted' as const,
+    availableQuantity: null,
+    note: null,
+    recordedBy: ENGINEER,
+    recordedAt: '2026-10-11T09:00:00.000Z',
+    occurredAt: '2026-10-11T09:00:00.000Z',
+    cancelledBy: null,
+    clientActionId: null,
+    version: 1,
+    ...overrides,
+  });
+
+  it('lists what was used with its cost, flags a refused use, and records a part from the van', async () => {
+    const user = userEvent.setup();
+    let current = detail({
+      materials: [
+        used(),
+        used({
+          id: '00000000-0000-4000-8000-00000000e002',
+          quantity: '10',
+          status: 'conflict',
+          availableQuantity: '3',
+          unitCost: null,
+        }),
+      ],
+      materialsCost: '24',
+      van: VAN,
+      can: { ...detail().can, recordParts: true },
+    });
+    const { client, calls } = fakeApi({
+      'GET /v1/me': () => ({
+        body: {
+          userId: ENGINEER.id,
+          tenantId: CUSTOMER,
+          email: 'e@x.example',
+          displayName: ENGINEER.name,
+          role: 'engineer',
+          permissions: [
+            'customer.read',
+            'work_order.progress',
+            'inventory.read',
+            'inventory.consume',
+          ],
+          features: { inventory: true },
+        },
+      }),
+      'GET /v1/settings': () => ({ body: { currency: 'EGP', timezone: 'Africa/Cairo' } }),
+      'GET /v1/work-orders/:id': () => ({ body: current }),
+      'GET /v1/inventory/items': () => ({
+        body: {
+          items: [
+            {
+              ...VALVE,
+              description: null,
+              categoryId: null,
+              barcode: null,
+              defaultUnitCost: null,
+              salePrice: null,
+              averageUnitCost: null,
+              preferredSupplierId: null,
+              supplierPartNumber: null,
+              version: 1,
+              createdAt: '2026-10-01T09:00:00.000Z',
+              updatedAt: '2026-10-01T09:00:00.000Z',
+              archivedAt: null,
+              onHand: '5',
+            },
+          ],
+          nextCursor: null,
+        },
+      }),
+      'POST /v1/work-orders/:id/materials': (call) => {
+        const body = call.body as { quantity: string };
+        current = {
+          ...current,
+          materials: [
+            ...current.materials,
+            used({ id: '00000000-0000-4000-8000-00000000e003', quantity: body.quantity }),
+          ],
+        };
+        return { status: 201, body: current };
+      },
+    });
+    const { container } = renderScreen(<WorkOrderScreen workOrderId={JOB} />, client);
+
+    const parts = await screen.findByRole('region', { name: 'Parts used' });
+    expect(await within(parts).findByText('EGP 12.00', { exact: false })).toBeInTheDocument();
+    expect(within(parts).getByText('EGP 24.00')).toBeInTheDocument();
+    expect(within(parts).getByRole('status')).toHaveTextContent(
+      'Asked for 10 each; Van 1 held 3 each.',
+    );
+    expect(within(parts).getByText('Needs attention')).toBeInTheDocument();
+    expect(await accessibilityViolations(container)).toEqual([]);
+
+    await user.click(within(parts).getByRole('button', { name: 'Record a part' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Record a part' });
+    expect(within(dialog).getByText('From your van: Van 1')).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText('Part'), 'valve');
+    await user.click(within(dialog).getByRole('button', { name: 'Search' }));
+    await user.click(await within(dialog).findByRole('button', { name: /Ball valve 15mm/u }));
+    await user.type(within(dialog).getByLabelText('Quantity'), '1.5');
+    await user.click(within(dialog).getByRole('button', { name: 'Record a part' }));
+
+    await waitFor(() =>
+      expect(calls.find((call) => call.method === 'POST')?.body).toEqual({
+        itemId: VALVE.id,
+        quantity: '1.5',
+      }),
+    );
+    expect(await within(parts).findByText('1.5 each', { exact: false })).toBeInTheDocument();
   });
 });

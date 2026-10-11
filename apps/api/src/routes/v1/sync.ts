@@ -5,6 +5,7 @@ import { pullPage } from '../../sync/pull.js';
 import { applyMutations, mutationSchema, resultSchema } from '../../sync/push.js';
 import { customerDetailSchema } from './customers.js';
 import { formDetailSchema } from './forms.js';
+import { itemSummarySchema } from './inventory.js';
 import { answersSchema } from './submissions.js';
 import { shiftSchema } from './time.js';
 import { detailSchema as workOrderDetailSchema } from './work-orders.js';
@@ -67,6 +68,13 @@ export const pullRoute = defineRoute({
         submissions: z.array(submissionSyncSchema),
         /** The caller's shifts from the last day and a half, on the first page only (P14). */
         shifts: z.array(shiftSchema),
+        /** The caller's van and what it holds, on the first page only; null on later pages (CRM/ERP plan, phase E2). */
+        vanStock: z
+          .object({
+            location: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+            items: z.array(z.object({ item: itemSummarySchema, onHand: z.string() })),
+          })
+          .nullable(),
       }),
     },
     422: { description: 'A cursor or page token the server did not issue.' },

@@ -406,6 +406,12 @@ export {
   type SupplierInput,
   type SupplierQuery,
 } from './repositories/inventory-purchasing.js';
+export {
+  InventoryMaterialsRepository,
+  type Material,
+  type MaterialInput,
+  type MaterialPatch,
+} from './repositories/inventory-materials.js';
 
 export {
   addressLine,

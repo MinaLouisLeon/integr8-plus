@@ -250,3 +250,21 @@ items are recorded as received without touching the ledger.
 `erp_suppliers`, `erp_purchase_orders`, `erp_purchase_order_lines`,
 `erp_goods_receipts` and `erp_goods_receipt_lines` are in `EXPORTED_TABLES`;
 the counter table is derived and not exported.
+
+## 0028 — parts used on jobs (phase E2, second half; ADR-0005)
+
+### `erp_work_order_materials`
+
+| Column / rule                             | Meaning                                                                                                                                                                                                                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `work_order_id`, `item_id`, `location_id` | Tenant composite FKs to the job, the item and the van or store it came from; `location_id` is null for a service or non-stock item, which is recorded without touching stock                                                                     |
+| `quantity`, `returned_quantity`           | `numeric(20,4)`; `quantity > 0`, `0 ≤ returned ≤ quantity` (`erp_work_order_materials_returned_range`)                                                                                                                                           |
+| `unit_cost`                               | The item's average cost at the moment the use posted (the default cost for a non-stock item); null while a use is a conflict                                                                                                                     |
+| `status`                                  | `posted`, `conflict` or `cancelled` (`erp_work_order_materials_status_known`); a conflict carries `available_quantity` — what the location held (`_conflict_shape`); cancelling records who and when (`_cancelled_pairing`)                      |
+| `client_action_id`                        | The phone's own id for the action, unique per company (partial unique index): the same action arriving again, under any change id, finds the first record                                                                                        |
+| `occurred_at`                             | When the engineer did it, by the phone's clock as the server reads it; `recorded_at` is when the server wrote it                                                                                                                                 |
+| Ledger                                    | A posted stock-item use is one `consumption` movement, `source_key = phone:<client action id>` or `material:<id>`; a return is a `consumption_return` with `reversal_of` the use's movement and `source_key = material-return:<idempotency key>` |
+| Sync                                      | `erp_work_order_materials_touch_sync` marks the job changed (0011), so the next pull brings the use and its status to the phone                                                                                                                  |
+
+Grants: `select, insert, update` (a use is cancelled or returned, never deleted).
+In `EXPORTED_TABLES`.

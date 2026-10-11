@@ -50,9 +50,12 @@ page when it starts.
 
 ## Parts used on jobs
 
-| Rule                                                                                                                   | Where    |
-| ---------------------------------------------------------------------------------------------------------------------- | -------- |
-| An engineer records parts only on jobs they are assigned to, from the van assigned to them                             | API      |
-| A use posts a `consumption` movement once per action, or becomes a conflict when stock is short — never negative stock | ADR-0005 |
-| Returning an unused part posts a `consumption_return` against the use, never more than was used                        | service  |
-| Non-stock items and services can be recorded on a job without touching stock                                           | service  |
+| Rule                                                                                                                                                                      | Where                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| An engineer records parts only on jobs they are assigned to, from the van assigned to them; the office names any location                                                 | `requireWork`, `sourceLocation` in `materials.ts` (422 `no_van`, 403 another van, 422 `location_required`)                                    |
+| A use posts a `consumption` movement once per action, or becomes a conflict when stock is short — never negative stock                                                    | `recordUse` under `lockBalance`; `source_key = phone:<client action id>`; `erp_work_order_materials_client_action_unique`; 0026 balance check |
+| A conflict is resolved by people: the office retries (after correcting the van, or with another quantity or place) or anyone involved cancels; a retry may conflict again | `resolveUse`; audit `work_order.part_retried`, `part_cancelled`                                                                               |
+| Returning an unused part posts a `consumption_return` against the use, never more than was used                                                                           | `returnUse`; `reversal_of`; `erp_work_order_materials_returned_range` (422 `over_returned`)                                                   |
+| Non-stock items and services can be recorded on a job without touching stock                                                                                              | `recordUse`: `location_id` null, cost = the item's default cost, no movement                                                                  |
+| A job's parts cost is the sum of posted uses net of returns at the cost when posted, summed in SQL                                                                        | `costForJob`; shown only to seats with `inventory.move` or `purchasing.manage`                                                                |
+| The phone's van stock is a forecast — the server's count less the phone's own unsent uses — and says so                                                                   | `van_stock` table on the phone, `vanStock()` in `@integr8/offline`; `vanStock` on the first pull page                                         |

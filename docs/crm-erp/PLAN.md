@@ -680,12 +680,12 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase E2 — Purchasing and van/field integration (align P23)
 
-**Status:** `IN PROGRESS` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `DONE` — replenishment requests, barcode receiving and usage reports are follow-ups (see README.md) — see the [phase tracker](./README.md#phase-tracker).
 
 - [x] Supplier directory, PO lines and approvals, goods receipt and partial receipt.
 - [x] Receipts post inventory movements exactly once; returns/adjustments audited.
-- [ ] Work-order materials model; online consumption in web/desktop first.
-- [ ] Only after explicit approval: add engineer/mobile outbox consumption with conflict-safe sync.
+- [x] Work-order materials model; online consumption in web/desktop first.
+- [x] Only after explicit approval: add engineer/mobile outbox consumption with conflict-safe sync (approved 2026-10-11; ADR-0005).
 - **Done when:** parts are received, transferred to a van, and consumed on a work order without stock drift.
 
 ### Phase S1 — Quotes and sales orders

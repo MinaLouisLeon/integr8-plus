@@ -1,4 +1,4 @@
-import type { AccessValues, WorkOrderDetail } from '../api-types.js';
+import type { AccessValues, MaterialBody, WorkOrderDetail } from '../api-types.js';
 
 /**
  * A change the engineer made, shown on the job before the server has it.
@@ -36,6 +36,22 @@ export type LocalChange =
       payload:
         | { mediaId: string; name: string; role: string | null; signedAt: string }
         | { unavailableReason: string; signedAt: string };
+    }
+  | {
+      kind: 'work_order.material';
+      /**
+       * What the server needs (`materialId`, `itemId`, `quantity`, `note`) and
+       * what the screen needs to show the use before the server has it. The
+       * server ignores the rest (CRM/ERP plan, phase E2; ADR-0005).
+       */
+      payload: {
+        materialId: string;
+        itemId: string;
+        quantity: string;
+        note?: string;
+        item: MaterialBody['item'];
+        location: MaterialBody['location'];
+      };
     };
 
 export interface Actor {
@@ -151,6 +167,36 @@ export function applyToJob(
           (attachment) => attachment.id !== change.payload.attachmentId,
         ),
       };
+    case 'work_order.material': {
+      const { payload } = change;
+      const materials = detail.materials ?? [];
+      return materials.some((material) => material.id === payload.materialId)
+        ? detail
+        : {
+            ...detail,
+            materials: [
+              ...materials,
+              {
+                id: payload.materialId,
+                item: payload.item,
+                location: payload.location,
+                quantity: payload.quantity,
+                returnedQuantity: '0',
+                unitCost: null,
+                // The server decides: this is what the phone asked for.
+                status: 'posted',
+                availableQuantity: null,
+                note: payload.note ?? null,
+                recordedBy: actor,
+                recordedAt: at,
+                occurredAt: at,
+                cancelledBy: null,
+                clientActionId: payload.materialId,
+                version: 1,
+              },
+            ],
+          };
+    }
     case 'work_order.signoff': {
       const { payload } = change;
       return {

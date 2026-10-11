@@ -29,6 +29,7 @@ import { CrmOpportunitiesRepository } from './repositories/crm-opportunities.js'
 import { CrmPipelinesRepository } from './repositories/crm-pipelines.js';
 import { CrmReportsRepository } from './repositories/crm-reports.js';
 import { InventoryCatalogueRepository } from './repositories/inventory-catalogue.js';
+import { InventoryMaterialsRepository } from './repositories/inventory-materials.js';
 import { InventoryPurchasingRepository } from './repositories/inventory-purchasing.js';
 import { InventoryStockRepository } from './repositories/inventory-stock.js';
 import { CustomersRepository } from './repositories/customers.js';
@@ -122,6 +123,7 @@ export interface TenantTransaction {
   readonly inventoryCatalogue: InventoryCatalogueRepository;
   readonly inventoryStock: InventoryStockRepository;
   readonly inventoryPurchasing: InventoryPurchasingRepository;
+  readonly inventoryMaterials: InventoryMaterialsRepository;
   readonly sites: SitesRepository;
   readonly jobTypes: JobTypesRepository;
   readonly workOrders: WorkOrdersRepository;
@@ -371,6 +373,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     inventoryCatalogue: new InventoryCatalogueRepository(scope),
     inventoryStock: new InventoryStockRepository(scope),
     inventoryPurchasing: new InventoryPurchasingRepository(scope),
+    inventoryMaterials: new InventoryMaterialsRepository(scope),
     sites: new SitesRepository(scope),
     jobTypes: new JobTypesRepository(scope),
     workOrders: new WorkOrdersRepository(scope),

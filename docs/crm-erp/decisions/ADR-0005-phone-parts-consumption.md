@@ -1,6 +1,6 @@
 # ADR-0005 — Parts used on the phone, offline, without negative stock
 
-**Status:** Accepted (E2 planning, 2026-10-11)
+**Status:** Accepted (E2 planning, 2026-10-11); implemented in E2 (migration 0028, `apps/api/src/routes/v1/materials.ts`, `work_order.material` sync mutation, `van_stock` on the phone)
 
 ## Context
 
