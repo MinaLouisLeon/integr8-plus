@@ -1,4 +1,5 @@
 import { ApiRequestError } from '@integr8/api-client';
+import { hasFeature } from '@integr8/core';
 import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
@@ -7,6 +8,7 @@ import { BackLink, buttonClass, cardClass, Failure, Field, inputClass, Loading }
 import { ActivityPanel } from './activities.js';
 import { formatAmount, memberName, useMembers } from './lead-parts.js';
 import { formatChance, MoveControl, StageBadge, useStageName } from './opportunity-parts.js';
+import { NewQuoteDialog } from '../sales/quote-list.js';
 
 /**
  * One opportunity (CRM/ERP plan, phase C3): what it is worth and to whom, its
@@ -71,11 +73,15 @@ export function OpportunityScreen({ opportunityId }: { opportunityId: string }) 
   const stageName = useStageName();
   const members = useMembers();
   const [editing, setEditing] = useState<Draft | null>(null);
+  const [quoting, setQuoting] = useState(false);
   const me = useQuery({
     queryKey: keys.me,
     queryFn: async () => (await client.GET('/v1/me')).data!,
   });
   const canManageActivities = me.data?.permissions.includes('crm.activity.manage') ?? false;
+  const canQuote =
+    hasFeature(me.data?.features, 'sales') &&
+    (me.data?.permissions.includes('sales.manage') ?? false);
 
   const detail = useQuery({
     queryKey: keys.opportunity(opportunityId),
@@ -185,9 +191,26 @@ export function OpportunityScreen({ opportunityId }: { opportunityId: string }) 
             >
               {item.archivedAt === null ? t('crm.leads.archive') : t('crm.leads.restore')}
             </button>
+            {canQuote && item.customer !== null && item.status === 'open' ? (
+              <button
+                type="button"
+                className={buttonClass.secondary}
+                onClick={() => setQuoting(true)}
+              >
+                {t('sales.quotes.new')}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </header>
+
+      {quoting && item.customer !== null ? (
+        <NewQuoteDialog
+          customer={item.customer}
+          opportunity={{ id: item.id, title: item.title }}
+          onClose={() => setQuoting(false)}
+        />
+      ) : null}
 
       {conflict === undefined ? null : (
         <div

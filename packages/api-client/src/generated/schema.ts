@@ -2241,6 +2241,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sales/quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find quotes
+         * @description Newest first, a page at a time. `q` matches a reference (`QT-000123`, `123`) or words of the title or customer name.
+         */
+        get: operations["listQuotes"];
+        put?: never;
+        /**
+         * Draft a quote
+         * @description A draft in the company currency (or `currencyCode`), numbered `QT-000001` onwards. Lines may name catalogue items, taking the item's name, unit and sale price unless given. Honours `Idempotency-Key`.
+         */
+        post: operations["createQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sales/quotes/{quoteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a quote
+         * @description The quote, its lines and totals, its answer, and what this seat may do.
+         */
+        get: operations["getQuote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a draft quote
+         * @description Send `expectedVersion` as read. `lines`, when sent, replaces every line. Only a draft changes (409 `quote_not_draft`); revise an issued quote first.
+         */
+        patch: operations["updateQuote"];
+        trace?: never;
+    };
+    "/v1/sales/quotes/{quoteId}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a quote to the customer
+         * @description Owners and admins issue. Freezes the customer's name and address and the lines onto the quote, and mints the customer's link, returned once here (`acceptUrl`, when the web app's address is configured; `acceptToken` always). An empty draft cannot be issued (422 `quote_empty`).
+         */
+        post: operations["issueQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sales/quotes/{quoteId}/revise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revise an issued quote
+         * @description Makes a new draft revision under the same reference (`QT-000123-R2`). The old link stops working. Allowed for an issued, expired or rejected quote; not for one accepted, converted or cancelled (409 `quote_not_revisable`).
+         */
+        post: operations["reviseQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sales/quotes/{quoteId}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record the customer's answer
+         * @description The office records that the customer accepted or rejected an issued quote, with who said so. Accepting wins the linked opportunity. An expired quote is not answered (409 `quote_expired`); revise it.
+         */
+        post: operations["answerQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sales/quotes/{quoteId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw a quote
+         * @description A draft, issued or rejected quote is withdrawn with an optional reason; its link stops working. An accepted quote is converted or revised, not cancelled (409 `quote_closed`).
+         */
+        post: operations["cancelQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -6046,7 +6174,7 @@ export interface operations {
                         displayName: string;
                         /** @enum {string} */
                         role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
-                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve")[];
+                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -20965,6 +21093,1730 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listQuotes: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: ("draft" | "issued" | "accepted" | "rejected" | "converted" | "cancelled") | ("draft" | "issued" | "accepted" | "rejected" | "converted" | "cancelled")[];
+                customerId?: string;
+                opportunityId?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of quotes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            revision: number;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "accepted" | "rejected" | "converted" | "cancelled";
+                            expired: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            validUntil: string | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createQuote: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    customerId: string;
+                    /** Format: uuid */
+                    siteId?: string | null;
+                    /** Format: uuid */
+                    contactId?: string | null;
+                    /** Format: uuid */
+                    opportunityId?: string | null;
+                    title: string;
+                    /** Format: date */
+                    validUntil?: string | null;
+                    introduction?: string | null;
+                    terms?: string | null;
+                    internalNotes?: string | null;
+                    currencyCode?: string;
+                    /** @default [] */
+                    lines?: {
+                        /** Format: uuid */
+                        itemId?: string | null;
+                        description?: string;
+                        quantity: string;
+                        /** @enum {string} */
+                        unit?: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        unitPrice?: string;
+                        discountBp?: number;
+                        taxRateBp?: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The quote. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        quote: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            revision: number;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "accepted" | "rejected" | "converted" | "cancelled";
+                            expired: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            validUntil: string | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            opportunity: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                            } | null;
+                            introduction: string | null;
+                            terms: string | null;
+                            internalNotes: string | null;
+                            issuedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                                contactName: string | null;
+                                contactEmail: string | null;
+                                contactPhone: string | null;
+                            } | null;
+                            issuedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            issuedAt: string | null;
+                            hasLink: boolean;
+                            answer: {
+                                /** @enum {string} */
+                                status: "accepted" | "rejected";
+                                /** Format: date-time */
+                                at: string;
+                                /** @enum {string} */
+                                via: "office" | "link";
+                                by: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                name: string | null;
+                                reason: string | null;
+                            } | null;
+                            /** Format: uuid */
+                            convertedOrderId: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            issue: boolean;
+                            revise: boolean;
+                            answer: boolean;
+                            convert: boolean;
+                            cancel: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such customer (`customer_not_found`) or item (`item_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Invalid; the site, contact or opportunity is not the customer’s; a hand-written line without a description. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quoteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quote. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        quote: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            revision: number;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "accepted" | "rejected" | "converted" | "cancelled";
+                            expired: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            validUntil: string | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            opportunity: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                            } | null;
+                            introduction: string | null;
+                            terms: string | null;
+                            internalNotes: string | null;
+                            issuedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                                contactName: string | null;
+                                contactEmail: string | null;
+                                contactPhone: string | null;
+                            } | null;
+                            issuedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            issuedAt: string | null;
+                            hasLink: boolean;
+                            answer: {
+                                /** @enum {string} */
+                                status: "accepted" | "rejected";
+                                /** Format: date-time */
+                                at: string;
+                                /** @enum {string} */
+                                via: "office" | "link";
+                                by: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                name: string | null;
+                                reason: string | null;
+                            } | null;
+                            /** Format: uuid */
+                            convertedOrderId: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            issue: boolean;
+                            revise: boolean;
+                            answer: boolean;
+                            convert: boolean;
+                            cancel: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such quote. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quoteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    customerId?: string;
+                    /** Format: uuid */
+                    siteId?: string | null;
+                    /** Format: uuid */
+                    contactId?: string | null;
+                    /** Format: uuid */
+                    opportunityId?: string | null;
+                    title?: string;
+                    /** Format: date */
+                    validUntil?: string | null;
+                    introduction?: string | null;
+                    terms?: string | null;
+                    internalNotes?: string | null;
+                    lines?: {
+                        /** Format: uuid */
+                        itemId?: string | null;
+                        description?: string;
+                        quantity: string;
+                        /** @enum {string} */
+                        unit?: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        unitPrice?: string;
+                        discountBp?: number;
+                        taxRateBp?: number;
+                    }[];
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The quote as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        quote: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            revision: number;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "accepted" | "rejected" | "converted" | "cancelled";
+                            expired: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            validUntil: string | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            opportunity: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                            } | null;
+                            introduction: string | null;
+                            terms: string | null;
+                            internalNotes: string | null;
+                            issuedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                                contactName: string | null;
+                                contactEmail: string | null;
+                                contactPhone: string | null;
+                            } | null;
+                            issuedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            issuedAt: string | null;
+                            hasLink: boolean;
+                            answer: {
+                                /** @enum {string} */
+                                status: "accepted" | "rejected";
+                                /** Format: date-time */
+                                at: string;
+                                /** @enum {string} */
+                                via: "office" | "link";
+                                by: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                name: string | null;
+                                reason: string | null;
+                            } | null;
+                            /** Format: uuid */
+                            convertedOrderId: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            issue: boolean;
+                            revise: boolean;
+                            answer: boolean;
+                            convert: boolean;
+                            cancel: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such quote, customer or item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`) or not a draft (`quote_not_draft`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    issueQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quoteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The quote, issued, with its customer link. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        quote: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            revision: number;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "accepted" | "rejected" | "converted" | "cancelled";
+                            expired: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            validUntil: string | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            opportunity: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                            } | null;
+                            introduction: string | null;
+                            terms: string | null;
+                            internalNotes: string | null;
+                            issuedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                                contactName: string | null;
+                                contactEmail: string | null;
+                                contactPhone: string | null;
+                            } | null;
+                            issuedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            issuedAt: string | null;
+                            hasLink: boolean;
+                            answer: {
+                                /** @enum {string} */
+                                status: "accepted" | "rejected";
+                                /** Format: date-time */
+                                at: string;
+                                /** @enum {string} */
+                                via: "office" | "link";
+                                by: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                name: string | null;
+                                reason: string | null;
+                            } | null;
+                            /** Format: uuid */
+                            convertedOrderId: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            issue: boolean;
+                            revise: boolean;
+                            answer: boolean;
+                            convert: boolean;
+                            cancel: boolean;
+                        };
+                        acceptToken: string;
+                        acceptUrl: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such quote. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`) or not a draft (`quote_not_draft`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No lines (`quote_empty`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reviseQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quoteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The new draft revision. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        quote: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            revision: number;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "accepted" | "rejected" | "converted" | "cancelled";
+                            expired: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            validUntil: string | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            opportunity: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                            } | null;
+                            introduction: string | null;
+                            terms: string | null;
+                            internalNotes: string | null;
+                            issuedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                                contactName: string | null;
+                                contactEmail: string | null;
+                                contactPhone: string | null;
+                            } | null;
+                            issuedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            issuedAt: string | null;
+                            hasLink: boolean;
+                            answer: {
+                                /** @enum {string} */
+                                status: "accepted" | "rejected";
+                                /** Format: date-time */
+                                at: string;
+                                /** @enum {string} */
+                                via: "office" | "link";
+                                by: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                name: string | null;
+                                reason: string | null;
+                            } | null;
+                            /** Format: uuid */
+                            convertedOrderId: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            issue: boolean;
+                            revise: boolean;
+                            answer: boolean;
+                            convert: boolean;
+                            cancel: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such quote. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else or not revisable (`quote_not_revisable`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    answerQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quoteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** @enum {string} */
+                    status: "accepted" | "rejected";
+                    name?: string | null;
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The quote, answered. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        quote: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            revision: number;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "accepted" | "rejected" | "converted" | "cancelled";
+                            expired: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            validUntil: string | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            opportunity: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                            } | null;
+                            introduction: string | null;
+                            terms: string | null;
+                            internalNotes: string | null;
+                            issuedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                                contactName: string | null;
+                                contactEmail: string | null;
+                                contactPhone: string | null;
+                            } | null;
+                            issuedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            issuedAt: string | null;
+                            hasLink: boolean;
+                            answer: {
+                                /** @enum {string} */
+                                status: "accepted" | "rejected";
+                                /** Format: date-time */
+                                at: string;
+                                /** @enum {string} */
+                                via: "office" | "link";
+                                by: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                name: string | null;
+                                reason: string | null;
+                            } | null;
+                            /** Format: uuid */
+                            convertedOrderId: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            issue: boolean;
+                            revise: boolean;
+                            answer: boolean;
+                            convert: boolean;
+                            cancel: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such quote. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else, not issued (`quote_not_issued`), or expired (`quote_expired`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quoteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The quote, cancelled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        quote: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            revision: number;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "accepted" | "rejected" | "converted" | "cancelled";
+                            expired: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            validUntil: string | null;
+                            totals: {
+                                gross: string;
+                                discount: string;
+                                net: string;
+                                tax: string;
+                                total: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            contact: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            opportunity: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                            } | null;
+                            introduction: string | null;
+                            terms: string | null;
+                            internalNotes: string | null;
+                            issuedTo: {
+                                customerName: string;
+                                customerAddress: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                };
+                                contactName: string | null;
+                                contactEmail: string | null;
+                                contactPhone: string | null;
+                            } | null;
+                            issuedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            issuedAt: string | null;
+                            hasLink: boolean;
+                            answer: {
+                                /** @enum {string} */
+                                status: "accepted" | "rejected";
+                                /** Format: date-time */
+                                at: string;
+                                /** @enum {string} */
+                                via: "office" | "link";
+                                by: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                name: string | null;
+                                reason: string | null;
+                            } | null;
+                            /** Format: uuid */
+                            convertedOrderId: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            position: number;
+                            /** Format: uuid */
+                            itemId: string | null;
+                            description: string;
+                            quantity: string;
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            unitPrice: string;
+                            discountBp: number;
+                            taxRateBp: number;
+                            gross: string;
+                            discount: string;
+                            net: string;
+                            tax: string;
+                            total: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            issue: boolean;
+                            revise: boolean;
+                            answer: boolean;
+                            convert: boolean;
+                            cancel: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `sales` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such quote. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else or closed (`quote_closed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed validation. */
             422: {

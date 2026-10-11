@@ -32,6 +32,7 @@ import { InventoryCatalogueRepository } from './repositories/inventory-catalogue
 import { InventoryMaterialsRepository } from './repositories/inventory-materials.js';
 import { InventoryPurchasingRepository } from './repositories/inventory-purchasing.js';
 import { InventoryStockRepository } from './repositories/inventory-stock.js';
+import { SalesQuotesRepository } from './repositories/sales-quotes.js';
 import { CustomersRepository } from './repositories/customers.js';
 import { FilesRepository } from './repositories/files.js';
 import { ImportsRepository } from './repositories/imports.js';
@@ -124,6 +125,7 @@ export interface TenantTransaction {
   readonly inventoryStock: InventoryStockRepository;
   readonly inventoryPurchasing: InventoryPurchasingRepository;
   readonly inventoryMaterials: InventoryMaterialsRepository;
+  readonly salesQuotes: SalesQuotesRepository;
   readonly sites: SitesRepository;
   readonly jobTypes: JobTypesRepository;
   readonly workOrders: WorkOrdersRepository;
@@ -374,6 +376,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     inventoryStock: new InventoryStockRepository(scope),
     inventoryPurchasing: new InventoryPurchasingRepository(scope),
     inventoryMaterials: new InventoryMaterialsRepository(scope),
+    salesQuotes: new SalesQuotesRepository(scope),
     sites: new SitesRepository(scope),
     jobTypes: new JobTypesRepository(scope),
     workOrders: new WorkOrdersRepository(scope),

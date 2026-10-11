@@ -162,6 +162,23 @@ export const PERMISSIONS = [
    * people who answer for it.
    */
   'purchasing.approve',
+
+  // Quotes and sales orders (CRM/ERP plan, phase S1). Each also needs the
+  // company's `sales` module switched on.
+
+  /** See quotes and sales orders, with their prices. */
+  'sales.read',
+  /**
+   * Draft and revise quotes and orders, record a customer's answer, convert
+   * an accepted quote, link or create jobs from an order.
+   */
+  'sales.manage',
+  /**
+   * Issue a quote to the customer and confirm an order, which reserves stock.
+   * Owners and admins only (product decision, 2026-10-11): a price a customer
+   * can hold the company to is approved by the people who answer for it.
+   */
+  'sales.issue',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -218,6 +235,9 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'purchasing.read',
     'purchasing.manage',
     'purchasing.approve',
+    'sales.read',
+    'sales.manage',
+    'sales.issue',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -264,6 +284,9 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'purchasing.read',
     'purchasing.manage',
     'purchasing.approve',
+    'sales.read',
+    'sales.manage',
+    'sales.issue',
   ],
 
   // Runs the day: needs to see who is available, not to change who they are.
@@ -297,6 +320,10 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'inventory.consume',
     'purchasing.read',
     'purchasing.manage',
+    // Product decision (2026-10-11): drafts quotes and orders and records the
+    // customer's answer; issuing and confirming are left to owners and admins.
+    'sales.read',
+    'sales.manage',
   ],
 
   // Does the work. Sees colleagues so a job can be handed over, their own
@@ -327,6 +354,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'crm.read',
     'inventory.read',
     'purchasing.read',
+    'sales.read',
   ],
 });
 

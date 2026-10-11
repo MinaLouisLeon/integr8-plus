@@ -35,3 +35,5 @@ export { OrderListScreen } from './purchasing/order-list.js';
 export { OrderScreen } from './purchasing/order-screen.js';
 export { SupplierListScreen } from './purchasing/supplier-list.js';
 export { SupplierScreen } from './purchasing/supplier-screen.js';
+export { NewQuoteDialog, QuoteListScreen } from './sales/quote-list.js';
+export { QuoteScreen } from './sales/quote-screen.js';
