@@ -710,7 +710,7 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase E3 — Assets and service history (align P24)
 
-**Status:** `NOT STARTED` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `IN PROGRESS` — see the [phase tracker](./README.md#phase-tracker).
 
 - [ ] Asset master data, customer/site links, serial identity, install/warranty and service event timeline.
 - [ ] Work order/forms/parts history joins and movement audit.

@@ -1,7 +1,7 @@
 # P24 — Asset register and service history
 
 **Version:** v1.1 Inventory and Assets
-**Status:** `NOT STARTED`
+**Status:** `IN PROGRESS` — CRM/ERP plan phase E3 (see `docs/crm-erp/README.md`)
 **Depends on:** P23
 
 ## Goal
