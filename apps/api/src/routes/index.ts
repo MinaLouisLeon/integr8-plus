@@ -7,6 +7,8 @@ import { memberRoutes } from './v1/members.js';
 import { onboardingRoutes } from './v1/onboarding.js';
 import { settingsRoutes } from './v1/settings.js';
 import { signupRoutes } from './v1/signup.js';
+import { activityRoutes } from './v1/crm-activities.js';
+import { opportunityRoutes } from './v1/crm-opportunities.js';
 import { crmRoutes } from './v1/crm.js';
 import { customerRoutes } from './v1/customers.js';
 import { importRoutes } from './v1/imports.js';
@@ -44,6 +46,8 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...mediaRoutes,
     ...customerRoutes,
     ...crmRoutes,
+    ...opportunityRoutes,
+    ...activityRoutes,
     ...jobTypeRoutes,
     ...workOrderRoutes,
     ...importRoutes,

@@ -1515,6 +1515,155 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/crm/pipelines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The company’s pipelines and their stages
+         * @description The default pipeline first. A company that has none yet gets the standard one (New, Qualified, Proposal, Negotiation, Won, Lost) on first use.
+         */
+        get: operations["listPipelines"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/crm/opportunities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find opportunities
+         * @description Newest first, a page at a time. `q` matches words or their beginnings in the title or description. `ownerId` takes a member id, `me`, or `none` for those nobody owns.
+         */
+        get: operations["listOpportunities"];
+        put?: never;
+        /**
+         * Add an opportunity
+         * @description For a customer, a lead, or both. A lead that became a customer brings its customer along. Honours `Idempotency-Key`.
+         */
+        post: operations["createOpportunity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/crm/opportunities/{opportunityId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An opportunity, its history and the stages it can move to */
+        get: operations["getOpportunity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change an opportunity’s details
+         * @description Not its stage: that is `/transitions`, which records the move. Send `expectedVersion` as read; a newer version wins and this one is refused with 409 `version_conflict`.
+         */
+        patch: operations["updateOpportunity"];
+        trace?: never;
+    };
+    "/v1/crm/opportunities/{opportunityId}/transitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move an opportunity to another stage: forward, back, won, lost or reopened
+         * @description Any live stage of its own pipeline. Its status becomes the stage’s outcome and its chance the stage’s usual one; the move is recorded with who and when. Losing needs `lostReason`. Winning creates no invoice and no job.
+         */
+        post: operations["moveOpportunity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/crm/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Follow-ups and activities
+         * @description `order=due` (the default) is the to-do list: soonest first, undated last. `order=recent` is a timeline: newest first. `due` is read in the company’s time zone. `assignedTo` takes a member id, `me` or `none`.
+         */
+        get: operations["listActivities"];
+        put?: never;
+        /**
+         * Log an activity or set a follow-up
+         * @description Linked to at least one lead, customer or opportunity of this company. Honours `Idempotency-Key`.
+         */
+        post: operations["createActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/crm/activities/{activityId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change, complete, reopen or cancel an activity
+         * @description Send `expectedVersion` as read; a newer version wins and this one is refused with 409 `version_conflict`.
+         */
+        patch: operations["updateActivity"];
+        trace?: never;
+    };
+    "/v1/crm/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The CRM at a glance
+         * @description Leads by status, the open pipeline by stage with totals per currency (and weighted by chance — a forecast, not revenue), wins and losses in the last 30 days, and follow-ups due.
+         */
+        get: operations["getCrmDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -12294,6 +12443,13 @@ export interface operations {
                         /** @enum {string} */
                         mode: "new";
                     };
+                    opportunity?: {
+                        title: string;
+                        amount?: string | null;
+                        currencyCode?: string;
+                        /** Format: date */
+                        expectedCloseDate?: string | null;
+                    };
                 };
             };
         };
@@ -12344,6 +12500,8 @@ export interface operations {
                         contactId: string | null;
                         customerCreated: boolean;
                         contactCreated: boolean;
+                        /** Format: uuid */
+                        opportunityId: string | null;
                     };
                 };
             };
@@ -12475,6 +12633,100 @@ export interface operations {
                             /** Format: date-time */
                             archivedAt: string | null;
                         }[];
+                        opportunities: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            lead: {
+                                /** Format: uuid */
+                                id: string;
+                                displayName: string;
+                            } | null;
+                            /** Format: uuid */
+                            pipelineId: string;
+                            stage: {
+                                /** Format: uuid */
+                                id: string;
+                                key: string;
+                                label: string;
+                                position: number;
+                                probabilityBp: number;
+                                /** @enum {string} */
+                                outcome: "open" | "won" | "lost";
+                                archived: boolean;
+                            };
+                            /** Format: uuid */
+                            ownerId: string | null;
+                            amount: string | null;
+                            currencyCode: string;
+                            expectedCloseDate: string | null;
+                            probabilityBp: number;
+                            /** @enum {string} */
+                            status: "open" | "won" | "lost";
+                            lostReason: string | null;
+                            description: string | null;
+                            /** Format: date-time */
+                            closedAt: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        }[];
+                        activities: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "call" | "email" | "meeting" | "note" | "follow_up" | "task";
+                            subject: string;
+                            detail: string | null;
+                            outcome: string | null;
+                            /** @enum {string} */
+                            status: "open" | "done" | "cancelled";
+                            /** Format: uuid */
+                            assignedTo: string | null;
+                            /** Format: date-time */
+                            dueAt: string | null;
+                            /** Format: date-time */
+                            completedAt: string | null;
+                            /** Format: uuid */
+                            completedBy: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            leads: {
+                                /** Format: uuid */
+                                id: string;
+                                displayName: string;
+                            }[];
+                            customers: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            opportunities: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                            }[];
+                        }[];
+                        can: {
+                            manageOpportunities: boolean;
+                            manageActivities: boolean;
+                        };
                     };
                 };
             };
@@ -12502,6 +12754,1476 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listPipelines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pipelines in order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            isDefault: boolean;
+                            stages: {
+                                /** Format: uuid */
+                                id: string;
+                                key: string;
+                                label: string;
+                                position: number;
+                                probabilityBp: number;
+                                /** @enum {string} */
+                                outcome: "open" | "won" | "lost";
+                                archived: boolean;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listOpportunities: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: ("open" | "won" | "lost") | ("open" | "won" | "lost")[];
+                stageId?: string;
+                ownerId?: string | "me" | "none";
+                customerId?: string;
+                leadId?: string;
+                includeArchived?: "true" | "false";
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of opportunities. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            lead: {
+                                /** Format: uuid */
+                                id: string;
+                                displayName: string;
+                            } | null;
+                            /** Format: uuid */
+                            pipelineId: string;
+                            stage: {
+                                /** Format: uuid */
+                                id: string;
+                                key: string;
+                                label: string;
+                                position: number;
+                                probabilityBp: number;
+                                /** @enum {string} */
+                                outcome: "open" | "won" | "lost";
+                                archived: boolean;
+                            };
+                            /** Format: uuid */
+                            ownerId: string | null;
+                            amount: string | null;
+                            currencyCode: string;
+                            expectedCloseDate: string | null;
+                            probabilityBp: number;
+                            /** @enum {string} */
+                            status: "open" | "won" | "lost";
+                            lostReason: string | null;
+                            description: string | null;
+                            /** Format: date-time */
+                            closedAt: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createOpportunity: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    /** Format: uuid */
+                    customerId?: string | null;
+                    /** Format: uuid */
+                    leadId?: string | null;
+                    /** Format: uuid */
+                    ownerId?: string | null;
+                    amount?: string | null;
+                    currencyCode?: string;
+                    /** Format: date */
+                    expectedCloseDate?: string | null;
+                    probabilityBp?: number;
+                    description?: string | null;
+                    /** Format: uuid */
+                    stageId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The opportunity. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        lead: {
+                            /** Format: uuid */
+                            id: string;
+                            displayName: string;
+                        } | null;
+                        /** Format: uuid */
+                        pipelineId: string;
+                        stage: {
+                            /** Format: uuid */
+                            id: string;
+                            key: string;
+                            label: string;
+                            position: number;
+                            probabilityBp: number;
+                            /** @enum {string} */
+                            outcome: "open" | "won" | "lost";
+                            archived: boolean;
+                        };
+                        /** Format: uuid */
+                        ownerId: string | null;
+                        amount: string | null;
+                        currencyCode: string;
+                        expectedCloseDate: string | null;
+                        probabilityBp: number;
+                        /** @enum {string} */
+                        status: "open" | "won" | "lost";
+                        lostReason: string | null;
+                        description: string | null;
+                        /** Format: date-time */
+                        closedAt: string | null;
+                        version: number;
+                        /** Format: uuid */
+                        createdBy: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The customer (`customer_not_found`) or lead (`lead_not_found`) does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Invalid; neither a customer nor a lead (`party_required`); an unknown stage (`stage_not_found`) or one that is not open (`stage_not_open`); or the owner is not an active member (`assignee_not_member`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getOpportunity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The opportunity. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        opportunity: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            lead: {
+                                /** Format: uuid */
+                                id: string;
+                                displayName: string;
+                            } | null;
+                            /** Format: uuid */
+                            pipelineId: string;
+                            stage: {
+                                /** Format: uuid */
+                                id: string;
+                                key: string;
+                                label: string;
+                                position: number;
+                                probabilityBp: number;
+                                /** @enum {string} */
+                                outcome: "open" | "won" | "lost";
+                                archived: boolean;
+                            };
+                            /** Format: uuid */
+                            ownerId: string | null;
+                            amount: string | null;
+                            currencyCode: string;
+                            expectedCloseDate: string | null;
+                            probabilityBp: number;
+                            /** @enum {string} */
+                            status: "open" | "won" | "lost";
+                            lostReason: string | null;
+                            description: string | null;
+                            /** Format: date-time */
+                            closedAt: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        };
+                        events: {
+                            /** @enum {string} */
+                            kind: "created" | "stage_changed" | "won" | "lost" | "reopened";
+                            fromStage: {
+                                /** Format: uuid */
+                                id: string;
+                                key: string;
+                                label: string;
+                                position: number;
+                                probabilityBp: number;
+                                /** @enum {string} */
+                                outcome: "open" | "won" | "lost";
+                                archived: boolean;
+                            } | null;
+                            toStage: {
+                                /** Format: uuid */
+                                id: string;
+                                key: string;
+                                label: string;
+                                position: number;
+                                probabilityBp: number;
+                                /** @enum {string} */
+                                outcome: "open" | "won" | "lost";
+                                archived: boolean;
+                            } | null;
+                            /** @enum {string|null} */
+                            fromStatus: "open" | "won" | "lost" | null;
+                            /** @enum {string|null} */
+                            toStatus: "open" | "won" | "lost" | null;
+                            reason: string | null;
+                            /** Format: uuid */
+                            actorId: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                        }[];
+                        stages: {
+                            /** Format: uuid */
+                            id: string;
+                            key: string;
+                            label: string;
+                            position: number;
+                            probabilityBp: number;
+                            /** @enum {string} */
+                            outcome: "open" | "won" | "lost";
+                            archived: boolean;
+                        }[];
+                        can: {
+                            edit: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such opportunity. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateOpportunity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    /** Format: uuid */
+                    customerId?: string | null;
+                    /** Format: uuid */
+                    leadId?: string | null;
+                    /** Format: uuid */
+                    ownerId?: string | null;
+                    amount?: string | null;
+                    currencyCode?: string;
+                    /** Format: date */
+                    expectedCloseDate?: string | null;
+                    probabilityBp?: number;
+                    description?: string | null;
+                    expectedVersion: number;
+                    archived?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The opportunity as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        lead: {
+                            /** Format: uuid */
+                            id: string;
+                            displayName: string;
+                        } | null;
+                        /** Format: uuid */
+                        pipelineId: string;
+                        stage: {
+                            /** Format: uuid */
+                            id: string;
+                            key: string;
+                            label: string;
+                            position: number;
+                            probabilityBp: number;
+                            /** @enum {string} */
+                            outcome: "open" | "won" | "lost";
+                            archived: boolean;
+                        };
+                        /** Format: uuid */
+                        ownerId: string | null;
+                        amount: string | null;
+                        currencyCode: string;
+                        expectedCloseDate: string | null;
+                        probabilityBp: number;
+                        /** @enum {string} */
+                        status: "open" | "won" | "lost";
+                        lostReason: string | null;
+                        description: string | null;
+                        /** Format: date-time */
+                        closedAt: string | null;
+                        version: number;
+                        /** Format: uuid */
+                        createdBy: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** Format: date-time */
+                        archivedAt: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such opportunity, customer or lead. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else since it was read (`version_conflict`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid; it would be for neither a customer nor a lead (`party_required`); or the owner is not an active member (`assignee_not_member`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    moveOpportunity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** Format: uuid */
+                    stageId: string;
+                    lostReason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The opportunity, its history and stages. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        opportunity: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            lead: {
+                                /** Format: uuid */
+                                id: string;
+                                displayName: string;
+                            } | null;
+                            /** Format: uuid */
+                            pipelineId: string;
+                            stage: {
+                                /** Format: uuid */
+                                id: string;
+                                key: string;
+                                label: string;
+                                position: number;
+                                probabilityBp: number;
+                                /** @enum {string} */
+                                outcome: "open" | "won" | "lost";
+                                archived: boolean;
+                            };
+                            /** Format: uuid */
+                            ownerId: string | null;
+                            amount: string | null;
+                            currencyCode: string;
+                            expectedCloseDate: string | null;
+                            probabilityBp: number;
+                            /** @enum {string} */
+                            status: "open" | "won" | "lost";
+                            lostReason: string | null;
+                            description: string | null;
+                            /** Format: date-time */
+                            closedAt: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        };
+                        events: {
+                            /** @enum {string} */
+                            kind: "created" | "stage_changed" | "won" | "lost" | "reopened";
+                            fromStage: {
+                                /** Format: uuid */
+                                id: string;
+                                key: string;
+                                label: string;
+                                position: number;
+                                probabilityBp: number;
+                                /** @enum {string} */
+                                outcome: "open" | "won" | "lost";
+                                archived: boolean;
+                            } | null;
+                            toStage: {
+                                /** Format: uuid */
+                                id: string;
+                                key: string;
+                                label: string;
+                                position: number;
+                                probabilityBp: number;
+                                /** @enum {string} */
+                                outcome: "open" | "won" | "lost";
+                                archived: boolean;
+                            } | null;
+                            /** @enum {string|null} */
+                            fromStatus: "open" | "won" | "lost" | null;
+                            /** @enum {string|null} */
+                            toStatus: "open" | "won" | "lost" | null;
+                            reason: string | null;
+                            /** Format: uuid */
+                            actorId: string;
+                            /** Format: date-time */
+                            occurredAt: string;
+                        }[];
+                        stages: {
+                            /** Format: uuid */
+                            id: string;
+                            key: string;
+                            label: string;
+                            position: number;
+                            probabilityBp: number;
+                            /** @enum {string} */
+                            outcome: "open" | "won" | "lost";
+                            archived: boolean;
+                        }[];
+                        can: {
+                            edit: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such opportunity. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else since it was read (`version_conflict`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a live stage of its pipeline, or where it already is (`invalid_transition`); archived (`opportunity_archived`); or lost without a reason (`lost_reason_required`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listActivities: {
+        parameters: {
+            query?: {
+                status?: ("open" | "done" | "cancelled") | ("open" | "done" | "cancelled")[];
+                assignedTo?: string | "me" | "none";
+                due?: "overdue" | "today" | "upcoming" | "none";
+                leadId?: string;
+                customerId?: string;
+                opportunityId?: string;
+                order?: "due" | "recent";
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of activities. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "call" | "email" | "meeting" | "note" | "follow_up" | "task";
+                            subject: string;
+                            detail: string | null;
+                            outcome: string | null;
+                            /** @enum {string} */
+                            status: "open" | "done" | "cancelled";
+                            /** Format: uuid */
+                            assignedTo: string | null;
+                            /** Format: date-time */
+                            dueAt: string | null;
+                            /** Format: date-time */
+                            completedAt: string | null;
+                            /** Format: uuid */
+                            completedBy: string | null;
+                            version: number;
+                            /** Format: uuid */
+                            createdBy: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            leads: {
+                                /** Format: uuid */
+                                id: string;
+                                displayName: string;
+                            }[];
+                            customers: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            opportunities: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                            }[];
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createActivity: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "call" | "email" | "meeting" | "note" | "follow_up" | "task";
+                    subject: string;
+                    detail?: string | null;
+                    outcome?: string | null;
+                    /** Format: uuid */
+                    assignedTo?: string | null;
+                    /** Format: date-time */
+                    dueAt?: string | null;
+                    done?: boolean;
+                    leadIds?: string[];
+                    customerIds?: string[];
+                    opportunityIds?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description The activity. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        kind: "call" | "email" | "meeting" | "note" | "follow_up" | "task";
+                        subject: string;
+                        detail: string | null;
+                        outcome: string | null;
+                        /** @enum {string} */
+                        status: "open" | "done" | "cancelled";
+                        /** Format: uuid */
+                        assignedTo: string | null;
+                        /** Format: date-time */
+                        dueAt: string | null;
+                        /** Format: date-time */
+                        completedAt: string | null;
+                        /** Format: uuid */
+                        completedBy: string | null;
+                        version: number;
+                        /** Format: uuid */
+                        createdBy: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        leads: {
+                            /** Format: uuid */
+                            id: string;
+                            displayName: string;
+                        }[];
+                        customers: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        opportunities: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A linked record does not exist (`link_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Invalid; linked to nothing (`link_required`); or the assignee is not an active member (`assignee_not_member`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    subject?: string;
+                    detail?: string | null;
+                    outcome?: string | null;
+                    /** Format: uuid */
+                    assignedTo?: string | null;
+                    /** Format: date-time */
+                    dueAt?: string | null;
+                    /** @enum {string} */
+                    status?: "open" | "done" | "cancelled";
+                };
+            };
+        };
+        responses: {
+            /** @description The activity as it is now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        kind: "call" | "email" | "meeting" | "note" | "follow_up" | "task";
+                        subject: string;
+                        detail: string | null;
+                        outcome: string | null;
+                        /** @enum {string} */
+                        status: "open" | "done" | "cancelled";
+                        /** Format: uuid */
+                        assignedTo: string | null;
+                        /** Format: date-time */
+                        dueAt: string | null;
+                        /** Format: date-time */
+                        completedAt: string | null;
+                        /** Format: uuid */
+                        completedBy: string | null;
+                        version: number;
+                        /** Format: uuid */
+                        createdBy: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        leads: {
+                            /** Format: uuid */
+                            id: string;
+                            displayName: string;
+                        }[];
+                        customers: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        opportunities: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such activity. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else since it was read (`version_conflict`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid, or the assignee is not an active member (`assignee_not_member`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getCrmDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The figures. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        currency: string;
+                        /** Format: date-time */
+                        since: string;
+                        leadsByStatus: {
+                            new: number;
+                            contacted: number;
+                            qualified: number;
+                            unqualified: number;
+                            converted: number;
+                        };
+                        pipeline: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            stages: {
+                                /** Format: uuid */
+                                id: string;
+                                key: string;
+                                label: string;
+                                position: number;
+                                probabilityBp: number;
+                                /** @enum {string} */
+                                outcome: "open" | "won" | "lost";
+                                archived: boolean;
+                                count: number;
+                                totals: {
+                                    currencyCode: string;
+                                    total: string;
+                                    weighted: string;
+                                    count: number;
+                                }[];
+                            }[];
+                        };
+                        openTotals: {
+                            currencyCode: string;
+                            total: string;
+                            weighted: string;
+                            count: number;
+                        }[];
+                        won: {
+                            currencyCode: string;
+                            total: string;
+                            weighted: string;
+                            count: number;
+                        }[];
+                        lostCount: number;
+                        activities: {
+                            overdue: number;
+                            dueToday: number;
+                            mine: number;
+                        };
+                        can: {
+                            manageLeads: boolean;
+                            manageOpportunities: boolean;
+                            manageActivities: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `crm` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description The request failed validation. */
             422: {

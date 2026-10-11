@@ -1,8 +1,13 @@
 import {
+  type ActivityKind,
+  type ActivityStatus,
   type LeadSource,
   type LeadStatus,
+  type OpportunityEventKind,
+  type OpportunityStatus,
   type Role,
   ROLES,
+  type StageOutcome,
   type WorkOrderPriority,
   type WorkOrderState,
 } from '@integr8/core';
@@ -913,6 +918,106 @@ export interface CrmLeadsTable {
   search: ColumnType<string, never, never>;
 }
 
+export interface CrmPipelinesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  is_default: Generated<boolean>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  archived_at: Date | null;
+}
+
+export interface CrmPipelineStagesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  pipeline_id: string;
+  key: string;
+  label: string;
+  position: number;
+  probability_bp: number;
+  outcome: StageOutcome;
+  created_at: CreatedAt;
+  archived_at: Date | null;
+}
+
+export interface CrmOpportunitiesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  title: string;
+  customer_id: string | null;
+  lead_id: string | null;
+  pipeline_id: string;
+  stage_id: string;
+  owner_id: string | null;
+  /** `numeric(20,4)`, which node-postgres returns as a string: never a JavaScript number. */
+  amount: string | null;
+  currency_code: string;
+  /** A calendar date (`date`), read as `YYYY-MM-DD` text: no time zone to shift it. */
+  expected_close_date: ColumnType<string | null, string | null, string | null>;
+  probability_bp: number;
+  status: Generated<OpportunityStatus>;
+  lost_reason: string | null;
+  description: string | null;
+  closed_at: Date | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  archived_at: Date | null;
+  search: ColumnType<string, never, never>;
+}
+
+export interface CrmOpportunityEventsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  opportunity_id: string;
+  kind: OpportunityEventKind;
+  from_stage_id: string | null;
+  to_stage_id: string | null;
+  from_status: OpportunityStatus | null;
+  to_status: OpportunityStatus | null;
+  reason: string | null;
+  actor_id: string;
+  occurred_at: CreatedAt;
+}
+
+export interface CrmActivitiesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  kind: ActivityKind;
+  subject: string;
+  detail: string | null;
+  outcome: string | null;
+  status: Generated<ActivityStatus>;
+  assigned_to: string | null;
+  due_at: Date | null;
+  completed_at: Date | null;
+  completed_by: string | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface CrmActivityLeadsTable {
+  tenant_id: string;
+  activity_id: string;
+  lead_id: string;
+}
+
+export interface CrmActivityCustomersTable {
+  tenant_id: string;
+  activity_id: string;
+  customer_id: string;
+}
+
+export interface CrmActivityOpportunitiesTable {
+  tenant_id: string;
+  activity_id: string;
+  opportunity_id: string;
+}
+
 export interface CustomerContactsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -1400,6 +1505,14 @@ export interface Database {
   billing_events: BillingEventsTable;
   customers: CustomersTable;
   crm_leads: CrmLeadsTable;
+  crm_pipelines: CrmPipelinesTable;
+  crm_pipeline_stages: CrmPipelineStagesTable;
+  crm_opportunities: CrmOpportunitiesTable;
+  crm_opportunity_events: CrmOpportunityEventsTable;
+  crm_activities: CrmActivitiesTable;
+  crm_activity_leads: CrmActivityLeadsTable;
+  crm_activity_customers: CrmActivityCustomersTable;
+  crm_activity_opportunities: CrmActivityOpportunitiesTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -1575,6 +1688,14 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   tenant_storage_usage: true,
   customers: true,
   crm_leads: true,
+  crm_pipelines: true,
+  crm_pipeline_stages: true,
+  crm_opportunities: true,
+  crm_opportunity_events: true,
+  crm_activities: true,
+  crm_activity_leads: true,
+  crm_activity_customers: true,
+  crm_activity_opportunities: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

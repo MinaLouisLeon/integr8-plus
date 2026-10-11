@@ -53,6 +53,17 @@ export const EXPORTED_TABLES = [
   'shifts',
   'saved_views',
   'imports',
+  // The CRM (CRM/ERP plan, 0024–0025): the company's prospects, deals and
+  // follow-ups are its own data.
+  'crm_leads',
+  'crm_pipelines',
+  'crm_pipeline_stages',
+  'crm_opportunities',
+  'crm_opportunity_events',
+  'crm_activities',
+  'crm_activity_leads',
+  'crm_activity_customers',
+  'crm_activity_opportunities',
   'audit_log',
 ] as const;
 

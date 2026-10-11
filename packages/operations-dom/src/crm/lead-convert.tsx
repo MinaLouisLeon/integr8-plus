@@ -3,7 +3,16 @@ import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { type Customer, keys, type Lead, useOperations } from '../api.js';
-import { BackLink, buttonClass, cardClass, Failure, Field, inputClass, Loading } from '../ui.js';
+import {
+  BackLink,
+  buttonClass,
+  cardClass,
+  Failure,
+  Field,
+  inputClass,
+  Loading,
+  usePermissions,
+} from '../ui.js';
 
 /**
  * Converting a lead into a customer (CRM/ERP plan, phase C2): choose an
@@ -100,6 +109,9 @@ export function LeadConvertScreen({ leadId }: { leadId: string }) {
   const [contact, setContact] = useState<ContactChoice | null>(null);
   const [search, setSearch] = useState('');
   const [searched, setSearched] = useState('');
+  const [deal, setDeal] = useState<{ open: boolean; title: string }>({ open: false, title: '' });
+  const permissions = usePermissions();
+  const canOpenDeal = permissions.includes('crm.opportunity.manage');
 
   const detail = useQuery({
     queryKey: keys.lead(leadId),
@@ -134,10 +146,22 @@ export function LeadConvertScreen({ leadId }: { leadId: string }) {
   });
 
   const lead = detail.data?.lead;
-  const body =
+  const base =
     lead !== undefined && customer !== null && contact !== null
       ? conversionBody(lead, customer, contact)
       : undefined;
+  // The lead's estimate carries over to the opportunity, in its own currency.
+  const body =
+    base === undefined || lead === undefined || !deal.open || deal.title.trim() === ''
+      ? base
+      : {
+          ...base,
+          opportunity: {
+            title: deal.title.trim(),
+            amount: lead.estimatedValue,
+            ...(lead.currencyCode === null ? {} : { currencyCode: lead.currencyCode }),
+          },
+        };
   // One key per distinct request: a retry of the same conversion replays the
   // first answer, and a changed choice is a new request.
   const bodyText = JSON.stringify(body ?? null);
@@ -547,7 +571,44 @@ export function LeadConvertScreen({ leadId }: { leadId: string }) {
                   : t('crm.convert.willAddContact', { name: contact.name.trim() })}
             </li>
             <li>{t('crm.convert.willMarkConverted', { name: current.displayName })}</li>
+            {deal.open && deal.title.trim() !== '' ? (
+              <li>{t('crm.convert.willOpen', { title: deal.title.trim() })}</li>
+            ) : null}
           </ul>
+          {canOpenDeal ? (
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm text-content">
+                <input
+                  type="checkbox"
+                  checked={deal.open}
+                  onChange={(event) =>
+                    setDeal({
+                      open: event.target.checked,
+                      title:
+                        deal.title === ''
+                          ? (current.companyName ?? current.displayName)
+                          : deal.title,
+                    })
+                  }
+                />
+                {t('crm.convert.openOpportunity')}
+              </label>
+              {deal.open ? (
+                <Field label={t('crm.opportunities.fields.title')} className="ps-6">
+                  {(id) => (
+                    <input
+                      id={id}
+                      required
+                      maxLength={200}
+                      className={inputClass}
+                      value={deal.title}
+                      onChange={(event) => setDeal({ ...deal, title: event.target.value })}
+                    />
+                  )}
+                </Field>
+              ) : null}
+            </div>
+          ) : null}
           <p className="text-sm text-content-muted">{t('crm.convert.once')}</p>
           {convert.isError ? <Failure error={convert.error} /> : null}
           <div className="flex flex-wrap justify-between gap-2">
@@ -562,7 +623,7 @@ export function LeadConvertScreen({ leadId }: { leadId: string }) {
             <button
               type="button"
               className={buttonClass.primary}
-              disabled={convert.isPending}
+              disabled={convert.isPending || (deal.open && deal.title.trim() === '')}
               onClick={() => convert.mutate()}
             >
               {convert.isPending ? t('crm.convert.converting') : t('crm.convert.confirm')}

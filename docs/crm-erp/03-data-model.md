@@ -79,3 +79,72 @@ the trigger that makes a conversion final. The repository adds:
   no normalised columns, so this compares expressions; fine at today's sizes,
   and an expression index is the follow-up if it is ever slow.
 - `convertedInto(customerId)` — for the customer's CRM summary.
+
+## 0025 — pipeline, opportunities and activities (phase C3)
+
+### `crm_pipelines` and `crm_pipeline_stages`
+
+A company's sales pipeline. The default one is made the first time the
+company's CRM asks for it (`CrmPipelinesRepository.ensureDefault`), not by the
+migration, so new and existing companies get it the same way; a unique index on
+the default makes two first requests at once leave one.
+
+| Stage key     | Outcome | Usual chance |
+| ------------- | ------- | ------------ |
+| `new`         | open    | 10 %         |
+| `qualified`   | open    | 25 %         |
+| `proposal`    | open    | 50 %         |
+| `negotiation` | open    | 75 %         |
+| `won`         | won     | 100 %        |
+| `lost`        | lost    | 0 %          |
+
+Keys are stable and never reused (unique per pipeline, `^[a-z][a-z0-9_]{0,39}$`);
+screens translate the built-in ones (`crm.stage.<key>`). Stages are archived,
+not deleted. Chances are whole **basis points** (0–10000), never fractions.
+There is no screen for editing pipelines yet (follow-up).
+
+### `crm_opportunities`
+
+| Rule                                                                  | Enforced by                                         |
+| --------------------------------------------------------------------- | --------------------------------------------------- |
+| For a customer, a lead, or both — never neither                       | `crm_opportunities_has_party`                       |
+| Customer, lead, owner and stage are this company's                    | composite tenant foreign keys                       |
+| The stage is in the opportunity's own pipeline                        | FK on `(tenant_id, pipeline_id, stage_id)`          |
+| `status` is always the stage's outcome                                | trigger `crm_opportunities_check_stage`             |
+| Closed exactly when not open; a lost reason only when lost            | `closed_pairing`, `lost_reason` checks              |
+| `amount` is `numeric(20,4)`, not negative; `currency_code` always set | checks; read as a decimal string                    |
+| `expected_close_date` is a calendar `date`                            | read as `YYYY-MM-DD` text, so no time zone moves it |
+| Archived, never deleted; edits name the `version` they read           | no delete grant; `version` column                   |
+
+### `crm_opportunity_events`
+
+Append-only (the runtime role has `select, insert` only): `created`,
+`stage_changed`, `won`, `lost`, `reopened`, with from/to stage and status, the
+reason for a loss, who and when. Written in the same transaction as the move.
+
+### `crm_activities` and the link tables
+
+`kind` is `call`, `email`, `meeting`, `note`, `follow_up` or `task`; `status` is
+`open`, `done` or `cancelled`, and done exactly when `completed_at` and
+`completed_by` are set. Links go through `crm_activity_leads`,
+`crm_activity_customers` and `crm_activity_opportunities`, each with
+same-company foreign keys at both ends, rather than a free-form related id. The
+API requires at least one link. Links are written once (no update or delete
+grant).
+
+### Repositories
+
+`tx.crmPipelines`, `tx.crmOpportunities` (create, update, `move` with its
+history entry, `attachCustomerForLead` for conversion, list, events),
+`tx.crmActivities` (create with links, update, list in "due" or "recent" order
+with millisecond keyset cursors, counts for the dashboard) and `tx.crmReports`
+(the dashboard: sums in SQL as `numeric`, one total per currency, weighted by
+`probability_bp / 10000`). "Today" and "overdue" are computed in the company's
+time zone (`tenant_settings.timezone`).
+
+### Company data export
+
+All CRM tables (0024 and 0025) are in `EXPORTED_TABLES`
+(`packages/db/src/repositories/tenant-data-export.ts`): a company's prospects,
+deals and follow-ups are its own data. `crm_leads` was missing from the export
+after F1; C3 added it with the rest.

@@ -1,7 +1,12 @@
 import {
   findTransition,
+  ACTIVITY_KINDS,
+  ACTIVITY_STATUSES,
   LEAD_SOURCES,
   LEAD_STATUSES,
+  OPPORTUNITY_EVENT_KINDS,
+  OPPORTUNITY_STATUSES,
+  STAGE_OUTCOMES,
   ROLES,
   WORK_ORDER_PRIORITIES,
   WORK_ORDER_STATES,
@@ -470,6 +475,12 @@ describe('vocabularies shared with the application', () => {
       // database accepts.
       ['crm_leads_status_known', LEAD_STATUSES],
       ['crm_leads_source_known', LEAD_SOURCES],
+      // CRM (0025): opportunities, stages, their history and activities.
+      ['crm_opportunities_status_known', OPPORTUNITY_STATUSES],
+      ['crm_pipeline_stages_outcome_known', STAGE_OUTCOMES],
+      ['crm_opportunity_events_kind_known', OPPORTUNITY_EVENT_KINDS],
+      ['crm_activities_kind_known', ACTIVITY_KINDS],
+      ['crm_activities_status_known', ACTIVITY_STATUSES],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,

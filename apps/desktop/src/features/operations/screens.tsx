@@ -6,7 +6,10 @@ import {
   ImportsScreen,
   JobTypesScreen,
   LeadListScreen,
+  ActivitiesScreen,
   LeadConvertScreen,
+  OpportunityBoardScreen,
+  OpportunityScreen,
   LeadScreen,
   type OperationsConfig,
   OperationsContext,
@@ -55,6 +58,9 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         crmLeads: '/crm/leads',
         crmLead: (id) => `/crm/leads/${id}`,
         crmLeadConvert: (id) => `/crm/leads/${id}/convert`,
+        crmOpportunities: '/crm/opportunities',
+        crmOpportunity: (id) => `/crm/opportunities/${id}`,
+        crmActivities: '/crm/activities',
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -127,6 +133,31 @@ export function LeadsRoute() {
   return (
     <OperationsScreens>
       <LeadListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function OpportunitiesRoute() {
+  return (
+    <OperationsScreens>
+      <OpportunityBoardScreen />
+    </OperationsScreens>
+  );
+}
+
+export function OpportunityRoute() {
+  const { opportunityId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <OpportunityScreen key={opportunityId} opportunityId={opportunityId} />
+    </OperationsScreens>
+  );
+}
+
+export function ActivitiesRoute() {
+  return (
+    <OperationsScreens>
+      <ActivitiesScreen />
     </OperationsScreens>
   );
 }

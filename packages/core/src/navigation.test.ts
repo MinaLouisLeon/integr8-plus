@@ -41,7 +41,10 @@ describe('the dashboard map', () => {
   });
 
   it('shows the CRM only to a company that has it, and only to seats that may read it', () => {
-    const keysFor = (role: 'owner' | 'engineer' | 'viewer', features?: Record<string, boolean>) =>
+    const keysFor = (
+      role: 'owner' | 'dispatcher' | 'engineer' | 'viewer',
+      features?: Record<string, boolean>,
+    ) =>
       visibleNavigation('web', permissionsFor(role), features)
         .flatMap((g) => g.sections)
         .map((s) => s.key);
@@ -50,6 +53,10 @@ describe('the dashboard map', () => {
     expect(keysFor('owner')).not.toContain('crm');
     expect(keysFor('owner', { crm: false })).not.toContain('crm');
     expect(keysFor('owner', { crm: true })).toContain('crm');
+    expect(keysFor('dispatcher', { crm: true })).toEqual(
+      expect.arrayContaining(['crm', 'leads', 'opportunities', 'activities']),
+    );
+    expect(keysFor('owner', { crm: false })).not.toContain('opportunities');
     expect(keysFor('viewer', { crm: true })).toContain('crm');
     expect(keysFor('engineer', { crm: true })).not.toContain('crm');
   });

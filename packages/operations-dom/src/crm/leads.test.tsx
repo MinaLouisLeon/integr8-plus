@@ -59,6 +59,13 @@ function me(permissions: string[]) {
 
 const members = () => ({ body: { items: [DEE], nextCursor: null } });
 
+/** The lead screen also lists the lead's opportunities and activities. */
+const leadRecords = {
+  'GET /v1/crm/opportunities': () => ({ body: { items: [], nextCursor: null } }),
+  'GET /v1/crm/activities': () => ({ body: { items: [], nextCursor: null } }),
+  'GET /v1/me': () => me(['crm.read', 'crm.lead.manage']),
+};
+
 describe('lead form helpers', () => {
   it('sends empty fields as null and upper-cases the currency', () => {
     expect(toLeadBody({ ...emptyLead, displayName: ' Nour ', currencyCode: 'egp' })).toMatchObject({
@@ -157,6 +164,7 @@ describe('a lead', { timeout: 20_000 }, () => {
   it('saves only the changed fields with the version it was read at', async () => {
     const user = userEvent.setup();
     const { client, calls } = fakeApi({
+      ...leadRecords,
       'GET /v1/members': members,
       'GET /v1/crm/leads/:id': () => ({ body: detailOf() }),
       'PATCH /v1/crm/leads/:id': (call) => ({
@@ -184,6 +192,7 @@ describe('a lead', { timeout: 20_000 }, () => {
   it('asks for a reload when somebody else changed the lead first', async () => {
     const user = userEvent.setup();
     const { client } = fakeApi({
+      ...leadRecords,
       'GET /v1/members': members,
       'GET /v1/crm/leads/:id': () => ({ body: detailOf() }),
       'PATCH /v1/crm/leads/:id': () => apiError(409, 'version_conflict', 'Changed'),
@@ -198,6 +207,7 @@ describe('a lead', { timeout: 20_000 }, () => {
 
   it('shows a converted lead read-only with a way to its customer', async () => {
     const { client } = fakeApi({
+      ...leadRecords,
       'GET /v1/members': members,
       'GET /v1/crm/leads/:id': () => ({
         body: detailOf({ status: 'converted', convertedCustomerId: CUSTOMER }),
@@ -215,6 +225,7 @@ describe('a lead', { timeout: 20_000 }, () => {
 
   it('offers nothing to change to someone who may only read', async () => {
     const { client } = fakeApi({
+      ...leadRecords,
       'GET /v1/members': members,
       'GET /v1/crm/leads/:id': () => ({ body: detailOf({}, false) }),
     });

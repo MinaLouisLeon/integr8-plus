@@ -226,7 +226,7 @@ export function CustomerScreen({ customerId }: { customerId: string }) {
         )}
       </section>
 
-      <CustomerCrmSection customerId={customerId} />
+      <CustomerCrmSection customerId={customerId} customerName={customer.name} />
 
       {editing === undefined ? null : (
         <Dialog

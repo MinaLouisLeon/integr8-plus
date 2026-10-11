@@ -34,6 +34,8 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   billing: null,
   crm: '/crm',
   leads: '/crm/leads',
+  opportunities: '/crm/opportunities',
+  activities: '/crm/activities',
 };
 
 /**

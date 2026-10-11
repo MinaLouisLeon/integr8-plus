@@ -19,7 +19,10 @@ import { FormVersionRoute } from '~/features/forms/routes/form-version';
 import { FormsListRoute } from '~/features/forms/routes/forms-list';
 import {
   CrmRoute,
+  ActivitiesRoute,
   LeadConvertRoute,
+  OpportunitiesRoute,
+  OpportunityRoute,
   LeadRoute,
   LeadsRoute,
   CustomerRoute,
@@ -84,6 +87,9 @@ const SIGNED_IN_ROUTES: readonly { path: string; element: ReactNode }[] = [
   { path: '/crm/leads', element: <LeadsRoute /> },
   { path: '/crm/leads/:leadId', element: <LeadRoute /> },
   { path: '/crm/leads/:leadId/convert', element: <LeadConvertRoute /> },
+  { path: '/crm/opportunities', element: <OpportunitiesRoute /> },
+  { path: '/crm/opportunities/:opportunityId', element: <OpportunityRoute /> },
+  { path: '/crm/activities', element: <ActivitiesRoute /> },
   { path: '/customers', element: <CustomersRoute /> },
   { path: '/customers/:customerId', element: <CustomerRoute /> },
   { path: '/sites/:siteId', element: <SiteRoute /> },

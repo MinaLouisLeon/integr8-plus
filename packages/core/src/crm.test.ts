@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ACTIVITY_KINDS,
+  ACTIVITY_STATUSES,
+  activityStartsDone,
+  basisPointsSchema,
   currencyCodeSchema,
+  DEFAULT_PIPELINE_STAGES,
   decimalAmountSchema,
   hasFeature,
   isLeadOpen,
@@ -8,6 +13,10 @@ import {
   LEAD_STATUSES,
   leadTransitionAllowed,
   OPEN_LEAD_STATUSES,
+  OPPORTUNITY_EVENT_KINDS,
+  opportunityEventKind,
+  opportunityMoveAllowed,
+  STAGE_OUTCOMES,
 } from './crm.js';
 import { can } from './permissions.js';
 import { ROLES } from './roles.js';
@@ -88,5 +97,56 @@ describe('money and currency', () => {
     expect(currencyCodeSchema.safeParse('EGP').success).toBe(true);
     expect(currencyCodeSchema.safeParse('egp').success).toBe(false);
     expect(currencyCodeSchema.safeParse('EURO').success).toBe(false);
+  });
+});
+
+describe('the pipeline', () => {
+  it('starts every company with open stages, one win and one loss', () => {
+    const outcomes = DEFAULT_PIPELINE_STAGES.map((stage) => stage.outcome);
+    expect(outcomes.filter((outcome) => outcome === 'won')).toHaveLength(1);
+    expect(outcomes.filter((outcome) => outcome === 'lost')).toHaveLength(1);
+    expect(new Set(DEFAULT_PIPELINE_STAGES.map((stage) => stage.key)).size).toBe(
+      DEFAULT_PIPELINE_STAGES.length,
+    );
+    for (const stage of DEFAULT_PIPELINE_STAGES) {
+      expect(basisPointsSchema.safeParse(stage.probabilityBp).success).toBe(true);
+      expect(STAGE_OUTCOMES).toContain(stage.outcome);
+    }
+  });
+
+  it('moves within one pipeline, to a live stage that is not the current one', () => {
+    const here = { id: 'a', pipelineId: 'p' };
+    expect(opportunityMoveAllowed(here, { id: 'b', pipelineId: 'p', archivedAt: null })).toBe(true);
+    expect(opportunityMoveAllowed(here, { id: 'a', pipelineId: 'p', archivedAt: null })).toBe(
+      false,
+    );
+    expect(opportunityMoveAllowed(here, { id: 'b', pipelineId: 'q', archivedAt: null })).toBe(
+      false,
+    );
+    expect(opportunityMoveAllowed(here, { id: 'b', pipelineId: 'p', archivedAt: new Date() })).toBe(
+      false,
+    );
+  });
+
+  it('names each move in the history', () => {
+    expect(opportunityEventKind('open', 'open')).toBe('stage_changed');
+    expect(opportunityEventKind('open', 'won')).toBe('won');
+    expect(opportunityEventKind('open', 'lost')).toBe('lost');
+    expect(opportunityEventKind('lost', 'open')).toBe('reopened');
+    expect(opportunityEventKind('won', 'lost')).toBe('lost');
+    expect(OPPORTUNITY_EVENT_KINDS).toContain(opportunityEventKind('won', 'open'));
+  });
+
+  it('keeps probabilities whole basis points', () => {
+    expect(basisPointsSchema.safeParse(2500).success).toBe(true);
+    expect(basisPointsSchema.safeParse(25.5).success).toBe(false);
+    expect(basisPointsSchema.safeParse(10_001).success).toBe(false);
+  });
+});
+
+describe('activities', () => {
+  it('writes notes as done and starts everything else open', () => {
+    expect(ACTIVITY_KINDS.filter(activityStartsDone)).toEqual(['note']);
+    expect(ACTIVITY_STATUSES).toEqual(['open', 'done', 'cancelled']);
   });
 });

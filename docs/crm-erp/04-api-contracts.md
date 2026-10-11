@@ -136,3 +136,60 @@ customer was created. Both carry `impersonatedBy` when Integr8 staff acted.
 `idempotent: 'required'` on a route (`apps/api/src/http/routes.ts`) makes the
 server refuse a request without the header before running it, and marks the
 header `required` in OpenAPI. Converting is the first route to use it.
+
+## Opportunities and the pipeline (phase C3)
+
+Source: `apps/api/src/routes/v1/crm-opportunities.ts`. Tests:
+`apps/api/src/routes/v1/crm-pipeline.integration.test.ts`.
+
+| Method and path                               | Permission               | What it does                                                                                              |
+| --------------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `GET /v1/crm/pipelines`                       | `crm.read`               | Pipelines and stages, the default first (made on first use)                                               |
+| `GET /v1/crm/opportunities`                   | `crm.read`               | `q`, `status`, `stageId`, `ownerId` (id, `me`, `none`), `customerId`, `leadId`, `includeArchived`, cursor |
+| `POST /v1/crm/opportunities`                  | `crm.opportunity.manage` | Open one (`Idempotency-Key` honoured)                                                                     |
+| `GET /v1/crm/opportunities/{id}`              | `crm.read`               | The opportunity, its history (newest first), its pipeline's stages, `can.edit`                            |
+| `PATCH /v1/crm/opportunities/{id}`            | `crm.opportunity.manage` | Details, owner, amount, chance, archive — not the stage                                                   |
+| `POST /v1/crm/opportunities/{id}/transitions` | `crm.opportunity.manage` | Move to another stage: forward, back, won, lost, reopened                                                 |
+
+| Rule                                                                              | Refusal                                    |
+| --------------------------------------------------------------------------------- | ------------------------------------------ |
+| For a customer or a lead (a lead that became a customer brings its customer)      | 422 `party_required`                       |
+| Customer and lead are this company's                                              | 404 `customer_not_found`, `lead_not_found` |
+| A new opportunity starts at an open stage (default: the default pipeline's first) | 422 `stage_not_found`, `stage_not_open`    |
+| Owner is an active member                                                         | 422 `assignee_not_member`                  |
+| A move goes to another live stage of its own pipeline                             | 422 `invalid_transition`                   |
+| Losing needs a reason                                                             | 422 `lost_reason_required`                 |
+| An archived opportunity is restored before it moves                               | 422 `opportunity_archived`                 |
+| Edits and moves name `expectedVersion`                                            | 409 `version_conflict`                     |
+| Amounts are decimal strings; chances whole basis points                           | 422 (schema)                               |
+
+A move sets the status to the stage's outcome and the chance to the stage's
+usual one, sets or clears `closedAt`, and records the move. Winning creates no
+invoice and no job. Audit actions: `crm_opportunity.created`, `.updated`,
+`.stage_changed`, `.won`, `.lost`, `.reopened`.
+
+Converting a lead (C2) now also takes an optional
+`opportunity: { title, amount?, currencyCode?, expectedCloseDate? }`, opened at
+the first stage for the new or linked customer and the lead, owned by the lead's
+assignee (needs `crm.opportunity.manage`); the response carries `opportunityId`.
+Opportunities already open for the lead get its customer.
+
+## Activities and the dashboard (phase C3)
+
+Source: `apps/api/src/routes/v1/crm-activities.ts`.
+
+| Method and path                 | Permission            | What it does                                                                                                                                                                                        |
+| ------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/crm/activities`        | `crm.read`            | `status`, `assignedTo` (id, `me`, `none`), `due` (`overdue`, `today`, `upcoming`, `none`, in the company's time zone), `leadId`, `customerId`, `opportunityId`, `order` (`due` or `recent`), cursor |
+| `POST /v1/crm/activities`       | `crm.activity.manage` | Log one or set a follow-up, linked to ≤ 10 each of leads, customers, opportunities (`Idempotency-Key` honoured)                                                                                     |
+| `PATCH /v1/crm/activities/{id}` | `crm.activity.manage` | Change, complete (`done` records who and when), reopen or cancel                                                                                                                                    |
+| `GET /v1/crm/dashboard`         | `crm.read`            | Leads by status; open pipeline by stage and per currency, weighted by chance; won and lost in 30 days; follow-ups overdue, due today and mine                                                       |
+
+Refusals: 422 `link_required` (no link), 404 `link_not_found` (a link that is
+not this company's), 422 `assignee_not_member`, 409 `version_conflict`. Notes
+are written done. Audit actions: `crm_activity.created`, `.updated`, `.done`,
+`.open`, `.cancelled`.
+
+`GET /v1/customers/{customerId}/crm` (C2) now also returns the customer's
+newest 20 opportunities and activities and `can.manageOpportunities` /
+`can.manageActivities`; the list routes filter by `customerId` for more.

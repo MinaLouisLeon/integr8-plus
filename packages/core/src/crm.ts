@@ -88,6 +88,89 @@ export const LEAD_MATCH_REASONS = ['email', 'phone', 'name'] as const;
 export type LeadMatchReason = (typeof LEAD_MATCH_REASONS)[number];
 
 // ---------------------------------------------------------------------------
+// Opportunities and the pipeline
+// ---------------------------------------------------------------------------
+
+/** Where an opportunity stands. Always the outcome of its stage (a database trigger checks). */
+export const OPPORTUNITY_STATUSES = ['open', 'won', 'lost'] as const;
+export const opportunityStatusSchema = z.enum(OPPORTUNITY_STATUSES);
+export type OpportunityStatus = z.infer<typeof opportunityStatusSchema>;
+
+/** What reaching a stage means. The same words as an opportunity's status. */
+export const STAGE_OUTCOMES = OPPORTUNITY_STATUSES;
+export type StageOutcome = OpportunityStatus;
+
+/** What happened to an opportunity, in its history. */
+export const OPPORTUNITY_EVENT_KINDS = [
+  'created',
+  'stage_changed',
+  'won',
+  'lost',
+  'reopened',
+] as const;
+export type OpportunityEventKind = (typeof OPPORTUNITY_EVENT_KINDS)[number];
+
+/**
+ * The pipeline every company starts with. Keys are stable and translated by
+ * the screens (`crm.stage.<key>`); probabilities are basis points, so 2500 is
+ * 25 %. Exactly one stage wins and one loses.
+ */
+export const DEFAULT_PIPELINE_STAGES = [
+  { key: 'new', label: 'New', probabilityBp: 1000, outcome: 'open' },
+  { key: 'qualified', label: 'Qualified', probabilityBp: 2500, outcome: 'open' },
+  { key: 'proposal', label: 'Proposal', probabilityBp: 5000, outcome: 'open' },
+  { key: 'negotiation', label: 'Negotiation', probabilityBp: 7500, outcome: 'open' },
+  { key: 'won', label: 'Won', probabilityBp: 10000, outcome: 'won' },
+  { key: 'lost', label: 'Lost', probabilityBp: 0, outcome: 'lost' },
+] as const satisfies readonly {
+  key: string;
+  label: string;
+  probabilityBp: number;
+  outcome: StageOutcome;
+}[];
+
+/** A chance in basis points: 0 (never) to 10000 (certain). Whole numbers, so no float rounding. */
+export const basisPointsSchema = z.number().int().min(0).max(10_000);
+
+/**
+ * Whether an opportunity may move from one stage to another. Any stage of its
+ * own pipeline that is not archived and is not where it already is: deals skip
+ * stages, go back a step, and are reopened after being lost. Losing needs a
+ * reason (checked by the API, which has the text).
+ */
+export function opportunityMoveAllowed(
+  from: { id: string; pipelineId: string },
+  to: { id: string; pipelineId: string; archivedAt: unknown },
+): boolean {
+  return to.pipelineId === from.pipelineId && to.id !== from.id && to.archivedAt === null;
+}
+
+/** The history entry a move from one outcome to another records. */
+export function opportunityEventKind(from: StageOutcome, to: StageOutcome): OpportunityEventKind {
+  if (to === 'won' || to === 'lost') {
+    return from === to ? 'stage_changed' : to;
+  }
+  return from === 'open' ? 'stage_changed' : 'reopened';
+}
+
+// ---------------------------------------------------------------------------
+// Activities
+// ---------------------------------------------------------------------------
+
+export const ACTIVITY_KINDS = ['call', 'email', 'meeting', 'note', 'follow_up', 'task'] as const;
+export const activityKindSchema = z.enum(ACTIVITY_KINDS);
+export type ActivityKind = z.infer<typeof activityKindSchema>;
+
+export const ACTIVITY_STATUSES = ['open', 'done', 'cancelled'] as const;
+export const activityStatusSchema = z.enum(ACTIVITY_STATUSES);
+export type ActivityStatus = z.infer<typeof activityStatusSchema>;
+
+/** A note records something that happened; it is done when written. Everything else starts open. */
+export function activityStartsDone(kind: ActivityKind): boolean {
+  return kind === 'note';
+}
+
+// ---------------------------------------------------------------------------
 // Money
 // ---------------------------------------------------------------------------
 

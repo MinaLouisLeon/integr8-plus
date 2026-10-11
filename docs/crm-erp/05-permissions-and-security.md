@@ -64,6 +64,22 @@ Tests: `packages/core/src/crm.test.ts` pins the table above;
   module, while the customer itself needs only `customer.read`: engineers read
   customers for their jobs and never see CRM data through them.
 
+## Opportunities and activities (phase C3)
+
+- Reading the pipeline, opportunities, activities and the dashboard needs
+  `crm.read` (viewers included); changing any of them needs
+  `crm.opportunity.manage` or `crm.activity.manage` (owners, admins and
+  dispatchers). Engineers see none of it.
+- Every id in a request — customer, lead, stage, owner, linked record — is
+  checked to be this company's before anything is written, and the database's
+  composite foreign keys refuse it anyway. Another company's stage is
+  `invalid_transition`; another company's record is a 404, as one that does not
+  exist.
+- An opportunity's history and an activity's links cannot be changed or
+  deleted by the application role.
+- Detail responses carry `can` flags; screens hide what the seat may not do,
+  and the API refuses it regardless.
+
 ## Database
 
 See [03-data-model.md](./03-data-model.md): row-level security on every CRM

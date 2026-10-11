@@ -659,7 +659,7 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase C3 — Opportunities and activities
 
-**Status:** `NOT STARTED` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `DONE` — CRM MVP complete; pipeline editing screen and drag-and-drop are follow-ups — see the [phase tracker](./README.md#phase-tracker).
 
 - [ ] Pipeline/stages migration, opportunity CRUD/transitions/events, activity CRUD/due lists and join references.
 - [ ] Pipeline board/list, detail pages, activity timeline, Customer 360 tabs, small dashboard.

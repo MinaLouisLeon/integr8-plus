@@ -181,6 +181,50 @@ describe('converting a lead', { timeout: 20_000 }, () => {
     });
   });
 
+  it('opens an opportunity with the lead’s estimate when asked', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = fakeApi({
+      'GET /v1/me': () => ({
+        body: {
+          userId: USER,
+          tenantId: CUSTOMER,
+          email: 'o@x.example',
+          displayName: 'Olu',
+          role: 'dispatcher',
+          permissions: ['crm.read', 'crm.lead.convert', 'crm.opportunity.manage'],
+        },
+      }),
+      'GET /v1/crm/leads/:id': () => ({
+        body: detailOf({ estimatedValue: '48000', currencyCode: 'USD' }),
+      }),
+      'GET /v1/crm/leads/:id/matches': () => ({ body: { items: [] } }),
+      'POST /v1/crm/leads/:id/convert': () => conversion(NEW_CUSTOMER, null, true),
+    });
+    renderScreen(<LeadConvertScreen leadId={LEAD} />, client);
+
+    await user.click(await screen.findByRole('radio', { name: /Add a new customer/u }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(screen.getByRole('radio', { name: /Nobody for now/u }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Also open an opportunity for this customer' }),
+    );
+    const title = screen.getByLabelText('Title');
+    expect(title).toHaveValue('Delta Facilities');
+    await user.clear(title);
+    await user.type(title, 'Annual service plan');
+    expect(screen.getByRole('region', { name: 'Check before converting' })).toHaveTextContent(
+      'An opportunity, Annual service plan, is opened at the first stage.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Convert' }));
+
+    await waitFor(() => expect(calls.some((call) => call.method === 'POST')).toBe(true));
+    expect(calls.find((call) => call.method === 'POST')!.body).toMatchObject({
+      contact: { mode: 'none' },
+      opportunity: { title: 'Annual service plan', amount: '48000', currencyCode: 'USD' },
+    });
+  });
+
   it('says why when the server refuses, and stays on the review', async () => {
     const user = userEvent.setup();
     const { client } = fakeApi({
@@ -222,6 +266,8 @@ describe('converting a lead', { timeout: 20_000 }, () => {
     const { client } = fakeApi({
       'GET /v1/members': () => ({ body: { items: [], nextCursor: null } }),
       'GET /v1/crm/leads/:id': () => ({ body: detailOf() }),
+      'GET /v1/crm/opportunities': () => ({ body: { items: [], nextCursor: null } }),
+      'GET /v1/crm/activities': () => ({ body: { items: [], nextCursor: null } }),
     });
     const { navigate } = renderScreen(<LeadScreen leadId={LEAD} />, client);
 
@@ -243,9 +289,10 @@ describe('the CRM on a customer', () => {
     },
   });
 
-  it('lists the leads that became the customer', async () => {
+  it('lists the customer’s opportunities, follow-ups and the leads that became it', async () => {
     const { client } = fakeApi({
       'GET /v1/me': me(true, ['crm.read']),
+      'GET /v1/members': () => ({ body: { items: [], nextCursor: null } }),
       'GET /v1/customers/:id/crm': () => ({
         body: {
           leads: [
@@ -255,22 +302,40 @@ describe('the CRM on a customer', () => {
               convertedAt: '2026-10-02T09:00:00.000Z',
             }),
           ],
+          opportunities: [],
+          activities: [],
+          can: { manageOpportunities: false, manageActivities: false },
         },
       }),
+      'GET /v1/crm/activities': (call) => {
+        expect(call.query.get('customerId')).toBe(CUSTOMER);
+        return { body: { items: [], nextCursor: null } };
+      },
     });
-    renderScreen(<CustomerCrmSection customerId={CUSTOMER} />, client);
+    renderScreen(
+      <CustomerCrmSection customerId={CUSTOMER} customerName="Delta Facilities" />,
+      client,
+    );
 
     expect(await screen.findByRole('link', { name: 'Hany Fouad' })).toHaveAttribute(
       'href',
       `/crm/leads/${LEAD}`,
     );
     expect(screen.getByRole('heading', { name: 'CRM' })).toBeInTheDocument();
+    expect(screen.getByText('No opportunities for this customer yet.')).toBeInTheDocument();
+    expect(await screen.findByText('No activity yet.')).toBeInTheDocument();
+    // Read-only: nothing to add.
+    expect(screen.queryByRole('button', { name: 'New opportunity' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add activity' })).not.toBeInTheDocument();
   });
 
   it('shows nothing, and asks nothing, without the module or the permission', async () => {
     for (const routes of [me(false, ['crm.read']), me(true, [])]) {
       const { client, calls } = fakeApi({ 'GET /v1/me': routes });
-      const { unmount } = renderScreen(<CustomerCrmSection customerId={CUSTOMER} />, client);
+      const { unmount } = renderScreen(
+        <CustomerCrmSection customerId={CUSTOMER} customerName="Delta Facilities" />,
+        client,
+      );
       await waitFor(() => expect(calls.some((call) => call.path === '/v1/me')).toBe(true));
       expect(screen.queryByRole('heading', { name: 'CRM' })).not.toBeInTheDocument();
       expect(calls.some((call) => call.path.endsWith('/crm'))).toBe(false);

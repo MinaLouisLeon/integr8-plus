@@ -167,6 +167,18 @@ export class CrmLeadsRepository extends TenantScopedRepository {
     return (await this.find(leadId)) === undefined ? 'not_found' : 'version_conflict';
   }
 
+  async findMany(leadIds: readonly string[]): Promise<Lead[]> {
+    if (leadIds.length === 0) {
+      return [];
+    }
+    return (
+      await this.#leads()
+        .selectAll()
+        .where('id', 'in', [...new Set(leadIds)])
+        .execute()
+    ).map(toLead);
+  }
+
   /**
    * The lead, locked until the transaction ends. Converting reads the lead
    * this way, so two conversions of the same lead run one after the other and

@@ -4,7 +4,17 @@ import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { keys, type LeadDetail, useOperations } from '../api.js';
-import { BackLink, buttonClass, cardClass, Failure, Field, inputClass, Loading } from '../ui.js';
+import {
+  BackLink,
+  buttonClass,
+  cardClass,
+  Failure,
+  Field,
+  inputClass,
+  Loading,
+  usePermissions,
+} from '../ui.js';
+import { ActivityPanel } from './activities.js';
 import {
   changedLeadFields,
   formatAmount,
@@ -15,6 +25,7 @@ import {
   type LeadDraft,
   useMembers,
 } from './lead-parts.js';
+import { NewOpportunityDialog, StageBadge } from './opportunity-parts.js';
 
 /** True when the server refused because somebody else changed the record first. */
 function isVersionConflict(error: unknown): boolean {
@@ -30,6 +41,8 @@ export function LeadScreen({ leadId }: { leadId: string }) {
   const { client, paths, navigate, locale } = useOperations();
   const queries = useQueryClient();
   const [editing, setEditing] = useState<LeadDraft | null>(null);
+  const [opening, setOpening] = useState(false);
+  const permissions = usePermissions();
 
   const detail = useQuery({
     queryKey: keys.lead(leadId),
@@ -37,6 +50,12 @@ export function LeadScreen({ leadId }: { leadId: string }) {
       (await client.GET('/v1/crm/leads/{leadId}', { params: { path: { leadId } } })).data!,
   });
   const members = useMembers();
+  const opportunities = useQuery({
+    queryKey: keys.opportunities({ leadId }),
+    queryFn: async () =>
+      (await client.GET('/v1/crm/opportunities', { params: { query: { leadId, limit: 20 } } }))
+        .data!.items,
+  });
 
   const refresh = async (next?: LeadDetail['lead']) => {
     if (next !== undefined) {
@@ -272,6 +291,67 @@ export function LeadScreen({ leadId }: { leadId: string }) {
           </dl>
         </section>
       )}
+
+      <section aria-labelledby="crm-lead-opportunities" className={cardClass}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="crm-lead-opportunities" className="text-lg font-semibold text-content">
+            {t('crm.opportunities.title')}
+          </h2>
+          {permissions.includes('crm.opportunity.manage') && lead.archivedAt === null ? (
+            <button type="button" className={buttonClass.ghost} onClick={() => setOpening(true)}>
+              {t('crm.opportunities.new')}
+            </button>
+          ) : null}
+        </div>
+        {opportunities.isPending ? null : opportunities.isError ? (
+          <Failure error={opportunities.error} onRetry={() => void opportunities.refetch()} />
+        ) : opportunities.data.length === 0 ? (
+          <p className="text-sm text-content-muted">{t('crm.leads.noOpportunities')}</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border-subtle text-sm">
+            {opportunities.data.map((item) => (
+              <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <a
+                  href={paths.crmOpportunity(item.id)}
+                  className="text-accent underline-offset-4 hover:underline"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    navigate(paths.crmOpportunity(item.id));
+                  }}
+                >
+                  {item.title}
+                </a>
+                <span className="flex items-center gap-2 text-xs text-content-muted">
+                  {item.amount === null
+                    ? null
+                    : formatAmount(item.amount, item.currencyCode, locale)}
+                  <StageBadge stage={item.stage} status={item.status} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <ActivityPanel
+        links={{ leadIds: [lead.id] }}
+        canManage={permissions.includes('crm.activity.manage')}
+      />
+
+      {opening ? (
+        <NewOpportunityDialog
+          lead={lead}
+          {...(lead.convertedCustomerId === null
+            ? {}
+            : {
+                customer: {
+                  id: lead.convertedCustomerId,
+                  name: lead.companyName ?? lead.displayName,
+                },
+              })}
+          onClose={() => setOpening(false)}
+        />
+      ) : null}
     </div>
   );
 }

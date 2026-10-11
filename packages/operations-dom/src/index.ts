@@ -22,3 +22,6 @@ export { LeadListScreen } from './crm/lead-list.js';
 export { LeadScreen } from './crm/lead-screen.js';
 export { LeadConvertScreen } from './crm/lead-convert.js';
 export { CustomerCrmSection } from './crm/customer-crm.js';
+export { OpportunityBoardScreen } from './crm/opportunity-board.js';
+export { OpportunityScreen } from './crm/opportunity-screen.js';
+export { ActivitiesScreen, ActivityPanel } from './crm/activities.js';

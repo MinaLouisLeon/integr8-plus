@@ -9,17 +9,12 @@ import {
   leadTransitionAllowed,
   OPEN_LEAD_STATUSES,
 } from '@integr8/core';
-import {
-  type Lead,
-  type LeadInput,
-  normaliseEmail,
-  phoneDigits,
-  type TenantTransaction,
-  withTenant,
-} from '@integr8/db';
+import { type Lead, type LeadInput, normaliseEmail, phoneDigits, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { ApiError, conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
-import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
+import { defineRoute, noSchema } from '../../http/routes.js';
+import { activityBodies, activitySchema } from './crm-activities.js';
+import { createOpportunity, opportunityBodies, opportunitySchema } from './crm-opportunities.js';
 import { duplicateAccountNumber, stripUndefined } from './customers.js';
 import {
   booleanQuery,
@@ -29,108 +24,28 @@ import {
   customerSchema,
   many,
 } from './operations.js';
+import {
+  alreadyConverted,
+  crmAudit,
+  decodeDateCursor,
+  encodeDateCursor,
+  FEATURE,
+  requireAssignableMember,
+  TAGS,
+  versionConflict,
+} from './crm-shared.js';
 import { iso, isoOrNull } from './schemas.js';
 
 /**
  * The CRM (CRM/ERP plan): leads in phase C1, converting them into customers
- * and the CRM summary on a customer in phase C2.
+ * and the CRM summary on a customer in phase C2; opportunities on conversion
+ * and in that summary in phase C3 (`crm-opportunities.ts`, `crm-activities.ts`).
  *
  * Every route here needs the company's `crm` module as well as the seat's
  * permission (`feature: 'crm'`); see `http/features.ts`. Leads are archived,
  * never deleted, and edited with optimistic concurrency: an edit names the
  * version it read and loses, with 409 `version_conflict`, to a newer one.
  */
-
-const TAGS = ['crm'];
-const FEATURE = 'crm' as const;
-
-// ---------------------------------------------------------------------------
-// Shared pieces
-// ---------------------------------------------------------------------------
-
-/**
- * Appends an audit entry for a CRM change. When Integr8 staff are acting as
- * the company, the entry says so: the seat's user did not make this change by
- * themselves, and a company reading its own history is owed that difference.
- */
-export async function crmAudit(
-  tx: TenantTransaction,
-  context: RequestContext,
-  action: string,
-  resourceType: string,
-  resourceId: string,
-  metadata: Record<string, unknown> = {},
-): Promise<void> {
-  const { principal } = context;
-  await tx.auditLog.append({
-    actorKind: 'tenant_user',
-    actorId: principal.userId,
-    actorLabel: principal.userId,
-    action,
-    resourceType,
-    resourceId,
-    requestId: context.requestId,
-    ipAddress: context.ipAddress,
-    userAgent: context.userAgent,
-    metadata:
-      principal.impersonatedBy === undefined
-        ? metadata
-        : { ...metadata, impersonatedBy: principal.impersonatedBy },
-  });
-}
-
-/** A member a lead (or anything else in the CRM) may be assigned to: in this company, and active. */
-async function requireAssignableMember(tx: TenantTransaction, userId: string): Promise<void> {
-  const member = await tx.tenantUsers.findByUserId(userId);
-  if (member?.status !== 'active') {
-    throw unprocessable(
-      'assignee_not_member',
-      'Assign the lead to an active member of your company.',
-      [
-        {
-          field: 'body.assignedTo',
-          code: 'assignee_not_member',
-          message: 'Assign the lead to an active member of your company.',
-        },
-      ],
-    );
-  }
-}
-
-const alreadyConverted = () =>
-  conflict(
-    'lead_already_converted',
-    'This lead has already been converted. Its details now live on the customer.',
-  );
-
-const versionConflict = () =>
-  conflict(
-    'version_conflict',
-    'Somebody changed this since you opened it. Reload to see their change, then try again.',
-  );
-
-/** Opaque cursors for newest-first lists. */
-function encodeDateCursor(next: { createdAt: Date; id: string } | undefined): string | null {
-  return next === undefined
-    ? null
-    : Buffer.from(
-        JSON.stringify({ at: next.createdAt.toISOString(), id: next.id }),
-        'utf8',
-      ).toString('base64url');
-}
-
-function decodeDateCursor(cursor: string | undefined): { createdAt: Date; id: string } | undefined {
-  if (cursor === undefined) {
-    return undefined;
-  }
-  try {
-    const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as unknown;
-    const result = z.object({ at: z.iso.datetime(), id: z.uuid() }).safeParse(parsed);
-    return result.success ? { createdAt: new Date(result.data.at), id: result.data.id } : undefined;
-  } catch {
-    return undefined;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Leads
@@ -554,6 +469,18 @@ const convertLeadSchema = z
           .extend({ mode: z.literal('new') }),
       ])
       .optional(),
+    /**
+     * An opportunity to open for the customer at the same time, at the first
+     * stage of the default pipeline. Needs `crm.opportunity.manage`.
+     */
+    opportunity: z
+      .object({
+        title: z.string().trim().min(1).max(200),
+        amount: decimalAmountSchema.nullable().optional(),
+        currencyCode: currencyCodeSchema.optional(),
+        expectedCloseDate: z.iso.date().nullable().optional(),
+      })
+      .optional(),
   })
   .strict();
 
@@ -564,6 +491,8 @@ export const leadConversionSchema = z.object({
   /** True when converting created the customer, false when it linked an existing one. */
   customerCreated: z.boolean(),
   contactCreated: z.boolean(),
+  /** The opportunity opened with the conversion, if one was asked for. */
+  opportunityId: z.uuid().nullable(),
 });
 
 const customerNotFound = () =>
@@ -704,6 +633,35 @@ export const convertLeadRoute = defineRoute({
         contactCreated = true;
       }
 
+      // The lead's own opportunities follow it to the customer it became.
+      await tx.crmOpportunities.attachCustomerForLead(lead.id, customerId);
+      let opportunityId: string | null = null;
+      if (body.opportunity !== undefined) {
+        if (!holds(principal, 'crm.opportunity.manage')) {
+          throw forbidden('You may not add opportunities.');
+        }
+        const { title, ...fields } = body.opportunity;
+        const opened = await createOpportunity(
+          tx,
+          principal,
+          {
+            ...stripUndefined(fields),
+            title,
+            customerId,
+            leadId: lead.id,
+            ownerId: lead.assignedTo,
+          },
+          undefined,
+        );
+        await crmAudit(tx, context, 'crm_opportunity.created', 'crm_opportunity', opened.id, {
+          title: opened.title,
+          customerId,
+          leadId: lead.id,
+          fromConversion: true,
+        });
+        opportunityId = opened.id;
+      }
+
       const converted = await tx.crmLeads.markConverted(lead.id, body.expectedVersion, {
         customerId,
         contactId,
@@ -724,9 +682,17 @@ export const convertLeadRoute = defineRoute({
         contactId,
         customerCreated,
         contactCreated,
+        opportunityId,
         from: lead.status,
       });
-      return { lead: converted, customerId, contactId, customerCreated, contactCreated };
+      return {
+        lead: converted,
+        customerId,
+        contactId,
+        customerCreated,
+        contactCreated,
+        opportunityId,
+      };
     });
     return { status: 201, body: { ...result, lead: leadBody(result.lead) } };
   },
@@ -739,6 +705,11 @@ export const convertLeadRoute = defineRoute({
 export const customerCrmSchema = z.object({
   /** The leads that became this customer, most recent first. */
   leads: z.array(leadSchema),
+  /** Its newest opportunities, open and closed (the first 20; the list filters by customer for more). */
+  opportunities: z.array(opportunitySchema),
+  /** Its newest activities (the first 20; the list filters by customer for more). */
+  activities: z.array(activitySchema),
+  can: z.object({ manageOpportunities: z.boolean(), manageActivities: z.boolean() }),
 });
 
 export const customerCrmRoute = defineRoute({
@@ -760,13 +731,33 @@ export const customerCrmRoute = defineRoute({
     404: { description: 'No such customer.' },
   },
   handler: async ({ params }, context) => {
-    const leads = await withTenant(context.principal.tenantId, async (tx) => {
+    const { principal } = context;
+    const body = await withTenant(principal.tenantId, async (tx) => {
       if ((await tx.customers.find(params.customerId)) === undefined) {
         throw notFound('This customer does not exist.');
       }
-      return tx.crmLeads.convertedInto(params.customerId);
+      const timeZone = (await tx.settings.get()).timezone;
+      const [leads, opportunities, activities] = await Promise.all([
+        tx.crmLeads.convertedInto(params.customerId),
+        tx.crmOpportunities.list({ customerId: params.customerId, limit: 20 }),
+        tx.crmActivities.list({
+          customerId: params.customerId,
+          order: 'recent',
+          timeZone,
+          limit: 20,
+        }),
+      ]);
+      return {
+        leads: leads.map(leadBody),
+        opportunities: await opportunityBodies(tx, opportunities.items),
+        activities: await activityBodies(tx, activities.items),
+        can: {
+          manageOpportunities: holds(principal, 'crm.opportunity.manage'),
+          manageActivities: holds(principal, 'crm.activity.manage'),
+        },
+      };
     });
-    return { status: 200, body: { leads: leads.map(leadBody) } };
+    return { status: 200, body };
   },
 });
 
