@@ -6,15 +6,17 @@ allowed without explicit approval.
 
 ## Added for the CRM and ERP work
 
-| Package | Version | Licence | Phase | Reason                                                                    |
-| ------- | ------- | ------- | ----- | ------------------------------------------------------------------------- |
-| _none_  |         |         |       | The CRM MVP (F1–C3) is built with the packages already in the repository. |
+| Package | Version | Licence | Phase | Reason                                                                                                                                          |
+| ------- | ------- | ------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| _none_  |         |         |       | The CRM MVP (F1–C3), the inventory and purchasing round (E1–E2) and the sales round (S1) are built with the packages already in the repository. |
 
 Considered in PLAN.md §10.2 and **not installed**: `@tanstack/react-table`,
 `recharts`, `decimal.js`, `@react-pdf/renderer`, `xlsx`, `ag-grid-community`,
 `date-fns`, `react-hook-form`. Each is re-checked (exact version, licence file,
-transitive licences, fonts) only if a later phase needs it — `decimal.js` and a
-PDF renderer are the likely first, for quotes and invoices (S1, B1).
+transitive licences, fonts) only if a later phase needs it. S1 needed neither:
+money stays `numeric` in SQL with a BigInt helper for the one addition done in
+code, and the quote prints through the browser's own print to PDF (decision,
+2026-10-11). A PDF renderer is re-checked only if B1 needs attachments.
 
 ## Licence audit of the existing direct dependencies
 

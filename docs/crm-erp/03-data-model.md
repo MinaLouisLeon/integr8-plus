@@ -268,3 +268,63 @@ the counter table is derived and not exported.
 
 Grants: `select, insert, update` (a use is cancelled or returned, never deleted).
 In `EXPORTED_TABLES`.
+
+## 0029 — quotes and sales orders (phase S1; ADR-0006)
+
+Adds the `sales` feature flag. Money and quantities are `numeric(20,4)`; a discount or tax rate is a whole number of basis points (`0..10000`). Every total is computed in SQL from the lines (`LINE_MATH` in `sales-quotes.ts`: gross, discount, net and tax rounded half-up to four places once per line) and never stored or typed.
+
+### `sales_document_counters`
+
+| Column / rule              | Meaning                                                                                                                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `(tenant_id, kind)`        | One counter per company per document kind (`quote`, `sales_order`), so quotes and orders are numbered apart                                                                                                         |
+| `assign_sales_reference()` | Security-definer `before insert` trigger (`tg_argv[0]` names the kind) that locks the company's counter row and hands out `QT-000001` / `SO-000001` onwards, never reused; the runtime role may only read the table |
+
+### `crm_quotes`
+
+| Column / rule                                                                                                                   | Meaning                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reference`, `revision`                                                                                                         | `QT-000123`, and `-R2` onwards when revised; unique per company                                                                                                                                                   |
+| `customer_id`, `site_id`, `contact_id`, `opportunity_id`                                                                        | Tenant composite FKs; site, contact and opportunity must belong to the customer (checked by the route)                                                                                                            |
+| `status`                                                                                                                        | `draft`, `issued`, `accepted`, `rejected`, `converted`, `cancelled` (`crm_quotes_status_known`; vocabulary checked against `@integr8/core` by the invariant suite)                                                |
+| `title`, `currency_code`, `valid_until`, `introduction`, `terms`, `internal_notes`                                              | The document; `internal_notes` is never sent to the customer and is null in bodies to seats without `sales.manage`                                                                                                |
+| `customer_name`, `customer_address` (jsonb), `contact_*`                                                                        | The customer as the issued quote names them, copied on issue and cleared on revision                                                                                                                              |
+| `issued_by/at`, `answered_at/by/via/name/from`, `rejection_reason`, `converted_order_id/at`, `cancelled_by/at`, `cancel_reason` | Bookkeeping, each pair kept consistent with the status by `crm_quotes_issued_pairing`, `_answered_pairing`, `_converted_pairing`, `_cancelled_pairing` (a quote cannot be converted without having been accepted) |
+| `access_token_hash`                                                                                                             | SHA-256 of the customer's link token; the token itself is never stored. Globally unique while live (`crm_quotes_token_unique`, partial), null once answered, revised or cancelled                                 |
+| `version`                                                                                                                       | Optimistic concurrency; every write bumps it                                                                                                                                                                      |
+
+### `crm_quote_lines`
+
+| Column / rule                                                                         | Meaning                                                                                            |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `quote_id`, `position`                                                                | Unique per quote; lines are rewritten as a set while a draft                                       |
+| `item_id`                                                                             | Optional catalogue item (tenant FK); a line without one is written by hand and needs a description |
+| `description`, `quantity > 0`, `unit`, `unit_price ≥ 0`, `discount_bp`, `tax_rate_bp` | What is offered; defaults from the item's name, unit and sale price                                |
+| Trigger `crm_quote_lines_guard`                                                       | Lines insert, update or delete only while the quote is a draft (`crm_quote_lines_frozen`)          |
+
+### `erp_sales_orders` and `erp_sales_order_lines`
+
+| Column / rule                                                         | Meaning                                                                                                                                                                                                                       |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reference`                                                           | `SO-000123`, from the `sales_order` counter                                                                                                                                                                                   |
+| `quote_id`                                                            | The quote this came from, if any; **one order per quote, ever** (`erp_sales_orders_quote_unique`); `crm_quotes.converted_order_id` points back (FK added after the table)                                                     |
+| `status`                                                              | `draft`, `confirmed`, `partially_fulfilled`, `fulfilled`, `cancelled` (`erp_sales_orders_status_known`)                                                                                                                       |
+| `reserve_location_id`                                                 | Where stock lines were held when confirmed or last re-reserved                                                                                                                                                                |
+| `customer_name`, `customer_address`                                   | Copied when confirmed (`erp_sales_orders_confirmed_pairing`)                                                                                                                                                                  |
+| `confirmed_by/at`, `fulfilled_at`, `cancelled_by/at`, `cancel_reason` | Pairings `_confirmed_pairing`, `_fulfilled_pairing`, `_cancelled_pairing`                                                                                                                                                     |
+| Line `quantity_reserved`                                              | Held for the line while the order is open; `0 ≤ reserved ≤ quantity`, and a reservation names a location (`erp_sales_order_lines_reserved_range`, `_reserved_placed`). A soft promise: on-hand is untouched (ADR-0003, -0006) |
+| Line `quantity_fulfilled`                                             | Delivered: parts used on linked jobs for stock items; the linked job completing for everything else; `≤ quantity` (`_fulfilled_range`)                                                                                        |
+| Trigger `erp_sales_order_lines_guard`                                 | Once the order is not a draft, only `quantity_reserved`, `reserve_location_id` and `quantity_fulfilled` may change (`erp_sales_order_lines_frozen`)                                                                           |
+| Index `erp_sales_order_lines_reserved`                                | `(item_id, reserve_location_id) where quantity_reserved > 0`: read for every balance shown                                                                                                                                    |
+
+### `erp_sales_order_work_orders`
+
+The jobs that deliver an order: `(tenant_id, order_id, work_order_id)` primary key, `linked_by/at`. Zero or many per order, linked or created on purpose; nothing links on its own. Deleted with the order; a job cannot be deleted while linked.
+
+### Repositories
+
+`SalesQuotesRepository` (`tx.salesQuotes`): create, find, lock, list (reference or words of the title and customer), lines and totals, `updateDraft`, `issue` (snapshot + token hash), `revise`, `answer`, `markConverted`, `cancel`. `SalesOrdersRepository` (`tx.salesOrders`): the same for orders plus `confirm`, `reserve` (releases, then holds per stock line what is due or what the location has left after every other reservation there, under `erp_stock_lock_balance`), `release`, `reservedElsewhere`, `reservations`, `consume`, `fulfilNonStockLines`, `refreshStatus`, `shortLines`, and the work-order links. `PublicQuotesLookup` (platform connection) finds the company and quote a token hash names. Shared helpers: `toLine`, `documentTotals`, `addDecimals` (BigInt, four places, no float).
+
+### Company data export
+
+All six tables are in `EXPORTED_TABLES`. Grants: `select, insert, update` on quotes and orders (never deleted), `select, insert, update, delete` on lines (rewritten while a draft), `select, insert, delete` on the job links, `select` on the counters.

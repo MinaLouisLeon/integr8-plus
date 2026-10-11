@@ -111,6 +111,38 @@ permission so that a dispatcher's own draft needs an owner or admin before
 goods are received against it; the trigger `erp_purchase_order_lines_guard`
 makes the approved lines immutable whatever the role.
 
+## Sales (phase S1)
+
+| Permission     | Owner | Admin | Dispatcher | Engineer | Viewer |
+| -------------- | :---: | :---: | :--------: | :------: | :----: |
+| `sales.read`   |   ✓   |   ✓   |     ✓      |    —     |   ✓    |
+| `sales.manage` |   ✓   |   ✓   |     ✓      |    —     |   —    |
+| `sales.issue`  |   ✓   |   ✓   |     —      |    —     |   —    |
+
+Decided with the product owner on 2026-10-11: dispatchers draft and revise
+quotes and orders, record a customer's answer, and link or create the jobs
+that deliver an order; only owners and admins issue a quote and confirm an
+order (which reserves stock) or cancel a confirmed one. Engineers see the
+orders their jobs deliver on the job itself and nothing else of sales; viewers
+read without internal notes. Every route also needs the company's `sales`
+module, which is independent of `crm`, `inventory` and `purchasing`.
+
+The customer's link (ADR-0006): issuing mints 32 random bytes (base64url);
+only the SHA-256 is stored, globally unique while live. The public routes
+resolve the hash to a company on the platform connection and then read on the
+company's own connection, expose the quote and the company's name and logo
+and nothing else, answer 404 alike for a spent, revised, withdrawn or unknown
+link, and record the customer's answer as audit actor kind `system`
+(`customer-link`) with the caller's address, never as a member. Tokens never
+appear in the audit log or in server logs; the API returns one only in the
+`issue` response.
+
+A fourth security-definer function, `assign_sales_reference` (0029), numbers
+quotes and orders from per-company counters the runtime role cannot write;
+listed in `SECURITY_DEFINER_FUNCTIONS` and checked by the invariant suite. The
+triggers `crm_quote_lines_guard` and `erp_sales_order_lines_guard` make issued
+and confirmed lines immutable whatever the role.
+
 ## Database
 
 See [03-data-model.md](./03-data-model.md): row-level security on every CRM
