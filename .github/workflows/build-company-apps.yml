@@ -266,7 +266,7 @@ jobs:
             }
           '
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: company-${{ matrix.company }}-desktop-${{ matrix.platform }}
           path: collected/*
@@ -431,7 +431,7 @@ jobs:
           EXPO_ASC_API_KEY_PATH="$PWD/asc-api-key.p8" eas submit --platform ios --id "$id" --profile production --non-interactive
           rm -f asc-api-key.p8
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: company-${{ matrix.company }}-mobile
           path: mobile-out/*

@@ -68,7 +68,7 @@ jobs:
       # integrating against a specific release should not have to guess which
       # commit it came from.
       - name: Publish the OpenAPI spec
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: openapi-${{ github.sha }}
           path: apps/api/openapi.json
