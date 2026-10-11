@@ -2,13 +2,13 @@
 
 **What has been built, how it is built, and every technology and library it uses.**
 
-|                 |                                                                                                                                                            |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Product         | Integr8 Plus: a multi-tenant field-operations platform                                                                                                     |
-| Repository      | `MinaLouisLeon/integr8-plus`                                                                                                                               |
-| Version         | `0.1.4` (root `package.json`)                                                                                                                              |
-| Report date     | 11 October 2026                                                                                                                                            |
-| Source of truth | The repository on branch `claude/app-review-improvements-yc05d1`: every number, version and endpoint below was read from the code, not written from memory |
+|                 |                                                                                                                                                       |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Product         | Integr8 Plus: a multi-tenant field-operations platform                                                                                                |
+| Repository      | `MinaLouisLeon/integr8-plus`                                                                                                                          |
+| Version         | `0.1.4` (root `package.json`)                                                                                                                         |
+| Report date     | 11 October 2026                                                                                                                                       |
+| Source of truth | The `main` branch of the repository, after pull request #71: every number, version and endpoint below was read from the code, not written from memory |
 
 ---
 
@@ -55,7 +55,7 @@ Integr8 (the company that runs the platform) onboards each customer company itse
 | TypeScript source          | about 149,000 lines (generated code excluded)                |
 | Test files                 | 108 unit-test files and 39 integration-test files            |
 | Languages in the interface | English and Arabic, complete, with right-to-left layout      |
-| Git history                | 234 commits, from 9 September 2026 to 10 October 2026        |
+| Git history                | 257 commits, from 9 September 2026 to 11 October 2026        |
 
 ---
 
@@ -112,45 +112,46 @@ The five company roles are `owner`, `admin`, `dispatcher`, `engineer` and `viewe
 
 ## 4. Technology stack at a glance
 
-| Layer                  | Technology                                            | Version                                |
-| ---------------------- | ----------------------------------------------------- | -------------------------------------- |
-| Language               | TypeScript (strict)                                   | 6.0.3                                  |
-| Runtime                | Node.js                                               | 22 (`.nvmrc`: 22.22.2)                 |
-| Package manager        | pnpm workspaces                                       | 10.33.0                                |
-| Build orchestration    | Turborepo                                             | 2.10.12                                |
-| API framework          | Fastify                                               | 5.12.3                                 |
-| Validation and schemas | zod                                                   | 4.6.1                                  |
-| Database               | PostgreSQL                                            | 16                                     |
-| Query builder          | Kysely                                                | 0.28.9                                 |
-| Postgres driver        | node-postgres (`pg`)                                  | 8.16.3                                 |
-| Tokens (JWT)           | jose (EdDSA signing)                                  | 6.2.0                                  |
-| Web framework          | Next.js (App Router)                                  | 16.3.4                                 |
-| UI library             | React                                                 | 19.3.0 (web, desktop); 19.2.3 (mobile) |
-| Styling                | Tailwind CSS                                          | 4.3.3                                  |
-| Server-state caching   | TanStack Query                                        | 5.102.8                                |
-| Desktop shell          | Tauri                                                 | 2 (CLI 2.11.4, API 2.11.1)             |
-| Desktop bundler        | Vite                                                  | 8.2.2                                  |
-| Desktop routing        | React Router                                          | 8.3.1                                  |
-| Desktop native code    | Rust (edition 2021, minimum 1.77)                     | —                                      |
-| Phone framework        | Expo SDK                                              | 57                                     |
-| Phone runtime          | React Native                                          | 0.86.3                                 |
-| Phone routing          | Expo Router                                           | 57.0.20                                |
-| Phone local database   | SQLite (`expo-sqlite`)                                | 57.0.3                                 |
-| Translation            | i18next and react-i18next                             | 26.4.2 / 17.0.13                       |
-| Maps                   | Leaflet with OpenStreetMap tiles                      | 1.9.4                                  |
-| Image processing       | sharp                                                 | 0.35.4                                 |
-| Object storage client  | AWS SDK v3 for S3 (talking to Cloudflare R2)          | 3.1131.0                               |
-| Error reporting        | Sentry (Node, Next.js, React, React Native)           | 10.74.0 / 7.11.0                       |
-| Tests                  | Vitest                                                | 5.0.0                                  |
-| Property-based tests   | fast-check                                            | 4.10.0                                 |
-| DOM tests              | Testing Library, jsdom, axe-core                      | see Appendix A                         |
-| Linting                | ESLint, typescript-eslint, jsx-a11y, react-hooks      | 10.10.0 / 8.70.0                       |
-| Formatting             | Prettier                                              | 3.9.6                                  |
-| Git hooks              | Husky, lint-staged, commitlint (Conventional Commits) | 9.1.7 / 17.5.0 / 21.2.2                |
-| Containers             | Docker, Docker Compose                                | `node:22-bookworm-slim`, `postgres:16` |
-| Reverse proxy and TLS  | Caddy                                                 | official build                         |
-| CI/CD                  | GitHub Actions; GitHub Container Registry             | —                                      |
-| Phone builds           | Expo Application Services (EAS)                       | —                                      |
+| Layer                    | Technology                                                | Version                                |
+| ------------------------ | --------------------------------------------------------- | -------------------------------------- |
+| Language                 | TypeScript (strict)                                       | 6.0.3                                  |
+| Runtime                  | Node.js                                                   | 22 (`.nvmrc`: 22.22.2)                 |
+| Node.js type definitions | `@types/node`                                             | 26.6.4                                 |
+| Package manager          | pnpm workspaces                                           | 10.33.0                                |
+| Build orchestration      | Turborepo                                                 | 2.11.7                                 |
+| API framework            | Fastify                                                   | 5.12.3                                 |
+| Validation and schemas   | zod                                                       | 4.6.1                                  |
+| Database                 | PostgreSQL                                                | 16                                     |
+| Query builder            | Kysely                                                    | 0.28.9                                 |
+| Postgres driver          | node-postgres (`pg`)                                      | 8.16.3                                 |
+| Tokens (JWT)             | jose (EdDSA signing)                                      | 6.2.0                                  |
+| Web framework            | Next.js (App Router)                                      | 16.3.4                                 |
+| UI library               | React                                                     | 19.3.0 (web, desktop); 19.2.3 (mobile) |
+| Styling                  | Tailwind CSS                                              | 4.3.3                                  |
+| Server-state caching     | TanStack Query                                            | 5.102.8                                |
+| Desktop shell            | Tauri                                                     | 2 (CLI 2.11.4, API 2.12.0)             |
+| Desktop bundler          | Vite                                                      | 8.2.2                                  |
+| Desktop routing          | React Router                                              | 8.3.1                                  |
+| Desktop native code      | Rust (edition 2021, minimum 1.77)                         | —                                      |
+| Phone framework          | Expo SDK                                                  | 57 (`expo` 57.0.27)                    |
+| Phone runtime            | React Native                                              | 0.86.3                                 |
+| Phone routing            | Expo Router                                               | 57.0.25                                |
+| Phone local database     | SQLite (`expo-sqlite`)                                    | 57.0.4                                 |
+| Translation              | i18next and react-i18next                                 | 26.4.2 / 17.0.13                       |
+| Maps                     | Leaflet with OpenStreetMap tiles                          | 1.9.4                                  |
+| Image processing         | sharp                                                     | 0.35.4                                 |
+| Object storage client    | AWS SDK v3 for S3 (talking to Cloudflare R2)              | 3.1131.0                               |
+| Error reporting          | Sentry: Node and Next.js / React (desktop) / React Native | 10.74.0 / 11.1.0 / 7.11.0              |
+| Tests                    | Vitest                                                    | 5.0.3                                  |
+| Property-based tests     | fast-check                                                | 4.10.0                                 |
+| DOM tests                | Testing Library, jsdom, axe-core                          | see Appendix A                         |
+| Linting                  | ESLint, typescript-eslint, jsx-a11y, react-hooks          | 10.12.0 / 8.71.1                       |
+| Formatting               | Prettier                                                  | 3.9.9                                  |
+| Git hooks                | Husky, lint-staged, commitlint (Conventional Commits)     | 9.1.7 / 17.6.0 / 21.2.3                |
+| Containers               | Docker, Docker Compose                                    | `node:22-bookworm-slim`, `postgres:16` |
+| Reverse proxy and TLS    | Caddy                                                     | official build                         |
+| CI/CD                    | GitHub Actions; GitHub Container Registry                 | —                                      |
+| Phone builds             | Expo Application Services (EAS)                           | —                                      |
 
 ---
 
@@ -181,6 +182,7 @@ integr8-plus/
 ├── docs/          operator and developer documentation, by area
 ├── plan/          the phased roadmap (P01–P35)
 ├── scripts/       repository scripts
+├── AGENTS.md      guidance Turborepo writes for AI coding agents, kept committed
 └── .github/       workflows, rulesets, Dependabot, PR template
 ```
 
@@ -261,7 +263,7 @@ integr8-plus/
 
 ### 6.3 Desktop — `apps/desktop`
 
-**Built with:** Tauri 2 with a Rust core, React 19, Vite 8, React Router 8, Tailwind CSS 4, TanStack Query, and dnd-kit (drag-and-drop in the form builder). It also uses `@tauri-apps/plugin-updater` and Sentry for React.
+**Built with:** Tauri 2 with a Rust core, React 19, Vite 8, React Router 8, Tailwind CSS 4, TanStack Query, and dnd-kit (drag-and-drop in the form builder). It also uses `@tauri-apps/plugin-updater` and Sentry for React (version 11, while the API and web app use Sentry 10).
 
 **Rust dependencies:** `tauri`, `tauri-plugin-updater`, `serde`, `serde_json`, and `keyring`. `keyring` stores the session in the macOS Keychain, the Windows Credential Manager or the Linux Secret Service. Release builds are size-optimised: LTO, `opt-level = "s"`, symbols stripped, `panic = "abort"`.
 
@@ -284,25 +286,26 @@ integr8-plus/
 
 **Expo modules used**
 
-| Module                                        | Used for                                  |
-| --------------------------------------------- | ----------------------------------------- |
-| `expo-background-task`, `expo-task-manager`   | Syncing in the background                 |
-| `expo-battery`, `expo-network`                | Deciding when to sync                     |
-| `expo-camera`                                 | Photos and barcode scanning               |
-| `expo-image-picker`, `expo-image-manipulator` | Choosing and compressing photos           |
-| `expo-document-picker`                        | File uploads                              |
-| `expo-file-system`                            | Local file storage                        |
-| `expo-sharing`                                | Sharing files                             |
-| `expo-location`                               | GPS fields and where a form was submitted |
-| `expo-notifications`                          | Push notifications about jobs             |
-| `expo-local-authentication`                   | App lock with fingerprint or face         |
-| `expo-secure-store`                           | Keeping the session secure                |
-| `expo-crypto`                                 | Ids and hashing                           |
-| `expo-device`, `expo-constants`               | Device and build information              |
-| `expo-localization`                           | Device language and region                |
-| `expo-updates`                                | Over-the-air updates per channel          |
-| `expo-web-browser`                            | Opening links                             |
-| `expo-status-bar`                             | Status bar                                |
+| Module                                        | Used for                                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `expo-background-task`, `expo-task-manager`   | Syncing in the background                                                                   |
+| `expo-battery`, `expo-network`                | Deciding when to sync                                                                       |
+| `expo-camera`                                 | Photos and barcode scanning                                                                 |
+| `expo-image-picker`, `expo-image-manipulator` | Choosing and compressing photos                                                             |
+| `expo-document-picker`                        | File uploads                                                                                |
+| `expo-file-system`                            | Local file storage                                                                          |
+| `expo-sharing`                                | Sharing files                                                                               |
+| `expo-location`                               | GPS fields and where a form was submitted                                                   |
+| `expo-notifications`                          | Push notifications about jobs                                                               |
+| `expo-local-authentication`                   | App lock with fingerprint or face                                                           |
+| `expo-secure-store`                           | Keeping the session secure                                                                  |
+| `expo-crypto`                                 | Ids and hashing                                                                             |
+| `expo-device`, `expo-constants`               | Device and build information                                                                |
+| `expo-localization`                           | Device language and region                                                                  |
+| `expo-updates`                                | Over-the-air updates per channel                                                            |
+| `expo-web-browser`                            | Opening links                                                                               |
+| `@expo/metro-runtime`                         | The Metro runtime Expo Router needs, installed directly at the version Expo 57.0.27 expects |
+| `expo-status-bar`                             | Status bar                                                                                  |
 
 **Other native libraries:**
 
@@ -419,6 +422,7 @@ A schema-invariants test suite checks these properties on every CI run.
 - Dependabot updates.
 - A strict content-security policy on the desktop app.
 - The audit log for both company actions and platform actions.
+- Error reports carry no personal data. The API and web app set Sentry's `sendDefaultPii: false`; the desktop app, on Sentry 11, switches off each of its data-collection categories instead (user info, cookies, request headers, request bodies and URL query parameters), because Sentry 11 collects them all by default.
 
 ---
 
@@ -961,25 +965,26 @@ All configuration is through environment variables, each validated with zod at s
 
 ## 19. Documentation in the repository
 
-| File                                                                                                     | Covers                                      |
-| -------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| `README.md`                                                                                              | The whole product, every app, how to run it |
-| `CONTRIBUTING.md`, `docs/contributing/branching.md`                                                      | How to contribute; the branch flow          |
-| `docs/api/README.md`, `docs/api/versioning.md`                                                           | API conventions and versioning rules        |
-| `docs/auth/README.md`, `docs/auth/offline-access.md`                                                     | Sessions, tokens, and offline grants        |
-| `docs/database/README.md`, `migrations.md`, `runbook-backup-and-restore.md`, `runbook-supabase-setup.md` | Schema, migration rules, backups, Supabase  |
-| `docs/form-engine/README.md`, `builder.md`, `repeating-groups.md`, `submissions.md`                      | The form engine                             |
-| `docs/media/README.md`                                                                                   | Uploads, storage, quotas                    |
-| `docs/sync/README.md`                                                                                    | Offline sync                                |
-| `docs/mobile/README.md`, `company-builds.md`, `device-checklist.md`, `forms.md`, `job-execution.md`      | The phone app                               |
-| `docs/operations/README.md`                                                                              | Customers, sites, work orders               |
-| `docs/billing/README.md`                                                                                 | Plans, Stripe, invoiced companies           |
-| `docs/onboarding/README.md`                                                                              | Signup and onboarding                       |
-| `docs/platform/README.md`                                                                                | The platform dashboard, including Staff     |
-| `docs/deployment/README.md`, `company-apps.md`                                                           | Deploying, and per-company apps             |
-| `docs/ui/README.md`                                                                                      | Design tokens, shell, right-to-left rules   |
-| `docs/review-2026-10.md`                                                                                 | The October 2026 code review and its fixes  |
-| `plan/README.md`, `plan/ROADMAP.md`, `plan/*/P*.md`                                                      | The phased plan                             |
+| File                                                                                                     | Covers                                                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `README.md`                                                                                              | The whole product, every app, how to run it                                                                                                                                      |
+| `CONTRIBUTING.md`, `docs/contributing/branching.md`                                                      | How to contribute; the branch flow                                                                                                                                               |
+| `AGENTS.md`                                                                                              | Written by Turborepo 2.11 for AI coding agents: read the installed Turborepo's own docs before changing its configuration. `"agentGuidance": false` in `turbo.json` turns it off |
+| `docs/api/README.md`, `docs/api/versioning.md`                                                           | API conventions and versioning rules                                                                                                                                             |
+| `docs/auth/README.md`, `docs/auth/offline-access.md`                                                     | Sessions, tokens, and offline grants                                                                                                                                             |
+| `docs/database/README.md`, `migrations.md`, `runbook-backup-and-restore.md`, `runbook-supabase-setup.md` | Schema, migration rules, backups, Supabase                                                                                                                                       |
+| `docs/form-engine/README.md`, `builder.md`, `repeating-groups.md`, `submissions.md`                      | The form engine                                                                                                                                                                  |
+| `docs/media/README.md`                                                                                   | Uploads, storage, quotas                                                                                                                                                         |
+| `docs/sync/README.md`                                                                                    | Offline sync                                                                                                                                                                     |
+| `docs/mobile/README.md`, `company-builds.md`, `device-checklist.md`, `forms.md`, `job-execution.md`      | The phone app                                                                                                                                                                    |
+| `docs/operations/README.md`                                                                              | Customers, sites, work orders                                                                                                                                                    |
+| `docs/billing/README.md`                                                                                 | Plans, Stripe, invoiced companies                                                                                                                                                |
+| `docs/onboarding/README.md`                                                                              | Signup and onboarding                                                                                                                                                            |
+| `docs/platform/README.md`                                                                                | The platform dashboard, including Staff                                                                                                                                          |
+| `docs/deployment/README.md`, `company-apps.md`                                                           | Deploying, and per-company apps                                                                                                                                                  |
+| `docs/ui/README.md`                                                                                      | Design tokens, shell, right-to-left rules                                                                                                                                        |
+| `docs/review-2026-10.md`                                                                                 | The October 2026 code review and its fixes                                                                                                                                       |
+| `plan/README.md`, `plan/ROADMAP.md`, `plan/*/P*.md`                                                      | The phased plan                                                                                                                                                                  |
 
 ---
 
@@ -1039,13 +1044,13 @@ Tooling shared by the whole monorepo. Workspace packages used: `@integr8/eslint-
 
 | Library                           | Version | Kind        |
 | --------------------------------- | ------- | ----------- |
-| `@commitlint/cli`                 | 21.2.2  | development |
-| `@commitlint/config-conventional` | 21.2.2  | development |
-| `eslint`                          | 10.10.0 | development |
+| `@commitlint/cli`                 | 21.2.3  | development |
+| `@commitlint/config-conventional` | 21.2.3  | development |
+| `eslint`                          | 10.12.0 | development |
 | `husky`                           | 9.1.7   | development |
-| `lint-staged`                     | 17.5.0  | development |
-| `prettier`                        | 3.9.6   | development |
-| `turbo`                           | 2.10.12 | development |
+| `lint-staged`                     | 17.6.0  | development |
+| `prettier`                        | 3.9.9   | development |
+| `turbo`                           | 2.11.7  | development |
 | `typescript`                      | 6.0.3   | development |
 
 ### `@integr8/api` — `apps/api`
@@ -1060,11 +1065,11 @@ Workspace packages used: `@integr8/auth`, `@integr8/core`, `@integr8/db`, `@inte
 | `fastify`                       | 5.12.3   | runtime     |
 | `sharp`                         | 0.35.4   | runtime     |
 | `zod`                           | 4.6.1    | runtime     |
-| `@types/node`                   | 22.20.2  | development |
-| `eslint`                        | 10.10.0  | development |
+| `@types/node`                   | 26.6.4   | development |
+| `eslint`                        | 10.12.0  | development |
 | `tsx`                           | 4.23.13  | development |
 | `typescript`                    | 6.0.3    | development |
-| `vitest`                        | 5.0.0    | development |
+| `vitest`                        | 5.0.3    | development |
 
 ### `@integr8/desktop` — `apps/desktop`
 
@@ -1075,24 +1080,24 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 | `@dnd-kit/core`              | 6.3.1   | runtime     |
 | `@dnd-kit/sortable`          | 10.0.0  | runtime     |
 | `@dnd-kit/utilities`         | 3.2.2   | runtime     |
-| `@sentry/react`              | 10.74.0 | runtime     |
+| `@sentry/react`              | 11.1.0  | runtime     |
 | `@tanstack/react-query`      | 5.102.8 | runtime     |
-| `@tauri-apps/api`            | 2.11.1  | runtime     |
+| `@tauri-apps/api`            | 2.12.0  | runtime     |
 | `@tauri-apps/plugin-updater` | 2.11.0  | runtime     |
 | `react`                      | 19.3.0  | runtime     |
 | `react-dom`                  | 19.3.0  | runtime     |
 | `react-router`               | 8.3.1   | runtime     |
 | `@tailwindcss/vite`          | 4.3.3   | development |
 | `@tauri-apps/cli`            | 2.11.4  | development |
-| `@types/node`                | 22.20.2 | development |
+| `@types/node`                | 26.6.4  | development |
 | `@types/react`               | 19.3.0  | development |
 | `@types/react-dom`           | 19.3.0  | development |
 | `@vitejs/plugin-react`       | 6.1.1   | development |
-| `eslint`                     | 10.10.0 | development |
+| `eslint`                     | 10.12.0 | development |
 | `tailwindcss`                | 4.3.3   | development |
 | `typescript`                 | 6.0.3   | development |
 | `vite`                       | 8.2.2   | development |
-| `vitest`                     | 5.0.0   | development |
+| `vitest`                     | 5.0.3   | development |
 
 ### `@integr8/mobile` — `apps/mobile`
 
@@ -1100,31 +1105,32 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 
 | Library                                  | Version | Kind        |
 | ---------------------------------------- | ------- | ----------- |
+| `@expo/metro-runtime`                    | 57.0.16 | runtime     |
 | `@react-native-community/datetimepicker` | 9.1.0   | runtime     |
 | `@sentry/react-native`                   | 7.11.0  | runtime     |
-| `expo`                                   | 57.0.21 | runtime     |
-| `expo-background-task`                   | 57.0.17 | runtime     |
+| `expo`                                   | 57.0.27 | runtime     |
+| `expo-background-task`                   | 57.0.21 | runtime     |
 | `expo-battery`                           | 57.0.3  | runtime     |
-| `expo-camera`                            | 57.0.5  | runtime     |
-| `expo-constants`                         | 57.0.17 | runtime     |
+| `expo-camera`                            | 57.0.6  | runtime     |
+| `expo-constants`                         | 57.0.21 | runtime     |
 | `expo-crypto`                            | 57.0.3  | runtime     |
 | `expo-device`                            | 57.0.2  | runtime     |
-| `expo-document-picker`                   | 57.0.2  | runtime     |
+| `expo-document-picker`                   | 57.0.3  | runtime     |
 | `expo-file-system`                       | 57.0.7  | runtime     |
-| `expo-image-manipulator`                 | 57.0.17 | runtime     |
-| `expo-image-picker`                      | 57.0.17 | runtime     |
+| `expo-image-manipulator`                 | 57.0.21 | runtime     |
+| `expo-image-picker`                      | 57.0.20 | runtime     |
 | `expo-local-authentication`              | 57.0.3  | runtime     |
-| `expo-localization`                      | 57.0.1  | runtime     |
-| `expo-location`                          | 57.0.17 | runtime     |
+| `expo-localization`                      | 57.0.2  | runtime     |
+| `expo-location`                          | 57.0.20 | runtime     |
 | `expo-network`                           | 57.0.2  | runtime     |
-| `expo-notifications`                     | 57.0.18 | runtime     |
-| `expo-router`                            | 57.0.20 | runtime     |
-| `expo-secure-store`                      | 57.0.3  | runtime     |
-| `expo-sharing`                           | 57.0.19 | runtime     |
-| `expo-sqlite`                            | 57.0.3  | runtime     |
+| `expo-notifications`                     | 57.0.22 | runtime     |
+| `expo-router`                            | 57.0.25 | runtime     |
+| `expo-secure-store`                      | 57.0.4  | runtime     |
+| `expo-sharing`                           | 57.0.22 | runtime     |
+| `expo-sqlite`                            | 57.0.4  | runtime     |
 | `expo-status-bar`                        | 57.0.1  | runtime     |
-| `expo-task-manager`                      | 57.0.17 | runtime     |
-| `expo-updates`                           | 57.0.22 | runtime     |
+| `expo-task-manager`                      | 57.0.21 | runtime     |
+| `expo-updates`                           | 57.0.25 | runtime     |
 | `expo-web-browser`                       | ~57.0.3 | runtime     |
 | `react`                                  | 19.2.3  | runtime     |
 | `react-dom`                              | 19.2.3  | runtime     |
@@ -1134,11 +1140,11 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 | `react-native-svg`                       | 15.15.4 | runtime     |
 | `react-native-view-shot`                 | 5.1.0   | runtime     |
 | `react-native-webview`                   | 13.16.1 | runtime     |
-| `@types/node`                            | 22.20.2 | development |
+| `@types/node`                            | 26.6.4  | development |
 | `@types/react`                           | 19.2.4  | development |
-| `eslint`                                 | 10.10.0 | development |
+| `eslint`                                 | 10.12.0 | development |
 | `typescript`                             | 6.0.3   | development |
-| `vitest`                                 | 5.0.0   | development |
+| `vitest`                                 | 5.0.3   | development |
 
 ### `@integr8/web` — `apps/web`
 
@@ -1152,13 +1158,13 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 | `react`                 | 19.3.0  | runtime     |
 | `react-dom`             | 19.3.0  | runtime     |
 | `@tailwindcss/postcss`  | 4.3.3   | development |
-| `@types/node`           | 22.20.2 | development |
+| `@types/node`           | 26.6.4  | development |
 | `@types/react`          | 19.3.0  | development |
 | `@types/react-dom`      | 19.3.0  | development |
-| `eslint`                | 10.10.0 | development |
+| `eslint`                | 10.12.0 | development |
 | `tailwindcss`           | 4.3.3   | development |
 | `typescript`            | 6.0.3   | development |
-| `vitest`                | 5.0.0   | development |
+| `vitest`                | 5.0.3   | development |
 
 ### `@integr8/api-client` — `packages/api-client`
 
@@ -1167,11 +1173,11 @@ Workspace packages used: `@integr8/core`, `@integr8/eslint-config`, `@integr8/ty
 | Library              | Version | Kind        |
 | -------------------- | ------- | ----------- |
 | `openapi-fetch`      | 0.17.0  | runtime     |
-| `@types/node`        | 22.20.2 | development |
-| `eslint`             | 10.10.0 | development |
+| `@types/node`        | 26.6.4  | development |
+| `eslint`             | 10.12.0 | development |
 | `openapi-typescript` | 7.13.0  | development |
 | `typescript`         | 6.0.3   | development |
-| `vitest`             | 5.0.0   | development |
+| `vitest`             | 5.0.3   | development |
 
 ### `@integr8/auth` — `packages/auth`
 
@@ -1181,11 +1187,11 @@ Workspace packages used: `@integr8/core`, `@integr8/db`, `@integr8/eslint-config
 | ------------- | ------- | ----------- |
 | `jose`        | 6.2.0   | runtime     |
 | `zod`         | 4.6.1   | runtime     |
-| `@types/node` | 22.20.2 | development |
-| `eslint`      | 10.10.0 | development |
+| `@types/node` | 26.6.4  | development |
+| `eslint`      | 10.12.0 | development |
 | `tsx`         | 4.23.13 | development |
 | `typescript`  | 6.0.3   | development |
-| `vitest`      | 5.0.0   | development |
+| `vitest`      | 5.0.3   | development |
 
 ### `@integr8/core` — `packages/core`
 
@@ -1194,10 +1200,10 @@ Workspace packages used: `@integr8/eslint-config`, `@integr8/typescript-config`
 | Library       | Version | Kind        |
 | ------------- | ------- | ----------- |
 | `zod`         | 4.6.1   | runtime     |
-| `@types/node` | 22.20.2 | development |
-| `eslint`      | 10.10.0 | development |
+| `@types/node` | 26.6.4  | development |
+| `eslint`      | 10.12.0 | development |
 | `typescript`  | 6.0.3   | development |
-| `vitest`      | 5.0.0   | development |
+| `vitest`      | 5.0.3   | development |
 
 ### `@integr8/db` — `packages/db`
 
@@ -1208,12 +1214,12 @@ Workspace packages used: `@integr8/core`, `@integr8/form-engine`, `@integr8/esli
 | `kysely`      | 0.28.9  | runtime     |
 | `pg`          | 8.16.3  | runtime     |
 | `zod`         | 4.6.1   | runtime     |
-| `@types/node` | 22.20.2 | development |
+| `@types/node` | 26.6.4  | development |
 | `@types/pg`   | 8.15.6  | development |
-| `eslint`      | 10.10.0 | development |
+| `eslint`      | 10.12.0 | development |
 | `tsx`         | 4.23.13 | development |
 | `typescript`  | 6.0.3   | development |
-| `vitest`      | 5.0.0   | development |
+| `vitest`      | 5.0.3   | development |
 
 ### `@integr8/eslint-config` — `packages/eslint-config`
 
@@ -1223,8 +1229,8 @@ Workspace packages used: `@integr8/core`, `@integr8/form-engine`, `@integr8/esli
 | `eslint-config-prettier`    | 10.1.8  | runtime     |
 | `eslint-plugin-jsx-a11y`    | 6.10.2  | runtime     |
 | `eslint-plugin-react-hooks` | 7.1.1   | runtime     |
-| `typescript-eslint`         | 8.70.0  | runtime     |
-| `eslint`                    | 10.10.0 | development |
+| `typescript-eslint`         | 8.71.1  | runtime     |
+| `eslint`                    | 10.12.0 | development |
 | `eslint`                    | ^10.0.0 | peer        |
 
 ### `@integr8/form-engine` — `packages/form-engine`
@@ -1234,14 +1240,14 @@ Workspace packages used: `@integr8/eslint-config`, `@integr8/typescript-config`
 | Library               | Version | Kind        |
 | --------------------- | ------- | ----------- |
 | `zod`                 | 4.6.1   | runtime     |
-| `@types/node`         | 22.20.2 | development |
+| `@types/node`         | 26.6.4  | development |
 | `@vitest/coverage-v8` | 5.0.0   | development |
 | `esbuild`             | 0.28.2  | development |
-| `eslint`              | 10.10.0 | development |
+| `eslint`              | 10.12.0 | development |
 | `fast-check`          | 4.10.0  | development |
 | `tsx`                 | 4.23.13 | development |
 | `typescript`          | 6.0.3   | development |
-| `vitest`              | 5.0.0   | development |
+| `vitest`              | 5.0.3   | development |
 
 ### `@integr8/form-input` — `packages/form-input`
 
@@ -1249,10 +1255,10 @@ Workspace packages used: `@integr8/form-engine`, `@integr8/eslint-config`, `@int
 
 | Library       | Version | Kind        |
 | ------------- | ------- | ----------- |
-| `@types/node` | 22.20.2 | development |
-| `eslint`      | 10.10.0 | development |
+| `@types/node` | 26.6.4  | development |
+| `eslint`      | 10.12.0 | development |
 | `typescript`  | 6.0.3   | development |
-| `vitest`      | 5.0.0   | development |
+| `vitest`      | 5.0.3   | development |
 
 ### `@integr8/form-renderer-dom` — `packages/form-renderer-dom`
 
@@ -1264,16 +1270,16 @@ Workspace packages used: `@integr8/form-engine`, `@integr8/i18n`, `@integr8/api-
 | `@testing-library/jest-dom`   | 7.0.1   | development |
 | `@testing-library/react`      | 16.3.3  | development |
 | `@testing-library/user-event` | 14.6.7  | development |
-| `@types/node`                 | 22.20.2 | development |
+| `@types/node`                 | 26.6.4  | development |
 | `@types/react`                | 19.3.0  | development |
 | `@types/react-dom`            | 19.3.0  | development |
 | `axe-core`                    | 4.13.0  | development |
-| `eslint`                      | 10.10.0 | development |
+| `eslint`                      | 10.12.0 | development |
 | `jsdom`                       | 30.0.1  | development |
 | `react`                       | 19.3.0  | development |
 | `react-dom`                   | 19.3.0  | development |
 | `typescript`                  | 6.0.3   | development |
-| `vitest`                      | 5.0.0   | development |
+| `vitest`                      | 5.0.3   | development |
 | `@tanstack/react-query`       | 5.102.8 | development |
 | `react`                       | >=19    | peer        |
 | `react-dom`                   | >=19    | peer        |
@@ -1287,12 +1293,12 @@ Workspace packages used: `@integr8/eslint-config`, `@integr8/form-engine`, `@int
 | --------------- | ------- | ----------- |
 | `i18next`       | 26.4.2  | runtime     |
 | `react-i18next` | 17.0.13 | runtime     |
-| `@types/node`   | 22.20.2 | development |
+| `@types/node`   | 26.6.4  | development |
 | `@types/react`  | 19.3.0  | development |
-| `eslint`        | 10.10.0 | development |
+| `eslint`        | 10.12.0 | development |
 | `react`         | 19.3.0  | development |
 | `typescript`    | 6.0.3   | development |
-| `vitest`        | 5.0.0   | development |
+| `vitest`        | 5.0.3   | development |
 | `react`         | >=19    | peer        |
 
 ### `@integr8/offline` — `packages/offline`
@@ -1301,10 +1307,10 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/eslin
 
 | Library       | Version | Kind        |
 | ------------- | ------- | ----------- |
-| `@types/node` | 22.20.2 | development |
-| `eslint`      | 10.10.0 | development |
+| `@types/node` | 26.6.4  | development |
+| `eslint`      | 10.12.0 | development |
 | `typescript`  | 6.0.3   | development |
-| `vitest`      | 5.0.0   | development |
+| `vitest`      | 5.0.3   | development |
 
 ### `@integr8/operations-dom` — `packages/operations-dom`
 
@@ -1317,16 +1323,16 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 | `@testing-library/jest-dom`   | 7.0.1   | development |
 | `@testing-library/react`      | 16.3.3  | development |
 | `@testing-library/user-event` | 14.6.7  | development |
-| `@types/node`                 | 22.20.2 | development |
+| `@types/node`                 | 26.6.4  | development |
 | `@types/react`                | 19.3.0  | development |
 | `@types/react-dom`            | 19.3.0  | development |
 | `axe-core`                    | 4.13.0  | development |
-| `eslint`                      | 10.10.0 | development |
+| `eslint`                      | 10.12.0 | development |
 | `jsdom`                       | 30.0.1  | development |
 | `react`                       | 19.3.0  | development |
 | `react-dom`                   | 19.3.0  | development |
 | `typescript`                  | 6.0.3   | development |
-| `vitest`                      | 5.0.0   | development |
+| `vitest`                      | 5.0.3   | development |
 | `@tanstack/react-query`       | 5.102.8 | development |
 | `@types/leaflet`              | 1.9.22  | development |
 | `react`                       | >=19    | peer        |
@@ -1339,11 +1345,11 @@ Workspace packages used: `@integr8/eslint-config`, `@integr8/typescript-config`
 
 | Library       | Version | Kind        |
 | ------------- | ------- | ----------- |
-| `@types/node` | 22.20.2 | development |
-| `eslint`      | 10.10.0 | development |
+| `@types/node` | 26.6.4  | development |
+| `eslint`      | 10.12.0 | development |
 | `tsx`         | 4.23.13 | development |
 | `typescript`  | 6.0.3   | development |
-| `vitest`      | 5.0.0   | development |
+| `vitest`      | 5.0.3   | development |
 
 ### `@integr8/typescript-config` — `packages/typescript-config`
 
