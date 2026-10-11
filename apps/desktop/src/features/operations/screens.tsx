@@ -19,6 +19,8 @@ import {
   SalesOrderListScreen,
   SalesOrderScreen,
   FinanceSettingsScreen,
+  AssetListScreen,
+  AssetScreen,
   InvoiceListScreen,
   InvoiceScreen,
   PaymentListScreen,
@@ -99,6 +101,8 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         payments: '/finance/payments',
         payment: (id) => `/finance/payments/${id}`,
         financeSettings: '/finance/settings',
+        assets: '/assets',
+        asset: (id) => `/assets/${id}`,
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -427,6 +431,23 @@ export function FinanceSettingsRoute() {
   return (
     <OperationsScreens>
       <FinanceSettingsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function AssetsRoute() {
+  return (
+    <OperationsScreens>
+      <AssetListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function AssetRoute() {
+  const { assetId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <AssetScreen key={assetId} assetId={assetId} />
     </OperationsScreens>
   );
 }

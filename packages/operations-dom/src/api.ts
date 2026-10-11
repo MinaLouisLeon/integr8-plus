@@ -60,6 +60,9 @@ export interface OperationsConfig {
     payments: string;
     payment: (id: string) => string;
     financeSettings: string;
+    /** Assets (CRM/ERP plan, phase E3). */
+    assets: string;
+    asset: (id: string) => string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -101,7 +104,8 @@ export interface RowTarget {
     | 'quote'
     | 'salesOrder'
     | 'invoice'
-    | 'payment';
+    | 'payment'
+    | 'asset';
   id: string;
   label: string;
 }
@@ -221,6 +225,17 @@ export type PaymentDetail = Json<'/v1/finance/payments/{receiptId}', 'get', 200>
 export type CustomerAccount = Json<'/v1/finance/customers/{customerId}/account', 'get', 200>;
 export type JobCosts = Json<'/v1/finance/work-orders/{workOrderId}/costs', 'get', 200>;
 export type FinanceSettings = Json<'/v1/finance/settings', 'get', 200>;
+export type AssetRow = Json<'/v1/assets', 'get', 200>['items'][number];
+export type AssetStatus = AssetRow['status'];
+export type AssetCondition = NonNullable<AssetRow['condition']>;
+export type AssetDetail = Json<'/v1/assets/{assetId}', 'get', 200>;
+export type AssetTimelineEntry = Json<
+  '/v1/assets/{assetId}/timeline',
+  'get',
+  200
+>['entries'][number];
+export type JobAssets = Json<'/v1/work-orders/{workOrderId}/assets', 'get', 200>;
+export type AssetSettings = Json<'/v1/assets/settings', 'get', 200>;
 
 export const keys = {
   me: ['me'] as const,
@@ -259,6 +274,11 @@ export const keys = {
   customerAccount: (id: string) => ['finance', 'customer', id] as const,
   jobCosts: (id: string) => ['finance', 'job', id] as const,
   financeSettings: ['finance', 'settings'] as const,
+  assets: (query: object) => ['assets', 'list', query] as const,
+  asset: (id: string) => ['assets', 'asset', id] as const,
+  assetTimeline: (id: string) => ['assets', 'timeline', id] as const,
+  jobAssets: (id: string) => ['assets', 'job', id] as const,
+  assetSettings: ['assets', 'settings'] as const,
   forms: ['forms'] as const,
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,

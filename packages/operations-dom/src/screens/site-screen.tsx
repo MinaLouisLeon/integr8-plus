@@ -18,6 +18,7 @@ import {
   StateBadge,
   when,
 } from '../ui.js';
+import { SiteAssetsSection } from '../assets/job-assets.js';
 import {
   AddressFields,
   addressDraft,
@@ -196,6 +197,10 @@ export function SiteScreen({ siteId }: { siteId: string }) {
           </ul>
         )}
       </section>
+
+      <SiteAssetsSection
+        site={{ id: site.id, name: site.name, customer: { id: customer.id, name: customer.name } }}
+      />
 
       {editing === undefined ? null : (
         <Dialog

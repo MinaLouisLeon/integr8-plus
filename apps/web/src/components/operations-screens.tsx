@@ -79,6 +79,8 @@ export function OperationsScreens({ children }: { children: ReactNode }) {
         payments: '/finance/payments',
         payment: (id) => `/finance/payments/${id}`,
         financeSettings: '/finance/settings',
+        assets: '/assets',
+        asset: (id) => `/assets/${id}`,
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
