@@ -27,6 +27,8 @@ const EXPOSED_HEADERS = [
   'min-supported-client',
   'retry-after',
   'content-disposition',
+  // Exports cut at their row limit say so (ADR-0012).
+  'x-export-truncated',
 ].join(', ');
 
 const ALLOWED_METHODS = 'GET, POST, PUT, PATCH, DELETE';

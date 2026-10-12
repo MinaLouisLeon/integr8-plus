@@ -2,6 +2,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { keys, type Opportunity, type Stage, useOperations } from '../api.js';
+import { CsvExportButton } from '../exports.js';
 import { BackLink, buttonClass, Failure, Field, inputClass, Loading, useRowMenu } from '../ui.js';
 import { formatAmount, memberName, useMembers } from './lead-parts.js';
 import {
@@ -178,6 +179,16 @@ export function OpportunityBoardScreen() {
               </button>
             ))}
           </div>
+          <a
+            href={paths.crmPipelines}
+            className={buttonClass.secondary}
+            onClick={(event) => {
+              event.preventDefault();
+              navigate(paths.crmPipelines);
+            }}
+          >
+            {t('crm.pipelines.title')}
+          </a>
           {manage ? (
             <button type="button" className={buttonClass.primary} onClick={() => setCreating(true)}>
               {t('crm.opportunities.new')}
@@ -185,6 +196,24 @@ export function OpportunityBoardScreen() {
           ) : null}
         </div>
       </header>
+      <CsvExportButton
+        permission="crm.opportunity.manage"
+        label={t('crm.opportunities.export')}
+        filename="opportunities.csv"
+        className="items-end"
+        request={() =>
+          client.GET('/v1/crm/opportunities.csv', {
+            params: {
+              query: {
+                // The board shows one pipeline's stages; the list, every pipeline.
+                ...(view === 'board' && pipeline !== undefined ? { pipelineId: pipeline.id } : {}),
+                ...(status === '' ? {} : { status: [status] }),
+              },
+            },
+            parseAs: 'blob',
+          })
+        }
+      />
 
       <form
         aria-label={t('crm.opportunities.filters')}

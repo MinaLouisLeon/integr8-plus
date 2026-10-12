@@ -106,18 +106,20 @@ export function PayRunScreen({ runId }: { runId: string }) {
     return <RunPayslips run={run} month={month} onBack={() => setView('run')} />;
   }
 
-  // Why approving is not offered, said beside the disabled button.
+  // Why approving is not offered, said beside the disabled button, as the server says it.
   const approveNote = !draft
     ? null
-    : !access.approve
+    : run.approveBlockedBy === 'no_permission'
       ? t('payroll.approve.notApprover')
-      : run.can.approve
-        ? null
-        : run.preparedBy.id === access.userId
-          ? t('payroll.approve.youPrepared')
-          : run.lines.length === 0
-            ? t('payroll.approve.empty')
-            : t('payroll.approve.notNow');
+      : run.approveBlockedBy === 'self_approval'
+        ? t('payroll.approve.youPrepared')
+        : run.approveBlockedBy === 'empty_run'
+          ? t('payroll.approve.empty')
+          : run.approveBlockedBy === 'negative_net'
+            ? t('payroll.approve.negativeNet')
+            : run.can.approve
+              ? null
+              : t('payroll.approve.notNow');
   const busy = recalculate.isPending;
 
   return (
@@ -187,6 +189,15 @@ export function PayRunScreen({ runId }: { runId: string }) {
       <Disclaimer text={disclaimerText(run.disclaimer, locale, t('payroll.disclaimer'))} />
 
       {recalculate.isError ? <PayrollFailure error={recalculate.error} /> : null}
+
+      {access.sensitive && !run.hrKeyConfigured ? (
+        <p
+          role="note"
+          className="rounded-lg border border-warning bg-warning-subtle p-4 text-sm text-content"
+        >
+          {t('payroll.outputs.noHrKey')}
+        </p>
+      ) : null}
 
       <section aria-labelledby="run-about" className={cardClass}>
         <h2 id="run-about" className="text-base font-semibold text-content">
@@ -269,7 +280,7 @@ export function PayRunScreen({ runId }: { runId: string }) {
           onPayslips={() => setView('payslips')}
           onExport={(kind) => exportFile.mutate({ kind, reference: run.reference })}
         />
-      ) : access.sensitive ? (
+      ) : run.can.exportInsuranceReport ? (
         <section aria-labelledby="run-check" className={cardClass}>
           <h2 id="run-check" className="text-base font-semibold text-content">
             {t('payroll.outputs.checkTitle')}
@@ -368,7 +379,7 @@ function Outputs({
         <button type="button" className={buttonClass.primary} onClick={onPayslips}>
           {t('payroll.outputs.payslips')}
         </button>
-        {sensitive ? (
+        {run.can.exportInsuranceReport ? (
           <button
             type="button"
             className={buttonClass.secondary}
@@ -391,7 +402,7 @@ function Outputs({
       </div>
       {!sensitive ? (
         <p className="text-sm text-content-muted">{t('payroll.outputs.notSensitive')}</p>
-      ) : !run.can.exportBankFile ? (
+      ) : !run.hrKeyConfigured ? null : !run.can.exportBankFile ? (
         <p className="text-sm text-content-muted">{t('payroll.outputs.noBankFile')}</p>
       ) : (
         <p className="text-sm text-content-muted">{t('payroll.outputs.audited')}</p>

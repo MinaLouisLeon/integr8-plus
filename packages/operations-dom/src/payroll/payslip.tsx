@@ -26,7 +26,8 @@ export function PayslipDocument({
 }: {
   payslip: Payslip;
   language: PayslipLanguage;
-  company: string | null;
+  /** The company's name, for a payslip from a server that sends no issuer block. */
+  company?: string | null;
 }) {
   const { i18n } = useTranslation();
   const t = i18n.getFixedT(language);
@@ -36,6 +37,12 @@ export function PayslipDocument({
   const money = (value: string) => formatAmount(value, run.currency, locale);
   const date = (value: string) => formatCalendarDate(value, { locale });
   const month = formatMonth(run.periodStart, locale);
+  // Who pays, as the invoices print it: the legal name, address and tax number.
+  const issuer = (payslip as Partial<Payslip>).company ?? {
+    name: company ?? '',
+    address: null,
+    taxReference: null,
+  };
 
   // Each entry: its label, the amount, a line of detail, and whether it shows when nothing.
   type Entry = [label: string, value: string, detail: string | null, always: boolean];
@@ -101,7 +108,22 @@ export function PayslipDocument({
     >
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          {company === null ? null : <p className="text-lg font-semibold">{company}</p>}
+          {issuer.name === '' ? null : (
+            <p className="text-lg font-semibold" dir="auto">
+              {issuer.name}
+            </p>
+          )}
+          {issuer.address === null ? null : (
+            <p className="text-xs whitespace-pre-line text-neutral-700" dir="auto">
+              {issuer.address}
+            </p>
+          )}
+          {issuer.taxReference === null ? null : (
+            <p className="text-xs text-neutral-700">
+              <span>{t('payroll.payslip.taxReference')}: </span>
+              <span dir="ltr">{issuer.taxReference}</span>
+            </p>
+          )}
           <h2 id={titleId} className="text-xl font-semibold">
             {t('payroll.payslip.title', { month })}
           </h2>
@@ -275,7 +297,7 @@ export function PayslipStack({
 }: {
   payslips: readonly Payslip[];
   language: PayslipLanguage;
-  company: string | null;
+  company?: string | null;
 }) {
   return (
     <div className="flex flex-col gap-6 print:block">
@@ -284,7 +306,11 @@ export function PayslipStack({
           key={`${payslip.run.id}-${payslip.line.id}`}
           className="print:break-after-page print:last:break-after-auto"
         >
-          <PayslipDocument payslip={payslip} language={language} company={company} />
+          <PayslipDocument
+            payslip={payslip}
+            language={language}
+            {...(company === undefined ? {} : { company })}
+          />
         </div>
       ))}
     </div>

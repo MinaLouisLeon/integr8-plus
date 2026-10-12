@@ -289,7 +289,7 @@ describe('the CRM on a customer', () => {
     },
   });
 
-  it('lists the customer’s opportunities, follow-ups and the leads that became it', async () => {
+  it('lists the customer’s opportunities and the leads that became it', async () => {
     const { client } = fakeApi({
       'GET /v1/me': me(true, ['crm.read']),
       'GET /v1/members': () => ({ body: { items: [], nextCursor: null } }),
@@ -307,10 +307,6 @@ describe('the CRM on a customer', () => {
           can: { manageOpportunities: false, manageActivities: false },
         },
       }),
-      'GET /v1/crm/activities': (call) => {
-        expect(call.query.get('customerId')).toBe(CUSTOMER);
-        return { body: { items: [], nextCursor: null } };
-      },
     });
     renderScreen(
       <CustomerCrmSection customerId={CUSTOMER} customerName="Delta Facilities" />,
@@ -323,10 +319,8 @@ describe('the CRM on a customer', () => {
     );
     expect(screen.getByRole('heading', { name: 'CRM' })).toBeInTheDocument();
     expect(screen.getByText('No opportunities for this customer yet.')).toBeInTheDocument();
-    expect(await screen.findByText('No activity yet.')).toBeInTheDocument();
-    // Read-only: nothing to add.
+    // Read-only: nothing to add. Its follow-ups are the Activities tab of the customer's records.
     expect(screen.queryByRole('button', { name: 'New opportunity' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add activity' })).not.toBeInTheDocument();
   });
 
   it('shows nothing, and asks nothing, without the module or the permission', async () => {

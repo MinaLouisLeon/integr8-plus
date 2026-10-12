@@ -16,6 +16,11 @@ import {
   OrderScreen,
   BomListScreen,
   BomScreen,
+  BomVersionScreen,
+  CrmReportsScreen,
+  PartsUsageScreen,
+  PipelineListScreen,
+  PipelineScreen,
   AssemblyOrderListScreen,
   AssemblyOrderScreen,
   MaterialPlanListScreen,
@@ -112,7 +117,11 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         crmOpportunities: '/crm/opportunities',
         crmOpportunity: (id) => `/crm/opportunities/${id}`,
         crmActivities: '/crm/activities',
+        crmPipelines: '/crm/pipelines',
+        crmPipeline: (id) => `/crm/pipelines/${id}`,
+        crmReports: '/crm/reports',
         inventory: '/inventory',
+        partsUsage: '/inventory/parts-usage',
         items: '/inventory/items',
         item: (id) => `/inventory/items/${id}`,
         stockLocations: '/inventory/locations',
@@ -124,6 +133,7 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         purchaseOrder: (id) => `/purchasing/orders/${id}`,
         boms: '/manufacturing/boms',
         bom: (itemId) => `/manufacturing/boms/${itemId}`,
+        bomVersion: (bomId) => `/manufacturing/boms/versions/${bomId}`,
         assemblyOrders: '/manufacturing/orders',
         assemblyOrder: (id) => `/manufacturing/orders/${id}`,
         materialPlans: '/manufacturing/plans',
@@ -309,6 +319,42 @@ export function OpportunityRoute() {
   );
 }
 
+/** The CRM's pipelines and their stages (eighth round; ADR-0012). */
+export function PipelinesRoute() {
+  return (
+    <OperationsScreens>
+      <PipelineListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function PipelineRoute() {
+  const { pipelineId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <PipelineScreen key={pipelineId} pipelineId={pipelineId} />
+    </OperationsScreens>
+  );
+}
+
+/** The CRM's figures (eighth round; ADR-0012). */
+export function CrmReportsRoute() {
+  return (
+    <OperationsScreens>
+      <CrmReportsScreen />
+    </OperationsScreens>
+  );
+}
+
+/** Parts used on jobs, in the inventory area (eighth round; ADR-0012). */
+export function PartsUsageRoute() {
+  return (
+    <OperationsScreens>
+      <PartsUsageScreen />
+    </OperationsScreens>
+  );
+}
+
 export function ActivitiesRoute() {
   return (
     <OperationsScreens>
@@ -425,6 +471,15 @@ export function BomsRoute() {
   return (
     <OperationsScreens>
       <BomListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function BomVersionRoute() {
+  const { bomId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <BomVersionScreen key={bomId} bomId={bomId} />
     </OperationsScreens>
   );
 }

@@ -18,7 +18,7 @@ import { useStageName } from './opportunity-parts.js';
  */
 export function CrmOverviewScreen() {
   const { t } = useTranslation();
-  const { client } = useOperations();
+  const { client, paths } = useOperations();
   const me = useQuery({
     queryKey: keys.me,
     queryFn: async () => (await client.GET('/v1/me')).data!,
@@ -44,6 +44,15 @@ export function CrmOverviewScreen() {
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-content">{t('crm.overview.title')}</h1>
         <p className="max-w-prose text-sm text-content-muted">{t('crm.overview.intro')}</p>
+        {enabled && allowed ? (
+          <nav
+            aria-label={t('crm.overview.more')}
+            className="flex flex-wrap gap-x-4 gap-y-1 text-sm"
+          >
+            <AppLink to={paths.crmReports}>{t('analytics.crm.title')}</AppLink>
+            <AppLink to={paths.crmPipelines}>{t('crm.pipelines.title')}</AppLink>
+          </nav>
+        ) : null}
       </header>
 
       {!enabled || !allowed ? (

@@ -82,7 +82,6 @@ function BomDetail({ itemId }: { itemId: string }) {
   const { client, paths, locale } = useOperations();
   const queries = useQueryClient();
   const unitName = useUnitName();
-  const currency = useCurrency();
   const seat = useManufacturingSeat();
   const [draft, setDraft] = useState<BomDraft | null>(null);
   const [ordering, setOrdering] = useState(false);
@@ -161,8 +160,6 @@ function BomDetail({ itemId }: { itemId: string }) {
   const canKeep = seat.manage && seat.seesCosts;
   const buildable = subject?.kind === 'stock_item';
   const editing = draft !== null;
-  const money = (value: string) => formatAmount(value, currency, locale);
-
   return (
     <div className="flex flex-col gap-6 text-start">
       {back}
@@ -267,114 +264,7 @@ function BomDetail({ itemId }: { itemId: string }) {
           ) : null}
         </section>
       ) : (
-        <section className={cardClass} aria-labelledby="bom-components">
-          <h2 id="bom-components" className="text-base font-semibold text-content">
-            {t('manufacturing.bom.components')}
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-xs text-content-muted">
-                <tr>
-                  <th scope="col" className="py-1 text-start font-medium">
-                    {t('manufacturing.bom.component')}
-                  </th>
-                  <th scope="col" className="py-1 text-end font-medium">
-                    {t('manufacturing.bom.perUnit')}
-                  </th>
-                  {current.unitCost === null ? null : (
-                    <>
-                      <th scope="col" className="py-1 text-end font-medium">
-                        {t('manufacturing.bom.unitCost')}
-                      </th>
-                      <th scope="col" className="py-1 text-end font-medium">
-                        {t('manufacturing.bom.lineCost')}
-                      </th>
-                    </>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-subtle">
-                {current.components.map((component) => (
-                  <tr key={component.item.id}>
-                    <td className="py-2">
-                      <AppLink to={paths.item(component.item.id)}>{component.item.name}</AppLink>
-                      <span dir="ltr" className="ms-2 text-content-muted">
-                        {component.item.sku}
-                      </span>
-                    </td>
-                    <td className="py-2 text-end tabular-nums">
-                      {formatQuantity(component.quantity, component.item.unit, locale, unitName)}
-                    </td>
-                    {component.unitCost === null ? null : (
-                      <>
-                        <td className="py-2 text-end tabular-nums">{money(component.unitCost)}</td>
-                        <td className="py-2 text-end tabular-nums">
-                          {money(multiplyDecimal(component.quantity, component.unitCost))}
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-              {current.unitCost === null ? null : (
-                <tfoot className="border-t border-border-subtle">
-                  <tr>
-                    <th
-                      scope="row"
-                      colSpan={3}
-                      className="py-1 text-end font-normal text-content-muted"
-                    >
-                      {t('manufacturing.bom.labourCost')}
-                    </th>
-                    <td className="py-1 text-end tabular-nums">
-                      {money(current.labourCost ?? '0')}
-                    </td>
-                  </tr>
-                  <tr>
-                    <th
-                      scope="row"
-                      colSpan={3}
-                      className="py-1 text-end font-normal text-content-muted"
-                    >
-                      {t('manufacturing.bom.overheadCost')}
-                    </th>
-                    <td className="py-1 text-end tabular-nums">
-                      {money(current.overheadCost ?? '0')}
-                    </td>
-                  </tr>
-                  <tr>
-                    <th
-                      scope="row"
-                      colSpan={3}
-                      className="py-1 text-end font-semibold text-content"
-                    >
-                      {t('manufacturing.bom.rolledUp')}
-                    </th>
-                    <td className="py-1 text-end font-semibold tabular-nums">
-                      {money(current.unitCost)}
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
-          {current.unitCost === null ? null : (
-            <p className="text-xs text-content-muted">{t('manufacturing.bom.rolledUpHint')}</p>
-          )}
-          <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-            <Detail label={t('manufacturing.bom.note')} wide>
-              {current.note === null ? null : (
-                <span className="whitespace-pre-wrap">{current.note}</span>
-              )}
-            </Detail>
-          </dl>
-          <p className="text-xs text-content-muted">
-            {t('manufacturing.bom.savedBy', {
-              name: current.createdBy.name,
-              date: formatDateTime(current.createdAt, { locale }),
-            })}
-          </p>
-        </section>
+        <BomComponents bom={current} />
       )}
 
       <section className={cardClass} aria-labelledby="bom-versions">
@@ -391,11 +281,11 @@ function BomDetail({ itemId }: { itemId: string }) {
                 key={version.id}
                 className="flex flex-wrap items-center justify-between gap-2 py-2"
               >
-                <span className="text-content">
+                <AppLink to={paths.bomVersion(version.id)}>
                   {t('manufacturing.boms.versionN', {
                     version: formatNumber(version.version, { locale }),
                   })}
-                </span>
+                </AppLink>
                 <span className="flex items-center gap-3 text-content-muted">
                   <span
                     className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${
@@ -674,5 +564,116 @@ function BomEditor({
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * What one unit of a bill's item is built from, with each line's cost and the
+ * rolled-up cost for those who see costs, and the bill's note. The version in
+ * use and an earlier one read the same way.
+ */
+export function BomComponents({ bom }: { bom: Bom }) {
+  const { t } = useTranslation();
+  const { paths, locale } = useOperations();
+  const unitName = useUnitName();
+  const currency = useCurrency();
+  const money = (value: string) => formatAmount(value, currency, locale);
+  return (
+    <section className={cardClass} aria-labelledby="bom-components">
+      <h2 id="bom-components" className="text-base font-semibold text-content">
+        {t('manufacturing.bom.components')}
+      </h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-xs text-content-muted">
+            <tr>
+              <th scope="col" className="py-1 text-start font-medium">
+                {t('manufacturing.bom.component')}
+              </th>
+              <th scope="col" className="py-1 text-end font-medium">
+                {t('manufacturing.bom.perUnit')}
+              </th>
+              {bom.unitCost === null ? null : (
+                <>
+                  <th scope="col" className="py-1 text-end font-medium">
+                    {t('manufacturing.bom.unitCost')}
+                  </th>
+                  <th scope="col" className="py-1 text-end font-medium">
+                    {t('manufacturing.bom.lineCost')}
+                  </th>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border-subtle">
+            {bom.components.map((component) => (
+              <tr key={component.item.id}>
+                <td className="py-2">
+                  <AppLink to={paths.item(component.item.id)}>{component.item.name}</AppLink>
+                  <span dir="ltr" className="ms-2 text-content-muted">
+                    {component.item.sku}
+                  </span>
+                </td>
+                <td className="py-2 text-end tabular-nums">
+                  {formatQuantity(component.quantity, component.item.unit, locale, unitName)}
+                </td>
+                {component.unitCost === null ? null : (
+                  <>
+                    <td className="py-2 text-end tabular-nums">{money(component.unitCost)}</td>
+                    <td className="py-2 text-end tabular-nums">
+                      {money(multiplyDecimal(component.quantity, component.unitCost))}
+                    </td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+          {bom.unitCost === null ? null : (
+            <tfoot className="border-t border-border-subtle">
+              <tr>
+                <th
+                  scope="row"
+                  colSpan={3}
+                  className="py-1 text-end font-normal text-content-muted"
+                >
+                  {t('manufacturing.bom.labourCost')}
+                </th>
+                <td className="py-1 text-end tabular-nums">{money(bom.labourCost ?? '0')}</td>
+              </tr>
+              <tr>
+                <th
+                  scope="row"
+                  colSpan={3}
+                  className="py-1 text-end font-normal text-content-muted"
+                >
+                  {t('manufacturing.bom.overheadCost')}
+                </th>
+                <td className="py-1 text-end tabular-nums">{money(bom.overheadCost ?? '0')}</td>
+              </tr>
+              <tr>
+                <th scope="row" colSpan={3} className="py-1 text-end font-semibold text-content">
+                  {t('manufacturing.bom.rolledUp')}
+                </th>
+                <td className="py-1 text-end font-semibold tabular-nums">{money(bom.unitCost)}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+      {bom.unitCost === null ? null : (
+        <p className="text-xs text-content-muted">{t('manufacturing.bom.rolledUpHint')}</p>
+      )}
+      <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+        <Detail label={t('manufacturing.bom.note')} wide>
+          {bom.note === null ? null : <span className="whitespace-pre-wrap">{bom.note}</span>}
+        </Detail>
+      </dl>
+      <p className="text-xs text-content-muted">
+        {t('manufacturing.bom.savedBy', {
+          name: bom.createdBy.name,
+          date: formatDateTime(bom.createdAt, { locale }),
+        })}
+      </p>
+    </section>
   );
 }

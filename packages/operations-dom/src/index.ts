@@ -25,6 +25,11 @@ export { CustomerCrmSection } from './crm/customer-crm.js';
 export { OpportunityBoardScreen } from './crm/opportunity-board.js';
 export { OpportunityScreen } from './crm/opportunity-screen.js';
 export { ActivitiesScreen, ActivityPanel } from './crm/activities.js';
+export { PipelineListScreen, PipelineScreen } from './crm/pipeline-settings.js';
+export { CustomerRecordsSection } from './crm/customer-360.js';
+export { CrmReportsScreen } from './analytics/crm-reports.js';
+export { PartsUsageScreen } from './analytics/parts-usage.js';
+export { CsvExportButton, StockMovementsExportButton } from './exports.js';
 export { InventoryOverviewScreen } from './inventory/inventory-overview.js';
 export { ItemListScreen } from './inventory/item-list.js';
 export { ItemScreen } from './inventory/item-screen.js';
@@ -37,6 +42,7 @@ export { SupplierListScreen } from './purchasing/supplier-list.js';
 export { SupplierScreen } from './purchasing/supplier-screen.js';
 export { BomListScreen } from './manufacturing/bom-list.js';
 export { BomScreen } from './manufacturing/bom-screen.js';
+export { BomVersionScreen } from './manufacturing/bom-version-screen.js';
 export {
   AssemblyOrderListScreen,
   NewAssemblyOrderDialog,

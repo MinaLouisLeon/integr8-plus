@@ -27,6 +27,7 @@ import {
   type AddressDraft,
   type CustomerDraft,
 } from './customer-fields.js';
+import { CustomerRecordsSection } from '../crm/customer-360.js';
 import { CustomerCrmSection } from '../crm/customer-crm.js';
 import { CustomerAccountSection } from '../finance/customer-account.js';
 
@@ -229,6 +230,7 @@ export function CustomerScreen({ customerId }: { customerId: string }) {
 
       <CustomerCrmSection customerId={customerId} customerName={customer.name} />
       <CustomerAccountSection customerId={customerId} customerName={customer.name} />
+      <CustomerRecordsSection customerId={customerId} />
 
       {editing === undefined ? null : (
         <Dialog

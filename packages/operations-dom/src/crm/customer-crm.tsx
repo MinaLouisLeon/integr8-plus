@@ -4,14 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { keys, useOperations } from '../api.js';
 import { buttonClass, cardClass, InlineError } from '../ui.js';
-import { ActivityPanel } from './activities.js';
 import { formatAmount, LeadStatusBadge } from './lead-parts.js';
 import { NewOpportunityDialog, StageBadge } from './opportunity-parts.js';
 
 /**
  * What the CRM knows about a customer, on the customer screen (CRM/ERP plan,
- * phases C2 and C3): its opportunities, follow-ups and the leads that became
- * it. Shown only when the company has the CRM and the seat may read it;
+ * phases C2 and C3): its opportunities and the leads that became it. Its
+ * follow-ups are the Activities tab of the customer's records
+ * (`CustomerRecordsSection`). Shown only when the company has the CRM and the seat may read it;
  * otherwise the customer screen is exactly as it was.
  */
 export function CustomerCrmSection({
@@ -119,13 +119,6 @@ export function CustomerCrmSection({
           </>
         )}
       </section>
-      {crm.data === undefined ? null : (
-        <ActivityPanel
-          links={{ customerIds: [customerId] }}
-          canManage={crm.data.can.manageActivities}
-          heading={t('crm.customer.activities')}
-        />
-      )}
       {creating ? (
         <NewOpportunityDialog
           customer={{ id: customerId, name: customerName }}

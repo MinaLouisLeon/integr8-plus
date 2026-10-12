@@ -3,6 +3,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { keys, type LeadSource, type LeadStatus, useOperations } from '../api.js';
+import { CsvExportButton } from '../exports.js';
 import {
   BackLink,
   buttonClass,
@@ -102,19 +103,38 @@ export function LeadListScreen() {
       <BackLink to={paths.crm} label={t('nav.backTo', { title: t('crm.overview.title') })} />
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold text-content">{t('crm.leads.title')}</h1>
-        {manage ? (
-          <button
-            type="button"
-            className={buttonClass.primary}
-            onClick={() => {
-              create.reset();
-              setDraft(emptyLead);
-              setCreating(true);
-            }}
-          >
-            {t('crm.leads.new')}
-          </button>
-        ) : null}
+        <div className="flex flex-wrap items-start gap-2">
+          <CsvExportButton
+            permission="crm.lead.manage"
+            label={t('crm.leads.export')}
+            filename="leads.csv"
+            request={() =>
+              client.GET('/v1/crm/leads.csv', {
+                params: {
+                  query: {
+                    ...(applied.status === '' ? {} : { status: [applied.status] }),
+                    ...(applied.source === '' ? {} : { source: [applied.source] }),
+                    ...(applied.includeArchived ? { includeArchived: 'true' as const } : {}),
+                  },
+                },
+                parseAs: 'blob',
+              })
+            }
+          />
+          {manage ? (
+            <button
+              type="button"
+              className={buttonClass.primary}
+              onClick={() => {
+                create.reset();
+                setDraft(emptyLead);
+                setCreating(true);
+              }}
+            >
+              {t('crm.leads.new')}
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <form
