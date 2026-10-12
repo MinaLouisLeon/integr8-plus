@@ -175,7 +175,7 @@ for later.
   force on the month's last day, clocked hours, claims waiting for payroll —
   and stores what the calculation in `@integr8/core` made of them; each line
   balances to the piastre (`net = gross − employee insurance − tax − Martyrs'
-  Fund + reimbursements`). **Overtime:** shifts have no approval step, so a
+Fund + reimbursements`). **Overtime:** shifts have no approval step, so a
   draft proposes hours clocked beyond the month's standard hours (208 unless
   the terms say otherwise) at 135% of the hourly basic unless the terms set a
   rate; the preparer corrects them, and approving the run is the approval.
