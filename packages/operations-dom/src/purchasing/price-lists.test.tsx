@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { ReorderLine, Supplier, SupplierDetail, SupplierPrice } from '../api.js';
 import { accessibilityViolations, apiError, fakeApi, renderScreen } from '../testing/render.js';
 import { NewOrderDialog } from './order-list.js';
-import { ReorderScreen } from './reorder-screen.js';
+import { ReorderScreen, ReorderStartScreen } from './reorder-screen.js';
 import { SupplierScreen } from './supplier-screen.js';
 
 /**
@@ -65,6 +65,7 @@ const valve = {
   name: 'Ball valve 15mm',
   kind: 'stock_item' as const,
   unit: 'each' as const,
+  tracking: 'none' as const,
 };
 const tape = {
   id: ITEM_2,
@@ -72,6 +73,7 @@ const tape = {
   name: 'PTFE tape',
   kind: 'stock_item' as const,
   unit: 'roll' as const,
+  tracking: 'none' as const,
 };
 
 const price = (overrides: Partial<SupplierPrice> = {}): SupplierPrice => ({
@@ -338,6 +340,44 @@ describe('reorder', { timeout: 20_000 }, () => {
         { itemId: ITEM_2, supplierId: SUPPLIER_2, quantity: '3' },
       ],
     });
+  });
+
+  it('starts from the menu by asking which of our locations, then opens its list', async () => {
+    const user = userEvent.setup();
+    const location = (id: string, name: string, ownership: 'ours' | 'customer') => ({
+      id,
+      name,
+      kind: 'warehouse',
+      ownership,
+      assignedTo: null,
+      site: null,
+      notes: null,
+      version: 1,
+      archivedAt: null,
+    });
+    const { client } = fakeApi({
+      'GET /v1/inventory/locations': () => ({
+        body: {
+          items: [
+            location(STORE, 'Main store', 'ours'),
+            location('00000000-0000-4000-8000-00000000f102', 'Hotel plant room', 'customer'),
+          ],
+        },
+      }),
+    });
+    const { container, navigate } = renderScreen(<ReorderStartScreen />, client);
+
+    expect(await screen.findByRole('heading', { name: 'Reorder' })).toBeInTheDocument();
+    const open = screen.getByRole('button', { name: 'Open the reorder list' });
+    expect(open).toBeDisabled();
+    const choice = screen.getByLabelText('Location');
+    await waitFor(() => expect(within(choice).getAllByRole('option')).toHaveLength(2));
+    expect(within(choice).queryByRole('option', { name: 'Hotel plant room' })).toBeNull();
+    expect(await accessibilityViolations(container)).toEqual([]);
+
+    await user.selectOptions(choice, STORE);
+    await user.click(open);
+    expect(navigate).toHaveBeenCalledWith(`/inventory/locations/${STORE}/reorder`);
   });
 
   it('says plainly when nothing is below its level', async () => {

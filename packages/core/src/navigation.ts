@@ -109,11 +109,16 @@ export type NavPath =
   | 'leads'
   | 'opportunities'
   | 'activities'
+  | 'pipelines'
+  | 'crmReports'
   | 'inventory'
   | 'items'
   | 'stockLocations'
+  | 'partsUsage'
+  | 'vanRequests'
   | 'suppliers'
   | 'purchaseOrders'
+  | 'reorder'
   | 'boms'
   | 'assemblyOrders'
   | 'materialPlans'
@@ -204,6 +209,24 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     group: 'crm',
     path: 'activities',
     icon: 'list',
+    permission: 'crm.read',
+    feature: 'crm',
+  },
+  // The pipelines editor is for those who keep the stages; everybody else
+  // reads them from the board. The reports read what the CRM holds.
+  {
+    key: 'pipelines',
+    group: 'crm',
+    path: 'pipelines',
+    icon: 'layers',
+    permission: 'crm.pipeline.manage',
+    feature: 'crm',
+  },
+  {
+    key: 'crmReports',
+    group: 'crm',
+    path: 'crmReports',
+    icon: 'bar-chart',
     permission: 'crm.read',
     feature: 'crm',
   },
@@ -345,6 +368,23 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     permission: 'inventory.read',
     feature: 'inventory',
   },
+  {
+    key: 'partsUsage',
+    group: 'inventory',
+    path: 'partsUsage',
+    icon: 'clipboard-check',
+    permission: 'inventory.read',
+    feature: 'inventory',
+  },
+  // The store's queue: those who move stock. An engineer asks from the field app.
+  {
+    key: 'vanRequests',
+    group: 'inventory',
+    path: 'vanRequests',
+    icon: 'truck',
+    permission: 'inventory.move',
+    feature: 'inventory',
+  },
   // Purchasing (CRM/ERP plan, phase E2): the company's `purchasing` module.
   {
     key: 'suppliers',
@@ -360,6 +400,15 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'purchaseOrders',
     icon: 'clipboard',
     permission: 'purchasing.read',
+    feature: 'purchasing',
+  },
+  // A reorder list is per location: the entry asks which one, then opens it.
+  {
+    key: 'reorder',
+    group: 'inventory',
+    path: 'reorder',
+    icon: 'list',
+    permission: 'purchasing.manage',
     feature: 'purchasing',
   },
   // Manufacturing (seventh round; ADR-0011): the company's `manufacturing`
