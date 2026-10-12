@@ -108,6 +108,10 @@ export const EXPORTED_TABLES = [
   'hr_employees',
   'hr_expense_categories',
   'hr_expense_claims',
+  'hr_payroll_rule_sets',
+  'hr_pay_terms',
+  'hr_payroll_runs',
+  'hr_payroll_lines',
   'audit_log',
 ] as const;
 

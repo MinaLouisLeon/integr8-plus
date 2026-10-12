@@ -518,6 +518,19 @@ export {
   type ExpenseClaimInput,
   type ExpenseClaimQuery,
 } from './repositories/hr-expenses.js';
+export {
+  HrPayrollRepository,
+  emptyTotals as emptyPayRunTotals,
+  type PayrollRuleSet,
+  type PayTerms,
+  type PayTermsInput,
+  type PayRun,
+  type PayRunTotals,
+  type PayLine,
+  type PayLineInputs,
+  type PayLineResults,
+  type PayrollCandidate,
+} from './repositories/hr-payroll.js';
 
 export {
   addressLine,

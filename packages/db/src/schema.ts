@@ -26,6 +26,9 @@ import {
   type ExpenseClaimStatus,
   type ExpenseSettlement,
   type ExpensePaidVia,
+  type PayrollRules,
+  type PayRunStatus,
+  type PayMethod,
   ROLES,
   type StageOutcome,
   type WorkOrderPriority,
@@ -1842,8 +1845,97 @@ export interface HrExpenseClaimsTable {
   paid_by: string | null;
   paid_at: Date | null;
   payment_reference: string | null;
+  payroll_run_id: string | null;
   version: Generated<number>;
   updated_at: Generated<Date>;
+}
+
+/** Payroll figures from a month on (0038; ADR-0010); frozen once confirmed. */
+export interface HrPayrollRuleSetsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  effective_from: string | Date;
+  rules: Jsonb<PayrollRules>;
+  confirmed_by: string | null;
+  confirmed_at: Date | null;
+  confirmation_note: string | null;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  version: Generated<number>;
+}
+
+/** An employee's pay from a date on (0038). */
+export interface HrPayTermsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  employee_id: string;
+  effective_from: string | Date;
+  basic: string;
+  allowances: Generated<string>;
+  insured: Generated<boolean>;
+  insurable_wage: string | null;
+  standard_hours: Generated<string>;
+  overtime_rate: string | null;
+  pay_method: Generated<PayMethod>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  version: Generated<number>;
+}
+
+/** A month's pay run (0038). */
+export interface HrPayrollRunsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  period_start: string | Date;
+  period_end: string | Date;
+  rule_set_id: string;
+  currency: string;
+  status: Generated<PayRunStatus>;
+  pay_date: string | Date | null;
+  note: string | null;
+  prepared_by: string;
+  prepared_at: Generated<Date>;
+  approved_by: string | null;
+  approved_at: Date | null;
+  version: Generated<number>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+/** One employee's pay in a run: what went in, and what came out (0038). */
+export interface HrPayrollLinesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  run_id: string;
+  employee_id: string;
+  basic: string;
+  allowances: string;
+  clocked_hours: Generated<string>;
+  overtime_hours: Generated<string>;
+  overtime_rate: Generated<string>;
+  bonus: Generated<string>;
+  deduction: Generated<string>;
+  unpaid_days: Generated<string>;
+  reimbursements: Generated<string>;
+  declared_insurable_wage: string | null;
+  insured: boolean;
+  pay_method: PayMethod;
+  note: string | null;
+  overtime_pay: string;
+  unpaid_leave: string;
+  gross: string;
+  insurable_wage: string;
+  si_employee: string;
+  si_employer: string;
+  taxable: string;
+  income_tax: string;
+  martyrs_fund: string;
+  net: string;
+  version: Generated<number>;
+  updated_at: UpdatedAt;
 }
 
 export interface CustomerContactsTable {
@@ -2393,6 +2485,10 @@ export interface Database {
   hr_expense_categories: HrExpenseCategoriesTable;
   expense_reference_counters: ExpenseReferenceCountersTable;
   hr_expense_claims: HrExpenseClaimsTable;
+  hr_payroll_rule_sets: HrPayrollRuleSetsTable;
+  hr_pay_terms: HrPayTermsTable;
+  hr_payroll_runs: HrPayrollRunsTable;
+  hr_payroll_lines: HrPayrollLinesTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -2649,6 +2745,10 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   hr_expense_categories: true,
   expense_reference_counters: true,
   hr_expense_claims: true,
+  hr_payroll_rule_sets: true,
+  hr_pay_terms: true,
+  hr_payroll_runs: true,
+  hr_payroll_lines: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

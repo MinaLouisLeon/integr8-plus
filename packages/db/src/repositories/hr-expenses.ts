@@ -47,6 +47,8 @@ export interface ExpenseClaim {
   paidBy: UserId | null;
   paidAt: Date | null;
   paymentReference: string | null;
+  /** The pay run that paid it back, when paid through payroll. */
+  payrollRunId: string | null;
   version: number;
 }
 
@@ -101,6 +103,7 @@ function toClaim(row: Selectable<HrExpenseClaimsTable>): ExpenseClaim {
     paidBy: row.paid_by === null ? null : toUserId(row.paid_by),
     paidAt: row.paid_at,
     paymentReference: row.payment_reference,
+    payrollRunId: row.payroll_run_id,
     version: row.version,
   };
 }
@@ -374,6 +377,29 @@ export class HrExpensesRepository extends TenantScopedRepository {
       paid_at: sql<Date>`now()`,
       payment_reference: reference,
     });
+  }
+
+  /** Paid back by an approved pay run: every claim named, or none. */
+  async paidThroughPayroll(ids: readonly string[], runId: string): Promise<number> {
+    if (ids.length === 0) {
+      return 0;
+    }
+    const rows = await this.db
+      .updateTable('hr_expense_claims')
+      .set({
+        status: 'paid',
+        paid_via: 'payroll',
+        paid_at: sql<Date>`now()`,
+        payroll_run_id: runId,
+        version: sql<number>`version + 1`,
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', 'in', [...new Set(ids)])
+      .where('status', '=', 'approved')
+      .where('settle_via', '=', 'payroll')
+      .returning('id')
+      .execute();
+    return rows.length;
   }
 
   /** Approved claims waiting for the next pay run, by claimant. */

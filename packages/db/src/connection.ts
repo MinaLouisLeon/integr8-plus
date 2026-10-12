@@ -40,6 +40,7 @@ import { LedgerReportsRepository } from './repositories/ledger-reports.js';
 import { MemberGrantsRepository } from './repositories/member-grants.js';
 import { HrEmployeesRepository } from './repositories/hr-employees.js';
 import { HrExpensesRepository } from './repositories/hr-expenses.js';
+import { HrPayrollRepository } from './repositories/hr-payroll.js';
 import { SalesOrdersRepository } from './repositories/sales-orders.js';
 import { PublicQuotesLookup, SalesQuotesRepository } from './repositories/sales-quotes.js';
 import { CustomersRepository } from './repositories/customers.js';
@@ -144,6 +145,7 @@ export interface TenantTransaction {
   readonly memberGrants: MemberGrantsRepository;
   readonly hrEmployees: HrEmployeesRepository;
   readonly hrExpenses: HrExpensesRepository;
+  readonly hrPayroll: HrPayrollRepository;
   readonly sites: SitesRepository;
   readonly jobTypes: JobTypesRepository;
   readonly workOrders: WorkOrdersRepository;
@@ -406,6 +408,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     memberGrants: new MemberGrantsRepository(scope),
     hrEmployees: new HrEmployeesRepository(scope),
     hrExpenses: new HrExpensesRepository(scope),
+    hrPayroll: new HrPayrollRepository(scope),
     sites: new SitesRepository(scope),
     jobTypes: new JobTypesRepository(scope),
     workOrders: new WorkOrdersRepository(scope),

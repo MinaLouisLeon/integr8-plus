@@ -30,6 +30,11 @@ import {
   STAGE_OUTCOMES,
   ROLES,
   GRANTS,
+  EXPENSE_CLAIM_STATUSES,
+  EXPENSE_SETTLEMENTS,
+  EXPENSE_PAID_VIA,
+  PAY_RUN_STATUSES,
+  PAY_METHODS,
   WORK_ORDER_PRIORITIES,
   WORK_ORDER_STATES,
 } from '@integr8/core';
@@ -539,6 +544,14 @@ describe('vocabularies shared with the application', () => {
       // Roles and grants (0036).
       ['invitations_role_known', ROLES],
       ['member_grants_capability_known', GRANTS],
+      // Expense claims (0037).
+      ['hr_expense_claims_status_known', EXPENSE_CLAIM_STATUSES],
+      ['hr_expense_claims_settle_via_known', EXPENSE_SETTLEMENTS],
+      ['hr_expense_claims_paid_via_known', EXPENSE_PAID_VIA],
+      // Payroll (0038).
+      ['hr_payroll_runs_status_known', PAY_RUN_STATUSES],
+      ['hr_pay_terms_pay_method_known', PAY_METHODS],
+      ['hr_payroll_lines_pay_method_known', PAY_METHODS],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,

@@ -325,8 +325,23 @@ drop function assign_expense_reference();
 drop table expense_reference_counters;
 drop table hr_expense_categories;
 
+-- What those documents posted goes with them: their journals are history the
+-- guards keep, so the guards stand aside while they are removed.
+alter table erp_ledger_postings disable trigger erp_ledger_postings_guard;
+alter table erp_journals disable trigger erp_journals_guard;
+alter table erp_journal_lines disable trigger erp_journal_lines_guard;
+create temporary table gone_journals on commit drop as
+  select tenant_id, id from erp_journals
+   where source_kind in ('expense_claim', 'expense_payment', 'payroll_run', 'assembly');
 delete from erp_ledger_postings
  where source_kind in ('expense_claim', 'expense_payment', 'payroll_run', 'assembly');
+delete from erp_journal_lines l using gone_journals g
+ where l.tenant_id = g.tenant_id and l.journal_id = g.id;
+delete from erp_journals j using gone_journals g
+ where j.tenant_id = g.tenant_id and j.id = g.id;
+alter table erp_journal_lines enable trigger erp_journal_lines_guard;
+alter table erp_journals enable trigger erp_journals_guard;
+alter table erp_ledger_postings enable trigger erp_ledger_postings_guard;
 alter table erp_ledger_postings drop constraint erp_ledger_postings_source_kind_known;
 alter table erp_ledger_postings add constraint erp_ledger_postings_source_kind_known check (
   source_kind in ('invoice', 'credit_note', 'invoice_void', 'payment', 'stock'));
