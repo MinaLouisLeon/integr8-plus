@@ -3983,6 +3983,281 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payroll/rule-sets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Payroll rule sets, latest first, and the figures Integr8 offers */
+        get: operations["listPayrollRuleSets"];
+        put?: never;
+        /**
+         * Add a rule set from a month on
+         * @description The 2026 figures when `rules` is left out. An owner confirms it before any run uses it. 409 `month_taken` when a set already starts that month.
+         */
+        post: operations["createPayrollRuleSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/rule-sets/{ruleSetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a rule set nobody confirmed */
+        delete: operations["removePayrollRuleSet"];
+        options?: never;
+        head?: never;
+        /** Change a rule set before it is confirmed */
+        patch: operations["updatePayrollRuleSet"];
+        trace?: never;
+    };
+    "/v1/payroll/rule-sets/{ruleSetId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm a rule set, saying who checked it
+         * @description The owner only (403 `owner_only`). A confirmed set never changes again, and runs from its month on may use it.
+         */
+        post: operations["confirmPayrollRuleSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/hr/employees/{employeeId}/pay-terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An employee’s pay terms, latest first */
+        get: operations["listPayTerms"];
+        put?: never;
+        /**
+         * Set an employee’s pay from a date on
+         * @description Overtime is paid at 135% of the hourly basic (basic over the standard hours) when no rate is given. 409 `date_taken` when terms already start that day.
+         */
+        post: operations["addPayTerms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/pay-terms/{termsId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove pay terms entered by mistake */
+        delete: operations["removePayTerms"];
+        options?: never;
+        head?: never;
+        /**
+         * Correct pay terms
+         * @description Runs already made keep the figures they used.
+         */
+        patch: operations["updatePayTerms"];
+        trace?: never;
+    };
+    "/v1/payroll/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pay runs, latest month first */
+        get: operations["listPayRuns"];
+        put?: never;
+        /**
+         * Prepare a month’s pay run
+         * @description Proposes a line for everyone employed in the month who has pay terms. Needs a confirmed rule set in force (422 `no_confirmed_rules`, or `rules_not_confirmed` when the latest set waits for the owner). No later than next month (422 `month_in_future`); one run a month (409 `month_taken`).
+         */
+        post: operations["createPayRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A pay run with its lines */
+        get: operations["getPayRun"];
+        put?: never;
+        post?: never;
+        /** Discard a draft pay run */
+        delete: operations["discardPayRun"];
+        options?: never;
+        head?: never;
+        /** Set a draft’s pay date or note */
+        patch: operations["updatePayRun"];
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}/recalculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recalculate a draft from today’s terms, hours and claims
+         * @description Keeps what was typed for the run (overtime hours, bonus, deduction, unpaid days, note) for anyone already in it, and uses the confirmed rule set now in force for the month.
+         */
+        post: operations["recalculatePayRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Type a line’s overtime, bonus, deduction or unpaid days */
+        patch: operations["updatePayLine"];
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a pay run somebody else prepared
+         * @description Final: the run never changes after, pays the expense claims it carries and posts to the ledger when it is set up. Refused for whoever last prepared it (409 `self_approval`), an empty run (409 `empty_run`), a line paying less than nothing (409 `negative_net`), and when claims waiting for payroll changed since it was calculated (409 `run_out_of_date`: recalculate).
+         */
+        post: operations["approvePayRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}/payslips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every payslip of an approved run, to print */
+        get: operations["getPayRunPayslips"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/hr/me/payslips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My own payslips, latest first
+         * @description Every member reads their own, from approved runs. Empty without a profile.
+         */
+        get: operations["listMyPayslips"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}/insurance.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The month’s social insurance contributions, as CSV
+         * @description Each insured employee’s insurance number, insurable wage and both shares, with a total. The full insurance number needs HR_DATA_KEY on the server (503 `hr_key_missing`). Audited.
+         */
+        get: operations["getPayRunInsuranceReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}/bank.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The bank transfer list of an approved run, as CSV
+         * @description One row per employee paid by bank transfer: name, bank, account number and net pay, with the run’s reference. Needs HR_DATA_KEY on the server (503 `hr_key_missing`). Audited.
+         */
+        get: operations["getPayRunBankFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -40543,6 +40818,2920 @@ export interface operations {
                 content?: never;
             };
             /** @description Not approved, settled through payroll, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listPayrollRuleSets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rule sets. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                            rules: {
+                                personalExemption: string;
+                                bands: {
+                                    upTo: string | null;
+                                    rate: string;
+                                }[];
+                                tiers: {
+                                    above: string;
+                                    bands: {
+                                        upTo: string | null;
+                                        rate: string;
+                                    }[];
+                                }[];
+                                siEmployeeRate: string;
+                                siEmployerRate: string;
+                                siMinWage: string;
+                                siMaxWage: string;
+                                martyrsFundRate: string;
+                            };
+                            confirmed: {
+                                by: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: date-time */
+                                at: string;
+                                note: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            version: number;
+                            can: {
+                                edit: boolean;
+                                confirm: boolean;
+                                remove: boolean;
+                            };
+                        }[];
+                        seed: {
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                            rules: {
+                                personalExemption: string;
+                                bands: {
+                                    upTo: string | null;
+                                    rate: string;
+                                }[];
+                                tiers: {
+                                    above: string;
+                                    bands: {
+                                        upTo: string | null;
+                                        rate: string;
+                                    }[];
+                                }[];
+                                siEmployeeRate: string;
+                                siEmployerRate: string;
+                                siMinWage: string;
+                                siMaxWage: string;
+                                martyrsFundRate: string;
+                            };
+                        };
+                        disclaimer: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createPayrollRuleSet: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** Format: date */
+                    effectiveFrom: string;
+                    rules?: {
+                        personalExemption: string;
+                        bands: {
+                            upTo: string | null;
+                            rate: string;
+                        }[];
+                        tiers: {
+                            above: string;
+                            bands: {
+                                upTo: string | null;
+                                rate: string;
+                            }[];
+                        }[];
+                        siEmployeeRate: string;
+                        siEmployerRate: string;
+                        siMinWage: string;
+                        siMaxWage: string;
+                        martyrsFundRate: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The rule set. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** Format: date */
+                        effectiveFrom: string;
+                        rules: {
+                            personalExemption: string;
+                            bands: {
+                                upTo: string | null;
+                                rate: string;
+                            }[];
+                            tiers: {
+                                above: string;
+                                bands: {
+                                    upTo: string | null;
+                                    rate: string;
+                                }[];
+                            }[];
+                            siEmployeeRate: string;
+                            siEmployerRate: string;
+                            siMinWage: string;
+                            siMaxWage: string;
+                            martyrsFundRate: string;
+                        };
+                        confirmed: {
+                            by: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            at: string;
+                            note: string;
+                        } | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        version: number;
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            remove: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A set already starts that month. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    removePayrollRuleSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleSetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such rule set. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Confirmed: it stays. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updatePayrollRuleSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleSetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    name?: string;
+                    /** Format: date */
+                    effectiveFrom?: string;
+                    rules?: {
+                        personalExemption: string;
+                        bands: {
+                            upTo: string | null;
+                            rate: string;
+                        }[];
+                        tiers: {
+                            above: string;
+                            bands: {
+                                upTo: string | null;
+                                rate: string;
+                            }[];
+                        }[];
+                        siEmployeeRate: string;
+                        siEmployerRate: string;
+                        siMinWage: string;
+                        siMaxWage: string;
+                        martyrsFundRate: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The rule set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** Format: date */
+                        effectiveFrom: string;
+                        rules: {
+                            personalExemption: string;
+                            bands: {
+                                upTo: string | null;
+                                rate: string;
+                            }[];
+                            tiers: {
+                                above: string;
+                                bands: {
+                                    upTo: string | null;
+                                    rate: string;
+                                }[];
+                            }[];
+                            siEmployeeRate: string;
+                            siEmployerRate: string;
+                            siMinWage: string;
+                            siMaxWage: string;
+                            martyrsFundRate: string;
+                        };
+                        confirmed: {
+                            by: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            at: string;
+                            note: string;
+                        } | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        version: number;
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            remove: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such rule set. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Confirmed already, the month is taken, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    confirmPayrollRuleSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleSetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    note: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The rule set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** Format: date */
+                        effectiveFrom: string;
+                        rules: {
+                            personalExemption: string;
+                            bands: {
+                                upTo: string | null;
+                                rate: string;
+                            }[];
+                            tiers: {
+                                above: string;
+                                bands: {
+                                    upTo: string | null;
+                                    rate: string;
+                                }[];
+                            }[];
+                            siEmployeeRate: string;
+                            siEmployerRate: string;
+                            siMinWage: string;
+                            siMaxWage: string;
+                            martyrsFundRate: string;
+                        };
+                        confirmed: {
+                            by: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            at: string;
+                            note: string;
+                        } | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        version: number;
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            remove: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Only the owner confirms. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such rule set. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Confirmed already, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listPayTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The terms. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            employeeId: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                            basic: string;
+                            allowances: string;
+                            insured: boolean;
+                            insurableWage: string | null;
+                            standardHours: string;
+                            overtimeRate: string | null;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            version: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such employee. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    addPayTerms: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    effectiveFrom: string;
+                    basic: string;
+                    /** @default 0 */
+                    allowances?: string;
+                    /** @default true */
+                    insured?: boolean;
+                    /** @default null */
+                    insurableWage?: string | null;
+                    /** @default 208 */
+                    standardHours?: string;
+                    /** @default null */
+                    overtimeRate?: string | null;
+                    /**
+                     * @default bank_transfer
+                     * @enum {string}
+                     */
+                    payMethod?: "bank_transfer" | "cash";
+                };
+            };
+        };
+        responses: {
+            /** @description The terms. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        employeeId: string;
+                        /** Format: date */
+                        effectiveFrom: string;
+                        basic: string;
+                        allowances: string;
+                        insured: boolean;
+                        insurableWage: string | null;
+                        standardHours: string;
+                        overtimeRate: string | null;
+                        /** @enum {string} */
+                        payMethod: "bank_transfer" | "cash";
+                        version: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such employee. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Terms already start that day. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    removePayTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                termsId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such terms. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updatePayTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                termsId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    effectiveFrom: string;
+                    basic: string;
+                    /** @default 0 */
+                    allowances?: string;
+                    /** @default true */
+                    insured?: boolean;
+                    /** @default null */
+                    insurableWage?: string | null;
+                    /** @default 208 */
+                    standardHours?: string;
+                    /** @default null */
+                    overtimeRate?: string | null;
+                    /**
+                     * @default bank_transfer
+                     * @enum {string}
+                     */
+                    payMethod?: "bank_transfer" | "cash";
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The terms. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        employeeId: string;
+                        /** Format: date */
+                        effectiveFrom: string;
+                        basic: string;
+                        allowances: string;
+                        insured: boolean;
+                        insurableWage: string | null;
+                        standardHours: string;
+                        overtimeRate: string | null;
+                        /** @enum {string} */
+                        payMethod: "bank_transfer" | "cash";
+                        version: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such terms. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Terms already start that day, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listPayRuns: {
+        parameters: {
+            query?: {
+                before?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            /** Format: date */
+                            periodStart: string;
+                            /** Format: date */
+                            periodEnd: string;
+                            currency: string;
+                            /** @enum {string} */
+                            status: "draft" | "approved";
+                            /** Format: date */
+                            payDate: string | null;
+                            note: string | null;
+                            preparedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            preparedAt: string;
+                            approvedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            totals: {
+                                employees: number;
+                                gross: string;
+                                socialInsuranceEmployee: string;
+                                socialInsuranceEmployer: string;
+                                incomeTax: string;
+                                martyrsFund: string;
+                                reimbursements: string;
+                                net: string;
+                            };
+                            version: number;
+                        }[];
+                        /** Format: date */
+                        next: string | null;
+                        disclaimer: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createPayRun: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    month: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** Format: date */
+                        periodStart: string;
+                        /** Format: date */
+                        periodEnd: string;
+                        currency: string;
+                        /** @enum {string} */
+                        status: "draft" | "approved";
+                        /** Format: date */
+                        payDate: string | null;
+                        note: string | null;
+                        preparedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        preparedAt: string;
+                        approvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        approvedAt: string | null;
+                        totals: {
+                            employees: number;
+                            gross: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            reimbursements: string;
+                            net: string;
+                        };
+                        version: number;
+                        ruleSet: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            basic: string;
+                            allowances: string;
+                            clockedHours: string;
+                            overtimeHours: string;
+                            overtimeRate: string;
+                            bonus: string;
+                            deduction: string;
+                            unpaidDays: string;
+                            reimbursements: string;
+                            declaredInsurableWage: string | null;
+                            insured: boolean;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            note: string | null;
+                            overtimePay: string;
+                            unpaidLeave: string;
+                            gross: string;
+                            insurableWage: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            taxable: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            net: string;
+                            version: number;
+                        }[];
+                        withoutTerms: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        disclaimer: string;
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            discard: boolean;
+                            exportBankFile: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The month has a run. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No confirmed rule set in force, or too far ahead. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPayRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** Format: date */
+                        periodStart: string;
+                        /** Format: date */
+                        periodEnd: string;
+                        currency: string;
+                        /** @enum {string} */
+                        status: "draft" | "approved";
+                        /** Format: date */
+                        payDate: string | null;
+                        note: string | null;
+                        preparedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        preparedAt: string;
+                        approvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        approvedAt: string | null;
+                        totals: {
+                            employees: number;
+                            gross: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            reimbursements: string;
+                            net: string;
+                        };
+                        version: number;
+                        ruleSet: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            basic: string;
+                            allowances: string;
+                            clockedHours: string;
+                            overtimeHours: string;
+                            overtimeRate: string;
+                            bonus: string;
+                            deduction: string;
+                            unpaidDays: string;
+                            reimbursements: string;
+                            declaredInsurableWage: string | null;
+                            insured: boolean;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            note: string | null;
+                            overtimePay: string;
+                            unpaidLeave: string;
+                            gross: string;
+                            insurableWage: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            taxable: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            net: string;
+                            version: number;
+                        }[];
+                        withoutTerms: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        disclaimer: string;
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            discard: boolean;
+                            exportBankFile: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    discardPayRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Discarded. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Approved: it stays. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updatePayRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** Format: date */
+                    payDate?: string | null;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** Format: date */
+                        periodStart: string;
+                        /** Format: date */
+                        periodEnd: string;
+                        currency: string;
+                        /** @enum {string} */
+                        status: "draft" | "approved";
+                        /** Format: date */
+                        payDate: string | null;
+                        note: string | null;
+                        preparedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        preparedAt: string;
+                        approvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        approvedAt: string | null;
+                        totals: {
+                            employees: number;
+                            gross: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            reimbursements: string;
+                            net: string;
+                        };
+                        version: number;
+                        ruleSet: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            basic: string;
+                            allowances: string;
+                            clockedHours: string;
+                            overtimeHours: string;
+                            overtimeRate: string;
+                            bonus: string;
+                            deduction: string;
+                            unpaidDays: string;
+                            reimbursements: string;
+                            declaredInsurableWage: string | null;
+                            insured: boolean;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            note: string | null;
+                            overtimePay: string;
+                            unpaidLeave: string;
+                            gross: string;
+                            insurableWage: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            taxable: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            net: string;
+                            version: number;
+                        }[];
+                        withoutTerms: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        disclaimer: string;
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            discard: boolean;
+                            exportBankFile: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Approved, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    recalculatePayRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** Format: date */
+                        periodStart: string;
+                        /** Format: date */
+                        periodEnd: string;
+                        currency: string;
+                        /** @enum {string} */
+                        status: "draft" | "approved";
+                        /** Format: date */
+                        payDate: string | null;
+                        note: string | null;
+                        preparedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        preparedAt: string;
+                        approvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        approvedAt: string | null;
+                        totals: {
+                            employees: number;
+                            gross: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            reimbursements: string;
+                            net: string;
+                        };
+                        version: number;
+                        ruleSet: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            basic: string;
+                            allowances: string;
+                            clockedHours: string;
+                            overtimeHours: string;
+                            overtimeRate: string;
+                            bonus: string;
+                            deduction: string;
+                            unpaidDays: string;
+                            reimbursements: string;
+                            declaredInsurableWage: string | null;
+                            insured: boolean;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            note: string | null;
+                            overtimePay: string;
+                            unpaidLeave: string;
+                            gross: string;
+                            insurableWage: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            taxable: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            net: string;
+                            version: number;
+                        }[];
+                        withoutTerms: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        disclaimer: string;
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            discard: boolean;
+                            exportBankFile: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Approved, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updatePayLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedRunVersion: number;
+                    expectedVersion: number;
+                    overtimeHours?: string;
+                    bonus?: string;
+                    deduction?: string;
+                    unpaidDays?: string;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** Format: date */
+                        periodStart: string;
+                        /** Format: date */
+                        periodEnd: string;
+                        currency: string;
+                        /** @enum {string} */
+                        status: "draft" | "approved";
+                        /** Format: date */
+                        payDate: string | null;
+                        note: string | null;
+                        preparedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        preparedAt: string;
+                        approvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        approvedAt: string | null;
+                        totals: {
+                            employees: number;
+                            gross: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            reimbursements: string;
+                            net: string;
+                        };
+                        version: number;
+                        ruleSet: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            basic: string;
+                            allowances: string;
+                            clockedHours: string;
+                            overtimeHours: string;
+                            overtimeRate: string;
+                            bonus: string;
+                            deduction: string;
+                            unpaidDays: string;
+                            reimbursements: string;
+                            declaredInsurableWage: string | null;
+                            insured: boolean;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            note: string | null;
+                            overtimePay: string;
+                            unpaidLeave: string;
+                            gross: string;
+                            insurableWage: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            taxable: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            net: string;
+                            version: number;
+                        }[];
+                        withoutTerms: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        disclaimer: string;
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            discard: boolean;
+                            exportBankFile: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run or line. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Approved, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    approvePayRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** Format: date */
+                        periodStart: string;
+                        /** Format: date */
+                        periodEnd: string;
+                        currency: string;
+                        /** @enum {string} */
+                        status: "draft" | "approved";
+                        /** Format: date */
+                        payDate: string | null;
+                        note: string | null;
+                        preparedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        preparedAt: string;
+                        approvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        approvedAt: string | null;
+                        totals: {
+                            employees: number;
+                            gross: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            reimbursements: string;
+                            net: string;
+                        };
+                        version: number;
+                        ruleSet: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            basic: string;
+                            allowances: string;
+                            clockedHours: string;
+                            overtimeHours: string;
+                            overtimeRate: string;
+                            bonus: string;
+                            deduction: string;
+                            unpaidDays: string;
+                            reimbursements: string;
+                            declaredInsurableWage: string | null;
+                            insured: boolean;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            note: string | null;
+                            overtimePay: string;
+                            unpaidLeave: string;
+                            gross: string;
+                            insurableWage: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            taxable: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            net: string;
+                            version: number;
+                        }[];
+                        withoutTerms: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        disclaimer: string;
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            discard: boolean;
+                            exportBankFile: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not approvable now. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPayRunPayslips: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The payslips. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            run: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                /** Format: date */
+                                periodStart: string;
+                                /** Format: date */
+                                periodEnd: string;
+                                /** Format: date */
+                                payDate: string | null;
+                                currency: string;
+                            };
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                employeeNumber: string | null;
+                                jobTitle: string | null;
+                                department: string | null;
+                                /** Format: date */
+                                hireDate: string;
+                            };
+                            line: {
+                                /** Format: uuid */
+                                id: string;
+                                employee: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                basic: string;
+                                allowances: string;
+                                clockedHours: string;
+                                overtimeHours: string;
+                                overtimeRate: string;
+                                bonus: string;
+                                deduction: string;
+                                unpaidDays: string;
+                                reimbursements: string;
+                                declaredInsurableWage: string | null;
+                                insured: boolean;
+                                /** @enum {string} */
+                                payMethod: "bank_transfer" | "cash";
+                                note: string | null;
+                                overtimePay: string;
+                                unpaidLeave: string;
+                                gross: string;
+                                insurableWage: string;
+                                socialInsuranceEmployee: string;
+                                socialInsuranceEmployer: string;
+                                taxable: string;
+                                incomeTax: string;
+                                martyrsFund: string;
+                                net: string;
+                                version: number;
+                            };
+                            disclaimer: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Still a draft. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listMyPayslips: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The payslips. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            run: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                /** Format: date */
+                                periodStart: string;
+                                /** Format: date */
+                                periodEnd: string;
+                                /** Format: date */
+                                payDate: string | null;
+                                currency: string;
+                            };
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                employeeNumber: string | null;
+                                jobTitle: string | null;
+                                department: string | null;
+                                /** Format: date */
+                                hireDate: string;
+                            };
+                            line: {
+                                /** Format: uuid */
+                                id: string;
+                                employee: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                basic: string;
+                                allowances: string;
+                                clockedHours: string;
+                                overtimeHours: string;
+                                overtimeRate: string;
+                                bonus: string;
+                                deduction: string;
+                                unpaidDays: string;
+                                reimbursements: string;
+                                declaredInsurableWage: string | null;
+                                insured: boolean;
+                                /** @enum {string} */
+                                payMethod: "bank_transfer" | "cash";
+                                note: string | null;
+                                overtimePay: string;
+                                unpaidLeave: string;
+                                gross: string;
+                                insurableWage: string;
+                                socialInsuranceEmployee: string;
+                                socialInsuranceEmployer: string;
+                                taxable: string;
+                                incomeTax: string;
+                                martyrsFund: string;
+                                net: string;
+                                version: number;
+                            };
+                            disclaimer: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPayRunInsuranceReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPayRunBankFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Still a draft. */
             409: {
                 headers: {
                     [name: string]: unknown;
