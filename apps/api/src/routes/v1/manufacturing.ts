@@ -12,6 +12,10 @@ import {
   multiplyDecimal,
   parseAssemblyReference,
   positiveQuantitySchema,
+  type PlanDemand,
+  type PlanItem,
+  planMaterials,
+  type PlanSupply,
   type Principal,
   rolledUpUnitCost,
   wouldContainItself,
@@ -21,6 +25,8 @@ import {
   type Bom,
   type Item,
   type MovementInput,
+  type MrpPlan,
+  type MrpSuggestion,
   type StockLocation,
   type TenantTransaction,
   withTenant,
@@ -45,6 +51,7 @@ import {
 } from './inventory.js';
 import { requireLocation, requireStockItem, stockRefusal } from './inventory-stock.js';
 import { type People, peopleOf, personBody, personSchema } from './operations.js';
+import { companyToday } from './sales-quotes.js';
 import { iso, isoOrNull } from './schemas.js';
 
 /**
@@ -973,6 +980,426 @@ export const cancelAssemblyOrderRoute = defineRoute({
   },
 });
 
+// ---------------------------------------------------------------------------
+// Planning
+// ---------------------------------------------------------------------------
+
+const basisSchema = z.object({
+  sales: z.string(),
+  assembly: z.string(),
+  parent: z.string(),
+  lateByDays: z.number().int(),
+});
+
+const suggestionSchema = z.object({
+  id: z.uuid(),
+  item: itemSummarySchema,
+  action: z.enum(['build', 'buy']),
+  level: z.number().int(),
+  required: z.string(),
+  available: z.string(),
+  onOrder: z.string(),
+  reorderMinimum: z.string(),
+  quantity: z.string(),
+  needBy: z.iso.date(),
+  orderBy: z.iso.date(),
+  leadTimeDays: z.number().int(),
+  supplier: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+  bomId: z.uuid().nullable(),
+  basis: basisSchema,
+  drafted: z
+    .object({
+      kind: z.enum(['assembly_order', 'purchase_order']),
+      id: z.uuid(),
+      at: z.iso.datetime(),
+    })
+    .nullable(),
+});
+
+const planSchema = z.object({
+  id: z.uuid(),
+  horizonEnd: z.iso.date(),
+  runBy: personSchema,
+  runAt: z.iso.datetime(),
+});
+
+const planDetailSchema = planSchema.extend({
+  suggestions: z.array(suggestionSchema),
+  can: z.object({ draftAssemblies: z.boolean(), draftPurchases: z.boolean() }),
+});
+
+function parseBasis(text: string): z.infer<typeof basisSchema> {
+  const parsed = basisSchema.safeParse(JSON.parse(text));
+  return parsed.success ? parsed.data : { sales: '0', assembly: '0', parent: '0', lateByDays: 0 };
+}
+
+async function planDetail(
+  tx: TenantTransaction,
+  principal: Principal,
+  plan: MrpPlan,
+): Promise<z.infer<typeof planDetailSchema>> {
+  const [suggestions, people] = await Promise.all([
+    tx.manufacturing.suggestions(plan.id),
+    peopleOf(tx),
+  ]);
+  const [items, suppliers] = await Promise.all([
+    itemsById(
+      tx,
+      suggestions.map((suggestion) => suggestion.itemId),
+    ),
+    tx.inventoryPurchasing.findSuppliers([
+      ...new Set(suggestions.flatMap((s) => (s.supplierId === null ? [] : [s.supplierId]))),
+    ]),
+  ]);
+  const supplierNames = new Map(suppliers.map((supplier) => [supplier.id, supplier.name]));
+  const manage = holds(principal, 'manufacturing.manage');
+  return {
+    id: plan.id,
+    horizonEnd: plan.horizonEnd,
+    runBy: personBody(plan.runBy, people),
+    runAt: iso(plan.runAt),
+    suggestions: suggestions.map((suggestion) => ({
+      id: suggestion.id,
+      item: itemSummary(items.get(suggestion.itemId)!),
+      action: suggestion.action,
+      level: suggestion.level,
+      required: suggestion.required,
+      available: suggestion.available,
+      onOrder: suggestion.onOrder,
+      reorderMinimum: suggestion.reorderMinimum,
+      quantity: suggestion.quantity,
+      needBy: suggestion.needBy,
+      orderBy: suggestion.orderBy,
+      leadTimeDays: suggestion.leadTimeDays,
+      supplier:
+        suggestion.supplierId === null
+          ? null
+          : { id: suggestion.supplierId, name: supplierNames.get(suggestion.supplierId) ?? '' },
+      bomId: suggestion.bomId,
+      basis: parseBasis(suggestion.basis),
+      drafted:
+        suggestion.draftedKind === null ||
+        suggestion.draftedId === null ||
+        suggestion.draftedAt === null
+          ? null
+          : {
+              kind: suggestion.draftedKind,
+              id: suggestion.draftedId,
+              at: iso(suggestion.draftedAt),
+            },
+    })),
+    can: {
+      draftAssemblies: manage,
+      draftPurchases: manage && holds(principal, 'purchasing.manage'),
+    },
+  };
+}
+
+/** What planning reads, shaped for @integr8/core's planMaterials. */
+async function planInput(tx: TenantTransaction, today: string, horizonEnd: string) {
+  const [data, boms, drafts] = await Promise.all([
+    tx.manufacturing.planningData(),
+    tx.manufacturing.activeBoms(),
+    tx.manufacturing.draftOrders(),
+  ]);
+  const items = new Map<string, PlanItem>(
+    data.items.map((item) => {
+      const bom = boms.get(item.id);
+      return [
+        item.id,
+        {
+          ...item,
+          bom: bom === undefined ? null : { id: bom.id, components: bom.components },
+        },
+      ];
+    }),
+  );
+  const demands: PlanDemand[] = data.sales.map((line) => ({
+    itemId: line.itemId,
+    quantity: line.quantity,
+    date: today,
+    source: 'sales' as const,
+  }));
+  const supplies: PlanSupply[] = data.purchases.map((line) => ({
+    itemId: line.itemId,
+    quantity: line.quantity,
+    date: line.date ?? today,
+    source: 'purchase' as const,
+  }));
+  // Draft orders: what they will take and make.
+  const usedBoms = new Map<string, Bom>();
+  for (const order of drafts) {
+    const bom = usedBoms.get(order.bomId) ?? (await tx.manufacturing.bom(order.bomId));
+    if (bom === undefined) {
+      continue;
+    }
+    usedBoms.set(bom.id, bom);
+    const date = order.plannedFor ?? today;
+    const parts = componentNeeds(bom.components, order.quantity);
+    if (order.direction === 'assemble') {
+      demands.push(...parts.map((part) => ({ ...part, date, source: 'assembly' as const })));
+      supplies.push({ itemId: order.itemId, quantity: order.quantity, date, source: 'assembly' });
+    } else {
+      demands.push({ itemId: order.itemId, quantity: order.quantity, date, source: 'assembly' });
+      supplies.push(...parts.map((part) => ({ ...part, date, source: 'assembly' as const })));
+    }
+  }
+  return {
+    today,
+    horizonEnd,
+    items,
+    onHand: data.onHand,
+    reorderMinimum: data.reorderMinimum,
+    demands,
+    supplies,
+  };
+}
+
+const planParams = z.object({ planId: z.uuid() });
+
+export const runPlanRoute = defineRoute({
+  method: 'post',
+  path: '/v1/manufacturing/plans',
+  operationId: 'runMaterialPlan',
+  summary: 'Plan what to build and buy, for the coming days',
+  description:
+    'From confirmed sales orders not yet delivered, draft assembly orders, reorder levels, stock in warehouses and vans, and approved purchase orders due within the horizon. Kept as a snapshot.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'manufacturing.manage',
+  feature: FEATURE,
+  idempotent: true,
+  params: noSchema,
+  query: noSchema,
+  body: z.object({ horizonDays: z.number().int().min(1).max(365).default(30) }),
+  responses: { 201: { description: 'The plan.', schema: planDetailSchema } },
+  handler: async ({ body }, context) => {
+    const { principal } = context;
+    const detail = await withTenant(principal.tenantId, async (tx) => {
+      const today = await companyToday(tx);
+      const horizonEnd = new Date(Date.parse(`${today}T00:00:00Z`) + body.horizonDays * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      const suggestions = planMaterials(await planInput(tx, today, horizonEnd));
+      const plan = await tx.manufacturing.savePlan(
+        horizonEnd,
+        principal.userId,
+        suggestions.map((suggestion) => ({
+          ...suggestion,
+          basis: JSON.stringify(suggestion.basis),
+        })),
+      );
+      await audit(tx, context, 'manufacturing.plan_run', 'erp_mrp_plan', plan.id, {
+        horizonEnd,
+        suggestions: suggestions.length,
+      });
+      return planDetail(tx, principal, plan);
+    });
+    return { status: 201, body: detail };
+  },
+});
+
+export const listPlansRoute = defineRoute({
+  method: 'get',
+  path: '/v1/manufacturing/plans',
+  operationId: 'listMaterialPlans',
+  summary: 'Recent planning runs',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'manufacturing.read',
+  feature: FEATURE,
+  params: noSchema,
+  query: z.object({ limit: z.coerce.number().int().min(1).max(50).default(20) }),
+  body: noSchema,
+  responses: {
+    200: { description: 'Latest first.', schema: z.object({ items: z.array(planSchema) }) },
+  },
+  handler: async ({ query }, context) => {
+    const body = await withTenant(context.principal.tenantId, async (tx) => {
+      const [plans, people] = await Promise.all([
+        tx.manufacturing.plans(query.limit),
+        peopleOf(tx),
+      ]);
+      return {
+        items: plans.map((plan) => ({
+          id: plan.id,
+          horizonEnd: plan.horizonEnd,
+          runBy: personBody(plan.runBy, people),
+          runAt: iso(plan.runAt),
+        })),
+      };
+    });
+    return { status: 200, body };
+  },
+});
+
+export const getPlanRoute = defineRoute({
+  method: 'get',
+  path: '/v1/manufacturing/plans/:planId',
+  operationId: 'getMaterialPlan',
+  summary: 'A planning run and its suggestions',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'manufacturing.read',
+  feature: FEATURE,
+  params: planParams,
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: { description: 'The plan.', schema: planDetailSchema },
+    404: { description: 'No such plan.' },
+  },
+  handler: async ({ params }, context) => {
+    const { principal } = context;
+    const body = await withTenant(principal.tenantId, async (tx) => {
+      const plan = await tx.manufacturing.plan(params.planId);
+      if (plan === undefined) {
+        throw notFound('No such plan.');
+      }
+      return planDetail(tx, principal, plan);
+    });
+    return { status: 200, body };
+  },
+});
+
+export const draftFromPlanRoute = defineRoute({
+  method: 'post',
+  path: '/v1/manufacturing/plans/:planId/draft',
+  operationId: 'draftFromMaterialPlan',
+  summary: 'Draft assembly and purchase orders from chosen suggestions',
+  description:
+    'A build becomes a draft assembly order at the location; buys become one draft purchase order per supplier, delivered to the location, at each item’s default cost. Purchase orders still need approval. Buying needs purchasing rights (403), and a supplier on the item (422 `no_supplier`). A suggestion is drafted once (409 `already_drafted`).',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'manufacturing.manage',
+  feature: FEATURE,
+  idempotent: true,
+  params: planParams,
+  query: noSchema,
+  body: z.object({
+    suggestionIds: z.array(z.uuid()).min(1).max(200),
+    locationId: z.uuid(),
+  }),
+  responses: {
+    200: {
+      description: 'What was drafted, and the plan.',
+      schema: z.object({
+        assemblyOrders: z.array(z.object({ id: z.uuid(), reference: z.string() })),
+        purchaseOrders: z.array(z.object({ id: z.uuid(), reference: z.string() })),
+        plan: planDetailSchema,
+      }),
+    },
+    404: { description: 'No such plan or suggestion.' },
+  },
+  handler: async ({ params, body }, context) => {
+    const { principal } = context;
+    const result = await withTenant(principal.tenantId, async (tx) => {
+      const plan = await tx.manufacturing.plan(params.planId);
+      if (plan === undefined) {
+        throw notFound('No such plan.');
+      }
+      const location = await requireLocation(tx, body.locationId);
+      const chosen = await tx.manufacturing.lockSuggestions(body.suggestionIds);
+      if (
+        chosen.length !== new Set(body.suggestionIds).size ||
+        chosen.some((suggestion) => suggestion.planId !== plan.id)
+      ) {
+        throw notFound('A suggestion is not part of this plan.');
+      }
+      if (chosen.some((suggestion) => suggestion.draftedId !== null)) {
+        throw conflict('already_drafted', 'An order was already drafted from one of these.');
+      }
+      const buys = chosen.filter((suggestion) => suggestion.action === 'buy');
+      if (buys.length > 0 && !holds(principal, 'purchasing.manage')) {
+        throw new ApiError(403, 'forbidden', 'Drafting purchase orders needs purchasing rights.');
+      }
+      if (buys.some((suggestion) => suggestion.supplierId === null)) {
+        throw unprocessable(
+          'no_supplier',
+          'Give each item to buy a preferred supplier first, or order it by hand.',
+        );
+      }
+
+      const assemblyOrders: { id: string; reference: string }[] = [];
+      for (const suggestion of chosen.filter((s) => s.action === 'build')) {
+        const order = await draftAssemblyOrder(tx, context, {
+          direction: 'assemble',
+          itemId: suggestion.itemId,
+          locationId: location.id,
+          quantity: suggestion.quantity,
+          plannedFor: suggestion.needBy,
+          planId: plan.id,
+        });
+        await tx.manufacturing.markDrafted([suggestion.id], 'assembly_order', order.id);
+        assemblyOrders.push({ id: order.id, reference: formatAssemblyReference(order.reference) });
+      }
+
+      const purchaseOrders: { id: string; reference: string }[] = [];
+      const bySupplier = new Map<string, MrpSuggestion[]>();
+      for (const suggestion of buys) {
+        const supplierId = suggestion.supplierId!;
+        bySupplier.set(supplierId, [...(bySupplier.get(supplierId) ?? []), suggestion]);
+      }
+      if (bySupplier.size > 0) {
+        const [suppliers, items, settings] = await Promise.all([
+          tx.inventoryPurchasing.findSuppliers([...bySupplier.keys()]),
+          itemsById(
+            tx,
+            buys.map((suggestion) => suggestion.itemId),
+          ),
+          tx.settings.get(),
+        ]);
+        const supplierOf = new Map(suppliers.map((supplier) => [supplier.id, supplier]));
+        for (const [supplierId, lines] of bySupplier) {
+          const supplier = supplierOf.get(supplierId);
+          if (supplier?.status !== 'active') {
+            throw unprocessable(
+              'supplier_inactive',
+              `${supplier?.name ?? 'A supplier'} is not active.`,
+            );
+          }
+          const expected = lines.map((line) => line.needBy).sort()[0] ?? null;
+          const order = await tx.inventoryPurchasing.createOrder(
+            {
+              supplierId,
+              supplierName: supplier.name,
+              currencyCode: settings.currency,
+              expectedDate: expected,
+              deliveryLocationId: location.id,
+              notes: 'Drafted from material planning.',
+            },
+            lines.map((line) => {
+              const item = items.get(line.itemId)!;
+              return {
+                itemId: item.id,
+                description: item.name,
+                quantityOrdered: line.quantity,
+                unitPrice: item.defaultUnitCost ?? item.averageUnitCost,
+              };
+            }),
+            principal.userId,
+          );
+          const reference = `PO-${String(order.reference).padStart(6, '0')}`;
+          await audit(tx, context, 'purchase_order.created', 'purchase_order', order.id, {
+            reference,
+            supplierId,
+            lines: lines.length,
+            planId: plan.id,
+          });
+          await tx.manufacturing.markDrafted(
+            lines.map((line) => line.id),
+            'purchase_order',
+            order.id,
+          );
+          purchaseOrders.push({ id: order.id, reference });
+        }
+      }
+      return { assemblyOrders, purchaseOrders, plan: await planDetail(tx, principal, plan) };
+    });
+    return { status: 200, body: result };
+  },
+});
+
 export const manufacturingRoutes = [
   listBomsRoute,
   getBomRoute,
@@ -984,4 +1411,8 @@ export const manufacturingRoutes = [
   updateAssemblyOrderRoute,
   completeAssemblyOrderRoute,
   cancelAssemblyOrderRoute,
+  runPlanRoute,
+  listPlansRoute,
+  getPlanRoute,
+  draftFromPlanRoute,
 ];

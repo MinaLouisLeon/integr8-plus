@@ -542,6 +542,7 @@ export {
   type MrpPlan,
   type MrpSuggestion,
   type MrpSuggestionInput,
+  type PlanningData,
 } from './repositories/manufacturing.js';
 
 export {

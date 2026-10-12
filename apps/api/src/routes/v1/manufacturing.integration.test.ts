@@ -281,3 +281,119 @@ describe('assembly orders', () => {
     expect(await onHand(hose, store)).toBe('7.5');
   });
 });
+
+describe('planning', () => {
+  interface Plan {
+    id: string;
+    suggestions: {
+      id: string;
+      item: { id: string };
+      action: string;
+      quantity: string;
+      leadTimeDays: number;
+      supplier: { name: string } | null;
+      drafted: { kind: string } | null;
+    }[];
+  }
+
+  it('suggests building what is short and buying its missing parts, and drafts them on request', async () => {
+    await flag('purchasing', true);
+    const supplier = await call(storekeeper, 'POST', '/v1/purchasing/suppliers', {
+      name: 'Acme Pumps',
+      leadTimeDays: 7,
+    });
+    expect(supplier.statusCode, supplier.body).toBe(201);
+    const supplierId = json<{ id: string }>(supplier).id;
+    for (const [itemId, extra] of [
+      [pump, { preferredSupplierId: supplierId }],
+      [kit, { leadTimeDays: 2 }],
+    ] as const) {
+      const current = json<{ item: { version: number } }>(
+        await call(owner, 'GET', `/v1/inventory/items/${itemId}`),
+      );
+      const updated = await call(storekeeper, 'PATCH', `/v1/inventory/items/${itemId}`, {
+        expectedVersion: current.item.version,
+        ...extra,
+      });
+      expect(updated.statusCode, updated.body).toBe(200);
+    }
+    // One kit on hand, four wanted there.
+    const levels = await call(storekeeper, 'PUT', `/v1/inventory/items/${kit}/reorder-levels`, {
+      levels: [{ locationId: store, minimum: '4' }],
+    });
+    expect(levels.statusCode, levels.body).toBe(200);
+
+    const ran = await call(storekeeper, 'POST', '/v1/manufacturing/plans', { horizonDays: 30 });
+    expect(ran.statusCode, ran.body).toBe(201);
+    const plan = json<Plan>(ran);
+    // Three kits to build need three pumps (two held), 7.5 m of hose (7.5 held) and
+    // twelve clips, which are never stocked.
+    const byItem = (rows: Plan['suggestions']) =>
+      rows.map((row) => [row.item.id, row.action, row.quantity]).sort();
+    expect(byItem(plan.suggestions)).toEqual(
+      [
+        [kit, 'build', '3'],
+        [pump, 'buy', '1'],
+        [clip, 'buy', '12'],
+      ].sort(),
+    );
+    const pumpRow = plan.suggestions.find((row) => row.item.id === pump)!;
+    const kitRow = plan.suggestions.find((row) => row.item.id === kit)!;
+    const clipRow = plan.suggestions.find((row) => row.item.id === clip)!;
+    expect(pumpRow).toMatchObject({ leadTimeDays: 7, supplier: { name: 'Acme Pumps' } });
+    expect(clipRow.supplier).toBeNull();
+    expect(
+      (await call(viewer, 'POST', '/v1/manufacturing/plans', { horizonDays: 30 })).statusCode,
+    ).toBe(403);
+
+    // Nobody to buy the clips from yet.
+    expect(
+      code(
+        await call(storekeeper, 'POST', `/v1/manufacturing/plans/${plan.id}/draft`, {
+          suggestionIds: [clipRow.id],
+          locationId: store,
+        }),
+      ),
+    ).toBe('no_supplier');
+    const drafted = await call(storekeeper, 'POST', `/v1/manufacturing/plans/${plan.id}/draft`, {
+      suggestionIds: [kitRow.id, pumpRow.id],
+      locationId: store,
+    });
+    expect(drafted.statusCode, drafted.body).toBe(200);
+    const result = json<{
+      assemblyOrders: { id: string; reference: string }[];
+      purchaseOrders: { id: string; reference: string }[];
+      plan: Plan;
+    }>(drafted);
+    expect(result.assemblyOrders).toHaveLength(1);
+    expect(result.purchaseOrders.map((order) => order.reference)).toEqual([
+      expect.stringMatching(/^PO-\d{6}$/u),
+    ]);
+    expect(result.plan.suggestions.filter((row) => row.drafted !== null)).toHaveLength(2);
+    const order = json<{ order: { status: string } }>(
+      await call(owner, 'GET', `/v1/purchasing/orders/${result.purchaseOrders[0]!.id}`),
+    );
+    // Drafted, still to be approved as usual.
+    expect(order.order.status).toBe('draft');
+    expect(
+      code(
+        await call(storekeeper, 'POST', `/v1/manufacturing/plans/${plan.id}/draft`, {
+          suggestionIds: [kitRow.id],
+          locationId: store,
+        }),
+      ),
+    ).toBe('already_drafted');
+
+    // The drafted assembly now counts, so no more kits; the purchase order is not
+    // approved yet, so the pump is still short.
+    const again = json<Plan>(
+      await call(storekeeper, 'POST', '/v1/manufacturing/plans', { horizonDays: 30 }),
+    );
+    expect(byItem(again.suggestions)).toEqual(
+      [
+        [pump, 'buy', '1'],
+        [clip, 'buy', '12'],
+      ].sort(),
+    );
+  });
+});

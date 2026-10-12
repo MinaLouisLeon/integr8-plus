@@ -4376,6 +4376,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/manufacturing/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recent planning runs */
+        get: operations["listMaterialPlans"];
+        put?: never;
+        /**
+         * Plan what to build and buy, for the coming days
+         * @description From confirmed sales orders not yet delivered, draft assembly orders, reorder levels, stock in warehouses and vans, and approved purchase orders due within the horizon. Kept as a snapshot.
+         */
+        post: operations["runMaterialPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/manufacturing/plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A planning run and its suggestions */
+        get: operations["getMaterialPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/manufacturing/plans/{planId}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft assembly and purchase orders from chosen suggestions
+         * @description A build becomes a draft assembly order at the location; buys become one draft purchase order per supplier, delivered to the location, at each item’s default cost. Purchase orders still need approval. Buying needs purchasing rights (403), and a supplier on the item (422 `no_supplier`). A suggestion is drafted once (409 `already_drafted`).
+         */
+        post: operations["draftFromMaterialPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -17545,6 +17603,7 @@ export interface operations {
                             /** Format: uuid */
                             preferredSupplierId: string | null;
                             supplierPartNumber: string | null;
+                            leadTimeDays: number | null;
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -17642,6 +17701,7 @@ export interface operations {
                     /** Format: uuid */
                     preferredSupplierId?: string | null;
                     supplierPartNumber?: string | null;
+                    leadTimeDays?: number | null;
                 };
             };
         };
@@ -17671,6 +17731,7 @@ export interface operations {
                         /** Format: uuid */
                         preferredSupplierId: string | null;
                         supplierPartNumber: string | null;
+                        leadTimeDays: number | null;
                         version: number;
                         /** Format: date-time */
                         createdAt: string;
@@ -17788,6 +17849,7 @@ export interface operations {
                             /** Format: uuid */
                             preferredSupplierId: string | null;
                             supplierPartNumber: string | null;
+                            leadTimeDays: number | null;
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -17909,6 +17971,7 @@ export interface operations {
                     /** Format: uuid */
                     preferredSupplierId?: string | null;
                     supplierPartNumber?: string | null;
+                    leadTimeDays?: number | null;
                     expectedVersion: number;
                     archived?: boolean;
                 };
@@ -17940,6 +18003,7 @@ export interface operations {
                         /** Format: uuid */
                         preferredSupplierId: string | null;
                         supplierPartNumber: string | null;
+                        leadTimeDays: number | null;
                         version: number;
                         /** Format: date-time */
                         createdAt: string;
@@ -18067,6 +18131,7 @@ export interface operations {
                             /** Format: uuid */
                             preferredSupplierId: string | null;
                             supplierPartNumber: string | null;
+                            leadTimeDays: number | null;
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -18195,6 +18260,7 @@ export interface operations {
                         /** Format: uuid */
                         preferredSupplierId: string | null;
                         supplierPartNumber: string | null;
+                        leadTimeDays: number | null;
                         version: number;
                         /** Format: date-time */
                         createdAt: string;
@@ -45410,6 +45476,579 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listMaterialPlans: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Latest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date */
+                            horizonEnd: string;
+                            runBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            runAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    runMaterialPlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default 30 */
+                    horizonDays?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The plan. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: date */
+                        horizonEnd: string;
+                        runBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        runAt: string;
+                        suggestions: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            /** @enum {string} */
+                            action: "build" | "buy";
+                            level: number;
+                            required: string;
+                            available: string;
+                            onOrder: string;
+                            reorderMinimum: string;
+                            quantity: string;
+                            /** Format: date */
+                            needBy: string;
+                            /** Format: date */
+                            orderBy: string;
+                            leadTimeDays: number;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: uuid */
+                            bomId: string | null;
+                            basis: {
+                                sales: string;
+                                assembly: string;
+                                parent: string;
+                                lateByDays: number;
+                            };
+                            drafted: {
+                                /** @enum {string} */
+                                kind: "assembly_order" | "purchase_order";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                            } | null;
+                        }[];
+                        can: {
+                            draftAssemblies: boolean;
+                            draftPurchases: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getMaterialPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The plan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: date */
+                        horizonEnd: string;
+                        runBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        runAt: string;
+                        suggestions: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            /** @enum {string} */
+                            action: "build" | "buy";
+                            level: number;
+                            required: string;
+                            available: string;
+                            onOrder: string;
+                            reorderMinimum: string;
+                            quantity: string;
+                            /** Format: date */
+                            needBy: string;
+                            /** Format: date */
+                            orderBy: string;
+                            leadTimeDays: number;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: uuid */
+                            bomId: string | null;
+                            basis: {
+                                sales: string;
+                                assembly: string;
+                                parent: string;
+                                lateByDays: number;
+                            };
+                            drafted: {
+                                /** @enum {string} */
+                                kind: "assembly_order" | "purchase_order";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                            } | null;
+                        }[];
+                        can: {
+                            draftAssemblies: boolean;
+                            draftPurchases: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such plan. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    draftFromMaterialPlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    suggestionIds: string[];
+                    /** Format: uuid */
+                    locationId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description What was drafted, and the plan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        assemblyOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        }[];
+                        purchaseOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        }[];
+                        plan: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date */
+                            horizonEnd: string;
+                            runBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            runAt: string;
+                            suggestions: {
+                                /** Format: uuid */
+                                id: string;
+                                item: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    sku: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    kind: "stock_item" | "non_stock_item" | "service";
+                                    /** @enum {string} */
+                                    unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                };
+                                /** @enum {string} */
+                                action: "build" | "buy";
+                                level: number;
+                                required: string;
+                                available: string;
+                                onOrder: string;
+                                reorderMinimum: string;
+                                quantity: string;
+                                /** Format: date */
+                                needBy: string;
+                                /** Format: date */
+                                orderBy: string;
+                                leadTimeDays: number;
+                                supplier: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                /** Format: uuid */
+                                bomId: string | null;
+                                basis: {
+                                    sales: string;
+                                    assembly: string;
+                                    parent: string;
+                                    lateByDays: number;
+                                };
+                                drafted: {
+                                    /** @enum {string} */
+                                    kind: "assembly_order" | "purchase_order";
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: date-time */
+                                    at: string;
+                                } | null;
+                            }[];
+                            can: {
+                                draftAssemblies: boolean;
+                                draftPurchases: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such plan or suggestion. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description The request failed validation. */
             422: {

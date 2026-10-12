@@ -59,6 +59,8 @@ export const itemSchema = itemSummarySchema.extend({
   /** Set once the `purchasing` module is in use (phase E2). */
   preferredSupplierId: z.uuid().nullable(),
   supplierPartNumber: z.string().nullable(),
+  /** Days to build or to arrive; the preferred supplier's when null. */
+  leadTimeDays: z.number().int().nullable(),
   version: z.number().int(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -80,6 +82,7 @@ export function itemBody(item: Item, seeCosts: boolean): z.infer<typeof itemSche
     averageUnitCost: seeCosts ? item.averageUnitCost : null,
     preferredSupplierId: item.preferredSupplierId,
     supplierPartNumber: item.supplierPartNumber,
+    leadTimeDays: item.leadTimeDays,
     version: item.version,
     createdAt: iso(item.createdAt),
     updatedAt: iso(item.updatedAt),
@@ -321,6 +324,7 @@ const itemFields = {
   salePrice: decimalAmountSchema.nullable().optional(),
   preferredSupplierId: z.uuid().nullable().optional(),
   supplierPartNumber: z.string().trim().max(64).nullable().optional(),
+  leadTimeDays: z.number().int().min(0).max(3650).nullable().optional(),
 };
 
 /** What the request carries, without what it left out. */

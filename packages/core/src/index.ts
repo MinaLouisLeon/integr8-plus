@@ -373,4 +373,12 @@ export {
   rolledUpUnitCost,
   disassemblyUnitCosts,
   wouldContainItself,
+  type PlanItem,
+  type DemandSource,
+  type PlanDemand,
+  type PlanSupply,
+  type PlanInput,
+  type PlanBasis,
+  type PlanSuggestion,
+  planMaterials,
 } from './manufacturing.js';

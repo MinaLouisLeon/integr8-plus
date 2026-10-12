@@ -125,6 +125,24 @@ export interface MrpSuggestion {
   draftedAt: Date | null;
 }
 
+/** Everything planning reads, in one consistent look at the company. */
+export interface PlanningData {
+  items: {
+    id: string;
+    kind: 'stock_item' | 'non_stock_item' | 'service';
+    leadTimeDays: number | null;
+    supplierId: string | null;
+    supplierLeadTimeDays: number | null;
+  }[];
+  /** Held in warehouses and vans; stock at customers' sites is theirs. */
+  onHand: Map<string, string>;
+  reorderMinimum: Map<string, string>;
+  /** What confirmed sales orders still have to deliver. */
+  sales: { itemId: string; quantity: string }[];
+  /** What approved purchase orders still have to bring, and when. */
+  purchases: { itemId: string; quantity: string; date: string | null }[];
+}
+
 export type MrpSuggestionInput = Omit<
   MrpSuggestion,
   'id' | 'planId' | 'draftedKind' | 'draftedId' | 'draftedAt'
@@ -571,6 +589,91 @@ export class ManufacturingRepository extends TenantScopedRepository {
   // -------------------------------------------------------------------------
   // Plans
   // -------------------------------------------------------------------------
+
+  async planningData(): Promise<PlanningData> {
+    const [items, held, minimums, sales, purchases] = await Promise.all([
+      this.db
+        .selectFrom('erp_items as i')
+        .leftJoin('erp_suppliers as s', (join) =>
+          join
+            .onRef('s.tenant_id', '=', 'i.tenant_id')
+            .onRef('s.id', '=', 'i.preferred_supplier_id'),
+        )
+        .select([
+          'i.id',
+          'i.kind',
+          'i.lead_time_days',
+          'i.preferred_supplier_id',
+          's.lead_time_days as supplier_lead_time_days',
+        ])
+        .where('i.tenant_id', '=', this.tenantId)
+        .where('i.archived_at', 'is', null)
+        .execute(),
+      this.db
+        .selectFrom('erp_stock_balances as b')
+        .innerJoin('erp_stock_locations as l', (join) =>
+          join.onRef('l.tenant_id', '=', 'b.tenant_id').onRef('l.id', '=', 'b.location_id'),
+        )
+        .select(['b.item_id', sql<string>`sum(b.on_hand)::text`.as('on_hand')])
+        .where('b.tenant_id', '=', this.tenantId)
+        .where('l.kind', 'in', ['warehouse', 'van'])
+        .groupBy('b.item_id')
+        .execute(),
+      this.db
+        .selectFrom('erp_reorder_levels')
+        .select(['item_id', sql<string>`sum(minimum)::text`.as('minimum')])
+        .where('tenant_id', '=', this.tenantId)
+        .groupBy('item_id')
+        .execute(),
+      this.db
+        .selectFrom('erp_sales_order_lines as l')
+        .innerJoin('erp_sales_orders as o', (join) =>
+          join.onRef('o.tenant_id', '=', 'l.tenant_id').onRef('o.id', '=', 'l.order_id'),
+        )
+        .select([
+          'l.item_id',
+          sql<string>`(l.quantity - l.quantity_fulfilled)::text`.as('quantity'),
+        ])
+        .where('l.tenant_id', '=', this.tenantId)
+        .where('o.status', 'in', ['confirmed', 'partially_fulfilled'])
+        .where('l.item_id', 'is not', null)
+        .where(sql<boolean>`l.quantity > l.quantity_fulfilled`)
+        .execute(),
+      this.db
+        .selectFrom('erp_purchase_order_lines as l')
+        .innerJoin('erp_purchase_orders as o', (join) =>
+          join.onRef('o.tenant_id', '=', 'l.tenant_id').onRef('o.id', '=', 'l.order_id'),
+        )
+        .select([
+          'l.item_id',
+          sql<string>`(l.quantity_ordered - l.quantity_received)::text`.as('quantity'),
+          'o.expected_date',
+        ])
+        .where('l.tenant_id', '=', this.tenantId)
+        .where('o.status', 'in', ['approved', 'partially_received'])
+        .where(sql<boolean>`l.quantity_ordered > l.quantity_received`)
+        .execute(),
+    ]);
+    return {
+      items: items.map((row) => ({
+        id: row.id,
+        kind: row.kind,
+        leadTimeDays: row.lead_time_days,
+        supplierId: row.preferred_supplier_id,
+        supplierLeadTimeDays: row.supplier_lead_time_days,
+      })),
+      onHand: new Map(held.map((row) => [row.item_id, trimDecimal(row.on_hand)])),
+      reorderMinimum: new Map(minimums.map((row) => [row.item_id, trimDecimal(row.minimum)])),
+      sales: sales.flatMap((row) =>
+        row.item_id === null ? [] : [{ itemId: row.item_id, quantity: trimDecimal(row.quantity) }],
+      ),
+      purchases: purchases.map((row) => ({
+        itemId: row.item_id,
+        quantity: trimDecimal(row.quantity),
+        date: toDayString(row.expected_date),
+      })),
+    };
+  }
 
   async savePlan(
     horizonEnd: string,
