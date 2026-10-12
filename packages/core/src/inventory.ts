@@ -65,6 +65,9 @@ export const MOVEMENT_SIGNS = {
   consumption: -1,
   consumption_return: 1,
   return_to_supplier: -1,
+  // Assembly and disassembly orders (ADR-0011): what goes in, and what comes out.
+  assembly_consumption: -1,
+  assembly_output: 1,
 } as const;
 export type MovementKind = keyof typeof MOVEMENT_SIGNS;
 export const MOVEMENT_KINDS = Object.keys(MOVEMENT_SIGNS) as MovementKind[];

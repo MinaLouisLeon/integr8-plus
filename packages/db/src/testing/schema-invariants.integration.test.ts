@@ -35,6 +35,8 @@ import {
   EXPENSE_PAID_VIA,
   PAY_RUN_STATUSES,
   PAY_METHODS,
+  ASSEMBLY_ORDER_STATUSES,
+  ASSEMBLY_DIRECTIONS,
   WORK_ORDER_PRIORITIES,
   WORK_ORDER_STATES,
 } from '@integr8/core';
@@ -552,6 +554,9 @@ describe('vocabularies shared with the application', () => {
       ['hr_payroll_runs_status_known', PAY_RUN_STATUSES],
       ['hr_pay_terms_pay_method_known', PAY_METHODS],
       ['hr_payroll_lines_pay_method_known', PAY_METHODS],
+      // Manufacturing (0039).
+      ['erp_assembly_orders_status_known', ASSEMBLY_ORDER_STATUSES],
+      ['erp_assembly_orders_direction_known', ASSEMBLY_DIRECTIONS],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,

@@ -29,6 +29,8 @@ import {
   type PayrollRules,
   type PayRunStatus,
   type PayMethod,
+  type AssemblyDirection,
+  type AssemblyOrderStatus,
   ROLES,
   type StageOutcome,
   type WorkOrderPriority,
@@ -1085,6 +1087,8 @@ export interface ErpItemsTable {
   average_unit_cost: Generated<string>;
   preferred_supplier_id: string | null;
   supplier_part_number: string | null;
+  /** Days to build or to arrive (0039). */
+  lead_time_days: number | null;
   version: Generated<number>;
   created_by: string;
   created_at: CreatedAt;
@@ -1938,6 +1942,93 @@ export interface HrPayrollLinesTable {
   updated_at: UpdatedAt;
 }
 
+/** A bill of materials version (0039; ADR-0011). */
+export interface ErpBomsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  item_id: string;
+  version: number;
+  labour_cost: Generated<string>;
+  overhead_cost: Generated<string>;
+  note: string | null;
+  created_by: string;
+  created_at: CreatedAt;
+  superseded_at: Date | null;
+  superseded_by: string | null;
+}
+
+export interface ErpBomComponentsTable {
+  tenant_id: string;
+  bom_id: string;
+  line_no: number;
+  item_id: string;
+  quantity: string;
+}
+
+export interface AssemblyReferenceCountersTable {
+  tenant_id: string;
+  last_reference: number;
+}
+
+/** An assembly or disassembly order (0039). */
+export interface ErpAssemblyOrdersTable {
+  id: Generated<string>;
+  tenant_id: string;
+  reference: Generated<number>;
+  direction: Generated<AssemblyDirection>;
+  item_id: string;
+  bom_id: string;
+  location_id: string;
+  quantity: string;
+  status: Generated<AssemblyOrderStatus>;
+  planned_for: string | Date | null;
+  plan_id: string | null;
+  note: string | null;
+  unit_cost: string | null;
+  labour_cost: string | null;
+  overhead_cost: string | null;
+  created_by: string;
+  created_at: CreatedAt;
+  completed_by: string | null;
+  completed_at: Date | null;
+  cancelled_by: string | null;
+  cancelled_at: Date | null;
+  version: Generated<number>;
+  updated_at: UpdatedAt;
+}
+
+/** A planning run (0039). */
+export interface ErpMrpPlansTable {
+  id: Generated<string>;
+  tenant_id: string;
+  horizon_end: string | Date;
+  run_by: string;
+  run_at: Generated<Date>;
+}
+
+export interface ErpMrpSuggestionsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  plan_id: string;
+  item_id: string;
+  action: 'build' | 'buy';
+  level: number;
+  required: string;
+  available: string;
+  on_order: string;
+  reorder_minimum: string;
+  quantity: string;
+  need_by: string | Date;
+  order_by: string | Date;
+  lead_time_days: number;
+  supplier_id: string | null;
+  bom_id: string | null;
+  basis: string;
+  drafted_kind: 'assembly_order' | 'purchase_order' | null;
+  drafted_id: string | null;
+  drafted_at: Date | null;
+}
+
 export interface CustomerContactsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -2489,6 +2580,12 @@ export interface Database {
   hr_pay_terms: HrPayTermsTable;
   hr_payroll_runs: HrPayrollRunsTable;
   hr_payroll_lines: HrPayrollLinesTable;
+  erp_boms: ErpBomsTable;
+  erp_bom_components: ErpBomComponentsTable;
+  assembly_reference_counters: AssemblyReferenceCountersTable;
+  erp_assembly_orders: ErpAssemblyOrdersTable;
+  erp_mrp_plans: ErpMrpPlansTable;
+  erp_mrp_suggestions: ErpMrpSuggestionsTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -2639,6 +2736,7 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'erp_ledger_try_post',
   'erp_ledger_backfill',
   'assign_expense_reference',
+  'assign_assembly_reference',
   'erp_ledger_backfill_more',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
@@ -2749,6 +2847,12 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   hr_pay_terms: true,
   hr_payroll_runs: true,
   hr_payroll_lines: true,
+  erp_boms: true,
+  erp_bom_components: true,
+  assembly_reference_counters: true,
+  erp_assembly_orders: true,
+  erp_mrp_plans: true,
+  erp_mrp_suggestions: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

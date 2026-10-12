@@ -112,6 +112,11 @@ export const EXPORTED_TABLES = [
   'hr_pay_terms',
   'hr_payroll_runs',
   'hr_payroll_lines',
+  'erp_boms',
+  'erp_bom_components',
+  'erp_assembly_orders',
+  'erp_mrp_plans',
+  'erp_mrp_suggestions',
   'audit_log',
 ] as const;
 

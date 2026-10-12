@@ -78,7 +78,7 @@ describe('quantities', () => {
 
 describe('the ledger', () => {
   it('gives every movement kind a sign', () => {
-    expect(MOVEMENT_KINDS).toHaveLength(9);
+    expect(MOVEMENT_KINDS).toHaveLength(11);
     expect(MOVEMENT_SIGNS.transfer_out + MOVEMENT_SIGNS.transfer_in).toBe(0);
     expect(MOVEMENT_SIGNS.consumption).toBe(-1);
   });

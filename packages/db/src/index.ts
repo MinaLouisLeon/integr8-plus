@@ -531,6 +531,18 @@ export {
   type PayLineResults,
   type PayrollCandidate,
 } from './repositories/hr-payroll.js';
+export {
+  ManufacturingRepository,
+  type Bom,
+  type BomInput,
+  type BomSummary,
+  type AssemblyOrder,
+  type AssemblyOrderInput,
+  type AssemblyOrderQuery,
+  type MrpPlan,
+  type MrpSuggestion,
+  type MrpSuggestionInput,
+} from './repositories/manufacturing.js';
 
 export {
   addressLine,

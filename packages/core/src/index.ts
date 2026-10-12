@@ -358,3 +358,19 @@ export {
   daysOutsideEmployment,
   payMonth,
 } from './payroll.js';
+export {
+  ASSEMBLY_ORDER_STATUSES,
+  assemblyOrderStatusSchema,
+  type AssemblyOrderStatus,
+  ASSEMBLY_DIRECTIONS,
+  assemblyDirectionSchema,
+  type AssemblyDirection,
+  formatAssemblyReference,
+  parseAssemblyReference,
+  multiplyDecimal,
+  type BomComponent,
+  componentNeeds,
+  rolledUpUnitCost,
+  disassemblyUnitCosts,
+  wouldContainItself,
+} from './manufacturing.js';
