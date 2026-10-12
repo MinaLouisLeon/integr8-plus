@@ -21,8 +21,9 @@ fifth round, E3 (assets, tags and service history), in PR #77. The sixth
 round, A1 (the general ledger), in PR #78. The seventh round, H1 (HR, staff
 expenses and Egyptian payroll) and M1 (bills of materials, assembly and
 planning), authorized by the product owner on 2026-10-12, went to `main` in PR #79. The eighth round, F2 (follow-ups before the
-pilot), authorized on 2026-10-12, is done on `feat/follow-ups` and goes to
-`main` in one pull request; L waits for a new instruction.**
+pilot), authorized on 2026-10-12, went to `main` in PR #80. The ninth round, G1 (product gaps before the
+pilot), authorized on 2026-10-12, is in progress on `feat/product-gaps`; L
+waits for a new instruction.**
 
 Seventh round — branch `feat/hr-payroll-manufacturing`, from `main` at
 `64f9025`. Agreed scope: **H1 then M1, one pull request, then stop for
@@ -60,6 +61,7 @@ instruction.
 | H1    | HR profiles and roles, staff expense claims, Egyptian payroll (ERP-09)                                                                                                                                                                                         | `DONE`        | 0036–0038  | seventh round: roles, grants and profiles (H1a); expense claims, phone included (H1b); payroll rule sets, pay runs, payslips and files (H1c)                               |
 | M1    | Bills of materials, assembly and disassembly, material planning (ERP-10)                                                                                                                                                                                       | `DONE`        | 0039       | seventh round: bills, assembly and disassembly (M1a); planning drafting orders (M1b)                                                                                       |
 | F2    | Follow-ups before the pilot: error codes in both languages, CI licence check, self-hosting audit, seventh-round follow-ups, pipelines, Customer 360, analytics and exports, site stock, item media, price lists and reorder, hand deliveries, phone stock work | `DONE`        | 0040       | eighth round, branch `feat/follow-ups` from `main` at `98739a2` (ADR-0012)                                                                                                 |
+| G1    | Product gaps before the pilot: custom roles, serial and batch tracking, drag-and-drop on the board, menu entries, amount history                                                                                                                               | `IN PROGRESS` | —          | ninth round, branch `feat/product-gaps` from `main` at `720b2a7` (ADR-0013)                                                                                                |
 | L     | Pilot release                                                                                                                                                                                                                                                  | `NOT STARTED` | —          | —                                                                                                                                                                          |
 
 ### Specification coverage
@@ -248,6 +250,22 @@ or a decision before the pilot (phase L).
 | Scan to receive | Store staff on the phone, online, scanning against an approved purchase order                                                                                                              |
 | Licences        | Permissive only; others fail CI, with a reviewed exceptions file                                                                                                                           |
 | Delivery        | Branch `feat/follow-ups`, slices F2a platform, F2b CRM and sales, F2c inventory and field; one pull request to `main`, then stop                                                           |
+
+### Ninth round: product gaps before the pilot (2026-10-12)
+
+| Question       | Decision                                                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Scope          | Drag-and-drop on the board, custom roles, serial and batch tracking, menu entries for the F2 screens, amount history on opportunities |
+| Custom roles   | Named roles built on a base role, adding or removing permissions; one role per member; owner fixed                                    |
+| Role admins    | The owner creates roles; owners and admins assign them, never above their own rank                                                    |
+| Tracking       | Per item: none, serial or batch (with optional expiry), through every movement                                                        |
+| Batch choice   | Earliest expiry proposed, the person may change it; expired needs a reason                                                            |
+| Phone          | Offline, picked or scanned from the van's serials and batches; a clash becomes a conflict for the office                              |
+| Existing stock | An item becomes tracked only with no stock, or through a count recording each serial or batch                                         |
+| Serial trace   | A serial lookup with its whole path, and the serial shown on the asset it was fitted to                                               |
+| Drag-and-drop  | Open stages move at once with undo; won or lost opens the confirm step; `@dnd-kit` (already used by the desktop)                      |
+| Amount history | Recorded from this release; earlier months use today's amount                                                                         |
+| Delivery       | Branch `feat/product-gaps`: roles, then tracking, then board, menus and amounts; one pull request to `main`, then stop                |
 
 ## Documents
 
