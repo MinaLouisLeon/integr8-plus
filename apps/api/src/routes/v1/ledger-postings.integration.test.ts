@@ -356,9 +356,12 @@ describe('automatic posting', () => {
       counts: { total: 1 },
     });
     const creditJournal = (await postingFor(note.creditNote.id, 'posted')).journal!;
-    expect(
-      lines(json<Journal>(await call(viewer, 'GET', `/v1/ledger/journals/${creditJournal.id}`))),
-    ).toEqual([
+    const creditDetail = json<Journal & { sourceInvoiceId: string | null }>(
+      await call(viewer, 'GET', `/v1/ledger/journals/${creditJournal.id}`),
+    );
+    // The credit note's journal names the invoice it credits.
+    expect(creditDetail.sourceInvoiceId).toBe(first.invoice.id);
+    expect(lines(creditDetail)).toEqual([
       ['4100', '50', '0'],
       ['1200', '0', '50'],
     ]);

@@ -3,7 +3,7 @@
 ## Navigation
 
 `packages/core/src/navigation.ts` has a `crm` group, placed between Work and
-Operations, a `sales` group after it (S1) and a `finance` group after that (B1). Assets (E3) are a section of the existing `operations` group. A section can name a `feature`; `visibleNavigation(app,
+Operations, a `sales` group after it (S1) and a `finance` group after that (B1), and an `accounting` group after finance (A1). Assets (E3) are a section of the existing `operations` group. A section can name a `feature`; `visibleNavigation(app,
 permissions, features)` shows it only when the company has the module and the
 seat holds the section's permission. Callers that pass no flags show no gated
 section.
@@ -24,6 +24,9 @@ section.
 | `invoices`       | `finance`    | `finance.read`    | `finance`    | `/finance/invoices`     | `#/finance/invoices`     | B1    |
 | `payments`       | `finance`    | `finance.read`    | `finance`    | `/finance/payments`     | `#/finance/payments`     | B1    |
 | `assets`         | `operations` | `asset.read`      | `assets`     | `/assets`               | `#/assets`               | E3    |
+| `ledger`         | `accounting` | `ledger.read`     | `ledger`     | `/ledger`               | `#/ledger`               | A1    |
+| `journals`       | `accounting` | `ledger.read`     | `ledger`     | `/ledger/journals`      | `#/ledger/journals`      | A1    |
+| `ledgerReports`  | `accounting` | `ledger.read`     | `ledger`     | `/ledger/reports`       | `#/ledger/reports`       | A1    |
 
 Web: `apps/web/src/lib/navigation.ts` (`NAV_PATHS`), menu in
 `apps/web/src/components/workspace-shell.tsx`. Desktop:
@@ -128,6 +131,38 @@ the same under `#/`. Amounts are formatted by `formatAmount`
 string straight to `Intl.NumberFormat`, so no amount passes through a float.
 Email and phone fields and values are `dir="ltr"` in both languages.
 
+### The general ledger (A1)
+
+Screens in `packages/operations-dom/src/ledger/`, the same on web and desktop:
+the ledger's front page (set-up for owners and admins — start month, fiscal
+year, chart language — then a hub with the unposted count by reason, the
+opening balances and links to everything), the chart of accounts, journals
+(list, editor with live totals and a balance indicator, detail with post,
+discard, reverse and a link to the invoice or payment behind it), the
+unposted list and one document (post as proposed, redated, with lines written
+out, or at a typed rate with its source; set aside with a reason), months and
+years (lock, unlock with a reason, close and reopen a year), reports and
+settings. Every screen says it is a management ledger, not statutory
+accounts; the profit and loss and balance sheet carry it as their heading.
+
+A journal written by hand that its drafter tries to post shows who must post
+it, or — when the owner allows self-approval — a required "I approve it
+myself" box. Refusals from the API (`self_approval`, `period_locked`,
+`unbalanced`, `waits_for_invoice`, `rate_required`, `year_not_ready` and the
+rest) are shown in the reader's language, against the line they name when the
+server names one. Reports print from the browser with the screen around them
+hidden, and download as CSV written in the browser with `toCsv()` (a
+byte-order mark so Arabic opens correctly; cells that would run as a formula
+escaped). Amounts go through `formatAmount` and the decimal helpers in
+`@integr8/core`, never a float; journal numbers, account codes and amounts are
+`dir="ltr"`.
+
+Routes: web `/ledger`, `/ledger/accounts`, `/ledger/journals`,
+`/ledger/journals/new` (`?kind=opening` for the opening balances),
+`/ledger/journals/[id]`, `/ledger/journals/[id]/edit`, `/ledger/unposted`,
+`/ledger/unposted/[id]`, `/ledger/periods`, `/ledger/reports`,
+`/ledger/settings`; desktop the same under `#/`.
+
 ## Translation keys
 
 English and Arabic, same keys (the parity test fails otherwise):
@@ -143,6 +178,7 @@ English and Arabic, same keys (the parity test fails otherwise):
 - `sales.*` (`status`, `orderStatus`, `quotes`, `orders`, `public`, `expired`), `nav.group.sales`, `nav.section|hint.quotes|salesOrders`, `inventory.items.reservedLine`, `inventory.overview.toOrder*` (S1).
 - `finance.*` (`status`, `method`, `amounts`, `invoices`, `credit`, `document`, `payments`, `account`, `job`, `settings`), `nav.group.finance`, `nav.section|hint.invoices|payments` (B1).
 - `assets.*` (`tags`, `status`, `condition`, `warranty`, `fields`, `events`, `entries`, `settings`, `alerts`; `photoCount` and `alerts.window` plural), `nav.section|hint.assets`, `mobile.assets.*` (`warrantySummary` plural), `mobile.change.assetRegistered|assetCondition|assetLinked`, `mobile.fill.start.carried`, `submissions.detail.forAsset|carriedOver`, `operations.workOrder.fillForAsset|noAsset`, `operations.imports.kinds.assets`, `forms.config.property.carryOver` (E3).
+- `ledger.*` (`accountType`, `role`, `kind`, `source`, `reason`, `reasonHelp`, `aging`, `journalStatus`, `postingStatus`, `yearStatus`, `errors`, `home`, `setup`, `accounts`, `journals`, `lines`, `editor`, `journal`, `unposted`, `periods`, `reports`, `settings`), `nav.group.accounting`, `nav.section|hint.ledger|journals|ledgerReports` (A1).
 - `errors.featureDisabled` — the web maps API code `feature_disabled` to it
   (`apps/web/src/lib/errors.ts`).
 

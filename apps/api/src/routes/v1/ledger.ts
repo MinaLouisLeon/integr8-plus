@@ -127,6 +127,8 @@ const lineBodySchema = z.object({
 });
 
 export const journalDetailSchema = journalSummarySchema.extend({
+  /** The invoice behind an automatic journal: its own, a void's, or the one a credit note credits. */
+  sourceInvoiceId: z.uuid().nullable(),
   lines: z.array(lineBodySchema),
   foreign: z.object({ currency: z.string(), rate: z.string(), source: z.string() }).nullable(),
   totals: z.object({ debit: z.string(), credit: z.string(), balanced: z.boolean() }),
@@ -259,11 +261,20 @@ export async function journalDetail(
     ),
   ]);
   const customerName = new Map(customers.map((customer) => [customer.id, customer.name]));
+  const sourceInvoiceId =
+    journal.sourceId === null
+      ? null
+      : journal.sourceKind === 'invoice' || journal.sourceKind === 'invoice_void'
+        ? journal.sourceId
+        : journal.sourceKind === 'credit_note'
+          ? ((await tx.financeInvoices.findCreditNote(journal.sourceId))?.invoiceId ?? null)
+          : null;
   const posts = holds(principal, 'ledger.post');
   const draft = journal.status === 'draft';
   const handWritten = journal.kind === 'manual' || journal.kind === 'opening';
   return {
     ...summaryBody(journal, lines, reversal?.id ?? null, people),
+    sourceInvoiceId,
     lines: lines.map((line) => {
       const account = accounts.get(line.accountId);
       return {

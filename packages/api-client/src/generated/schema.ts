@@ -35155,6 +35155,8 @@ export interface operations {
                         /** Format: date-time */
                         postedAt: string | null;
                         selfApproved: boolean;
+                        /** Format: uuid */
+                        sourceInvoiceId: string | null;
                         lines: {
                             /** Format: uuid */
                             id: string;
@@ -35309,6 +35311,8 @@ export interface operations {
                         /** Format: date-time */
                         postedAt: string | null;
                         selfApproved: boolean;
+                        /** Format: uuid */
+                        sourceInvoiceId: string | null;
                         lines: {
                             /** Format: uuid */
                             id: string;
@@ -35482,6 +35486,8 @@ export interface operations {
                         /** Format: date-time */
                         postedAt: string | null;
                         selfApproved: boolean;
+                        /** Format: uuid */
+                        sourceInvoiceId: string | null;
                         lines: {
                             /** Format: uuid */
                             id: string;
@@ -35740,6 +35746,8 @@ export interface operations {
                         /** Format: date-time */
                         postedAt: string | null;
                         selfApproved: boolean;
+                        /** Format: uuid */
+                        sourceInvoiceId: string | null;
                         lines: {
                             /** Format: uuid */
                             id: string;
@@ -35912,6 +35920,8 @@ export interface operations {
                         /** Format: date-time */
                         postedAt: string | null;
                         selfApproved: boolean;
+                        /** Format: uuid */
+                        sourceInvoiceId: string | null;
                         lines: {
                             /** Format: uuid */
                             id: string;
@@ -36548,6 +36558,8 @@ export interface operations {
                         /** Format: date-time */
                         postedAt: string | null;
                         selfApproved: boolean;
+                        /** Format: uuid */
+                        sourceInvoiceId: string | null;
                         lines: {
                             /** Format: uuid */
                             id: string;
@@ -37588,6 +37600,8 @@ export interface operations {
                         /** Format: date-time */
                         postedAt: string | null;
                         selfApproved: boolean;
+                        /** Format: uuid */
+                        sourceInvoiceId: string | null;
                         lines: {
                             /** Format: uuid */
                             id: string;
@@ -37760,6 +37774,8 @@ export interface operations {
                         /** Format: date-time */
                         postedAt: string | null;
                         selfApproved: boolean;
+                        /** Format: uuid */
+                        sourceInvoiceId: string | null;
                         lines: {
                             /** Format: uuid */
                             id: string;

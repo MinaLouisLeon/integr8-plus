@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isCurrentRoute, normalisePathname, routeForPathname, type ShellRoute } from './navigation';
+import {
+  isCurrentRoute,
+  NAV_PATHS,
+  normalisePathname,
+  routeForPathname,
+  type ShellRoute,
+} from './navigation';
 
 /**
  * The top bar's title and back link come from these, so a wrong answer is a
@@ -55,6 +61,27 @@ describe('which section a page belongs to', () => {
       nested: true,
     });
     expect(routeForPathname(PLATFORM, '/platform/health')).toBeNull();
+  });
+});
+
+describe('the ledger', () => {
+  const LEDGER: ShellRoute[] = [
+    { key: 'ledger', href: NAV_PATHS.ledger },
+    { key: 'journals', href: NAV_PATHS.journals },
+    { key: 'ledgerReports', href: NAV_PATHS.ledgerReports },
+  ];
+
+  it('puts journals and reports in their own sections and the rest in the ledger', () => {
+    expect(routeForPathname(LEDGER, '/ledger/journals/j1')).toEqual({
+      route: LEDGER[1],
+      nested: true,
+    });
+    expect(routeForPathname(LEDGER, '/ledger/reports')?.route.key).toBe('ledgerReports');
+    expect(routeForPathname(LEDGER, '/ledger/unposted/p1')).toEqual({
+      route: LEDGER[0],
+      nested: true,
+    });
+    expect(routeForPathname(LEDGER, '/ledger/periods')?.route.key).toBe('ledger');
   });
 });
 
