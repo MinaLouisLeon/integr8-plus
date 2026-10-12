@@ -12,6 +12,8 @@ import {
   recordAssetRegistered,
   recordMaterial,
   recordPhotoRemoved,
+  recordPurchase,
+  recordPurchaseReceipt,
   recordShiftEnd,
   recordShiftStart,
   recordSignoff,
@@ -82,6 +84,53 @@ export async function recordPart(input: {
   note?: string;
 }): Promise<void> {
   await recordMaterial(context(), input);
+  sent();
+}
+
+/**
+ * A part bought from a merchant for the job, with a photo of each receipt
+ * (ADR-0012). Recorded on the phone and sent with the job, the receipts after
+ * it; the photos are dropped if the purchase cannot be recorded.
+ */
+export async function recordBought(input: {
+  workOrderId: string;
+  description: string;
+  merchant: string;
+  quantity: string;
+  unitPrice: string;
+  note: string;
+  receipts: readonly CapturedFile[];
+  receiptTitle: (index: number) => string;
+}): Promise<string> {
+  try {
+    const { purchaseId } = await recordPurchase(context(), {
+      workOrderId: input.workOrderId,
+      description: input.description,
+      merchant: input.merchant,
+      quantity: input.quantity,
+      unitPrice: input.unitPrice,
+      note: input.note,
+      receipts: input.receipts.map((file, index) => ({
+        file: capturedInput(file),
+        title: input.receiptTitle(index + 1),
+      })),
+    });
+    sent();
+    return purchaseId;
+  } catch (error) {
+    input.receipts.forEach(discardCaptured);
+    throw error;
+  }
+}
+
+/** Another receipt photo for a purchase recorded on this phone. */
+export async function addBoughtReceipt(purchaseId: string, file: CapturedFile, title: string) {
+  try {
+    await recordPurchaseReceipt(context(), { purchaseId, file: capturedInput(file), title });
+  } catch (error) {
+    discardCaptured(file);
+    throw error;
+  }
   sent();
 }
 

@@ -39,6 +39,23 @@ export function formatDuration(ms: number, locale: string): string {
 }
 
 /**
+ * A quantity as the server sends it — a decimal string — in the reader's
+ * language, with its unit's word when given. Like amounts, the string goes to
+ * `Intl` as a string.
+ */
+export function formatQuantity(quantity: string, locale: string, unit?: string): string {
+  let number: string;
+  try {
+    number = new Intl.NumberFormat(locale, { maximumFractionDigits: 4 }).format(
+      quantity as unknown as number,
+    );
+  } catch {
+    number = quantity;
+  }
+  return unit === undefined ? number : `${number} ${unit}`;
+}
+
+/**
  * An amount, as the server sends it — a decimal string — in the reader's
  * language, with its currency when known. The string goes to `Intl` as a
  * string, so no digit is lost to a JavaScript number on the way.

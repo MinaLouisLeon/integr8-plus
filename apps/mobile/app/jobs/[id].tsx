@@ -8,6 +8,7 @@ import { AccessNotes } from '~/components/access-notes';
 import { JobForms } from '~/components/job-forms';
 import { JobAssets } from '~/components/job-assets';
 import { JobParts } from '~/components/job-parts';
+import { JobPurchases } from '~/components/job-purchases';
 import { JobSyncBadge, JobSyncCard } from '~/components/job-sync';
 import {
   JobActions,
@@ -113,6 +114,8 @@ function Job() {
       <JobAssets detail={detail} closed={closed} />
 
       <JobParts detail={detail} closed={closed} />
+
+      <JobPurchases workOrderId={workOrder.id} canRecord={detail.can.recordParts && !closed} />
 
       <JobAttachments detail={detail} />
 
