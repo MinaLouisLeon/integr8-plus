@@ -65,7 +65,7 @@ async function draft(
   lines: JournalLineInput[],
   extra: {
     entryDate?: string;
-    kind?: 'manual' | 'automatic' | 'reversal';
+    kind?: 'manual' | 'automatic' | 'reversal' | 'closing';
     reversalOf?: string;
   } = {},
 ) {
@@ -349,6 +349,52 @@ describe('periods and accounts', () => {
       ['locked', null],
     ]);
     expect(await repos(tenant, (tx) => tx.ledger.periodLocked('2026-03-15'))).toBe(false);
+  });
+
+  it('lets only a year’s closing journal, and its reversal, into a locked month', async () => {
+    const tenant = await createTenant('ledger-closing');
+    const settings = await setUp(tenant, '2025-01-01');
+    const { accounts } = settings;
+    await post(
+      tenant,
+      (
+        await draft(tenant, [debit(accounts.bank, '90'), credit(accounts.revenueServices, '90')], {
+          entryDate: '2025-06-01',
+        })
+      ).id,
+    );
+    await repos(tenant, (tx) => tx.ledger.setPeriodLocked('2025-12-01', true, APPROVER, null));
+    const closingLines = [
+      debit(accounts.revenueServices, '90'),
+      credit(accounts.retainedEarnings, '90'),
+    ];
+    // Not on the year's last day.
+    const early = await draft(tenant, closingLines, { kind: 'closing', entryDate: '2025-12-30' });
+    await expect(post(tenant, early.id)).rejects.toMatchObject({
+      constraint: 'erp_journals_closing_date',
+    });
+    // Touching the balance sheet beyond retained earnings.
+    const sideways = await draft(
+      tenant,
+      [debit(accounts.bank, '90'), credit(accounts.retainedEarnings, '90')],
+      { kind: 'closing', entryDate: '2025-12-31' },
+    );
+    await expect(post(tenant, sideways.id)).rejects.toMatchObject({
+      constraint: 'erp_journals_closing_accounts',
+    });
+    const closing = await draft(tenant, closingLines, { kind: 'closing', entryDate: '2025-12-31' });
+    expect((await post(tenant, closing.id)).status).toBe('posted');
+    const reopening = await draft(
+      tenant,
+      [debit(accounts.retainedEarnings, '90'), credit(accounts.revenueServices, '90')],
+      { kind: 'reversal', reversalOf: closing.id, entryDate: '2025-12-31' },
+    );
+    expect((await post(tenant, reopening.id)).status).toBe('posted');
+    // Anything else still meets the lock.
+    const manual = await draft(tenant, closingLines, { entryDate: '2025-12-31' });
+    await expect(post(tenant, manual.id)).rejects.toMatchObject({
+      constraint: 'erp_journals_period_locked',
+    });
   });
 
   it('takes no postings on an archived account, and keeps the type of one posted to', async () => {

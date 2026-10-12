@@ -374,3 +374,60 @@ export function monthsBetween(from: string, to: string): string[] {
   }
   return months;
 }
+
+// ---------------------------------------------------------------------------
+// Reports
+// ---------------------------------------------------------------------------
+
+/** An account's balance on its normal side: positive when it holds what it should. */
+export function naturalBalance(type: AccountType, debit: string, credit: string): string {
+  const difference = toUnits(debit) - toUnits(credit);
+  return fromUnits(normalSide(type) === 'debit' ? difference : -difference);
+}
+
+/** Whole days from `from` to `to`, both `YYYY-MM-DD`; negative when `to` is earlier. */
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}
+
+export const AGING_BUCKETS = [
+  'current',
+  'days1to30',
+  'days31to60',
+  'days61to90',
+  'over90',
+] as const;
+export type AgingBucket = (typeof AGING_BUCKETS)[number];
+
+/** How late an invoice is on `asOf`: by its due date, or its issue date when it has none. */
+export function agingBucket(dueDate: string | null, issueDate: string, asOf: string): AgingBucket {
+  const late = daysBetween(dueDate ?? issueDate, asOf);
+  if (late <= 0) {
+    return 'current';
+  }
+  if (late <= 30) {
+    return 'days1to30';
+  }
+  if (late <= 60) {
+    return 'days31to60';
+  }
+  return late <= 90 ? 'days61to90' : 'over90';
+}
+
+/**
+ * One CSV cell. Quoted when it must be; text a spreadsheet would run as a
+ * formula (starting `=`, `+`, `-`, `@`, a tab or a return) is prefixed with an
+ * apostrophe, while plain numbers, negative ones included, are left alone.
+ */
+export function csvCell(value: string | number | null): string {
+  let text = value === null ? '' : String(value);
+  if (typeof value === 'string' && /^[=+\-@\t\r]/u.test(text) && !/^-?\d+(\.\d+)?$/u.test(text)) {
+    text = `'${text}`;
+  }
+  return /[",\r\n]/u.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+/** Rows as CSV with a byte-order mark, so a spreadsheet opens Arabic names as UTF-8. */
+export function toCsv(rows: readonly (readonly (string | number | null)[])[]): string {
+  return `\uFEFF${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}\r\n`;
+}

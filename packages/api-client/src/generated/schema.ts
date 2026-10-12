@@ -3349,7 +3349,7 @@ export interface paths {
         put?: never;
         /**
          * Unlock a month, saying why
-         * @description The owner’s (`ledger.unlock`). The reason is kept with the month’s history and audited.
+         * @description The owner’s (`ledger.unlock`). The reason is kept with the month’s history and audited. A month of a closed fiscal year is unlocked after reopening the year (409 `year_closed`).
          */
         post: operations["unlockLedgerPeriod"];
         delete?: never;
@@ -3558,6 +3558,160 @@ export interface paths {
          * @description With a reason, kept with it. Setting an invoice aside sets aside the credit notes and void waiting on it.
          */
         post: operations["skipLedgerPosting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ledger/reports/trial-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trial balance at a date
+         * @description Every account’s net of posted lines up to and including `date` (default today), on the debit or credit side. `leftOut` counts drafts and waiting documents dated up to it, which it does not include.
+         */
+        get: operations["getTrialBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ledger/reports/account-activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One account’s posted lines over a range, with running balance */
+        get: operations["getAccountActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ledger/reports/receivables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Receivables reconciled with invoices and payments, and aged
+         * @description At `date` (default today), the receivables account’s balance per customer against what the company-currency invoices, credit notes and payments say; a difference is a document not posted, posted elsewhere, or a journal by hand. Aging is of the invoices open today.
+         */
+        get: operations["getReceivablesReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ledger/reports/profit-and-loss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Profit and loss over a range (a management report)
+         * @description Income and expense accounts over `from`–`to` from posted journals, leaving out year-end closing. A management report from this ledger, not statutory accounts.
+         */
+        get: operations["getProfitAndLoss"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ledger/reports/balance-sheet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Balance sheet at a date (a management report)
+         * @description Assets, liabilities and equity from posted journals up to `date` (default today), with earnings not yet closed shown in equity. A management report from this ledger, not statutory accounts.
+         */
+        get: operations["getBalanceSheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ledger/years": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fiscal years since the ledger started, newest first, and whether each is closed */
+        get: operations["listLedgerYears"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ledger/years/{yearStart}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close a fiscal year into retained earnings
+         * @description Once the year has ended. Posts a closing journal on its last day that brings every income and expense account to zero against retained earnings, and locks every month of the year. Refused while drafts or waiting documents are dated in it (409 `year_not_ready`), when it is already closed (409 `year_closed`), or when it has no income or expense (409 `nothing_to_close`). Honours `Idempotency-Key`.
+         */
+        post: operations["closeLedgerYear"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ledger/years/{yearStart}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reopen a closed fiscal year
+         * @description The owner’s, with a reason kept with the year. Reverses the closing journal on the year’s last day. The months stay locked: unlock the ones that need work, then close the year again. Honours `Idempotency-Key`.
+         */
+        post: operations["reopenLedgerYear"];
         delete?: never;
         options?: never;
         head?: never;
@@ -34760,6 +34914,13 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description Its fiscal year is closed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description The request failed validation. */
             422: {
                 headers: {
@@ -36616,6 +36777,1056 @@ export interface operations {
                 content?: never;
             };
             /** @description No longer waiting. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getTrialBalance: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The trial balance. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        date: string;
+                        rows: {
+                            account: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "asset" | "liability" | "equity" | "income" | "expense";
+                            };
+                            debit: string;
+                            credit: string;
+                        }[];
+                        totals: {
+                            debit: string;
+                            credit: string;
+                            balanced: boolean;
+                        };
+                        leftOut: {
+                            drafts: number;
+                            waiting: number;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getAccountActivity: {
+        parameters: {
+            query: {
+                accountId: string;
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The activity. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        account: {
+                            /** Format: uuid */
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "asset" | "liability" | "equity" | "income" | "expense";
+                        };
+                        /** Format: date */
+                        from: string;
+                        /** Format: date */
+                        to: string;
+                        opening: string;
+                        lines: {
+                            journal: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string | null;
+                                /** @enum {string} */
+                                kind: "manual" | "opening" | "automatic" | "reversal" | "closing";
+                            };
+                            /** Format: date */
+                            entryDate: string;
+                            memo: string | null;
+                            debit: string;
+                            credit: string;
+                            balance: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                        }[];
+                        closing: string;
+                        truncated: boolean;
+                        leftOut: {
+                            drafts: number;
+                            waiting: number;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `to` before `from`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getReceivablesReport: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        date: string;
+                        account: {
+                            /** Format: uuid */
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "asset" | "liability" | "equity" | "income" | "expense";
+                        };
+                        currency: string;
+                        reconciliation: {
+                            ledger: string;
+                            documents: string;
+                            difference: string;
+                            customers: {
+                                customer: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                ledger: string;
+                                documents: string;
+                                difference: string;
+                            }[];
+                        };
+                        aging: {
+                            /** Format: date */
+                            asOf: string;
+                            totals: {
+                                [key: string]: string;
+                            };
+                            total: string;
+                            invoices: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string | null;
+                                customer: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: date */
+                                issueDate: string;
+                                /** Format: date */
+                                dueDate: string | null;
+                                daysLate: number;
+                                /** @enum {string} */
+                                bucket: "current" | "days1to30" | "days31to60" | "days61to90" | "over90";
+                                balance: string;
+                            }[];
+                            unallocated: {
+                                customer: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                amount: string;
+                            }[];
+                        };
+                        leftOut: {
+                            drafts: number;
+                            waiting: number;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getProfitAndLoss: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        from: string;
+                        /** Format: date */
+                        to: string;
+                        income: {
+                            account: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "asset" | "liability" | "equity" | "income" | "expense";
+                            };
+                            amount: string;
+                        }[];
+                        expenses: {
+                            account: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "asset" | "liability" | "equity" | "income" | "expense";
+                            };
+                            amount: string;
+                        }[];
+                        totalIncome: string;
+                        totalExpenses: string;
+                        net: string;
+                        leftOut: {
+                            drafts: number;
+                            waiting: number;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `to` before `from`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getBalanceSheet: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        date: string;
+                        assets: {
+                            account: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "asset" | "liability" | "equity" | "income" | "expense";
+                            };
+                            amount: string;
+                        }[];
+                        liabilities: {
+                            account: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "asset" | "liability" | "equity" | "income" | "expense";
+                            };
+                            amount: string;
+                        }[];
+                        equity: {
+                            account: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "asset" | "liability" | "equity" | "income" | "expense";
+                            };
+                            amount: string;
+                        }[];
+                        unclosedEarnings: string;
+                        totals: {
+                            assets: string;
+                            liabilities: string;
+                            equity: string;
+                            liabilitiesAndEquity: string;
+                            balanced: boolean;
+                        };
+                        leftOut: {
+                            drafts: number;
+                            waiting: number;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listLedgerYears: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The years. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: date */
+                            start: string;
+                            /** Format: date */
+                            end: string;
+                            /** @enum {string} */
+                            status: "open" | "closed";
+                            lockedMonths: number;
+                            months: number;
+                            close: {
+                                journal: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string | null;
+                                };
+                                closedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: date-time */
+                                closedAt: string;
+                            } | null;
+                            reopened: {
+                                /** Format: date-time */
+                                closedAt: string;
+                                reopenedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: date-time */
+                                reopenedAt: string;
+                                reason: string;
+                            }[];
+                            can: {
+                                close: boolean;
+                                reopen: boolean;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    closeLedgerYear: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                yearStart: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The closing journal. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string | null;
+                        /** @enum {string} */
+                        status: "draft" | "posted";
+                        /** @enum {string} */
+                        kind: "manual" | "opening" | "automatic" | "reversal" | "closing";
+                        /** Format: date */
+                        entryDate: string;
+                        memo: string | null;
+                        total: string;
+                        source: {
+                            /** @enum {string} */
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
+                        /** Format: uuid */
+                        reversalOf: string | null;
+                        /** Format: uuid */
+                        reversedBy: string | null;
+                        draftedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        postedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        postedAt: string | null;
+                        selfApproved: boolean;
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            lineNo: number;
+                            account: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "asset" | "liability" | "equity" | "income" | "expense";
+                            };
+                            debit: string;
+                            credit: string;
+                            memo: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            foreignAmount: string | null;
+                        }[];
+                        foreign: {
+                            currency: string;
+                            rate: string;
+                            source: string;
+                        } | null;
+                        totals: {
+                            debit: string;
+                            credit: string;
+                            balanced: boolean;
+                        };
+                        can: {
+                            edit: boolean;
+                            post: boolean;
+                            discard: boolean;
+                            reverse: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such fiscal year. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not ended, not ready, already closed, or nothing to close. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reopenLedgerYear: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                yearStart: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The reversal of the closing journal. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string | null;
+                        /** @enum {string} */
+                        status: "draft" | "posted";
+                        /** @enum {string} */
+                        kind: "manual" | "opening" | "automatic" | "reversal" | "closing";
+                        /** Format: date */
+                        entryDate: string;
+                        memo: string | null;
+                        total: string;
+                        source: {
+                            /** @enum {string} */
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
+                        /** Format: uuid */
+                        reversalOf: string | null;
+                        /** Format: uuid */
+                        reversedBy: string | null;
+                        draftedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        postedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        postedAt: string | null;
+                        selfApproved: boolean;
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            lineNo: number;
+                            account: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "asset" | "liability" | "equity" | "income" | "expense";
+                            };
+                            debit: string;
+                            credit: string;
+                            memo: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            foreignAmount: string | null;
+                        }[];
+                        foreign: {
+                            currency: string;
+                            rate: string;
+                            source: string;
+                        } | null;
+                        totals: {
+                            debit: string;
+                            credit: string;
+                            balanced: boolean;
+                        };
+                        can: {
+                            edit: boolean;
+                            post: boolean;
+                            discard: boolean;
+                            reverse: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such fiscal year. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not closed. */
             409: {
                 headers: {
                     [name: string]: unknown;

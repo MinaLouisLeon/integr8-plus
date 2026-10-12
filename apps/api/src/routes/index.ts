@@ -18,6 +18,7 @@ import { paymentRoutes } from './v1/finance-payments.js';
 import { assetRoutes } from './v1/assets.js';
 import { ledgerRoutes } from './v1/ledger.js';
 import { ledgerPostingRoutes } from './v1/ledger-postings.js';
+import { ledgerReportRoutes } from './v1/ledger-reports.js';
 import { salesOrderRoutes } from './v1/sales-orders.js';
 import { salesPublicRoutes } from './v1/sales-public.js';
 import { quoteRoutes } from './v1/sales-quotes.js';
@@ -72,6 +73,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...assetRoutes,
     ...ledgerRoutes,
     ...ledgerPostingRoutes,
+    ...ledgerReportRoutes,
     ...jobTypeRoutes,
     ...workOrderRoutes,
     ...importRoutes,

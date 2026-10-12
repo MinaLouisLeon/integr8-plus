@@ -495,6 +495,13 @@ export {
   type LedgerPosting,
   type ProposedLine,
 } from './repositories/ledger.js';
+export {
+  LedgerReportsRepository,
+  type AccountTotals,
+  type ActivityLine,
+  type OpenInvoice,
+  type YearClose,
+} from './repositories/ledger-reports.js';
 
 export {
   addressLine,

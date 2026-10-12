@@ -894,7 +894,7 @@ export const unlockPeriodRoute = defineRoute({
   operationId: 'unlockLedgerPeriod',
   summary: 'Unlock a month, saying why',
   description:
-    'The owner’s (`ledger.unlock`). The reason is kept with the month’s history and audited.',
+    'The owner’s (`ledger.unlock`). The reason is kept with the month’s history and audited. A month of a closed fiscal year is unlocked after reopening the year (409 `year_closed`).',
   tags: LEDGER_TAGS,
   security: 'authenticated',
   permission: 'ledger.unlock',
@@ -902,11 +902,21 @@ export const unlockPeriodRoute = defineRoute({
   params: monthParams,
   query: noSchema,
   body: z.object({ reason: z.string().trim().min(1).max(1000) }),
-  responses: { 204: { description: 'Unlocked.' } },
+  responses: {
+    204: { description: 'Unlocked.' },
+    409: { description: 'Its fiscal year is closed.' },
+  },
   handler: async ({ params, body }, context) => {
     const { principal } = context;
     await withTenant(principal.tenantId, async (tx) => {
-      await requireSettings(tx);
+      const settings = await requireSettings(tx);
+      const year = fiscalYearOf(params.month, settings.fiscalStartMonth);
+      if ((await tx.ledgerReports.closeInForce(year.start)) !== undefined) {
+        throw conflict(
+          'year_closed',
+          `The fiscal year ${year.start} – ${year.end} is closed. Reopen it first.`,
+        );
+      }
       const { changed } = await tx.ledger.setPeriodLocked(
         params.month,
         false,

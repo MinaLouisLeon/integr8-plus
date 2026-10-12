@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   convertAmount,
   convertLines,
+  naturalBalance,
+  agingBucket,
+  csvCell,
+  toCsv,
   DEFAULT_CHART,
   exchangeRateSchema,
   fiscalYearOf,
@@ -148,5 +152,35 @@ describe('months and fiscal years', () => {
       '2027-01-01',
       '2027-02-01',
     ]);
+  });
+});
+
+describe('reports', () => {
+  it('reads a balance on the account’s normal side', () => {
+    expect(naturalBalance('asset', '150', '50')).toBe('100');
+    expect(naturalBalance('income', '50', '150')).toBe('100');
+    expect(naturalBalance('liability', '200', '50.5')).toBe('-149.5');
+  });
+
+  it('ages an invoice from its due date, or its issue date without one', () => {
+    expect(agingBucket('2026-10-12', '2026-09-01', '2026-10-12')).toBe('current');
+    expect(agingBucket('2026-10-11', '2026-09-01', '2026-10-12')).toBe('days1to30');
+    expect(agingBucket('2026-09-12', '2026-09-01', '2026-10-12')).toBe('days1to30');
+    expect(agingBucket('2026-09-11', '2026-09-01', '2026-10-12')).toBe('days31to60');
+    expect(agingBucket('2026-07-14', '2026-07-01', '2026-10-12')).toBe('days61to90');
+    expect(agingBucket(null, '2026-07-13', '2026-10-12')).toBe('over90');
+  });
+
+  it('writes CSV a spreadsheet will not run', () => {
+    expect(csvCell('=HYPERLINK("x")')).toBe(`"'=HYPERLINK(""x"")"`);
+    expect(csvCell('-12.5')).toBe('-12.5');
+    expect(csvCell('@SUM')).toBe("'@SUM");
+    expect(csvCell(null)).toBe('');
+    expect(
+      toCsv([
+        ['code', 'name'],
+        ['1100', 'Cash, petty'],
+      ]),
+    ).toBe('\uFEFFcode,name\r\n1100,"Cash, petty"\r\n');
   });
 });
