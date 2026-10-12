@@ -1,6 +1,7 @@
 import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { keys, useOperations } from './api.js';
+import { memberRoleName } from './roles/role-parts.js';
 import { Failure, Loading } from './ui.js';
 
 export interface CrewMember {
@@ -70,9 +71,7 @@ export function CrewPicker({
                 onChange={(event) => toggle(member.userId, event.target.checked)}
               />
               {member.displayName}
-              <span className="text-xs text-content-muted">
-                {t(`workspace.role.${member.role}`)}
-              </span>
+              <span className="text-xs text-content-muted">{memberRoleName(t, member)}</span>
             </label>
             {on.has(member.userId) ? (
               <label className="flex items-center gap-1 text-xs text-content">

@@ -229,6 +229,10 @@ export type ImportRecord = Json<'/v1/imports', 'get', 200>['items'][number];
 export type ImportDetail = Json<'/v1/imports/{importId}', 'get', 200>;
 export type Me = Json<'/v1/me', 'get', 200>;
 export type Member = Json<'/v1/members', 'get', 200>['items'][number];
+/** The company's own roles (ADR-0013), and what they are built from. */
+export type CompanyRoleList = Json<'/v1/roles', 'get', 200>;
+export type CompanyRole = CompanyRoleList['items'][number];
+export type RoleCatalogue = Json<'/v1/roles/catalogue', 'get', 200>;
 export type Timesheet = Json<'/v1/timesheets', 'get', 200>;
 export type LeadPage = Json<'/v1/crm/leads', 'get', 200>;
 export type Lead = LeadPage['items'][number];
@@ -389,6 +393,8 @@ export type Payslip = Json<'/v1/hr/me/payslips', 'get', 200>['items'][number];
 export const keys = {
   me: ['me'] as const,
   members: ['members'] as const,
+  roles: (archived: boolean) => ['roles', 'list', archived] as const,
+  roleCatalogue: ['roles', 'catalogue'] as const,
   leads: (query: object) => ['crm', 'leads', query] as const,
   lead: (id: string) => ['crm', 'lead', id] as const,
   leadMatches: (id: string) => ['crm', 'lead', id, 'matches'] as const,

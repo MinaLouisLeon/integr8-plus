@@ -11,6 +11,7 @@ import {
 } from '../api.js';
 import { useMembers } from '../crm/lead-parts.js';
 import { useIdempotencyKey } from '../purchasing/purchasing-parts.js';
+import { memberRoleName } from '../roles/role-parts.js';
 import { BackLink, buttonClass, cardClass, Field, inputClass, Loading } from '../ui.js';
 import {
   HrFailure,
@@ -371,7 +372,7 @@ export function EmployeeEditorScreen({ employeeId }: { employeeId?: string }) {
                   <option value="">{t('hr.editor.chooseMember')}</option>
                   {memberOptions.map((member) => (
                     <option key={member.userId} value={member.userId}>
-                      {`${member.displayName} — ${t(`workspace.role.${member.role}`)}`}
+                      {`${member.displayName} — ${memberRoleName(t, member)}`}
                     </option>
                   ))}
                 </select>
