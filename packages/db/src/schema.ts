@@ -7,6 +7,7 @@ import {
   type PaymentMethod,
   type ItemKind,
   type LocationKind,
+  type LocationOwnership,
   type MovementKind,
   type MaterialStatus,
   type QuoteAnswerVia,
@@ -1109,6 +1110,8 @@ export interface ErpStockLocationsTable {
   created_at: CreatedAt;
   updated_at: UpdatedAt;
   archived_at: Date | null;
+  /** Whose stock it holds (0040). */
+  ownership: Generated<LocationOwnership>;
 }
 
 export interface ErpStockCountsTable {
@@ -2229,6 +2232,12 @@ export interface AttachmentsTable {
   asset_id: Generated<string | null>;
   /** The expense claim it is a receipt for (0037). */
   expense_claim_id: Generated<string | null>;
+  /** The item it shows or documents (0040). */
+  item_id: Generated<string | null>;
+  /** The merchant purchase it is a receipt for (0040). */
+  work_order_purchase_id: Generated<string | null>;
+  /** The item's main image (0040). */
+  is_main: Generated<boolean>;
   title: string;
   kind: Generated<AttachmentKind>;
   /** For a job photo: taken before or after the work (0013). */
@@ -2481,6 +2490,91 @@ export interface TenantDeletionsTable {
   completed_at: Date | null;
 }
 
+// ---------------------------------------------------------------------------
+// Inventory and the field follow-ups (0040; ADR-0012)
+// ---------------------------------------------------------------------------
+
+export interface ErpSupplierPricesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  supplier_id: string;
+  item_id: string;
+  currency_code: string;
+  /** `numeric(20,4)`, read as a string. */
+  min_quantity: Generated<string>;
+  unit_price: string;
+  /** Calendar dates, read as `YYYY-MM-DD` text. */
+  valid_from: ColumnType<string, string, string>;
+  valid_to: ColumnType<string | null, string | null, string | null>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface ErpSalesDeliveriesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  reference: Generated<number>;
+  order_id: string;
+  location_id: string;
+  notes: string | null;
+  delivered_by: string;
+  delivered_at: CreatedAt;
+}
+
+export interface ErpSalesDeliveryLinesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  delivery_id: string;
+  order_line_id: string;
+  quantity: string;
+  unit_cost: string | null;
+}
+
+export type VanRequestStatus = 'open' | 'picked' | 'cancelled';
+
+export interface ErpVanRequestsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  van_location_id: string;
+  status: Generated<VanRequestStatus>;
+  notes: string | null;
+  requested_by: string;
+  from_location_id: string | null;
+  picked_by: string | null;
+  picked_at: Date | null;
+  cancelled_by: string | null;
+  cancelled_at: Date | null;
+  version: Generated<number>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface ErpVanRequestLinesTable {
+  tenant_id: string;
+  request_id: string;
+  item_id: string;
+  quantity_requested: string;
+  quantity_picked: string | null;
+}
+
+export interface ErpWorkOrderPurchasesTable {
+  id: string;
+  tenant_id: string;
+  work_order_id: string;
+  item_id: string | null;
+  description: string;
+  merchant: string | null;
+  quantity: string;
+  unit_price: string;
+  note: string | null;
+  recorded_by: string;
+  occurred_at: Generated<Date>;
+  recorded_at: CreatedAt;
+  cancelled_by: string | null;
+  cancelled_at: Date | null;
+}
+
 export interface Database {
   tenants: TenantsTable;
   platform_users: PlatformUsersTable;
@@ -2586,6 +2680,12 @@ export interface Database {
   erp_assembly_orders: ErpAssemblyOrdersTable;
   erp_mrp_plans: ErpMrpPlansTable;
   erp_mrp_suggestions: ErpMrpSuggestionsTable;
+  erp_supplier_prices: ErpSupplierPricesTable;
+  erp_sales_deliveries: ErpSalesDeliveriesTable;
+  erp_sales_delivery_lines: ErpSalesDeliveryLinesTable;
+  erp_van_requests: ErpVanRequestsTable;
+  erp_van_request_lines: ErpVanRequestLinesTable;
+  erp_work_order_purchases: ErpWorkOrderPurchasesTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -2853,6 +2953,12 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_assembly_orders: true,
   erp_mrp_plans: true,
   erp_mrp_suggestions: true,
+  erp_supplier_prices: true,
+  erp_sales_deliveries: true,
+  erp_sales_delivery_lines: true,
+  erp_van_requests: true,
+  erp_van_request_lines: true,
+  erp_work_order_purchases: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

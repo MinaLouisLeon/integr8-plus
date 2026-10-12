@@ -564,6 +564,28 @@ export {
   type OpportunityRow,
   type MovementRow,
 } from './repositories/analytics.js';
+export {
+  SupplierPricesRepository,
+  type SupplierPrice,
+  type SupplierPriceInput,
+} from './repositories/supplier-prices.js';
+export {
+  InventoryReplenishmentRepository,
+  type ReorderNeed,
+  type VanRequest,
+  type VanRequestLine,
+  type VanRequestRefusal,
+} from './repositories/inventory-replenishment.js';
+export {
+  SalesDeliveriesRepository,
+  type SalesDelivery,
+  type SalesDeliveryLine,
+} from './repositories/sales-deliveries.js';
+export {
+  WorkOrderPurchasesRepository,
+  type WorkOrderPurchase,
+  type WorkOrderPurchaseInput,
+} from './repositories/work-order-purchases.js';
 
 export {
   addressLine,

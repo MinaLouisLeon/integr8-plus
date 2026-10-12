@@ -246,7 +246,7 @@ export const postMovementRoute = defineRoute({
   operationId: 'postStockMovement',
   summary: 'Receive, issue, transfer or adjust stock',
   description:
-    'Writes to the ledger: a receipt (optionally priced, which folds into the average cost), an issue, a transfer (both halves together), or an adjustment in or out. Issues and adjustments need a reason. Nothing goes below zero (409 `insufficient_stock`). Needs `Idempotency-Key`.',
+    'Writes to the ledger: a receipt (optionally priced, which folds into the average cost), an issue, a transfer (both halves together), or an adjustment in or out. Issues and adjustments need a reason. Nothing goes below zero (409 `insufficient_stock`). At a site location holding the customer’s stock, movements are a record with no cost; a transfer there issues the stock from ours, and nothing is transferred out of one. Needs `Idempotency-Key`.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'inventory.move',
@@ -264,7 +264,7 @@ export const postMovementRoute = defineRoute({
     409: { description: 'Not enough stock (`insufficient_stock`).' },
     422: {
       description:
-        'Invalid; not a stock item (`not_stock_item`); archived (`item_archived`, `location_archived`); or a transfer to where it already is (`same_location`).',
+        'Invalid; not a stock item (`not_stock_item`); archived (`item_archived`, `location_archived`); a transfer to where it already is (`same_location`); or a transfer out of stock held as the customer’s (`customer_stock_stays`).',
     },
   },
   handler: async ({ body }, context) => {
@@ -278,32 +278,75 @@ export const postMovementRoute = defineRoute({
         if (body.fromLocationId === body.toLocationId) {
           throw unprocessable('same_location', 'Transfer to a different location.');
         }
-        await requireLocation(tx, body.fromLocationId, 'body.fromLocationId');
-        await requireLocation(tx, body.toLocationId, 'body.toLocationId');
-        movements = [
-          {
-            itemId: item.id,
-            locationId: body.fromLocationId,
-            kind: 'transfer_out',
-            quantity: negative(body.quantity),
-            unitCost: item.averageUnitCost,
-            sourceKey: `${key}:out`,
-            reason: body.reason ?? null,
-          },
-          {
-            itemId: item.id,
-            locationId: body.toLocationId,
-            kind: 'transfer_in',
-            quantity: body.quantity,
-            unitCost: item.averageUnitCost,
-            sourceKey: `${key}:in`,
-            reason: body.reason ?? null,
-          },
-        ];
+        const from = await requireLocation(tx, body.fromLocationId, 'body.fromLocationId');
+        const to = await requireLocation(tx, body.toLocationId, 'body.toLocationId');
+        if (from.ownership === 'customer') {
+          throw unprocessable(
+            'customer_stock_stays',
+            'Stock held as the customer’s is a record of what they have; it is not moved from there.',
+            [
+              {
+                field: 'body.fromLocationId',
+                code: 'customer_stock_stays',
+                message: 'Choose one of our locations.',
+              },
+            ],
+          );
+        }
+        // Left with the customer as theirs: it leaves our stock as an issue,
+        // and arrives there as a record with no value (ADR-0012).
+        movements =
+          to.ownership === 'customer'
+            ? [
+                {
+                  itemId: item.id,
+                  locationId: from.id,
+                  kind: 'issue',
+                  quantity: negative(body.quantity),
+                  unitCost: item.averageUnitCost,
+                  sourceKey: `customer-site:${key}:out`,
+                  reason: body.reason ?? null,
+                },
+                {
+                  itemId: item.id,
+                  locationId: to.id,
+                  kind: 'transfer_in',
+                  quantity: body.quantity,
+                  unitCost: null,
+                  sourceKey: `customer-site:${key}:in`,
+                  reason: body.reason ?? null,
+                },
+              ]
+            : [
+                {
+                  itemId: item.id,
+                  locationId: body.fromLocationId,
+                  kind: 'transfer_out',
+                  quantity: negative(body.quantity),
+                  unitCost: item.averageUnitCost,
+                  sourceKey: `${key}:out`,
+                  reason: body.reason ?? null,
+                },
+                {
+                  itemId: item.id,
+                  locationId: body.toLocationId,
+                  kind: 'transfer_in',
+                  quantity: body.quantity,
+                  unitCost: item.averageUnitCost,
+                  sourceKey: `${key}:in`,
+                  reason: body.reason ?? null,
+                },
+              ];
       } else {
-        await requireLocation(tx, body.locationId);
-        let unitCost = item.averageUnitCost;
-        if (body.type === 'receipt' && body.unitCost !== undefined) {
+        const location = await requireLocation(tx, body.locationId);
+        // What the customer holds is a record: it has no cost (ADR-0012).
+        let unitCost: string | null =
+          location.ownership === 'customer' ? null : item.averageUnitCost;
+        if (
+          body.type === 'receipt' &&
+          body.unitCost !== undefined &&
+          location.ownership === 'ours'
+        ) {
           await tx.inventoryStock.applyReceiptCost(item.id, body.quantity, body.unitCost);
           unitCost = body.unitCost;
         }

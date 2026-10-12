@@ -5,7 +5,7 @@ import { assetsForSites } from '../routes/v1/assets.js';
 import { customerDetailBody } from '../routes/v1/customers.js';
 import { formDetailBody } from '../routes/v1/forms.js';
 import { isFeatureEnabled } from '../http/features.js';
-import { itemSummary } from '../routes/v1/inventory.js';
+import { availability, itemSummary, reservedAt } from '../routes/v1/inventory.js';
 import { peopleOf } from '../routes/v1/operations.js';
 import { carryOverFor, mayRead } from '../routes/v1/submissions.js';
 import { detailBody } from '../routes/v1/work-orders.js';
@@ -288,17 +288,27 @@ export async function vanStockBody(tx: TenantTransaction, principal: Principal) 
     return { location: null, items: [] };
   }
   const balances = await tx.inventoryStock.balances({ locationId: van.id, limit: 2000 });
-  const items = new Map(
-    (await tx.inventoryCatalogue.findItems(balances.map((row) => row.itemId))).map((item) => [
-      item.id,
-      item,
-    ]),
-  );
+  const itemIds = balances.map((row) => row.itemId);
+  const [found, reserved, images] = await Promise.all([
+    tx.inventoryCatalogue.findItems(itemIds),
+    reservedAt(tx, { locationId: van.id }),
+    tx.attachments.mainImages(itemIds),
+  ]);
+  const items = new Map(found.map((item) => [item.id, item]));
   return {
     location: { id: van.id, name: van.name },
     items: balances.flatMap((row) => {
       const item = items.get(row.itemId);
-      return item?.archivedAt !== null ? [] : [{ item: itemSummary(item), onHand: row.onHand }];
+      return item?.archivedAt !== null
+        ? []
+        : [
+            {
+              item: itemSummary(item),
+              onHand: row.onHand,
+              ...availability(row.onHand, reserved.get(`${row.itemId}:${van.id}`)),
+              mainImageFileId: images.get(item.id) ?? null,
+            },
+          ];
     }),
   };
 }

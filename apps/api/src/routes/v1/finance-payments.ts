@@ -595,7 +595,7 @@ export const jobCostsRoute = defineRoute({
   operationId: 'getJobCosts',
   summary: 'What a job cost, against what it earned',
   description:
-    'Parts at their cost when used (net of returns), labour at the company’s hourly cost when set, and the net of the job’s issued invoices less credit notes. Costs and profit are shown to owners, admins and those who move stock; without a labour cost the figure is parts only and says so (`labour.costed: false`). An estimate for the office, not an accounting entry.',
+    'Parts at their cost when used (net of returns) and parts bought from a merchant at what was paid, labour at the company’s hourly cost when set, and the net of the job’s issued invoices less credit notes. Costs and profit are shown to owners, admins and those who move stock; without a labour cost the figure is parts only and says so (`labour.costed: false`). An estimate for the office, not an accounting entry.',
   tags: FINANCE_TAGS,
   security: 'authenticated',
   permission: 'finance.read',
@@ -611,13 +611,16 @@ export const jobCostsRoute = defineRoute({
     const { principal } = context;
     const body = await withTenant(principal.tenantId, async (tx) => {
       const job = await readableWorkOrder(tx, principal, params.workOrderId);
-      const [events, settings, company, partsCost, invoices] = await Promise.all([
+      const [events, settings, company, usedCost, boughtCost, invoices] = await Promise.all([
         tx.workOrders.listEvents(job.id),
         tx.financeInvoices.settings(),
         tx.settings.get(),
         tx.inventoryMaterials.costForJob(job.id),
+        // Parts bought from a merchant for the job count too (ADR-0012).
+        tx.workOrderPurchases.totalForJob(job.id),
         tx.financeInvoices.invoicesForWorkOrder(job.id),
       ]);
+      const partsCost = addDecimals(usedCost, boughtCost);
       const sees =
         holds(principal, 'finance.issue') ||
         holds(principal, 'inventory.move') ||

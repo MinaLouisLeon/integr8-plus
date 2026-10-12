@@ -44,6 +44,10 @@ import { HrPayrollRepository } from './repositories/hr-payroll.js';
 import { ManufacturingRepository } from './repositories/manufacturing.js';
 import { CustomerTimelineRepository } from './repositories/customer-timeline.js';
 import { AnalyticsRepository } from './repositories/analytics.js';
+import { SupplierPricesRepository } from './repositories/supplier-prices.js';
+import { InventoryReplenishmentRepository } from './repositories/inventory-replenishment.js';
+import { SalesDeliveriesRepository } from './repositories/sales-deliveries.js';
+import { WorkOrderPurchasesRepository } from './repositories/work-order-purchases.js';
 import { SalesOrdersRepository } from './repositories/sales-orders.js';
 import { PublicQuotesLookup, SalesQuotesRepository } from './repositories/sales-quotes.js';
 import { CustomersRepository } from './repositories/customers.js';
@@ -152,6 +156,10 @@ export interface TenantTransaction {
   readonly manufacturing: ManufacturingRepository;
   readonly customerTimeline: CustomerTimelineRepository;
   readonly analytics: AnalyticsRepository;
+  readonly supplierPrices: SupplierPricesRepository;
+  readonly inventoryReplenishment: InventoryReplenishmentRepository;
+  readonly salesDeliveries: SalesDeliveriesRepository;
+  readonly workOrderPurchases: WorkOrderPurchasesRepository;
   readonly sites: SitesRepository;
   readonly jobTypes: JobTypesRepository;
   readonly workOrders: WorkOrdersRepository;
@@ -418,6 +426,10 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     manufacturing: new ManufacturingRepository(scope),
     customerTimeline: new CustomerTimelineRepository(scope),
     analytics: new AnalyticsRepository(scope),
+    supplierPrices: new SupplierPricesRepository(scope),
+    inventoryReplenishment: new InventoryReplenishmentRepository(scope),
+    salesDeliveries: new SalesDeliveriesRepository(scope),
+    workOrderPurchases: new WorkOrderPurchasesRepository(scope),
     sites: new SitesRepository(scope),
     jobTypes: new JobTypesRepository(scope),
     workOrders: new WorkOrdersRepository(scope),

@@ -10,7 +10,11 @@ export type AttachmentOwner =
   /** A machine on the asset register (0031). */
   | { assetId: string }
   /** A receipt for a staff expense claim (0037). */
-  | { expenseClaimId: string };
+  | { expenseClaimId: string }
+  /** An item's image or datasheet (0040). */
+  | { itemId: string }
+  /** A receipt for a part bought from a merchant for a job (0040). */
+  | { workOrderPurchaseId: string };
 
 export interface Attachment {
   id: string;
@@ -20,6 +24,8 @@ export interface Attachment {
   kind: AttachmentKind;
   /** For a job photo: taken before or after the work (P14). */
   stage: PhotoStage | null;
+  /** An item's main image, the one the phone keeps (0040). */
+  isMain: boolean;
   addedBy: UserId;
   createdAt: Date;
 }
@@ -36,6 +42,12 @@ function ownerColumn(owner: AttachmentOwner) {
   }
   if ('expenseClaimId' in owner) {
     return { column: 'expense_claim_id' as const, id: owner.expenseClaimId };
+  }
+  if ('itemId' in owner) {
+    return { column: 'item_id' as const, id: owner.itemId };
+  }
+  if ('workOrderPurchaseId' in owner) {
+    return { column: 'work_order_purchase_id' as const, id: owner.workOrderPurchaseId };
   }
   return { column: 'work_order_id' as const, id: owner.workOrderId };
 }
@@ -118,10 +130,51 @@ export class AttachmentsRepository extends TenantScopedRepository {
       : { ...toAttachment(row), removed: row.removed_at !== null };
   }
 
+  /**
+   * Makes this image its item's main one, and no other (ADR-0012). False
+   * when it is not a current attachment of an item.
+   */
+  async setMain(attachmentId: string): Promise<boolean> {
+    const target = await this.find(attachmentId);
+    if (target === undefined || !('itemId' in target.owner)) {
+      return false;
+    }
+    await this.db
+      .updateTable('attachments')
+      .set({ is_main: false })
+      .where('tenant_id', '=', this.tenantId)
+      .where('item_id', '=', target.owner.itemId)
+      .where('is_main', '=', true)
+      .execute();
+    await this.db
+      .updateTable('attachments')
+      .set({ is_main: true })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', attachmentId)
+      .execute();
+    return true;
+  }
+
+  /** Each of these items' main image: item id to file id. */
+  async mainImages(itemIds: readonly string[]): Promise<Map<string, string>> {
+    if (itemIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.db
+      .selectFrom('attachments')
+      .select(['item_id', 'file_id'])
+      .where('tenant_id', '=', this.tenantId)
+      .where('item_id', 'in', [...new Set(itemIds)])
+      .where('is_main', '=', true)
+      .where('removed_at', 'is', null)
+      .execute();
+    return new Map(rows.map((row) => [row.item_id!, row.file_id]));
+  }
+
   async remove(attachmentId: string, by: UserId | string): Promise<boolean> {
     const result = await this.db
       .updateTable('attachments')
-      .set({ removed_at: sql<Date>`now()`, removed_by: toUserId(by) })
+      .set({ removed_at: sql<Date>`now()`, removed_by: toUserId(by), is_main: false })
       .where('tenant_id', '=', this.tenantId)
       .where('id', '=', attachmentId)
       .where('removed_at', 'is', null)
@@ -140,7 +193,11 @@ export function toAttachment(row: Selectable<AttachmentsTable>): Attachment {
           ? { assetId: row.asset_id }
           : row.expense_claim_id !== null
             ? { expenseClaimId: row.expense_claim_id }
-            : { workOrderId: row.work_order_id! };
+            : row.item_id !== null
+              ? { itemId: row.item_id }
+              : row.work_order_purchase_id !== null
+                ? { workOrderPurchaseId: row.work_order_purchase_id }
+                : { workOrderId: row.work_order_id! };
   return {
     id: row.id,
     fileId: row.file_id,
@@ -148,6 +205,7 @@ export function toAttachment(row: Selectable<AttachmentsTable>): Attachment {
     title: row.title,
     kind: row.kind,
     stage: row.stage,
+    isMain: row.is_main,
     addedBy: toUserId(row.added_by),
     createdAt: row.created_at,
   };

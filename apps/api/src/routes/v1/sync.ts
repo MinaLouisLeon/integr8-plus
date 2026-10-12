@@ -73,7 +73,18 @@ export const pullRoute = defineRoute({
         vanStock: z
           .object({
             location: z.object({ id: z.uuid(), name: z.string() }).nullable(),
-            items: z.array(z.object({ item: itemSummarySchema, onHand: z.string() })),
+            items: z.array(
+              z.object({
+                item: itemSummarySchema,
+                onHand: z.string(),
+                /** Promised to sales orders from the van (ADR-0012). */
+                reserved: z.string(),
+                /** On hand less reserved, never below zero. */
+                available: z.string(),
+                /** The item's main image, which the phone keeps for offline use. */
+                mainImageFileId: z.uuid().nullable(),
+              }),
+            ),
           })
           .nullable(),
         /** The sites whose assets this page holds in full; the phone replaces exactly those (phase E3). */

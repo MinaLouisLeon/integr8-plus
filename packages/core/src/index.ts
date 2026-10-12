@@ -177,6 +177,9 @@ export {
   LOCATION_KINDS,
   locationKindSchema,
   type LocationKind,
+  LOCATION_OWNERSHIPS,
+  locationOwnershipSchema,
+  type LocationOwnership,
   MOVEMENT_SIGNS,
   MOVEMENT_KINDS,
   movementKindSchema,
@@ -221,6 +224,7 @@ export {
   type SalesDocumentKind,
   formatQuoteReference,
   formatSalesOrderReference,
+  formatDeliveryReference,
   parseSalesReference,
 } from './sales.js';
 export {

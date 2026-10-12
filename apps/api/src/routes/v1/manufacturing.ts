@@ -1407,6 +1407,7 @@ export const draftFromPlanRoute = defineRoute({
           tx.settings.get(),
         ]);
         const supplierOf = new Map(suppliers.map((supplier) => [supplier.id, supplier]));
+        const today = await companyToday(tx);
         for (const [supplierId, lines] of bySupplier) {
           const supplier = supplierOf.get(supplierId);
           if (supplier?.status !== 'active') {
@@ -1425,15 +1426,25 @@ export const draftFromPlanRoute = defineRoute({
               deliveryLocationId: location.id,
               notes: 'Drafted from material planning.',
             },
-            lines.map((line) => {
-              const item = items.get(line.itemId)!;
-              return {
-                itemId: item.id,
-                description: item.name,
-                quantityOrdered: line.quantity,
-                unitPrice: item.defaultUnitCost ?? item.averageUnitCost,
-              };
-            }),
+            await Promise.all(
+              lines.map(async (line) => {
+                const item = items.get(line.itemId)!;
+                // The supplier's price list first (ADR-0012), then what it usually costs.
+                const listed = await tx.supplierPrices.priceFor({
+                  supplierId,
+                  itemId: item.id,
+                  currencyCode: settings.currency,
+                  quantity: line.quantity,
+                  on: today,
+                });
+                return {
+                  itemId: item.id,
+                  description: item.name,
+                  quantityOrdered: line.quantity,
+                  unitPrice: listed?.unitPrice ?? item.defaultUnitCost ?? item.averageUnitCost,
+                };
+              }),
+            ),
             principal.userId,
           );
           const reference = `PO-${String(order.reference).padStart(6, '0')}`;

@@ -269,7 +269,8 @@ export class AnalyticsRepository extends TenantScopedRepository {
   /**
    * Parts used on jobs between two days, by the engineer who recorded them,
    * the customer, or the job type: lines and their value at the cost
-   * recorded, net of returns. Cancelled lines are left out.
+   * recorded, net of returns, and parts bought from a merchant at what was
+   * paid. Cancelled lines are left out.
    */
   async partsUsage(
     from: string,
@@ -290,11 +291,20 @@ export class AnalyticsRepository extends TenantScopedRepository {
           : sql`coalesce((select j.name from job_types j where j.tenant_id = w.tenant_id and j.id = w.job_type_id), '')`;
     const { rows } = await sql<{ grp: string; label: string; lines: number; value: string }>`
       select ${group} as grp, min(${label}) as label, count(*)::int as lines,
-             coalesce(sum(round((m.quantity - m.returned_quantity) * coalesce(m.unit_cost, 0), 4)), 0)::text as value
-        from erp_work_order_materials m
+             coalesce(sum(round(m.used * m.cost, 4)), 0)::text as value
+        from (
+          select tenant_id, work_order_id, recorded_by, occurred_at,
+                 quantity - returned_quantity as used, coalesce(unit_cost, 0) as cost
+            from erp_work_order_materials
+           where tenant_id = ${this.tenantId} and status = 'posted'
+          union all
+          -- Bought from a merchant for the job, at what was paid (ADR-0012).
+          select tenant_id, work_order_id, recorded_by, occurred_at, quantity, unit_price
+            from erp_work_order_purchases
+           where tenant_id = ${this.tenantId} and cancelled_at is null
+        ) m
         join work_orders w on w.tenant_id = m.tenant_id and w.id = m.work_order_id
-       where m.tenant_id = ${this.tenantId} and m.status = 'posted'
-         and m.occurred_at::date between ${from}::date and ${to}::date
+       where m.occurred_at::date between ${from}::date and ${to}::date
        group by 1
        order by 4 desc, 2
     `.execute(this.db);

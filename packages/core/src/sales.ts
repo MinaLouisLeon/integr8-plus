@@ -66,7 +66,7 @@ export function salesOrderOpen(status: SalesOrderStatus): boolean {
 export const discountBpSchema = z.number().int().min(0).max(10_000);
 
 /** Which document a per-company reference counter numbers. */
-export const SALES_DOCUMENT_KINDS = ['quote', 'sales_order'] as const;
+export const SALES_DOCUMENT_KINDS = ['quote', 'sales_order', 'delivery'] as const;
 export type SalesDocumentKind = (typeof SALES_DOCUMENT_KINDS)[number];
 
 export function formatQuoteReference(reference: number, revision = 1): string {
@@ -76,6 +76,11 @@ export function formatQuoteReference(reference: number, revision = 1): string {
 
 export function formatSalesOrderReference(reference: number): string {
   return `SO-${String(reference).padStart(6, '0')}`;
+}
+
+/** A delivery note's number: goods handed over on a sales order (ADR-0012). */
+export function formatDeliveryReference(reference: number): string {
+  return `DN-${String(reference).padStart(6, '0')}`;
 }
 
 /** A reference as someone might type it: `QT-000123`, `so 7`, `123`. */

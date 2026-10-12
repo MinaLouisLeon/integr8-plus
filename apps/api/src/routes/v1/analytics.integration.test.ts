@@ -300,7 +300,10 @@ describe('exports', () => {
     expect(response.statusCode, response.body).toBe(200);
     expect(response.headers['content-type']).toContain('text/csv');
     expect(response.headers['x-export-truncated']).toBe('false');
-    const lines = response.body.replace(/^\uFEFF/u, '').trim().split('\r\n');
+    const lines = response.body
+      .replace(/^\uFEFF/u, '')
+      .trim()
+      .split('\r\n');
     expect(lines[0]).toMatch(/^Id,Name,Company/);
     expect(lines).toHaveLength(2);
     expect(lines[1]).toContain('"Amr, ""Cairo"" Towers"');
