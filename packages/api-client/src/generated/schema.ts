@@ -4297,6 +4297,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/manufacturing/boms/{bomId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One version of a bill of materials, in use or superseded */
+        get: operations["getBomVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/manufacturing/orders": {
         parameters: {
             query?: never;
@@ -42411,7 +42428,11 @@ export interface operations {
                             approve: boolean;
                             discard: boolean;
                             exportBankFile: boolean;
+                            exportInsuranceReport: boolean;
                         };
+                        /** @enum {string|null} */
+                        approveBlockedBy: "no_permission" | "self_approval" | "empty_run" | "negative_net" | null;
+                        hrKeyConfigured: boolean;
                     };
                 };
             };
@@ -42584,7 +42605,11 @@ export interface operations {
                             approve: boolean;
                             discard: boolean;
                             exportBankFile: boolean;
+                            exportInsuranceReport: boolean;
                         };
+                        /** @enum {string|null} */
+                        approveBlockedBy: "no_permission" | "self_approval" | "empty_run" | "negative_net" | null;
+                        hrKeyConfigured: boolean;
                     };
                 };
             };
@@ -42856,7 +42881,11 @@ export interface operations {
                             approve: boolean;
                             discard: boolean;
                             exportBankFile: boolean;
+                            exportInsuranceReport: boolean;
                         };
+                        /** @enum {string|null} */
+                        approveBlockedBy: "no_permission" | "self_approval" | "empty_run" | "negative_net" | null;
+                        hrKeyConfigured: boolean;
                     };
                 };
             };
@@ -43044,7 +43073,11 @@ export interface operations {
                             approve: boolean;
                             discard: boolean;
                             exportBankFile: boolean;
+                            exportInsuranceReport: boolean;
                         };
+                        /** @enum {string|null} */
+                        approveBlockedBy: "no_permission" | "self_approval" | "empty_run" | "negative_net" | null;
+                        hrKeyConfigured: boolean;
                     };
                 };
             };
@@ -43239,7 +43272,11 @@ export interface operations {
                             approve: boolean;
                             discard: boolean;
                             exportBankFile: boolean;
+                            exportInsuranceReport: boolean;
                         };
+                        /** @enum {string|null} */
+                        approveBlockedBy: "no_permission" | "self_approval" | "empty_run" | "negative_net" | null;
+                        hrKeyConfigured: boolean;
                     };
                 };
             };
@@ -43427,7 +43464,11 @@ export interface operations {
                             approve: boolean;
                             discard: boolean;
                             exportBankFile: boolean;
+                            exportInsuranceReport: boolean;
                         };
+                        /** @enum {string|null} */
+                        approveBlockedBy: "no_permission" | "self_approval" | "empty_run" | "negative_net" | null;
+                        hrKeyConfigured: boolean;
                     };
                 };
             };
@@ -43520,6 +43561,11 @@ export interface operations {
                 content: {
                     "application/json": {
                         items: {
+                            company: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
                             run: {
                                 /** Format: uuid */
                                 id: string;
@@ -43670,6 +43716,11 @@ export interface operations {
                 content: {
                     "application/json": {
                         items: {
+                            company: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
                             run: {
                                 /** Format: uuid */
                                 id: string;
@@ -44360,6 +44411,129 @@ export interface operations {
                 };
             };
             /** @description No bill in use. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getBomVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bomId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        item: {
+                            /** Format: uuid */
+                            id: string;
+                            sku: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "stock_item" | "non_stock_item" | "service";
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        };
+                        version: number;
+                        labourCost: string | null;
+                        overheadCost: string | null;
+                        note: string | null;
+                        components: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            quantity: string;
+                            unitCost: string | null;
+                        }[];
+                        unitCost: string | null;
+                        createdBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        superseded: boolean;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such version. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -45686,6 +45860,7 @@ export interface operations {
                                 kind: "assembly_order" | "purchase_order";
                                 /** Format: uuid */
                                 id: string;
+                                reference: string;
                                 /** Format: date-time */
                                 at: string;
                             } | null;
@@ -45835,6 +46010,7 @@ export interface operations {
                                 kind: "assembly_order" | "purchase_order";
                                 /** Format: uuid */
                                 id: string;
+                                reference: string;
                                 /** Format: date-time */
                                 at: string;
                             } | null;
@@ -46004,6 +46180,7 @@ export interface operations {
                                     kind: "assembly_order" | "purchase_order";
                                     /** Format: uuid */
                                     id: string;
+                                    reference: string;
                                     /** Format: date-time */
                                     at: string;
                                 } | null;
@@ -53225,6 +53402,11 @@ export interface operations {
                                 };
                             }[];
                         }[];
+                        expenseCategories: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
                     };
                 };
             };

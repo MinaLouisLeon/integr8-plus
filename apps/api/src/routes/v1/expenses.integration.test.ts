@@ -276,6 +276,11 @@ describe('claims', () => {
   });
 
   it('are submitted from the phone once, with their receipts', async () => {
+    // The phone learns the categories with its first page of changes.
+    const pulled = json<{ expenseCategories: { name: string }[] | null }>(
+      await call(engineer, 'GET', '/v1/sync/pull'),
+    );
+    expect(pulled.expenseCategories?.map((category) => category.name)).toContain('Fuel');
     const claimId = randomUUID();
     const push = (mutations: Record<string, unknown>[]) =>
       call(engineer, 'POST', '/v1/sync/push', { sentAt: new Date().toISOString(), mutations });

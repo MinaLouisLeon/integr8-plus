@@ -91939,15 +91939,32 @@
                         },
                         "exportBankFile": {
                           "type": "boolean"
+                        },
+                        "exportInsuranceReport": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "edit",
                         "approve",
                         "discard",
-                        "exportBankFile"
+                        "exportBankFile",
+                        "exportInsuranceReport"
                       ],
                       "additionalProperties": false
+                    },
+                    "approveBlockedBy": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "no_permission",
+                        "self_approval",
+                        "empty_run",
+                        "negative_net"
+                      ]
+                    },
+                    "hrKeyConfigured": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -91969,7 +91986,9 @@
                     "lines",
                     "withoutTerms",
                     "disclaimer",
-                    "can"
+                    "can",
+                    "approveBlockedBy",
+                    "hrKeyConfigured"
                   ],
                   "additionalProperties": false
                 }
@@ -92402,15 +92421,32 @@
                         },
                         "exportBankFile": {
                           "type": "boolean"
+                        },
+                        "exportInsuranceReport": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "edit",
                         "approve",
                         "discard",
-                        "exportBankFile"
+                        "exportBankFile",
+                        "exportInsuranceReport"
                       ],
                       "additionalProperties": false
+                    },
+                    "approveBlockedBy": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "no_permission",
+                        "self_approval",
+                        "empty_run",
+                        "negative_net"
+                      ]
+                    },
+                    "hrKeyConfigured": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -92432,7 +92468,9 @@
                     "lines",
                     "withoutTerms",
                     "disclaimer",
-                    "can"
+                    "can",
+                    "approveBlockedBy",
+                    "hrKeyConfigured"
                   ],
                   "additionalProperties": false
                 }
@@ -92902,15 +92940,32 @@
                         },
                         "exportBankFile": {
                           "type": "boolean"
+                        },
+                        "exportInsuranceReport": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "edit",
                         "approve",
                         "discard",
-                        "exportBankFile"
+                        "exportBankFile",
+                        "exportInsuranceReport"
                       ],
                       "additionalProperties": false
+                    },
+                    "approveBlockedBy": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "no_permission",
+                        "self_approval",
+                        "empty_run",
+                        "negative_net"
+                      ]
+                    },
+                    "hrKeyConfigured": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -92932,7 +92987,9 @@
                     "lines",
                     "withoutTerms",
                     "disclaimer",
-                    "can"
+                    "can",
+                    "approveBlockedBy",
+                    "hrKeyConfigured"
                   ],
                   "additionalProperties": false
                 }
@@ -93492,15 +93549,32 @@
                         },
                         "exportBankFile": {
                           "type": "boolean"
+                        },
+                        "exportInsuranceReport": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "edit",
                         "approve",
                         "discard",
-                        "exportBankFile"
+                        "exportBankFile",
+                        "exportInsuranceReport"
                       ],
                       "additionalProperties": false
+                    },
+                    "approveBlockedBy": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "no_permission",
+                        "self_approval",
+                        "empty_run",
+                        "negative_net"
+                      ]
+                    },
+                    "hrKeyConfigured": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -93522,7 +93596,9 @@
                     "lines",
                     "withoutTerms",
                     "disclaimer",
-                    "can"
+                    "can",
+                    "approveBlockedBy",
+                    "hrKeyConfigured"
                   ],
                   "additionalProperties": false
                 }
@@ -94024,15 +94100,32 @@
                         },
                         "exportBankFile": {
                           "type": "boolean"
+                        },
+                        "exportInsuranceReport": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "edit",
                         "approve",
                         "discard",
-                        "exportBankFile"
+                        "exportBankFile",
+                        "exportInsuranceReport"
                       ],
                       "additionalProperties": false
+                    },
+                    "approveBlockedBy": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "no_permission",
+                        "self_approval",
+                        "empty_run",
+                        "negative_net"
+                      ]
+                    },
+                    "hrKeyConfigured": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -94054,7 +94147,9 @@
                     "lines",
                     "withoutTerms",
                     "disclaimer",
-                    "can"
+                    "can",
+                    "approveBlockedBy",
+                    "hrKeyConfigured"
                   ],
                   "additionalProperties": false
                 }
@@ -94519,15 +94614,32 @@
                         },
                         "exportBankFile": {
                           "type": "boolean"
+                        },
+                        "exportInsuranceReport": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "edit",
                         "approve",
                         "discard",
-                        "exportBankFile"
+                        "exportBankFile",
+                        "exportInsuranceReport"
                       ],
                       "additionalProperties": false
+                    },
+                    "approveBlockedBy": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "no_permission",
+                        "self_approval",
+                        "empty_run",
+                        "negative_net"
+                      ]
+                    },
+                    "hrKeyConfigured": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -94549,7 +94661,9 @@
                     "lines",
                     "withoutTerms",
                     "disclaimer",
-                    "can"
+                    "can",
+                    "approveBlockedBy",
+                    "hrKeyConfigured"
                   ],
                   "additionalProperties": false
                 }
@@ -94662,6 +94776,28 @@
                       "items": {
                         "type": "object",
                         "properties": {
+                          "company": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "address": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "taxReference": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "address",
+                              "taxReference"
+                            ],
+                            "additionalProperties": false
+                          },
                           "run": {
                             "type": "object",
                             "properties": {
@@ -94884,6 +95020,7 @@
                           }
                         },
                         "required": [
+                          "company",
                           "run",
                           "employee",
                           "line",
@@ -95009,6 +95146,28 @@
                       "items": {
                         "type": "object",
                         "properties": {
+                          "company": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "address": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "taxReference": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "address",
+                              "taxReference"
+                            ],
+                            "additionalProperties": false
+                          },
                           "run": {
                             "type": "object",
                             "properties": {
@@ -95231,6 +95390,7 @@
                           }
                         },
                         "required": [
+                          "company",
                           "run",
                           "employee",
                           "line",
@@ -96424,6 +96584,296 @@
           },
           "404": {
             "description": "No bill in use."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/manufacturing/boms/{bomId}": {
+      "get": {
+        "operationId": "getBomVersion",
+        "summary": "One version of a bill of materials, in use or superseded",
+        "tags": [
+          "manufacturing"
+        ],
+        "parameters": [
+          {
+            "name": "bomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "item": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "sku": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "stock_item",
+                            "non_stock_item",
+                            "service"
+                          ]
+                        },
+                        "unit": {
+                          "type": "string",
+                          "enum": [
+                            "each",
+                            "pair",
+                            "set",
+                            "box",
+                            "pack",
+                            "roll",
+                            "m",
+                            "m2",
+                            "m3",
+                            "l",
+                            "kg",
+                            "g",
+                            "hour"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "sku",
+                        "name",
+                        "kind",
+                        "unit"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "labourCost": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "overheadCost": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "note": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "components": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "item": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "sku": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "stock_item",
+                                  "non_stock_item",
+                                  "service"
+                                ]
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "each",
+                                  "pair",
+                                  "set",
+                                  "box",
+                                  "pack",
+                                  "roll",
+                                  "m",
+                                  "m2",
+                                  "m3",
+                                  "l",
+                                  "kg",
+                                  "g",
+                                  "hour"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "sku",
+                              "name",
+                              "kind",
+                              "unit"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "quantity": {
+                            "type": "string"
+                          },
+                          "unitCost": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "item",
+                          "quantity",
+                          "unitCost"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "unitCost": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "superseded": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "item",
+                    "version",
+                    "labourCost",
+                    "overheadCost",
+                    "note",
+                    "components",
+                    "unitCost",
+                    "createdBy",
+                    "createdAt",
+                    "superseded"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such version."
           },
           "422": {
             "description": "The request failed validation.",
@@ -99963,6 +100413,9 @@
                                 "format": "uuid",
                                 "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                               },
+                              "reference": {
+                                "type": "string"
+                              },
                               "at": {
                                 "type": "string",
                                 "format": "date-time",
@@ -99972,6 +100425,7 @@
                             "required": [
                               "kind",
                               "id",
+                              "reference",
                               "at"
                             ],
                             "additionalProperties": false
@@ -100486,6 +100940,9 @@
                                 "format": "uuid",
                                 "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                               },
+                              "reference": {
+                                "type": "string"
+                              },
                               "at": {
                                 "type": "string",
                                 "format": "date-time",
@@ -100495,6 +100952,7 @@
                             "required": [
                               "kind",
                               "id",
+                              "reference",
                               "at"
                             ],
                             "additionalProperties": false
@@ -100938,6 +101396,9 @@
                                     "format": "uuid",
                                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                   },
+                                  "reference": {
+                                    "type": "string"
+                                  },
                                   "at": {
                                     "type": "string",
                                     "format": "date-time",
@@ -100947,6 +101408,7 @@
                                 "required": [
                                   "kind",
                                   "id",
+                                  "reference",
                                   "at"
                                 ],
                                 "additionalProperties": false
@@ -126033,6 +126495,28 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "expenseCategories": {
+                      "nullable": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -126048,7 +126532,8 @@
                     "shifts",
                     "vanStock",
                     "assetSiteIds",
-                    "assets"
+                    "assets",
+                    "expenseCategories"
                   ],
                   "additionalProperties": false
                 }

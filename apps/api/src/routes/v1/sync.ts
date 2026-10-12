@@ -80,6 +80,11 @@ export const pullRoute = defineRoute({
         assetSiteIds: z.array(z.uuid()),
         /** The assets of those sites, each with its whole history. */
         assets: z.array(assetSyncSchema),
+        /**
+         * The expense categories a claim may name, on the first page only; null
+         * on later pages, and when expenses are not open to the caller (ADR-0012).
+         */
+        expenseCategories: z.array(z.object({ id: z.uuid(), name: z.string() })).nullable(),
       }),
     },
     422: { description: 'A cursor or page token the server did not issue.' },

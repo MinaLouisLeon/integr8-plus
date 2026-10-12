@@ -432,6 +432,35 @@ export const getBomRoute = defineRoute({
   },
 });
 
+export const getBomVersionRoute = defineRoute({
+  method: 'get',
+  path: '/v1/manufacturing/boms/:bomId',
+  operationId: 'getBomVersion',
+  summary: 'One version of a bill of materials, in use or superseded',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'manufacturing.read',
+  feature: FEATURE,
+  params: z.object({ bomId: z.uuid() }),
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: { description: 'The version.', schema: bomSchema },
+    404: { description: 'No such version.' },
+  },
+  handler: async ({ params }, context) => {
+    const { principal } = context;
+    const body = await withTenant(principal.tenantId, async (tx) => {
+      const bom = await tx.manufacturing.bom(params.bomId);
+      if (bom === undefined) {
+        throw notFound('No such bill of materials.');
+      }
+      return bomBody(tx, principal, bom);
+    });
+    return { status: 200, body };
+  },
+});
+
 export const saveBomRoute = defineRoute({
   method: 'put',
   path: '/v1/manufacturing/boms/items/:itemId',
@@ -827,14 +856,14 @@ async function completeOrder(
   }
   const moves = await movementsOf(tx, order, bom);
   // Each balance taken from is locked, in one order, before anything moves.
-  const shortages: { itemId: string; short: string }[] = [];
+  const shortages: { itemId: string; short: string; needed: string; available: string }[] = [];
   const reserved = await reservedAt(tx, { locationId: order.locationId });
   for (const need of [...moves.out].sort((a, b) => a.itemId.localeCompare(b.itemId))) {
     const held = await tx.inventoryStock.lockBalance(need.itemId, order.locationId);
     const { available } = availability(held, reserved.get(`${need.itemId}:${order.locationId}`));
     const gap = shortBy(need.quantity, available);
     if (gap !== '0') {
-      shortages.push({ itemId: need.itemId, short: gap });
+      shortages.push({ itemId: need.itemId, short: gap, needed: need.quantity, available });
     }
   }
   if (shortages.length > 0) {
@@ -846,6 +875,13 @@ async function completeOrder(
         field: `items.${shortage.itemId}`,
         code: 'shortage',
         message: `${moves.items.get(shortage.itemId)?.name ?? 'An item'} is short by ${shortage.short}.`,
+        params: {
+          itemId: shortage.itemId,
+          item: moves.items.get(shortage.itemId)?.name ?? '',
+          short: shortage.short,
+          needed: shortage.needed,
+          available: shortage.available,
+        },
       })),
     );
   }
@@ -1011,6 +1047,8 @@ const suggestionSchema = z.object({
     .object({
       kind: z.enum(['assembly_order', 'purchase_order']),
       id: z.uuid(),
+      /** `AO-000123` or `PO-000123`. */
+      reference: z.string(),
       at: z.iso.datetime(),
     })
     .nullable(),
@@ -1052,6 +1090,24 @@ async function planDetail(
     ]),
   ]);
   const supplierNames = new Map(suppliers.map((supplier) => [supplier.id, supplier.name]));
+  const draftedIds = (kind: 'assembly_order' | 'purchase_order') =>
+    suggestions.flatMap((s) =>
+      s.draftedKind === kind && s.draftedId !== null ? [s.draftedId] : [],
+    );
+  const [assemblies, purchases] = await Promise.all([
+    Promise.all([...new Set(draftedIds('assembly_order'))].map((id) => tx.manufacturing.order(id))),
+    tx.inventoryPurchasing.findOrders([...new Set(draftedIds('purchase_order'))]),
+  ]);
+  const references = new Map<string, string>([
+    ...assemblies.flatMap((order) =>
+      order === undefined
+        ? []
+        : [[order.id, formatAssemblyReference(order.reference)] as [string, string]],
+    ),
+    ...purchases.map(
+      (order) => [order.id, `PO-${String(order.reference).padStart(6, '0')}`] as [string, string],
+    ),
+  ]);
   const manage = holds(principal, 'manufacturing.manage');
   return {
     id: plan.id,
@@ -1085,6 +1141,7 @@ async function planDetail(
           : {
               kind: suggestion.draftedKind,
               id: suggestion.draftedId,
+              reference: references.get(suggestion.draftedId) ?? '',
               at: iso(suggestion.draftedAt),
             },
     })),
@@ -1403,6 +1460,7 @@ export const draftFromPlanRoute = defineRoute({
 export const manufacturingRoutes = [
   listBomsRoute,
   getBomRoute,
+  getBomVersionRoute,
   saveBomRoute,
   retireBomRoute,
   listAssemblyOrdersRoute,

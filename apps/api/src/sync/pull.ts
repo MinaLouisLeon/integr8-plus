@@ -220,6 +220,15 @@ export async function pullPage(
     vanStock,
     assetSiteIds: holdsAssets(principal) ? assetSiteIds : [],
     assets,
+    expenseCategories:
+      options.page === undefined &&
+      holds(principal, 'expense.submit') &&
+      (await isFeatureEnabled(principal.tenantId, 'hr'))
+        ? (await tx.hrExpenses.categories()).map((category) => ({
+            id: category.id,
+            name: category.name,
+          }))
+        : null,
   };
 }
 

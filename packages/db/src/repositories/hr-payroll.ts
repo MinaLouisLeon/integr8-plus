@@ -663,6 +663,17 @@ export class HrPayrollRepository extends TenantScopedRepository {
     return row === undefined ? undefined : toRun(row);
   }
 
+  /** The run of the month starting on this day, if there is one. */
+  async runFor(periodStart: string): Promise<PayRun | undefined> {
+    const row = await this.db
+      .selectFrom('hr_payroll_runs')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('period_start', '=', periodStart)
+      .executeTakeFirst();
+    return row === undefined ? undefined : toRun(row);
+  }
+
   async lockRun(id: string): Promise<PayRun | undefined> {
     const row = await this.db
       .selectFrom('hr_payroll_runs')
