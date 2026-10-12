@@ -25732,7 +25732,7 @@
       "get": {
         "operationId": "getStageValues",
         "summary": "Open value in each stage at each month’s end",
-        "description": "Where each open opportunity stood at the end of each month, from its history, with today as the last point. Amounts are today’s, by currency, and weighted by the stage’s usual chance.",
+        "description": "Where each open opportunity stood at the end of each month, from its history, with today as the last point. Amounts are what each deal had at that month end, by currency, weighted by the stage’s usual chance. Nothing was kept before `amountsRecordedFrom`: a month end before it counts a deal at the amount it had then, and `estimated` says how many deals were counted so.",
         "tags": [
           "analytics"
         ],
@@ -25803,6 +25803,11 @@
                           },
                           "weighted": {
                             "type": "string"
+                          },
+                          "estimated": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
                           }
                         },
                         "required": [
@@ -25811,15 +25816,23 @@
                           "currency",
                           "count",
                           "amount",
-                          "weighted"
+                          "weighted",
+                          "estimated"
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "amountsRecordedFrom": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                     }
                   },
                   "required": [
                     "monthEnds",
-                    "items"
+                    "items",
+                    "amountsRecordedFrom"
                   ],
                   "additionalProperties": false
                 }

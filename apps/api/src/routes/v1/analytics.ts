@@ -154,7 +154,7 @@ export const stageValuesRoute = defineRoute({
   operationId: 'getStageValues',
   summary: 'Open value in each stage at each month’s end',
   description:
-    'Where each open opportunity stood at the end of each month, from its history, with today as the last point. Amounts are today’s, by currency, and weighted by the stage’s usual chance.',
+    'Where each open opportunity stood at the end of each month, from its history, with today as the last point. Amounts are what each deal had at that month end, by currency, weighted by the stage’s usual chance. Nothing was kept before `amountsRecordedFrom`: a month end before it counts a deal at the amount it had then, and `estimated` says how many deals were counted so.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'crm.read',
@@ -175,8 +175,12 @@ export const stageValuesRoute = defineRoute({
             count: z.number().int(),
             amount: z.string(),
             weighted: z.string(),
+            /** Deals counted at the amount they had when the history began. */
+            estimated: z.number().int(),
           }),
         ),
+        /** When amounts began to be kept (ADR-0013); null when every deal has its full history. */
+        amountsRecordedFrom: z.iso.datetime().nullable(),
       }),
     },
     404: { description: 'No such pipeline.' },
@@ -187,7 +191,12 @@ export const stageValuesRoute = defineRoute({
         throw notFound('No such pipeline.');
       }
       const ends = monthEnds(await companyToday(tx), query.months);
-      return { monthEnds: ends, items: await tx.analytics.stageValues(params.pipelineId, ends) };
+      const from = await tx.analytics.amountsRecordedFrom();
+      return {
+        monthEnds: ends,
+        items: await tx.analytics.stageValues(params.pipelineId, ends),
+        amountsRecordedFrom: from === null ? null : from.toISOString(),
+      };
     });
     return { status: 200, body };
   },

@@ -1793,7 +1793,7 @@ export interface paths {
         };
         /**
          * Open value in each stage at each month’s end
-         * @description Where each open opportunity stood at the end of each month, from its history, with today as the last point. Amounts are today’s, by currency, and weighted by the stage’s usual chance.
+         * @description Where each open opportunity stood at the end of each month, from its history, with today as the last point. Amounts are what each deal had at that month end, by currency, weighted by the stage’s usual chance. Nothing was kept before `amountsRecordedFrom`: a month end before it counts a deal at the amount it had then, and `estimated` says how many deals were counted so.
          */
         get: operations["getStageValues"];
         put?: never;
@@ -18792,7 +18792,10 @@ export interface operations {
                             count: number;
                             amount: string;
                             weighted: string;
+                            estimated: number;
                         }[];
+                        /** Format: date-time */
+                        amountsRecordedFrom: string | null;
                     };
                 };
             };

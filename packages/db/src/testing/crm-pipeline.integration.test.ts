@@ -352,3 +352,82 @@ describe('the dashboard', () => {
     expect(dashboard.openByStage[0]).toMatchObject({ stageId: proposal.id, count: 4 });
   });
 });
+
+describe('amount history (0043)', () => {
+  it('keeps each amount a deal had, read-only, and values stages at the amount each month end saw', async () => {
+    const tenant = await createTenant('crm3-amounts');
+    const pipeline = await repos(tenant, (tx) => tx.crmPipelines.ensureDefault());
+    const proposal = pipeline.stages[2]!;
+    const customerId = await customer(tenant.id, 'History Ltd');
+    const deal = await repos(tenant, (tx) =>
+      tx.crmOpportunities.create(
+        { title: 'Chillers', customerId, amount: '1000', currencyCode: 'EGP' },
+        proposal,
+        USER,
+      ),
+    );
+    // A title change is not an amount change; an amount change is.
+    const renamed = await repos(tenant, (tx) =>
+      tx.crmOpportunities.update(deal.id, deal.version, { title: 'Chillers x2' }),
+    );
+    if (typeof renamed === 'string') {
+      throw new Error(renamed);
+    }
+    await repos(tenant, (tx) =>
+      tx.crmOpportunities.update(deal.id, renamed.version, { amount: '2500' }),
+    );
+    const rows = await owner.query<{ id: string; amount: string }>(
+      `select id, amount::text as amount from crm_opportunity_amounts
+        where opportunity_id = $1 order by changed_at, id`,
+      [deal.id],
+    );
+    expect(rows.rows.map((row) => row.amount)).toEqual(['1000.0000', '2500.0000']);
+
+    // The runtime role reads the history and cannot rewrite it.
+    await expect(
+      asTenant(app, tenant.id, () =>
+        app.query(`update crm_opportunity_amounts set amount = 1 where opportunity_id = $1`, [
+          deal.id,
+        ]),
+      ),
+    ).rejects.toThrow(/permission denied/u);
+
+    // Put the deal, its stage and its first amount in the past: on 2026-01-31
+    // it stood at 1000; the change to 2500 came in February.
+    await owner.query(`update crm_opportunities set created_at = '2026-01-10' where id = $1`, [
+      deal.id,
+    ]);
+    await owner.query(
+      `update crm_opportunity_events set occurred_at = '2026-01-10' where opportunity_id = $1`,
+      [deal.id],
+    );
+    await owner.query(
+      `update crm_opportunity_amounts set changed_at = '2026-01-10' where id = $1`,
+      [rows.rows[0]!.id],
+    );
+    await owner.query(
+      `update crm_opportunity_amounts set changed_at = '2026-02-15' where id = $1`,
+      [rows.rows[1]!.id],
+    );
+    const values = await repos(tenant, (tx) =>
+      tx.analytics.stageValues(pipeline.id, ['2026-01-31', '2026-02-28']),
+    );
+    expect(values.map((row) => [row.monthEnd, row.amount, row.estimated])).toEqual([
+      ['2026-01-31', '1000', 0],
+      ['2026-02-28', '2500', 0],
+    ]);
+
+    // A deal from before the history began counts at the amount it had then, and says so.
+    await owner.query(
+      `update crm_opportunity_amounts set changed_at = '2026-02-01', baseline = true where id = $1`,
+      [rows.rows[0]!.id],
+    );
+    const estimated = await repos(tenant, (tx) =>
+      tx.analytics.stageValues(pipeline.id, ['2026-01-31']),
+    );
+    expect(estimated.map((row) => [row.amount, row.estimated])).toEqual([['1000', 1]]);
+    expect(await repos(tenant, (tx) => tx.analytics.amountsRecordedFrom())).toEqual(
+      new Date('2026-02-01T00:00:00Z'),
+    );
+  });
+});

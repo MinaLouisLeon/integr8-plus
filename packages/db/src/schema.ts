@@ -1046,6 +1046,17 @@ export interface CrmOpportunityEventsTable {
   occurred_at: CreatedAt;
 }
 
+/** Each amount or currency an opportunity has had (0043; ADR-0013). Written by trigger. */
+export interface CrmOpportunityAmountsTable {
+  id: ColumnType<string, never, never>;
+  tenant_id: ColumnType<string, never, never>;
+  opportunity_id: ColumnType<string, never, never>;
+  amount: ColumnType<string | null, never, never>;
+  currency_code: ColumnType<string, never, never>;
+  baseline: ColumnType<boolean, never, never>;
+  changed_at: ColumnType<Date, never, never>;
+}
+
 export interface CrmActivitiesTable {
   id: Generated<string>;
   tenant_id: string;
@@ -2676,6 +2687,7 @@ export interface Database {
   crm_pipeline_stages: CrmPipelineStagesTable;
   crm_opportunities: CrmOpportunitiesTable;
   crm_opportunity_events: CrmOpportunityEventsTable;
+  crm_opportunity_amounts: CrmOpportunityAmountsTable;
   crm_activities: CrmActivitiesTable;
   crm_activity_leads: CrmActivityLeadsTable;
   crm_activity_customers: CrmActivityCustomersTable;
@@ -2882,6 +2894,8 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // The same for each serial number's or batch's balance; see 0042 and ADR-0013.
   'erp_stock_apply_lot_movement',
   'erp_stock_lock_lot_balance',
+  // Keeps each opportunity's amounts, which the runtime role can only read; see 0043.
+  'crm_opportunity_record_amount',
   // Hands out purchase order references from a counter the runtime role cannot write; see 0027.
   'assign_purchase_order_reference',
   'assign_sales_reference',
@@ -2955,6 +2969,7 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   crm_pipeline_stages: true,
   crm_opportunities: true,
   crm_opportunity_events: true,
+  crm_opportunity_amounts: true,
   crm_activities: true,
   crm_activity_leads: true,
   crm_activity_customers: true,

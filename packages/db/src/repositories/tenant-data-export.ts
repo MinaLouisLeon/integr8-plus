@@ -61,6 +61,7 @@ export const EXPORTED_TABLES = [
   'crm_pipeline_stages',
   'crm_opportunities',
   'crm_opportunity_events',
+  'crm_opportunity_amounts',
   'crm_activities',
   'crm_activity_leads',
   'crm_activity_customers',
