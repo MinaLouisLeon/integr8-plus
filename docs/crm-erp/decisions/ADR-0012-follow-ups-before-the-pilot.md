@@ -96,3 +96,28 @@ inventory and field), docs and the tracker at the end, one pull request to
 The pilot starts with the plan's follow-ups closed or decided. The email
 channel (follow-up reminders, sending purchase orders and quotes) and
 server-rendered PDFs remain open and need a decision on dependencies.
+
+## As built
+
+- **F2a.** 323 error codes, extracted from the API source
+  (`pnpm --filter @integr8/api error-codes`) into
+  `packages/i18n/src/api-error-codes.ts`, each with an English and an Arabic
+  message under `apiErrors`; `apiErrorMessage` everywhere, the phone
+  included. `pnpm licences:check` in CI with five reviewed exceptions
+  (`scripts/licences/exceptions.json`). The self-hosting audit is
+  `08-operations-selfhosting.md`. The seventh round's follow-ups landed in
+  the API and the screens.
+- **F2b.** No migration: permission `crm.pipeline.manage`; the customer
+  timeline and the figures are read on request from the documents and their
+  history. Value by stage at a month end uses today's amounts, because
+  amount changes are not kept. Exports are capped at 50,000 rows and say so.
+- **F2c.** Migration 0040. Moving our stock to a site holding the customer's
+  stock is an issue at its average cost; deliveries by hand and stock left
+  with a customer post to cost of parts used. Merchant parts are their own
+  table, not part lines, so stock and its invariants are untouched; they
+  count in the job's cost and in parts usage. Reorder suggestions are raised
+  to the smallest price break in the company currency. Van refills, receiving
+  by scan and payslips on the phone are online only and queue nothing.
+- **Not done here.** Menu entries for the new screens (reached through
+  links), a device run of the phone screens, and everything this ADR keeps
+  out (email, server-rendered PDFs).

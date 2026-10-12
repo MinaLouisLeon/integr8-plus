@@ -215,6 +215,46 @@ move a draft to the current bill, complete and cancel); and material planning
 some and a location to draft orders, then follow the links). The item editor
 gains a lead time.
 
+## Follow-ups before the pilot (F2; ADR-0012)
+
+No menu entries were added; the new screens hang off the screens they
+belong to:
+
+- **Pipelines** (`/crm/pipelines`, `/crm/pipelines/:id`), from the
+  opportunity board and the CRM overview, for `crm.pipeline.manage`: stages
+  added, edited, reordered with up/down buttons that keep focus and announce
+  the new position, archived with a chooser for where their open deals go.
+- **Customer 360**: on the customer screen, tabs for the timeline, quotes,
+  sales orders, invoices (with the balance), payments and activities, each
+  with its module and permission; arrow keys move between tabs and reverse
+  in Arabic. The timeline loads more on demand and filters by source.
+- **Reports** (`/crm/reports`) from the CRM overview; **Parts used**
+  (`/inventory/parts-usage`) from the inventory overview. Tables, no
+  charts; amounts per currency.
+- **CSV exports** beside the lead list, the board, the recent and per-item
+  stock movements and parts usage, for the managers of each area; a note
+  when the file stops at 50,000 rows.
+- **Inventory**: a "Customer's stock" badge and the ours/customer choice on
+  site locations; an item's gallery (main image first, datasheets open in a
+  new tab); "Supplier prices" on the item and a price list on the supplier;
+  "Reorder" from a location and from the purchase orders
+  (`/inventory/locations/:id/reorder`); the van request queue
+  (`/inventory/van-requests`) from the inventory overview.
+- **Sales**: "Deliver" on a confirmed order, its deliveries, and a printable
+  delivery note (`/sales/orders/:orderId/deliveries/:deliveryId`) with a
+  signature area and no prices.
+- **Jobs**: "Bought for this job" in the parts section.
+- **Payroll and manufacturing**: why approving is blocked, the HR key
+  notice, the payslip's company block, shortages per item, drafted
+  references linked, old bill versions (`/manufacturing/boms/versions/:id`).
+- **The phone**: Home gains "My van" (offline: picture, on hand, reserved,
+  available), "Receive goods" (scan against an approved order, online) and
+  "My payslips" (online); "Refill my van" from My van (online only, with a
+  "needs a connection" screen and nothing queued); "Bought from a merchant"
+  on the job and the parts picker (offline, with a receipt photo).
+- **Refusals** everywhere read from the error catalogue, in the reader's
+  language; the server's English is never shown.
+
 ## Translation keys
 
 English and Arabic, same keys (the parity test fails otherwise):
@@ -233,6 +273,11 @@ English and Arabic, same keys (the parity test fails otherwise):
 - `ledger.*` (`accountType`, `role`, `kind`, `source`, `reason`, `reasonHelp`, `aging`, `journalStatus`, `postingStatus`, `yearStatus`, `errors`, `home`, `setup`, `accounts`, `journals`, `lines`, `editor`, `journal`, `unposted`, `periods`, `reports`, `settings`), `nav.group.accounting`, `nav.section|hint.ledger|journals|ledgerReports` (A1).
 - `hr.*`, `workspace.grant.*`, `workspace.role.hr_manager|inventory_manager`, `expenses.*`, `payroll.*`, `mobile.expenses.*`, `nav.group.hr`, `nav.section|hint.employees|myProfile|myExpenses|expenseClaims|payRuns|payrollRules|myPayslips`, ledger roles and sources for expenses, payroll and assembly (H1).
 - `manufacturing.*`, `inventory.movement.assembly_consumption|assembly_output`, `nav.section|hint.boms|assemblyOrders|materialPlans` (M1).
+- `apiErrors.*` — one message per API error code (`API_ERROR_CODES`);
+  `crm.pipelines.*`, `crm.customer360.*`, `analytics.*`, new keys in
+  `inventory`, `purchasing`, `sales`, `payroll`, `manufacturing`, and
+  `mobile.*` for the van, refills, merchant parts, receiving, payslips and
+  the phone's own refusals (F2).
 - `errors.featureDisabled` — the web maps API code `feature_disabled` to it
   (`apps/web/src/lib/errors.ts`).
 

@@ -751,11 +751,11 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase F2 — Follow-ups before the pilot (authorized 2026-10-12)
 
-**Status:** `IN PROGRESS` — eighth round; see the [phase tracker](./README.md#phase-tracker) and ADR-0012.
+**Status:** `DONE` — eighth round; see the [phase tracker](./README.md#phase-tracker) and ADR-0012.
 
-- [ ] Every API error code in English and Arabic, a CI licence check, the self-hosting audit, and the seventh round's follow-ups (F2a).
-- [ ] Pipeline and stage editing, Customer 360 documents and timeline, quote and pipeline analytics, parts usage, CSV exports (F2b).
-- [ ] Site stock locations, item images and datasheets, supplier price lists and reorder drafts, hand deliveries, van refills, merchant parts, scan to receive, reserved stock on the phone (F2c).
+- [x] Every API error code in English and Arabic, a CI licence check, the self-hosting audit, and the seventh round's follow-ups (F2a).
+- [x] Pipeline and stage editing, Customer 360 documents and timeline, quote and pipeline analytics, parts usage, CSV exports (F2b).
+- [x] Site stock locations, item images and datasheets, supplier price lists and reorder drafts, hand deliveries, van refills, merchant parts, scan to receive, reserved stock on the phone (F2c).
 - **Done when:** the tracker's follow-ups list is closed or carries a decision, and the pilot can start.
 
 ### Phase L — Pilot release

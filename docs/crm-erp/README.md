@@ -21,8 +21,8 @@ fifth round, E3 (assets, tags and service history), in PR #77. The sixth
 round, A1 (the general ledger), in PR #78. The seventh round, H1 (HR, staff
 expenses and Egyptian payroll) and M1 (bills of materials, assembly and
 planning), authorized by the product owner on 2026-10-12, went to `main` in PR #79. The eighth round, F2 (follow-ups before the
-pilot), authorized on 2026-10-12, is in progress on `feat/follow-ups`; L
-waits for a new instruction.**
+pilot), authorized on 2026-10-12, is done on `feat/follow-ups` and goes to
+`main` in one pull request; L waits for a new instruction.**
 
 Seventh round — branch `feat/hr-payroll-manufacturing`, from `main` at
 `64f9025`. Agreed scope: **H1 then M1, one pull request, then stop for
@@ -59,31 +59,31 @@ instruction.
 | A1    | General ledger: chart, periods and locks, balanced immutable journals, automatic postings from sales and stock, reports, year-end close                                                                                                                        | `DONE`        | 0033–0035  | sixth round: decisions (A0); chart, months and journals (A1a); automatic postings and the unposted list (A1b); reports, year-end close and the screens (A1c)               |
 | H1    | HR profiles and roles, staff expense claims, Egyptian payroll (ERP-09)                                                                                                                                                                                         | `DONE`        | 0036–0038  | seventh round: roles, grants and profiles (H1a); expense claims, phone included (H1b); payroll rule sets, pay runs, payslips and files (H1c)                               |
 | M1    | Bills of materials, assembly and disassembly, material planning (ERP-10)                                                                                                                                                                                       | `DONE`        | 0039       | seventh round: bills, assembly and disassembly (M1a); planning drafting orders (M1b)                                                                                       |
-| F2    | Follow-ups before the pilot: error codes in both languages, CI licence check, self-hosting audit, seventh-round follow-ups, pipelines, Customer 360, analytics and exports, site stock, item media, price lists and reorder, hand deliveries, phone stock work | `IN PROGRESS` | —          | eighth round, branch `feat/follow-ups` from `main` at `98739a2` (ADR-0012)                                                                                                 |
+| F2    | Follow-ups before the pilot: error codes in both languages, CI licence check, self-hosting audit, seventh-round follow-ups, pipelines, Customer 360, analytics and exports, site stock, item media, price lists and reorder, hand deliveries, phone stock work | `DONE`        | 0040       | eighth round, branch `feat/follow-ups` from `main` at `98739a2` (ADR-0012)                                                                                                 |
 | L     | Pilot release                                                                                                                                                                                                                                                  | `NOT STARTED` | —          | —                                                                                                                                                                          |
 
 ### Specification coverage
 
 Every numbered item in PLAN.md §4–§5, so none is forgotten.
 
-| Spec item                                  | Phase(s)   | Status          | Notes                                                                                                                                                                                                                                                        |
-| ------------------------------------------ | ---------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| CRM-01 Leads                               | F1, C1, C2 | `DONE`          | Leads (C1) and conversion (C2)                                                                                                                                                                                                                               |
-| CRM-02 Opportunities                       | C3         | `DONE`          | Default pipeline; no pipeline editing screen yet                                                                                                                                                                                                             |
-| CRM-03 Activities and tasks                | C3         | `DONE`          | In-app due list only; email reminders after email is set up                                                                                                                                                                                                  |
-| CRM-04 Customer 360                        | C2, C3     | `DONE` (MVP)    | Quotes and orders are reached from the customer's name on each document; a customer-side list, the customer's account is on the customer screen (B1); an assets tab is a follow-up (E3)                                                                      |
-| CRM-05 Quotes and pipeline analytics       | S1         | `DONE` (quotes) | Quotes with revisions and the customer link (S1); analytics beyond the C3 dashboard (conversion rates, cycle time) are a follow-up                                                                                                                           |
-| CRM-06 Campaigns and automations           | —          | `DEFERRED`      | P2; no marketing platform or bulk email                                                                                                                                                                                                                      |
-| ERP-01 Products and services catalogue     | E1         | `DONE`          | Images and datasheets on items are a follow-up                                                                                                                                                                                                               |
-| ERP-02 Locations and inventory ledger      | E1         | `DONE`          | Serial and batch tracking deferred (P22 lists it; not in scope)                                                                                                                                                                                              |
-| ERP-03 Suppliers and purchasing            | E2         | `DONE`          | Supplier price lists and sending a PO to the supplier are follow-ups                                                                                                                                                                                         |
-| ERP-04 Quotes → sales orders → work orders | S1         | `DONE`          | One order per quote; reservations on confirmation (ADR-0006); jobs created or linked explicitly; delivery by parts and completion                                                                                                                            |
-| ERP-05 Invoicing and payments              | B1         | `DONE`          | Invoices, credit notes, receipts allocated to invoices with the rest on account, printable invoice. Internal record only; no e-invoicing or tax compliance claim; no customer link or email yet                                                              |
-| ERP-06 Work-order materials and costing    | E2, B1     | `DONE`          | Parts and their cost on the job (E2); labour at the company's hourly cost, invoiced net and profit per job (B1); parts only, and said so, when no labour cost is set                                                                                         |
-| ERP-07 Asset register                      | E3         | `DONE`          | All eight P24 features; the P24 exit check on real equipment and label stock is a manual check before the pilot (09)                                                                                                                                         |
-| ERP-08 General ledger                      | A1         | `DONE`          | Management ledger in the company currency: chart, months locked by hand, immutable journals with a second approver, sales and stock posted automatically or from the unposted list, reports, year-end close; no tax or statutory compliance claim (ADR-0009) |
-| ERP-09 HR, expenses, payroll               | H1         | `DONE`          | Authorized 2026-10-12 with Egyptian payroll as rule sets each company confirms; no legal review by Integr8 (ADR-0010)                                                                                                                                        |
-| ERP-10 Manufacturing                       | M1         | `DONE`          | Bills of materials, assembly, planning (ADR-0011); routing and work centres deferred                                                                                                                                                                         |
+| Spec item                                  | Phase(s)   | Status     | Notes                                                                                                                                                                                                                                                        |
+| ------------------------------------------ | ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| CRM-01 Leads                               | F1, C1, C2 | `DONE`     | Leads (C1) and conversion (C2)                                                                                                                                                                                                                               |
+| CRM-02 Opportunities                       | C3         | `DONE`     | Pipelines and stages edited by owners and admins (F2)                                                                                                                                                                                                        |
+| CRM-03 Activities and tasks                | C3         | `DONE`     | In-app due list only; email reminders after email is set up                                                                                                                                                                                                  |
+| CRM-04 Customer 360                        | C2, C3     | `DONE`     | Documents tabs and a combined timeline on the customer screen (F2); the customer's account (B1)                                                                                                                                                              |
+| CRM-05 Quotes and pipeline analytics       | S1         | `DONE`     | Quotes with revisions and the customer link (S1); quote conversion, win rate, cycle time and value by stage (F2)                                                                                                                                             |
+| CRM-06 Campaigns and automations           | —          | `DEFERRED` | P2; no marketing platform or bulk email                                                                                                                                                                                                                      |
+| ERP-01 Products and services catalogue     | E1         | `DONE`     | Images (one main, kept on the phone) and datasheets on items (F2)                                                                                                                                                                                            |
+| ERP-02 Locations and inventory ledger      | E1         | `DONE`     | Serial and batch tracking deferred (P22 lists it; not in scope)                                                                                                                                                                                              |
+| ERP-03 Suppliers and purchasing            | E2         | `DONE`     | Price lists with breaks and reorder drafts (F2); sending a PO to the supplier waits for email                                                                                                                                                                |
+| ERP-04 Quotes → sales orders → work orders | S1         | `DONE`     | One order per quote; reservations on confirmation (ADR-0006); jobs created or linked explicitly; delivery by parts and completion                                                                                                                            |
+| ERP-05 Invoicing and payments              | B1         | `DONE`     | Invoices, credit notes, receipts allocated to invoices with the rest on account, printable invoice. Internal record only; no e-invoicing or tax compliance claim; no customer link or email yet                                                              |
+| ERP-06 Work-order materials and costing    | E2, B1     | `DONE`     | Parts and their cost on the job (E2); labour at the company's hourly cost, invoiced net and profit per job (B1); parts only, and said so, when no labour cost is set                                                                                         |
+| ERP-07 Asset register                      | E3         | `DONE`     | All eight P24 features; the P24 exit check on real equipment and label stock is a manual check before the pilot (09)                                                                                                                                         |
+| ERP-08 General ledger                      | A1         | `DONE`     | Management ledger in the company currency: chart, months locked by hand, immutable journals with a second approver, sales and stock posted automatically or from the unposted list, reports, year-end close; no tax or statutory compliance claim (ADR-0009) |
+| ERP-09 HR, expenses, payroll               | H1         | `DONE`     | Authorized 2026-10-12 with Egyptian payroll as rule sets each company confirms; no legal review by Integr8 (ADR-0010)                                                                                                                                        |
+| ERP-10 Manufacturing                       | M1         | `DONE`     | Bills of materials, assembly, planning (ADR-0011); routing and work centres deferred                                                                                                                                                                         |
 
 ### Follow-ups that must not be lost
 
@@ -92,33 +92,36 @@ or a decision before the pilot (phase L).
 
 - [ ] Email reminders for overdue CRM follow-ups (worker job), once a real email channel is configured.
 - [ ] Drag-and-drop on the pipeline board (C3 ships an accessible stage selector first).
-- [ ] CSV export of leads and opportunities, with spreadsheet formula-injection protection.
+- [x] CSV export of leads and opportunities, with spreadsheet formula-injection protection. Done in F2 (ADR-0012).
 - [ ] Custom roles or per-member permission overrides (deferred; see PLAN.md §8).
-- [ ] Licence-policy check in CI (PLAN.md §10.3); no new dependencies so far.
-- [ ] Self-hosting audit of production-required services (PLAN.md §10.4).
+- [x] Licence-policy check in CI (PLAN.md §10.3); no new dependencies so far. Done in F2 (ADR-0012).
+- [x] Self-hosting audit of production-required services (PLAN.md §10.4). Done in F2 (ADR-0012).
 - [x] API test of the module gate end to end (`feature_disabled`): landed with C1 (`crm-leads.integration.test.ts`).
 - [x] Optional opportunity created by lead conversion (PLAN.md §7.3): landed with C3.
-- [ ] Show API refusals in the reader's language: shared screens show the server's English message for 4xx errors (existing behaviour across operations screens); map CRM codes to `errors.*` keys.
-- [ ] A screen for editing pipelines and stages (add, rename, reorder, archive); C3 ships the default pipeline only.
-- [ ] Customer 360 timeline mixing CRM activities with work-order and submission events as read-only entries (PLAN.md CRM-03); C3 shows them side by side.
+- [x] Show API refusals in the reader's language: shared screens show the server's English message for 4xx errors (existing behaviour across operations screens); map CRM codes to `errors.*` keys. Done in F2 (ADR-0012).
+- [x] A screen for editing pipelines and stages (add, rename, reorder, archive); C3 ships the default pipeline only. Done in F2 (ADR-0012).
+- [x] Customer 360 timeline mixing CRM activities with work-order and submission events as read-only entries (PLAN.md CRM-03); C3 shows them side by side. Done in F2 (ADR-0012).
 - [x] `plan/v1.1-inventory/P22` and `P23` point at the accepted model (E1/E2); P24 when E3 starts.
-- [ ] Site stock locations from the screens (the API takes `kind: 'site'` with a `siteId`; the list screen offers warehouses and vans only).
-- [ ] Item images and attached datasheets (P22), using the existing media storage.
+- [x] Site stock locations from the screens (the API takes `kind: 'site'` with a `siteId`; the list screen offers warehouses and vans only). Done in F2 (ADR-0012).
+- [x] Item images and attached datasheets (P22), using the existing media storage. Done in F2 (ADR-0012).
 - [ ] Serial number and batch tracking (P22) — a scope decision before any schema.
-- [ ] Supplier price lists and a "reorder" draft built from reorder levels (E2 ships one preferred supplier and part number per item).
+- [x] Supplier price lists and a "reorder" draft built from reorder levels (E2 ships one preferred supplier and part number per item). Done in F2 (ADR-0012).
 - [ ] Sending a purchase order to the supplier (PDF or email) once an email channel is configured; E2 keeps the record only.
-- [ ] Receiving by barcode scan on the phone (P23) with the rest of the mobile stock work.
-- [ ] Van replenishment requests from the phone and warehouse picks (P23); E2 ships transfers from the desktop and web only.
-- [ ] Parts usage reporting by engineer, customer and job type (P23); E2 keeps the data (`erp_work_order_materials`) and shows it per job.
-- [ ] Non-stock parts bought at a merchant from the phone (P23); E2 records services and non-stock items from the web and desktop, and stock items from the phone.
+- [x] Receiving by barcode scan on the phone (P23) with the rest of the mobile stock work. Done in F2 (ADR-0012).
+- [x] Van replenishment requests from the phone and warehouse picks (P23); E2 ships transfers from the desktop and web only. Done in F2 (ADR-0012).
+- [x] Parts usage reporting by engineer, customer and job type (P23); E2 keeps the data (`erp_work_order_materials`) and shows it per job. Done in F2 (ADR-0012).
+- [x] Non-stock parts bought at a merchant from the phone (P23); E2 records services and non-stock items from the web and desktop, and stock items from the phone. Done in F2 (ADR-0012).
 - [ ] Sending the quote's link (and the printed quote) to the customer by email once an email channel exists; S1 has the office copy the link.
 - [ ] A server-rendered PDF with embedded fonts for archiving and attachments; S1 prints through the browser (no new dependency, per the decision).
-- [ ] Quotes and orders listed on the customer screen (Customer 360); S1 reaches them from the sales lists filtered by customer and from each document.
-- [ ] The phone shows reservations only through the server's refusal of a part (conflict with what was available); showing reserved and available in the van's offline stock is a follow-up.
-- [ ] Pipeline analytics beyond the dashboard (quote conversion rate, time to accept) — CRM-05's analytics half.
-- [ ] Order lines fulfilled by hand (a delivery with no job) and partial deliveries of a stock line without a job; S1 delivers only through linked jobs.
-- [ ] Movement history export (P22 "filterable and exportable"), with the CSV protections above.
+- [x] Quotes and orders listed on the customer screen (Customer 360); S1 reaches them from the sales lists filtered by customer and from each document. Done in F2 (ADR-0012).
+- [x] The phone shows reservations only through the server's refusal of a part (conflict with what was available); showing reserved and available in the van's offline stock is a follow-up. Done in F2 (ADR-0012).
+- [x] Pipeline analytics beyond the dashboard (quote conversion rate, time to accept) — CRM-05's analytics half. Done in F2 (ADR-0012).
+- [x] Order lines fulfilled by hand (a delivery with no job) and partial deliveries of a stock line without a job; S1 delivers only through linked jobs. Done in F2 (ADR-0012).
+- [x] Movement history export (P22 "filterable and exportable"), with the CSV protections above. Done in F2 (ADR-0012).
 - [ ] Update `plan/ROADMAP.md` when the round merges.
+- [ ] Menu entries for the F2 screens (pipelines, reports, parts used, van requests, reorder); today they are reached from links on the screens they belong to.
+- [ ] Try the phone's F2 screens on a device: My van offline, refill, merchant parts with a receipt in aeroplane mode, receiving by scan (the scanner closes after each code, so a barcode is never counted twice).
+- [ ] Amount history on opportunities, if value by stage should use the amount a deal had at each month end rather than today's.
 
 ## Decisions taken with the product owner (2026-10-11)
 
