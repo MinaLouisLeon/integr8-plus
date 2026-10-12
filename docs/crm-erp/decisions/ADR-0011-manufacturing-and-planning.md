@@ -80,3 +80,27 @@ ledger stay consistent. Planning is only as good as lead times and reorder
 levels; the screens say what each suggestion is based on. Routing, work
 centres, capacity planning, scrap, by-products and landed costs remain
 deferred.
+
+## As built (M1)
+
+- **Stock and cost.** Completing an order writes its movements with the
+  order's id as their posting and `assembly:<order>:<item>` source keys, so a
+  retried completion moves nothing twice; a completed order asked to
+  complete again answers as it is. Availability at the location is on hand
+  less what sales orders reserve there. Non-stock components are not moved:
+  an assembly counts them at their default cost (with labour and overhead),
+  and a disassembly gives nothing back for them.
+- **Ledger.** Assembly movements are captured as one `assembly` document per
+  order, never as `stock`: inventory rises by the labour, overhead and
+  non-stock parts an assembly adds, credited to "assembly labour and overhead
+  absorbed" (5300); a disassembly moves value within inventory, any rounding
+  absorbed the same way.
+- **Planning.** Items gain `lead_time_days` (the preferred supplier's lead
+  time is used for an item bought when it has none). Sales orders carry no
+  delivery date, so their outstanding quantities are needed today. Stock at
+  customers' sites is not counted; purchase orders count once approved.
+  Draft assembly orders count both ways (their parts as demand, their output
+  as supply). A suggestion stores what it rests on (sales, assembly and
+  parent demand, and how many days late its start already is). Drafted
+  purchase orders go one per preferred supplier at the item's default cost
+  (its average cost when none), delivered to the chosen location.

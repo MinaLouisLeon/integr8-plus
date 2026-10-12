@@ -489,3 +489,112 @@ Audit actions: `ledger.set_up`, `ledger.settings_updated`,
 `ledger.journal_discarded`, `ledger.journal_posted`, `ledger.journal_reversed`,
 `ledger.posting_posted`, `ledger.postings_posted`, `ledger.posting_skipped`,
 `ledger.year_closed`, `ledger.year_reopened`.
+
+## Roles, grants and employee profiles (phase H1; ADR-0010)
+
+Sources: `apps/api/src/routes/v1/members.ts`, `hr.ts`. Tests:
+`hr.integration.test.ts`. HR routes need the `hr` feature.
+
+| Method and path                                   | Permission                | What it does                                                                                                                                                                                                            |
+| ------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PUT /v1/members/{userId}/grants/{capability}`    | `member.update_role`      | Gives `hr_manager` (the owner only, 403) or `inventory_manager` on top of the member's role; 409 `role_holds_grant`, `member_not_active`                                                                                |
+| `DELETE /v1/members/{userId}/grants/{capability}` | `member.update_role`      | Takes it back and ends the member's sessions                                                                                                                                                                            |
+| `GET /v1/members`, `GET /v1/me`                   | as before                 | Now carry `grants`; `/v1/me`'s `permissions` include what grants add. Making someone an HR manager by role or invitation is the owner's                                                                                 |
+| `GET /v1/hr/employees`                            | `hr.read`                 | By name: `q`, `status` (`active`, `ended`, `all`), `department`, cursor; `departments`. ID and bank numbers as their last four, to `hr.sensitive` only                                                                  |
+| `GET /v1/hr/me`                                   | any member                | One's own profile, last fours included; 404 when none                                                                                                                                                                   |
+| `GET /v1/hr/employees/{id}`                       | `hr.read` or oneself      | The profile, `can` (`edit`, `reveal`)                                                                                                                                                                                   |
+| `POST` / `PATCH /v1/hr/employees[/{id}]`          | `hr.manage`               | Linked to a member or standalone; ID, insurance and bank numbers need `hr.sensitive` and are sealed before storing (503 `hr_key_missing` without `HR_DATA_KEY`); 409 `number_taken`, `member_taken`, `version_conflict` |
+| `POST /v1/hr/employees/{id}/reveal`               | `hr.sensitive` or oneself | One full value (`field`), audited, `Cache-Control: no-store`                                                                                                                                                            |
+
+Audit actions: `member.grant_given`, `member.grant_removed`,
+`hr.employee_created`, `hr.employee_updated`, `hr.employee_ended`,
+`hr.field_revealed`.
+
+## Staff expense claims (phase H1; ADR-0010)
+
+Source: `apps/api/src/routes/v1/expenses.ts`; the phone's mutations in
+`apps/api/src/sync/push.ts`. Test: `expenses.integration.test.ts`. Needs the
+`hr` feature.
+
+| Method and path                                                 | Permission                    | What it does                                                                                                                                          |
+| --------------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/expenses/categories`                                   | `expense.submit`              | Live categories (archived too for approvers who ask)                                                                                                  |
+| `POST` / `PATCH /v1/expenses/categories[/{id}]`                 | `expense.approve`             | Name, ledger account (422 `account_not_usable`), archived; 409 `name_taken`                                                                           |
+| `GET /v1/expenses`                                              | `expense.submit`              | `scope=mine` (default) or `all` (approvers), statuses, reference, cursor; `waiting`                                                                   |
+| `GET /v1/expenses/{id}`                                         | own or approver               | The claim, receipts and `can` (`attach`, `withdraw`, `decide`, `pay`)                                                                                 |
+| `POST /v1/expenses`                                             | `expense.submit`              | Category (422 `category_not_usable`), `spentOn` (422 `spent_in_future`), amount in the company currency, description, optional job. `Idempotency-Key` |
+| `POST /v1/expenses/{id}/withdraw`                               | `expense.submit`              | One's own, while it waits (409 `not_own_claim`, `not_waiting`)                                                                                        |
+| `POST /v1/expenses/{id}/approve`                                | `expense.approve`             | `settleVia` `direct` or `payroll` (422 `payroll_off`); never one's own (409 `self_approval`)                                                          |
+| `POST /v1/expenses/{id}/reject`                                 | `expense.approve`             | With a `reason`                                                                                                                                       |
+| `POST /v1/expenses/{id}/pay`                                    | `expense.approve`             | `via` `cash` or `bank_transfer`, optional `reference`; 409 `settles_through_payroll`, `not_approved`                                                  |
+| `POST /v1/attachments` with `owner.expenseClaimId`, `/v1/media` | `expense.submit` also allowed | Receipts: the claimant while the claim can take them, or an approver                                                                                  |
+| Sync: `expense.submit`, `expense.receipt`                       | `expense.submit`              | The phone's claim under its own id (once), and each receipt once the claim and upload exist (`claim_not_ready` retries)                               |
+
+Audit actions: `expense.submitted`, `expense.withdrawn`, `expense.approved`,
+`expense.rejected`, `expense.paid`, `expense.category_created`,
+`expense.category_updated`. Approving and paying back directly post to the
+ledger when it is set up.
+
+## Payroll (phase H1; ADR-0010)
+
+Source: `apps/api/src/routes/v1/payroll.ts`. Test:
+`payroll.integration.test.ts`. Needs the `payroll` feature (and so `hr`).
+Every run and payslip carries the disclaimer that an accountant must check
+the figures.
+
+| Method and path                                | Permission                     | What it does                                                                                                                                           |
+| ---------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /v1/payroll/rule-sets`                    | `payroll.run`                  | Rule sets, latest first, with `can`; `seed` (the 2026 figures)                                                                                         |
+| `POST /v1/payroll/rule-sets`                   | `payroll.run`                  | `name`, `effectiveFrom` (first of a month; 409 `month_taken`), `rules` (the seed when left out). `Idempotency-Key`                                     |
+| `PATCH` / `DELETE /v1/payroll/rule-sets/{id}`  | `payroll.run`                  | While unconfirmed only (409 `confirmed`)                                                                                                               |
+| `POST /v1/payroll/rule-sets/{id}/confirm`      | `payroll.approve`, owner       | With a `note` on who checked the figures; 403 `owner_only`                                                                                             |
+| `GET` / `POST /v1/hr/employees/{id}/pay-terms` | `payroll.run`                  | Dated pay terms; 409 `date_taken`                                                                                                                      |
+| `PATCH` / `DELETE /v1/payroll/pay-terms/{id}`  | `payroll.run`                  | Correct or remove terms; runs keep their own copy                                                                                                      |
+| `GET /v1/payroll/runs`                         | `payroll.run`                  | Latest month first, with totals                                                                                                                        |
+| `POST /v1/payroll/runs`                        | `payroll.run`                  | `month`: proposes every employee with terms (422 `no_confirmed_rules`, `rules_not_confirmed`, `month_in_future`; 409 `month_taken`). `Idempotency-Key` |
+| `GET /v1/payroll/runs/{id}`                    | `payroll.run`                  | Lines, totals, `withoutTerms`, `can` (`edit`, `approve`, `discard`, `exportBankFile`)                                                                  |
+| `PATCH /v1/payroll/runs/{id}`                  | `payroll.run`                  | A draft's `payDate` and `note`                                                                                                                         |
+| `POST /v1/payroll/runs/{id}/recalculate`       | `payroll.run`                  | Fresh terms, hours and claims; keeps what was typed                                                                                                    |
+| `PATCH /v1/payroll/runs/{id}/lines/{lineId}`   | `payroll.run`                  | Overtime hours, bonus, deduction, unpaid days, note; recalculated at once                                                                              |
+| `POST /v1/payroll/runs/{id}/approve`           | `payroll.approve`              | Not by the preparer (409 `self_approval`); 409 `empty_run`, `negative_net`, `run_out_of_date`; pays the claims carried and posts                       |
+| `DELETE /v1/payroll/runs/{id}`                 | `payroll.run`                  | Discards a draft (409 `run_approved`)                                                                                                                  |
+| `GET /v1/payroll/runs/{id}/payslips`           | `payroll.run`                  | Every payslip of an approved run                                                                                                                       |
+| `GET /v1/hr/me/payslips`                       | any member                     | One's own payslips from approved runs                                                                                                                  |
+| `GET /v1/payroll/runs/{id}/insurance.csv`      | `payroll.run` + `hr.sensitive` | Insurance numbers, insurable wage and both shares, with a total; audited, `no-store`; 503 `hr_key_missing`                                             |
+| `GET /v1/payroll/runs/{id}/bank.csv`           | `payroll.run` + `hr.sensitive` | An approved run's bank transfers: name, bank, account, net, reference `PR-YYYY-MM`; audited, `no-store`                                                |
+
+CSV files use `toCsv()` (a byte-order mark; formula-like cells escaped).
+Audit actions: `payroll.rule_set_created`, `payroll.rule_set_updated`,
+`payroll.rule_set_confirmed`, `payroll.rule_set_removed`,
+`payroll.terms_added`, `payroll.terms_updated`, `payroll.terms_removed`,
+`payroll.run_prepared`, `payroll.run_recalculated`, `payroll.run_approved`,
+`payroll.run_discarded`, `payroll.insurance_report_exported`,
+`payroll.bank_file_exported`.
+
+## Manufacturing (phase M1; ADR-0011)
+
+Source: `apps/api/src/routes/v1/manufacturing.ts`. Test:
+`manufacturing.integration.test.ts`. Needs the `manufacturing` feature (and
+so `inventory`). Costs are null to seats without `inventory.move`.
+
+| Method and path                                | Permission             | What it does                                                                                                                                                                                            |
+| ---------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/manufacturing/boms`                   | `manufacturing.read`   | Items built from a bill, by name; `q`, paging                                                                                                                                                           |
+| `GET /v1/manufacturing/boms/items/{itemId}`    | `manufacturing.read`   | The bill in use with components, their costs and the rolled-up unit cost; every version                                                                                                                 |
+| `PUT /v1/manufacturing/boms/items/{itemId}`    | `manufacturing.manage` | A new version: labour, overhead, note, components; 422 `contains_itself`, `component_kind`, `duplicate_component`, `item_archived`, `not_stock_item`                                                    |
+| `DELETE /v1/manufacturing/boms/items/{itemId}` | `manufacturing.manage` | Retires the bill                                                                                                                                                                                        |
+| `GET /v1/manufacturing/orders`                 | `manufacturing.read`   | Latest first: statuses, item, `q` (an `AO-` number), cursor                                                                                                                                             |
+| `GET /v1/manufacturing/orders/{id}`            | `manufacturing.read`   | The order, what it takes out against on hand, reserved and available at its location, what it brings in, `can`                                                                                          |
+| `POST /v1/manufacturing/orders`                | `manufacturing.manage` | `direction`, item (422 `no_bill`), location, quantity, note, `plannedFor`. `Idempotency-Key`                                                                                                            |
+| `PATCH /v1/manufacturing/orders/{id}`          | `manufacturing.manage` | A draft's location, quantity, note, date, or `useCurrentBill`; 409 `order_closed`                                                                                                                       |
+| `POST /v1/manufacturing/orders/{id}/complete`  | `manufacturing.manage` | Moves the stock and sets the cost; 409 `shortage` (with what is short), moving nothing; a completed order is returned as it is                                                                          |
+| `POST /v1/manufacturing/orders/{id}/cancel`    | `manufacturing.manage` | Cancels a draft                                                                                                                                                                                         |
+| `POST /v1/manufacturing/plans`                 | `manufacturing.manage` | Runs planning over `horizonDays` and keeps the snapshot. `Idempotency-Key`                                                                                                                              |
+| `GET /v1/manufacturing/plans[/{id}]`           | `manufacturing.read`   | Recent runs; one with its suggestions and `can` (`draftAssemblies`, `draftPurchases`)                                                                                                                   |
+| `POST /v1/manufacturing/plans/{id}/draft`      | `manufacturing.manage` | Chosen suggestions to draft assembly orders and one draft purchase order per supplier at a location; buys need `purchasing.manage` (403); 422 `no_supplier`, `supplier_inactive`; 409 `already_drafted` |
+
+`PATCH /v1/inventory/items/{id}` and the item bodies gain `leadTimeDays`.
+Audit actions: `manufacturing.bom_saved`, `manufacturing.bom_retired`,
+`manufacturing.order_drafted`, `manufacturing.order_completed`,
+`manufacturing.order_cancelled`, `manufacturing.plan_run`, and
+`purchase_order.created` for drafted purchase orders.

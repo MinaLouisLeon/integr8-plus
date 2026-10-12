@@ -59,8 +59,9 @@ Every member sees their own profile, claims and payslips.
   pay terms used by payroll (ADR below).
 - **Encrypted at rest:** national ID, social insurance number and bank
   account are encrypted with AES-256-GCM (the repository's existing sealed
-  secret pattern) under a new server key, `HR_DATA_KEY`, required at start-up
-  when the `hr` module is used. The last four characters are kept in clear for
+  secret pattern) under a new server key, `HR_DATA_KEY`. As built it is
+  optional at start-up: without it those three numbers cannot be stored,
+  shown or exported (503 `hr_key_missing`), while the rest of HR works. The last four characters are kept in clear for
   lists. Revealing a full value is audited. Losing the key loses those fields;
   the deployment guide says to keep it with the backups.
 - Pay and ID fields are masked in lists; only `hr.sensitive` reads them.
@@ -146,3 +147,45 @@ correctness depends on the rule set a company confirms; the seeded figures
 are a starting point, not advice. Leave balances, end-of-service
 calculations, annual tax settlements and filing with the authorities are left
 for later.
+
+## As built (H1)
+
+- **Roles and grants.** `hr_manager` and `inventory_manager` are roles; the
+  same capabilities can be granted on top of any role (`member_grants`, at
+  most one row per capability per member, refused when the role already holds
+  it). A grant travels in the access token (`grt` claim, read when a token is
+  minted) and `/v1/me` reports it; taking one back ends the member's sessions
+  so the next token no longer carries it. Only the owner gives or changes
+  anything HR; an owner or admin gives the inventory grant.
+- **Routes for everyone.** Receipts and the media they upload are allowed to
+  anyone holding `expense.submit` as well as the permissions that allowed
+  them before (`anyPermission` on a route), so a viewer can attach a receipt
+  without being able to touch customers' files.
+- **Sealed fields.** `hr1.<nonce>.<ciphertext+tag>`, AES-256-GCM, with the
+  company, the employee and the field as associated data, so a value cannot
+  be moved to another row. The API picks the employee's id before inserting,
+  to seal to it. Revealing one value is an audited `POST`, answered with
+  `Cache-Control: no-store`.
+- **Expenses.** Claims are numbered `EX-000001`, frozen once submitted, and
+  move submitted → approved / rejected / withdrawn, approved → paid; the
+  database refuses self-approval. The phone queues `expense.submit` and
+  `expense.receipt`; the receipt waits until the claim and the upload exist.
+- **Payroll.** Rule sets start a month and are frozen once confirmed (owner
+  only, with a note). A month's run copies each employee's inputs — terms in
+  force on the month's last day, clocked hours, claims waiting for payroll —
+  and stores what the calculation in `@integr8/core` made of them; each line
+  balances to the piastre (`net = gross − employee insurance − tax − Martyrs'
+  Fund + reimbursements`). **Overtime:** shifts have no approval step, so a
+  draft proposes hours clocked beyond the month's standard hours (208 unless
+  the terms say otherwise) at 135% of the hourly basic unless the terms set a
+  rate; the preparer corrects them, and approving the run is the approval.
+  Days of the month before hiring or after leaving are proposed as unpaid on
+  the thirty-day basis. Recalculating keeps what was typed for the run.
+  Approval refuses a run whose waiting claims changed since it was
+  calculated (`run_out_of_date`), an empty one, or a negative net, then marks
+  those claims paid through payroll, naming the run. Paying salaries out of
+  the bank is a manual journal (salaries payable against bank) after the
+  transfer the CSV feeds.
+- **Ledger.** The ledger functions of 0034 delegate document kinds added
+  later to `erp_ledger_proposal_more`, `erp_ledger_source_label_more` and
+  `erp_ledger_backfill_more`, which each later migration replaces whole.
