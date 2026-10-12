@@ -40,6 +40,8 @@ interface Draft {
   defaultUnitCost: string;
   salePrice: string;
   description: string;
+  /** Whole days, as typed; empty to use the supplier's. */
+  leadTimeDays: string;
 }
 
 const emptyDraft: Draft = {
@@ -52,6 +54,7 @@ const emptyDraft: Draft = {
   defaultUnitCost: '',
   salePrice: '',
   description: '',
+  leadTimeDays: '',
 };
 
 const orNull = (value: string) => (value.trim() === '' ? null : value.trim());
@@ -109,6 +112,7 @@ export function ItemListScreen() {
     defaultUnitCost: orNull(draft.defaultUnitCost),
     salePrice: orNull(draft.salePrice),
     description: orNull(draft.description),
+    ...(draft.leadTimeDays.trim() === '' ? {} : { leadTimeDays: Number(draft.leadTimeDays) }),
   };
   const bodyText = JSON.stringify(body);
   const idempotencyKey = useMemo(() => (bodyText === '' ? '' : crypto.randomUUID()), [bodyText]);
@@ -497,6 +501,23 @@ export function ItemFields({
             className={inputClass}
             value={draft.salePrice}
             onChange={(event) => set('salePrice', event.target.value.trim())}
+          />
+        )}
+      </Field>
+      <Field
+        label={t('inventory.items.fields.leadTimeDays')}
+        hint={t('inventory.items.leadTimeHint')}
+      >
+        {(id, describedBy) => (
+          <input
+            id={id}
+            inputMode="numeric"
+            dir="ltr"
+            pattern="\d{1,4}"
+            aria-describedby={describedBy}
+            className={inputClass}
+            value={draft.leadTimeDays}
+            onChange={(event) => set('leadTimeDays', event.target.value.trim())}
           />
         )}
       </Field>

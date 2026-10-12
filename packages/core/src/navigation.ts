@@ -38,6 +38,9 @@ export type NavIcon =
   | 'megaphone'
   | 'layout'
   | 'package'
+  | 'layers'
+  | 'factory'
+  | 'calendar-check'
   | 'file-text'
   | 'receipt'
   | 'wallet'
@@ -109,6 +112,9 @@ export type NavPath =
   | 'stockLocations'
   | 'suppliers'
   | 'purchaseOrders'
+  | 'boms'
+  | 'assemblyOrders'
+  | 'materialPlans'
   | 'quotes'
   | 'salesOrders'
   | 'invoices'
@@ -330,6 +336,32 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     icon: 'clipboard',
     permission: 'purchasing.read',
     feature: 'purchasing',
+  },
+  // Manufacturing (seventh round; ADR-0011): the company's `manufacturing`
+  // module, which works only with `inventory` on.
+  {
+    key: 'boms',
+    group: 'inventory',
+    path: 'boms',
+    icon: 'layers',
+    permission: 'manufacturing.read',
+    feature: 'manufacturing',
+  },
+  {
+    key: 'assemblyOrders',
+    group: 'inventory',
+    path: 'assemblyOrders',
+    icon: 'factory',
+    permission: 'manufacturing.read',
+    feature: 'manufacturing',
+  },
+  {
+    key: 'materialPlans',
+    group: 'inventory',
+    path: 'materialPlans',
+    icon: 'calendar-check',
+    permission: 'manufacturing.read',
+    feature: 'manufacturing',
   },
 
   {

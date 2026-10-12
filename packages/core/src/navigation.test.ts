@@ -66,6 +66,32 @@ describe('the dashboard map', () => {
     expect(keysFor('engineer', { crm: true })).not.toContain('crm');
   });
 
+  it('shows manufacturing under inventory, only with inventory on as well', () => {
+    const inventory = (
+      seat: Parameters<typeof permissionsHeld>[0],
+      features?: Record<string, boolean>,
+    ) =>
+      visibleNavigation('desktop', permissionsHeld(seat), features)
+        .find((group) => group.group === 'inventory')
+        ?.sections.map((section) => section.key);
+    const making = ['boms', 'assemblyOrders', 'materialPlans'];
+    const both = { inventory: true, manufacturing: true };
+
+    expect(inventory({ role: 'owner' }, both)).toEqual(expect.arrayContaining(making));
+    expect(inventory({ role: 'viewer' }, both)).toEqual(expect.arrayContaining(making));
+    expect(inventory({ role: 'dispatcher', grants: ['inventory_manager'] }, both)).toEqual(
+      expect.arrayContaining(making),
+    );
+    expect(inventory({ role: 'engineer' }, both)).not.toContain('boms');
+    // The module needs inventory: without it, nothing of manufacturing shows.
+    expect(
+      visibleNavigation('web', permissionsHeld({ role: 'owner' }), { manufacturing: true })
+        .flatMap((group) => group.sections)
+        .map((section) => section.key),
+    ).not.toContain('boms');
+    expect(inventory({ role: 'owner' }, { inventory: true })).not.toContain('assemblyOrders');
+  });
+
   it('shows the ledger under accounting to owners, admins and viewers of a company that has it', () => {
     const groupsFor = (role: 'owner' | 'admin' | 'dispatcher' | 'engineer' | 'viewer') =>
       visibleNavigation('web', permissionsFor(role), { ledger: true });

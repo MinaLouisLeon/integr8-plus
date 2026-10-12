@@ -90,6 +90,13 @@ const NAV_GLYPHS: Record<NavIcon, Glyph> = {
     'M3 9h18M9 21V9',
   ],
   package: ['M21 8l-9-5-9 5v8l9 5 9-5z', 'M3 8l9 5 9-5', 'M12 13v8'],
+  layers: ['M12 3l9 5-9 5-9-5z', 'M3 13l9 5 9-5', 'M3 17l9 5 9-5'],
+  factory: ['M3 21V10l5 3V10l5 3V10l5 3V4h3v17z', 'M7 17h2M11 17h2M15 17h2'],
+  'calendar-check': [
+    'M4 6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z',
+    'M4 10h16M8 3v4M16 3v4',
+    'M9 15l2 2 4-4',
+  ],
   truck: [
     'M3 6h11v10H3z',
     'M14 9h4l3 3v4h-7',

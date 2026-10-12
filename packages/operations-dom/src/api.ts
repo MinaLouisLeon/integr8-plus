@@ -50,6 +50,14 @@ export interface OperationsConfig {
     supplier: (id: string) => string;
     purchaseOrders: string;
     purchaseOrder: (id: string) => string;
+    /** Manufacturing (seventh round; ADR-0011): bills, assembly orders and planning. */
+    boms: string;
+    /** An item's bill of materials, by the item. */
+    bom: (itemId: string) => string;
+    assemblyOrders: string;
+    assemblyOrder: (id: string) => string;
+    materialPlans: string;
+    materialPlan: (id: string) => string;
     /** Sales (CRM/ERP plan, phase S1). */
     quotes: string;
     quote: (id: string) => string;
@@ -130,6 +138,8 @@ export interface RowTarget {
     | 'stockLocation'
     | 'supplier'
     | 'purchaseOrder'
+    | 'bom'
+    | 'assemblyOrder'
     | 'quote'
     | 'salesOrder'
     | 'invoice'
@@ -238,6 +248,17 @@ export type PurchaseOrderStatus = PurchaseOrderRow['status'];
 export type PurchaseOrderDetail = Json<'/v1/purchasing/orders/{orderId}', 'get', 200>;
 export type PurchaseOrderLine = PurchaseOrderDetail['lines'][number];
 export type GoodsReceipt = PurchaseOrderDetail['receipts'][number];
+export type BomRow = Json<'/v1/manufacturing/boms', 'get', 200>['items'][number];
+export type ItemBom = Json<'/v1/manufacturing/boms/items/{itemId}', 'get', 200>;
+export type Bom = NonNullable<ItemBom['current']>;
+export type AssemblyOrderRow = Json<'/v1/manufacturing/orders', 'get', 200>['items'][number];
+export type AssemblyOrderStatus = AssemblyOrderRow['status'];
+export type AssemblyDirection = AssemblyOrderRow['direction'];
+export type AssemblyOrderDetail = Json<'/v1/manufacturing/orders/{orderId}', 'get', 200>;
+export type MaterialPlanRow = Json<'/v1/manufacturing/plans', 'get', 200>['items'][number];
+export type MaterialPlan = Json<'/v1/manufacturing/plans/{planId}', 'get', 200>;
+export type PlanSuggestion = MaterialPlan['suggestions'][number];
+export type PlanDrafted = Json<'/v1/manufacturing/plans/{planId}/draft', 'post', 200>;
 export type QuoteRow = Json<'/v1/sales/quotes', 'get', 200>['items'][number];
 export type QuoteStatus = QuoteRow['status'];
 export type QuoteDetail = Json<'/v1/sales/quotes/{quoteId}', 'get', 200>;
@@ -335,6 +356,12 @@ export const keys = {
   supplier: (id: string) => ['purchasing', 'supplier', id] as const,
   purchaseOrders: (query: object) => ['purchasing', 'orders', query] as const,
   purchaseOrder: (id: string) => ['purchasing', 'order', id] as const,
+  boms: (query: object) => ['manufacturing', 'boms', query] as const,
+  bom: (itemId: string) => ['manufacturing', 'bom', itemId] as const,
+  assemblyOrders: (query: object) => ['manufacturing', 'orders', query] as const,
+  assemblyOrder: (id: string) => ['manufacturing', 'order', id] as const,
+  materialPlans: ['manufacturing', 'plans'] as const,
+  materialPlan: (id: string) => ['manufacturing', 'plan', id] as const,
   quotes: (query: object) => ['sales', 'quotes', query] as const,
   quote: (id: string) => ['sales', 'quote', id] as const,
   salesOrders: (query: object) => ['sales', 'orders', query] as const,
