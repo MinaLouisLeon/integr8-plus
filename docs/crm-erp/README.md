@@ -20,8 +20,9 @@ round, B1 (company invoices, payments and job profitability), in PR #76. The
 fifth round, E3 (assets, tags and service history), in PR #77. The sixth
 round, A1 (the general ledger), in PR #78. The seventh round, H1 (HR, staff
 expenses and Egyptian payroll) and M1 (bills of materials, assembly and
-planning), authorized by the product owner on 2026-10-12, is in progress on
-`feat/hr-payroll-manufacturing`; L waits for a new instruction.**
+planning), authorized by the product owner on 2026-10-12, is built on
+`feat/hr-payroll-manufacturing` and goes to `main` in one pull request; L
+waits for a new instruction.**
 
 Seventh round — branch `feat/hr-payroll-manufacturing`, from `main` at
 `64f9025`. Agreed scope: **H1 then M1, one pull request, then stop for
@@ -56,8 +57,8 @@ instruction.
 | B1    | Company invoices, payments, credit notes, job costing (not Integr8's own billing)                                                       | `DONE`        | 0030       | fourth round: decisions (B0); invoices and credit notes (B1a); payments, the customer's account, job cost (B1b); screens and printable invoice (B1c)                       |
 | E3    | Assets and service history (aligns P24)                                                                                                 | `DONE`        | 0031, 0032 | fifth round: decisions (E0b); register and timeline (E3a); tags, scanning and assets on the phone (E3b); warranty alerts, carry-over from the last visit, CSV import (E3c) |
 | A1    | General ledger: chart, periods and locks, balanced immutable journals, automatic postings from sales and stock, reports, year-end close | `DONE`        | 0033–0035  | sixth round: decisions (A0); chart, months and journals (A1a); automatic postings and the unposted list (A1b); reports, year-end close and the screens (A1c)               |
-| H1    | HR profiles and roles, staff expense claims, Egyptian payroll (ERP-09)                                                                  | `IN PROGRESS` | —          | seventh round, branch `feat/hr-payroll-manufacturing` from `main` at `64f9025` (ADR-0010)                                                                                  |
-| M1    | Bills of materials, assembly and disassembly, material planning (ERP-10)                                                                | `IN PROGRESS` | —          | seventh round, same branch (ADR-0011)                                                                                                                                      |
+| H1    | HR profiles and roles, staff expense claims, Egyptian payroll (ERP-09)                                                                  | `DONE`        | 0036–0038  | seventh round: roles, grants and profiles (H1a); expense claims, phone included (H1b); payroll rule sets, pay runs, payslips and files (H1c)                               |
+| M1    | Bills of materials, assembly and disassembly, material planning (ERP-10)                                                                | `DONE`        | 0039       | seventh round: bills, assembly and disassembly (M1a); planning drafting orders (M1b)                                                                                       |
 | L     | Pilot release                                                                                                                           | `NOT STARTED` | —          | —                                                                                                                                                                          |
 
 ### Specification coverage
@@ -80,8 +81,8 @@ Every numbered item in PLAN.md §4–§5, so none is forgotten.
 | ERP-06 Work-order materials and costing    | E2, B1     | `DONE`          | Parts and their cost on the job (E2); labour at the company's hourly cost, invoiced net and profit per job (B1); parts only, and said so, when no labour cost is set                                                                                         |
 | ERP-07 Asset register                      | E3         | `DONE`          | All eight P24 features; the P24 exit check on real equipment and label stock is a manual check before the pilot (09)                                                                                                                                         |
 | ERP-08 General ledger                      | A1         | `DONE`          | Management ledger in the company currency: chart, months locked by hand, immutable journals with a second approver, sales and stock posted automatically or from the unposted list, reports, year-end close; no tax or statutory compliance claim (ADR-0009) |
-| ERP-09 HR, expenses, payroll               | H1         | `IN PROGRESS`   | Authorized 2026-10-12 with Egyptian payroll as rule sets each company confirms; no legal review by Integr8 (ADR-0010)                                                                                                                                        |
-| ERP-10 Manufacturing                       | M1         | `IN PROGRESS`   | Bills of materials, assembly, planning (ADR-0011); routing and work centres deferred                                                                                                                                                                         |
+| ERP-09 HR, expenses, payroll               | H1         | `DONE`          | Authorized 2026-10-12 with Egyptian payroll as rule sets each company confirms; no legal review by Integr8 (ADR-0010)                                                                                                                                        |
+| ERP-10 Manufacturing                       | M1         | `DONE`          | Bills of materials, assembly, planning (ADR-0011); routing and work centres deferred                                                                                                                                                                         |
 
 ### Follow-ups that must not be lost
 

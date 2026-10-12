@@ -3,30 +3,40 @@
 ## Navigation
 
 `packages/core/src/navigation.ts` has a `crm` group, placed between Work and
-Operations, a `sales` group after it (S1) and a `finance` group after that (B1), and an `accounting` group after finance (A1). Assets (E3) are a section of the existing `operations` group. A section can name a `feature`; `visibleNavigation(app,
+Operations, a `sales` group after it (S1) and a `finance` group after that (B1), and an `accounting` group after finance (A1), then an `hr` group (H1). Manufacturing's sections (M1) join the `inventory` group after purchase orders. Assets (E3) are a section of the existing `operations` group. A section can name a `feature`; `visibleNavigation(app,
 permissions, features)` shows it only when the company has the module and the
 seat holds the section's permission. Callers that pass no flags show no gated
 section.
 
-| Section key      | Group        | Permission        | Feature      | Web route               | Desktop route            | Phase |
-| ---------------- | ------------ | ----------------- | ------------ | ----------------------- | ------------------------ | ----- |
-| `crm`            | `crm`        | `crm.read`        | `crm`        | `/crm`                  | `#/crm`                  | F1    |
-| `leads`          | `crm`        | `crm.read`        | `crm`        | `/crm/leads`            | `#/crm/leads`            | C1    |
-| `opportunities`  | `crm`        | `crm.read`        | `crm`        | `/crm/opportunities`    | `#/crm/opportunities`    | C3    |
-| `activities`     | `crm`        | `crm.read`        | `crm`        | `/crm/activities`       | `#/crm/activities`       | C3    |
-| `inventory`      | `inventory`  | `inventory.read`  | `inventory`  | `/inventory`            | `#/inventory`            | E1    |
-| `items`          | `inventory`  | `inventory.read`  | `inventory`  | `/inventory/items`      | `#/inventory/items`      | E1    |
-| `stockLocations` | `inventory`  | `inventory.read`  | `inventory`  | `/inventory/locations`  | `#/inventory/locations`  | E1    |
-| `suppliers`      | `inventory`  | `purchasing.read` | `purchasing` | `/purchasing/suppliers` | `#/purchasing/suppliers` | E2    |
-| `purchaseOrders` | `inventory`  | `purchasing.read` | `purchasing` | `/purchasing/orders`    | `#/purchasing/orders`    | E2    |
-| `quotes`         | `sales`      | `sales.read`      | `sales`      | `/sales/quotes`         | `#/sales/quotes`         | S1    |
-| `salesOrders`    | `sales`      | `sales.read`      | `sales`      | `/sales/orders`         | `#/sales/orders`         | S1    |
-| `invoices`       | `finance`    | `finance.read`    | `finance`    | `/finance/invoices`     | `#/finance/invoices`     | B1    |
-| `payments`       | `finance`    | `finance.read`    | `finance`    | `/finance/payments`     | `#/finance/payments`     | B1    |
-| `assets`         | `operations` | `asset.read`      | `assets`     | `/assets`               | `#/assets`               | E3    |
-| `ledger`         | `accounting` | `ledger.read`     | `ledger`     | `/ledger`               | `#/ledger`               | A1    |
-| `journals`       | `accounting` | `ledger.read`     | `ledger`     | `/ledger/journals`      | `#/ledger/journals`      | A1    |
-| `ledgerReports`  | `accounting` | `ledger.read`     | `ledger`     | `/ledger/reports`       | `#/ledger/reports`       | A1    |
+| Section key      | Group        | Permission           | Feature         | Web route               | Desktop route            | Phase |
+| ---------------- | ------------ | -------------------- | --------------- | ----------------------- | ------------------------ | ----- |
+| `crm`            | `crm`        | `crm.read`           | `crm`           | `/crm`                  | `#/crm`                  | F1    |
+| `leads`          | `crm`        | `crm.read`           | `crm`           | `/crm/leads`            | `#/crm/leads`            | C1    |
+| `opportunities`  | `crm`        | `crm.read`           | `crm`           | `/crm/opportunities`    | `#/crm/opportunities`    | C3    |
+| `activities`     | `crm`        | `crm.read`           | `crm`           | `/crm/activities`       | `#/crm/activities`       | C3    |
+| `inventory`      | `inventory`  | `inventory.read`     | `inventory`     | `/inventory`            | `#/inventory`            | E1    |
+| `items`          | `inventory`  | `inventory.read`     | `inventory`     | `/inventory/items`      | `#/inventory/items`      | E1    |
+| `stockLocations` | `inventory`  | `inventory.read`     | `inventory`     | `/inventory/locations`  | `#/inventory/locations`  | E1    |
+| `suppliers`      | `inventory`  | `purchasing.read`    | `purchasing`    | `/purchasing/suppliers` | `#/purchasing/suppliers` | E2    |
+| `purchaseOrders` | `inventory`  | `purchasing.read`    | `purchasing`    | `/purchasing/orders`    | `#/purchasing/orders`    | E2    |
+| `quotes`         | `sales`      | `sales.read`         | `sales`         | `/sales/quotes`         | `#/sales/quotes`         | S1    |
+| `salesOrders`    | `sales`      | `sales.read`         | `sales`         | `/sales/orders`         | `#/sales/orders`         | S1    |
+| `invoices`       | `finance`    | `finance.read`       | `finance`       | `/finance/invoices`     | `#/finance/invoices`     | B1    |
+| `payments`       | `finance`    | `finance.read`       | `finance`       | `/finance/payments`     | `#/finance/payments`     | B1    |
+| `assets`         | `operations` | `asset.read`         | `assets`        | `/assets`               | `#/assets`               | E3    |
+| `ledger`         | `accounting` | `ledger.read`        | `ledger`        | `/ledger`               | `#/ledger`               | A1    |
+| `journals`       | `accounting` | `ledger.read`        | `ledger`        | `/ledger/journals`      | `#/ledger/journals`      | A1    |
+| `ledgerReports`  | `accounting` | `ledger.read`        | `ledger`        | `/ledger/reports`       | `#/ledger/reports`       | A1    |
+| `boms`           | `inventory`  | `manufacturing.read` | `manufacturing` | `/manufacturing/boms`   | `#/manufacturing/boms`   | M1    |
+| `assemblyOrders` | `inventory`  | `manufacturing.read` | `manufacturing` | `/manufacturing/orders` | `#/manufacturing/orders` | M1    |
+| `materialPlans`  | `inventory`  | `manufacturing.read` | `manufacturing` | `/manufacturing/plans`  | `#/manufacturing/plans`  | M1    |
+| `employees`      | `hr`         | `hr.read`            | `hr`            | `/hr/employees`         | `#/hr/employees`         | H1    |
+| `expenseClaims`  | `hr`         | `expense.approve`    | `hr`            | `/hr/claims`            | `#/hr/claims`            | H1    |
+| `payRuns`        | `hr`         | `payroll.run`        | `payroll`       | `/hr/pay-runs`          | `#/hr/pay-runs`          | H1    |
+| `payrollRules`   | `hr`         | `payroll.run`        | `payroll`       | `/hr/payroll-rules`     | `#/hr/payroll-rules`     | H1    |
+| `myProfile`      | `hr`         | —                    | `hr`            | `/hr/me`                | `#/hr/me`                | H1    |
+| `myExpenses`     | `hr`         | `expense.submit`     | `hr`            | `/hr/expenses`          | `#/hr/expenses`          | H1    |
+| `myPayslips`     | `hr`         | —                    | `payroll`       | `/hr/payslips`          | `#/hr/payslips`          | H1    |
 
 Web: `apps/web/src/lib/navigation.ts` (`NAV_PATHS`), menu in
 `apps/web/src/components/workspace-shell.tsx`. Desktop:
@@ -163,6 +173,48 @@ Routes: web `/ledger`, `/ledger/accounts`, `/ledger/journals`,
 `/ledger/unposted/[id]`, `/ledger/periods`, `/ledger/reports`,
 `/ledger/settings`; desktop the same under `#/`.
 
+### HR, expenses and payroll (H1)
+
+Screens in `packages/operations-dom/src/hr/`, `expenses/` and `payroll/`, the
+same on web and desktop. The people page offers the two new roles (HR manager
+only to the owner) and shows grants as badges, with give and take back where
+allowed. Employees: a list with search, status and department; a profile
+with the ID, insurance and bank numbers as their last four and a Show button
+per field (the full value kept only in that field's state, never cached);
+the editor for a member or a standalone employee; ending and bringing back
+employment; "My profile" for everyone; and, for `payroll.run`, a Pay section
+with dated pay terms. Expenses: "My expenses", "Claims to approve" with the
+waiting count, the claim form with receipts uploaded after the claim, a
+claim's history and actions offered only when the server allows them, and
+categories. Payroll: pay runs (prepare a month, edit lines inline while a
+draft, recalculate, approve when somebody else prepared it, print payslips,
+download the insurance report and bank file), payroll rules (start from the
+2026 figures, edit bands, tiers and rates, owner confirms with a note) and
+"My payslips". Payslips print one per page in English or Arabic (`lang` and
+`dir` set) whatever the app's language. The accountant disclaimer is on every
+payroll screen and payslip. The ledger settings gain the expense and payroll
+posting switches.
+
+On the phone (`apps/mobile/app/expenses/`): "My expenses" from the home
+screen lists claims not yet fully sent (add a photo, or drop a refused one)
+and recent claims when online; the claim form takes the date as Today,
+Yesterday or typed, and receipts from the camera or library, all queued in
+the outbox.
+
+### Manufacturing (M1)
+
+Screens in `packages/operations-dom/src/manufacturing/`: bills of materials
+(list; an item's bill with components, costs when visible and the rolled-up
+unit cost, versions and recent orders; the editor; retire), reachable from a
+stock item's screen too; assembly orders (list with status and `AO-` search;
+the new-order dialog for assembling or taking apart; the order with what it
+needs against what is available, shortages marked "Short by …", a banner to
+move a draft to the current bill, complete and cancel); and material planning
+(run for a number of days; suggestions by level with build or buy, dates, a
+"Late by N days" badge, lead time, supplier and what each rests on; choose
+some and a location to draft orders, then follow the links). The item editor
+gains a lead time.
+
 ## Translation keys
 
 English and Arabic, same keys (the parity test fails otherwise):
@@ -179,6 +231,8 @@ English and Arabic, same keys (the parity test fails otherwise):
 - `finance.*` (`status`, `method`, `amounts`, `invoices`, `credit`, `document`, `payments`, `account`, `job`, `settings`), `nav.group.finance`, `nav.section|hint.invoices|payments` (B1).
 - `assets.*` (`tags`, `status`, `condition`, `warranty`, `fields`, `events`, `entries`, `settings`, `alerts`; `photoCount` and `alerts.window` plural), `nav.section|hint.assets`, `mobile.assets.*` (`warrantySummary` plural), `mobile.change.assetRegistered|assetCondition|assetLinked`, `mobile.fill.start.carried`, `submissions.detail.forAsset|carriedOver`, `operations.workOrder.fillForAsset|noAsset`, `operations.imports.kinds.assets`, `forms.config.property.carryOver` (E3).
 - `ledger.*` (`accountType`, `role`, `kind`, `source`, `reason`, `reasonHelp`, `aging`, `journalStatus`, `postingStatus`, `yearStatus`, `errors`, `home`, `setup`, `accounts`, `journals`, `lines`, `editor`, `journal`, `unposted`, `periods`, `reports`, `settings`), `nav.group.accounting`, `nav.section|hint.ledger|journals|ledgerReports` (A1).
+- `hr.*`, `workspace.grant.*`, `workspace.role.hr_manager|inventory_manager`, `expenses.*`, `payroll.*`, `mobile.expenses.*`, `nav.group.hr`, `nav.section|hint.employees|myProfile|myExpenses|expenseClaims|payRuns|payrollRules|myPayslips`, ledger roles and sources for expenses, payroll and assembly (H1).
+- `manufacturing.*`, `inventory.movement.assembly_consumption|assembly_output`, `nav.section|hint.boms|assemblyOrders|materialPlans` (M1).
 - `errors.featureDisabled` — the web maps API code `feature_disabled` to it
   (`apps/web/src/lib/errors.ts`).
 

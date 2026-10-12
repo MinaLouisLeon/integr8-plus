@@ -733,20 +733,20 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase H1 — HR, staff expenses and Egyptian payroll (authorized 2026-10-12)
 
-**Status:** `IN PROGRESS` — seventh round; see the [phase tracker](./README.md#phase-tracker) and ADR-0010.
+**Status:** `DONE` — built in the seventh round (migrations 0036–0038); see the [phase tracker](./README.md#phase-tracker) and ADR-0010. The "done when" check — a test company's month matching its accountant's hand calculation — is a manual check before relying on it (09).
 
-- [ ] New roles `hr_manager` and `inventory_manager`, and the same capabilities as grants on top of any role (H1a).
-- [ ] Employee profiles linked to members or standalone, with national ID, insurance number and bank account encrypted at rest (H1a).
-- [ ] Staff expense claims from web, desktop and the phone offline, approved by someone else, paid back or through payroll, posted to the ledger (H1b).
-- [ ] Dated payroll rule sets confirmed by the owner; monthly pay runs with overtime from timesheets, approved by a second person; payslips, the insurance report, the bank transfer list and the ledger journal (H1c).
+- [x] New roles `hr_manager` and `inventory_manager`, and the same capabilities as grants on top of any role (H1a).
+- [x] Employee profiles linked to members or standalone, with national ID, insurance number and bank account encrypted at rest (H1a).
+- [x] Staff expense claims from web, desktop and the phone offline, approved by someone else, paid back or through payroll, posted to the ledger (H1b).
+- [x] Dated payroll rule sets confirmed by the owner; monthly pay runs with overtime from timesheets, approved by a second person; payslips, the insurance report, the bank transfer list and the ledger journal (H1c).
 - **Done when:** a test company's month is paid in the app and matches a payroll its accountant computes by hand; nothing is claimed as legally reviewed.
 
 ### Phase M1 — Bills of materials, assembly and planning (authorized 2026-10-12)
 
-**Status:** `IN PROGRESS` — seventh round; see the [phase tracker](./README.md#phase-tracker) and ADR-0011.
+**Status:** `DONE` — built in the seventh round (migration 0039); see the [phase tracker](./README.md#phase-tracker) and ADR-0011.
 
-- [ ] Versioned bills of materials; assembly and disassembly orders posting components out and the item in at rolled-up cost; shortages refused; ledger posting (M1a).
-- [ ] On-demand planning from sales orders, assemblies, reorder levels and stock, drafting assembly and purchase orders on request (M1b).
+- [x] Versioned bills of materials; assembly and disassembly orders posting components out and the item in at rolled-up cost; shortages refused; ledger posting (M1a).
+- [x] On-demand planning from sales orders, assemblies, reorder levels and stock, drafting assembly and purchase orders on request (M1b).
 - **Done when:** a kit is built from stock, its cost follows its parts, and planning's suggestions for a sales order can be drafted into orders without retyping.
 
 ### Phase L — Pilot release
