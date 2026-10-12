@@ -101,6 +101,32 @@ describe('finding the section a route is in', () => {
     ).toBeUndefined();
   });
 
+  it('finds pay runs, payroll rules and one’s own payslips in HR', () => {
+    expect(sectionPathFor('/hr/pay-runs')).toBe('payRuns');
+    expect(sectionPathFor('/hr/payroll-rules')).toBe('payrollRules');
+    expect(sectionPathFor('/hr/payslips')).toBe('myPayslips');
+    expect(routeChrome('/hr/pay-runs/r1')).toEqual({
+      section: 'payRuns',
+      back: { to: '/hr/pay-runs', section: 'payRuns' },
+    });
+    expect(
+      desktopNavigation(['payroll.run', 'payroll.approve'], { hr: true, payroll: true })
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.to),
+    ).toEqual(['/hr/pay-runs', '/hr/payroll-rules', '/hr/me', '/hr/payslips']);
+    // Payslips for everybody, once the company runs payroll.
+    expect(
+      desktopNavigation([], { hr: true, payroll: true })
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.to),
+    ).toEqual(['/hr/me', '/hr/payslips']);
+    expect(
+      desktopNavigation(['payroll.run'], { hr: true })
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.to),
+    ).toEqual(['/hr/me']);
+  });
+
   it('reads a site as part of its customers', () => {
     expect(sectionPathFor('/sites/s1')).toBe('customers');
   });

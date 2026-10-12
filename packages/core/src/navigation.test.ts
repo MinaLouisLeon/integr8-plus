@@ -106,11 +106,49 @@ describe('the dashboard map', () => {
     expect(hr({ role: 'owner' })).toBeUndefined();
     expect(hr({ role: 'owner' }, { hr: false })).toBeUndefined();
     expect(NAV_GROUPS.indexOf('hr')).toBe(NAV_GROUPS.indexOf('accounting') + 1);
+    // Payroll's sections need its module on top of HR's.
+    expect(hr({ role: 'owner' }, { hr: true, payroll: false })).toEqual(everything);
+    expect(hr({ role: 'owner' }, { hr: false, payroll: true })).toBeUndefined();
     // The same in the desktop app, which has every one of these screens.
     expect(
       visibleNavigation('desktop', permissionsHeld({ role: 'viewer' }), { hr: true })
         .flatMap((group) => group.sections)
         .map((section) => section.key),
     ).toEqual(expect.arrayContaining(['myProfile', 'myExpenses']));
+  });
+
+  it('shows payroll inside HR: runs and rules to those who keep payroll, payslips to everybody', () => {
+    const hr = (seat: Parameters<typeof permissionsHeld>[0], features?: Record<string, boolean>) =>
+      visibleNavigation('web', permissionsHeld(seat), features)
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.key);
+    const on = { hr: true, payroll: true };
+
+    expect(hr({ role: 'owner' }, on)).toEqual([
+      'employees',
+      'expenseClaims',
+      'payRuns',
+      'payrollRules',
+      'myProfile',
+      'myExpenses',
+      'myPayslips',
+    ]);
+    expect(hr({ role: 'hr_manager' }, on)).toEqual(hr({ role: 'owner' }, on));
+    // An admin approves claims but does not keep payroll.
+    expect(hr({ role: 'admin' }, on)).toEqual([
+      'employees',
+      'expenseClaims',
+      'myProfile',
+      'myExpenses',
+      'myPayslips',
+    ]);
+    expect(hr({ role: 'engineer' }, on)).toEqual(['myProfile', 'myExpenses', 'myPayslips']);
+    // The HR grant brings payroll with it.
+    expect(hr({ role: 'dispatcher', grants: ['hr_manager'] }, on)).toEqual(
+      expect.arrayContaining(['payRuns', 'payrollRules', 'myPayslips']),
+    );
+    // Payroll without HR counts as off; HR without payroll shows no payroll.
+    expect(hr({ role: 'owner' }, { hr: false, payroll: true })).toBeUndefined();
+    expect(hr({ role: 'owner' }, { hr: true })).not.toContain('myPayslips');
   });
 });

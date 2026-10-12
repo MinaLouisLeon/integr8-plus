@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { type Employee, keys, useOperations } from '../api.js';
 import { BackLink, buttonClass, Dialog, Field, inputClass, Loading } from '../ui.js';
+import { PayTermsSection } from '../payroll/pay-terms.js';
 import { EmployeeDetails, EmployeeStatusBadge, HrFailure } from './hr-parts.js';
 
 /**
@@ -85,6 +86,7 @@ export function EmployeeScreen({ employeeId }: { employeeId: string }) {
       </header>
 
       <EmployeeDetails employee={employee} />
+      <PayTermsSection employeeId={employee.id} />
 
       {dialog === 'end' ? (
         <EndDialog employee={employee} onClose={() => setDialog(null)} onDone={settle} />

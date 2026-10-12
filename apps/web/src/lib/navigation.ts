@@ -44,6 +44,9 @@ export const NAV_PATHS: Readonly<Record<Exclude<NavPath, 'forms' | 'branding'>, 
   myProfile: '/hr/me',
   myExpenses: '/hr/expenses',
   expenseClaims: '/hr/claims',
+  payRuns: '/hr/pay-runs',
+  payrollRules: '/hr/payroll-rules',
+  myPayslips: '/hr/payslips',
   assets: '/assets',
 };
 

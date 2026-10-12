@@ -69,3 +69,9 @@ export { ExpenseClaimsScreen, MyExpenseClaimsScreen } from './expenses/claim-lis
 export { NewExpenseClaimScreen } from './expenses/claim-form.js';
 export { ExpenseClaimScreen } from './expenses/claim-screen.js';
 export { ExpenseCategoriesScreen } from './expenses/expense-categories.js';
+export { PayRunsScreen } from './payroll/pay-run-list.js';
+export { PayRunScreen } from './payroll/pay-run-screen.js';
+export { PayrollRulesScreen } from './payroll/rule-sets.js';
+export { MyPayslipsScreen } from './payroll/my-payslips.js';
+export { PayslipDocument } from './payroll/payslip.js';
+export { PayTermsSection } from './payroll/pay-terms.js';

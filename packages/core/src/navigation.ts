@@ -47,7 +47,9 @@ export type NavIcon =
   | 'bar-chart'
   | 'id-card'
   | 'banknote'
-  | 'clipboard-check';
+  | 'clipboard-check'
+  | 'calculator'
+  | 'scale';
 
 export type NavGroup =
   | 'overview'
@@ -120,6 +122,9 @@ export type NavPath =
   | 'myProfile'
   | 'myExpenses'
   | 'expenseClaims'
+  | 'payRuns'
+  | 'payrollRules'
+  | 'myPayslips'
   | 'assets';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
@@ -279,6 +284,25 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     permission: 'expense.approve',
     feature: 'hr',
   },
+  // Payroll (ADR-0010): the company's `payroll` module, on top of HR. Those
+  // who keep payroll prepare runs and keep the rules; everybody reads their
+  // own payslips.
+  {
+    key: 'payRuns',
+    group: 'hr',
+    path: 'payRuns',
+    icon: 'calculator',
+    permission: 'payroll.run',
+    feature: 'payroll',
+  },
+  {
+    key: 'payrollRules',
+    group: 'hr',
+    path: 'payrollRules',
+    icon: 'scale',
+    permission: 'payroll.run',
+    feature: 'payroll',
+  },
   { key: 'myProfile', group: 'hr', path: 'myProfile', icon: 'id-card', feature: 'hr' },
   {
     key: 'myExpenses',
@@ -288,6 +312,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     permission: 'expense.submit',
     feature: 'hr',
   },
+  { key: 'myPayslips', group: 'hr', path: 'myPayslips', icon: 'file-text', feature: 'payroll' },
 
   // Inventory (CRM/ERP plan, phase E1): the company's `inventory` module.
   {

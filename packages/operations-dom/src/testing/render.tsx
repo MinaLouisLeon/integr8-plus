@@ -172,12 +172,16 @@ export function renderScreen(
       expenseClaims: '/hr/claims',
       expenseClaim: (id) => `/hr/expenses/${id}`,
       expenseCategories: '/hr/claims/categories',
+      payRuns: '/hr/pay-runs',
+      payRun: (id) => `/hr/pay-runs/${id}`,
+      payrollRules: '/hr/payroll-rules',
+      myPayslips: '/hr/payslips',
       ...pathOverrides,
     },
     ...rest,
   };
   const result = render(
-    <I18nextProvider i18n={createI18n({ locale: 'en' })}>
+    <I18nextProvider i18n={createI18n({ locale: config.locale === 'ar' ? 'ar' : 'en' })}>
       <QueryClientProvider client={queryClient}>
         <OperationsContext.Provider value={config}>{element}</OperationsContext.Provider>
       </QueryClientProvider>

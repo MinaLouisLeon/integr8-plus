@@ -38,6 +38,10 @@ import {
   ExpenseClaimScreen,
   ExpenseClaimsScreen,
   ExpenseCategoriesScreen,
+  PayRunsScreen,
+  PayRunScreen,
+  PayrollRulesScreen,
+  MyPayslipsScreen,
   AssetListScreen,
   WarrantyAlertsPanel,
   AssetScreen,
@@ -145,6 +149,10 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         expenseClaims: '/hr/claims',
         expenseClaim: (id) => `/hr/expenses/${id}`,
         expenseCategories: '/hr/claims/categories',
+        payRuns: '/hr/pay-runs',
+        payRun: (id) => `/hr/pay-runs/${id}`,
+        payrollRules: '/hr/payroll-rules',
+        myPayslips: '/hr/payslips',
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -683,6 +691,40 @@ export function ExpenseCategoriesRoute() {
   return (
     <OperationsScreens>
       <ExpenseCategoriesScreen />
+    </OperationsScreens>
+  );
+}
+
+/** HR: Egyptian payroll (seventh round; ADR-0010). */
+export function PayRunsRoute() {
+  return (
+    <OperationsScreens>
+      <PayRunsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function PayRunRoute() {
+  const { runId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <PayRunScreen key={runId} runId={runId} />
+    </OperationsScreens>
+  );
+}
+
+export function PayrollRulesRoute() {
+  return (
+    <OperationsScreens>
+      <PayrollRulesScreen />
+    </OperationsScreens>
+  );
+}
+
+export function MyPayslipsRoute() {
+  return (
+    <OperationsScreens>
+      <MyPayslipsScreen />
     </OperationsScreens>
   );
 }

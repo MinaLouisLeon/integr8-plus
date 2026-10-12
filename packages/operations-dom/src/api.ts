@@ -92,6 +92,11 @@ export interface OperationsConfig {
     expenseClaim: (id: string) => string;
     /** What expenses may be claimed for, kept by those who approve claims. */
     expenseCategories: string;
+    /** Egyptian payroll (seventh round; ADR-0010): the runs, one run, the rules, one's payslips. */
+    payRuns: string;
+    payRun: (id: string) => string;
+    payrollRules: string;
+    myPayslips: string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -309,6 +314,14 @@ export type ExpenseClaimStatus = ExpenseClaimRow['status'];
 export type ExpenseClaimDetail = Json<'/v1/expenses/{claimId}', 'get', 200>;
 export type ExpenseReceipt = ExpenseClaimDetail['receipts'][number];
 export type ExpenseCategory = Json<'/v1/expenses/categories', 'get', 200>['items'][number];
+export type PayrollRuleSetList = Json<'/v1/payroll/rule-sets', 'get', 200>;
+export type PayrollRuleSet = PayrollRuleSetList['items'][number];
+export type PayTerms = Json<'/v1/hr/employees/{employeeId}/pay-terms', 'get', 200>['items'][number];
+export type PayRunPage = Json<'/v1/payroll/runs', 'get', 200>;
+export type PayRunSummary = PayRunPage['items'][number];
+export type PayRunDetail = Json<'/v1/payroll/runs/{runId}', 'get', 200>;
+export type PayLine = PayRunDetail['lines'][number];
+export type Payslip = Json<'/v1/hr/me/payslips', 'get', 200>['items'][number];
 
 export const keys = {
   me: ['me'] as const,
@@ -370,6 +383,13 @@ export const keys = {
   expenseClaims: (query: object) => ['expenses', 'claims', query] as const,
   expenseClaim: (id: string) => ['expenses', 'claim', id] as const,
   expenseCategories: (archived: boolean) => ['expenses', 'categories', archived] as const,
+  // Payroll. Payslips are kept under their own keys, apart from the runs.
+  payRuns: ['payroll', 'runs'] as const,
+  payRun: (id: string) => ['payroll', 'run', id] as const,
+  payrollRuleSets: ['payroll', 'rule-sets'] as const,
+  payTerms: (employeeId: string) => ['payroll', 'terms', employeeId] as const,
+  runPayslips: (id: string) => ['payroll', 'payslips', id] as const,
+  myPayslips: ['payroll', 'mine'] as const,
   /** The seat's own recent jobs, for saying which job an expense was for. */
   myRecentJobs: ['work-orders', 'mine-recent'] as const,
   forms: ['forms'] as const,

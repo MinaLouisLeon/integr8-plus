@@ -132,6 +132,18 @@ const NAV_GLYPHS: Record<NavIcon, Glyph> = {
     'M9 5H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-3',
     'M9 14l2 2 4-4',
   ],
+  calculator: [
+    'M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z',
+    'M8 7h8v3H8z',
+    'M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01',
+  ],
+  scale: [
+    'M12 4v16',
+    'M8 20h8',
+    'M5 7h14',
+    'M5 7l-3 6a3 3 0 0 0 6 0z',
+    'M19 7l-3 6a3 3 0 0 0 6 0z',
+  ],
 };
 
 export type ChromeIcon =

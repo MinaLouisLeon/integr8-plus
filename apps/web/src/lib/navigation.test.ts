@@ -128,6 +128,33 @@ describe('expense claims', () => {
   });
 });
 
+describe('payroll', () => {
+  const PAYROLL: ShellRoute[] = [
+    { key: 'payRuns', href: NAV_PATHS.payRuns },
+    { key: 'payrollRules', href: NAV_PATHS.payrollRules },
+    { key: 'myPayslips', href: NAV_PATHS.myPayslips },
+  ];
+
+  it('keeps a run under the runs, and the rules and one’s payslips apart', () => {
+    expect(routeForPathname(PAYROLL, '/hr/pay-runs')).toEqual({
+      route: PAYROLL[0],
+      nested: false,
+    });
+    expect(routeForPathname(PAYROLL, '/hr/pay-runs/r1')).toEqual({
+      route: PAYROLL[0],
+      nested: true,
+    });
+    expect(routeForPathname(PAYROLL, '/hr/payroll-rules')).toEqual({
+      route: PAYROLL[1],
+      nested: false,
+    });
+    expect(routeForPathname(PAYROLL, '/hr/payslips')).toEqual({
+      route: PAYROLL[2],
+      nested: false,
+    });
+  });
+});
+
 describe('the current item', () => {
   it('is current on its own page and below it', () => {
     expect(isCurrentRoute(ROUTES[1]!, '/work-orders')).toBe(true);
