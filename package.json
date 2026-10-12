@@ -19,6 +19,7 @@
     "test:integration": "turbo run test:integration",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "licences:check": "node scripts/licences/check.mjs && node --test scripts/licences/check.test.mjs",
     "clean": "turbo run clean",
     "prepare": "husky"
   },
