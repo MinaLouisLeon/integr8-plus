@@ -2288,6 +2288,7 @@ export const en = {
     },
     parts: {
       title: 'Parts used on jobs',
+      hint: 'What was used on jobs, by engineer, customer or job type',
       intro:
         'Part lines recorded on jobs in the period, net of returns, by engineer, customer or job type. Values are at the cost recorded when each part was used.',
       groups: {

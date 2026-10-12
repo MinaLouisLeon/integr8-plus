@@ -274,7 +274,7 @@ describe('item media', { timeout: 20_000 }, () => {
     const images = await screen.findByRole('list', { name: 'Images' });
     const [first, second] = within(images).getAllByRole('listitem');
     expect(within(first!).getByText('Main image')).toBeInTheDocument();
-    expect(within(first!).getByRole('img', { name: 'Front' })).toHaveAttribute(
+    expect(await within(first!).findByRole('img', { name: 'Front' })).toHaveAttribute(
       'src',
       `https://files.test/${front.fileId}`,
     );

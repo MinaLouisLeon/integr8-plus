@@ -73,13 +73,13 @@ function ExportControl({
       >
         {run.isPending ? t('analytics.export.preparing') : label}
       </button>
-      <p role="status" className="text-sm text-content empty:hidden">
-        {run.data === true
-          ? t('analytics.export.truncated', {
-              rows: formatNumber(EXPORT_ROW_LIMIT, { locale }),
-            })
-          : ''}
-      </p>
+      {run.data === true ? (
+        <p role="status" className="text-sm text-content">
+          {t('analytics.export.truncated', {
+            rows: formatNumber(EXPORT_ROW_LIMIT, { locale }),
+          })}
+        </p>
+      ) : null}
       {run.isError ? <Failure error={run.error} /> : null}
     </div>
   );

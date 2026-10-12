@@ -1,3 +1,4 @@
+import { StockMovementsExportButton } from '../exports.js';
 import { hasFeature } from '@integr8/core';
 import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -106,6 +107,11 @@ export function InventoryOverviewScreen() {
               to={paths.stockLocations}
               title={t('inventory.locations.title')}
               note={t('nav.hint.stockLocations')}
+            />
+            <Card
+              to={paths.partsUsage}
+              title={t('analytics.parts.title')}
+              note={t('analytics.parts.hint')}
             />
             {canMove ? (
               <Card
@@ -268,9 +274,12 @@ export function InventoryOverviewScreen() {
           </section>
 
           <section aria-labelledby="inventory-recent" className={cardClass}>
-            <h2 id="inventory-recent" className="text-base font-semibold text-content">
-              {t('inventory.overview.recent')}
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="inventory-recent" className="text-base font-semibold text-content">
+                {t('inventory.overview.recent')}
+              </h2>
+              <StockMovementsExportButton />
+            </div>
             {recent.isPending ? (
               <Loading />
             ) : recent.isError ? (

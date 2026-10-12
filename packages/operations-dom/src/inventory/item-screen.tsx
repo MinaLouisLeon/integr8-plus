@@ -1,3 +1,4 @@
+import { StockMovementsExportButton } from '../exports.js';
 import { ApiRequestError } from '@integr8/api-client';
 import { hasFeature } from '@integr8/core';
 import { formatDateTime, useTranslation } from '@integr8/i18n';
@@ -496,9 +497,12 @@ export function ItemScreen({ itemId }: { itemId: string }) {
 
       {item.kind === 'stock_item' ? (
         <section aria-labelledby="inventory-item-movements" className={cardClass}>
-          <h2 id="inventory-item-movements" className="text-base font-semibold text-content">
-            {t('inventory.items.movements')}
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="inventory-item-movements" className="text-base font-semibold text-content">
+              {t('inventory.items.movements')}
+            </h2>
+            <StockMovementsExportButton filters={{ itemId }} />
+          </div>
           {movements.isPending ? (
             <Loading />
           ) : movements.isError ? (
