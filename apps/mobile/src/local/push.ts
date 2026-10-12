@@ -115,7 +115,23 @@ function jobOf(data: unknown): string | undefined {
   return typeof id === 'string' ? id : undefined;
 }
 
+/** A warranty alert the phone raised itself (`warranty-alerts.ts`): it names an asset, and needs no sync. */
+function warrantyAlertOf(data: unknown): { assetId?: string } | undefined {
+  const content = data as { kind?: unknown; assetId?: unknown } | null;
+  if (content?.kind !== 'warranty') {
+    return undefined;
+  }
+  return typeof content.assetId === 'string' ? { assetId: content.assetId } : {};
+}
+
 async function openFromNotification(response: Notifications.NotificationResponse): Promise<void> {
+  const warranty = warrantyAlertOf(response.notification.request.content.data);
+  if (warranty !== undefined) {
+    if (warranty.assetId !== undefined) {
+      router.push({ pathname: '/assets/[id]', params: { id: warranty.assetId } });
+    }
+    return;
+  }
   const workOrderId = jobOf(response.notification.request.content.data);
   // Fetch first, briefly: a new job is not on the phone until sync brings it.
   await Promise.race([
@@ -132,8 +148,10 @@ async function openFromNotification(response: Notifications.NotificationResponse
  * one opens its job — including the tap that launched the app.
  */
 export function listenForPush(names: ChannelNames): () => void {
-  const received = Notifications.addNotificationReceivedListener(() => {
-    void localData.sync('change');
+  const received = Notifications.addNotificationReceivedListener((notification) => {
+    if (warrantyAlertOf(notification.request.content.data) === undefined) {
+      void localData.sync('change');
+    }
   });
   const tapped = Notifications.addNotificationResponseReceivedListener((response) => {
     void openFromNotification(response);

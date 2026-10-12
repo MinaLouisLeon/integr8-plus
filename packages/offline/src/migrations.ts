@@ -388,6 +388,39 @@ export const MIGRATIONS: readonly Migration[] = [
       ) strict`,
     ],
   },
+  {
+    version: 8,
+    name: 'assets and their history',
+    statements: [
+      // The assets of the sites on the phone, each with its whole history, as
+      // the server last sent them (CRM/ERP plan, phase E3; ADR-0008). A tag
+      // scanned with no signal opens from here. `data` is the server's body;
+      // the columns are what the phone looks things up by. `local` marks one
+      // registered on this phone that the server has not confirmed yet.
+      `create table assets (
+        id text primary key,
+        site_id text not null,
+        customer_id text not null,
+        reference text not null,
+        name text not null,
+        tag_code text,
+        serial_number text,
+        status text not null,
+        data text not null,
+        local integer not null default 0,
+        updated_at text not null
+      ) strict`,
+      `create index assets_by_tag on assets (tag_code)`,
+      `create index assets_by_site on assets (site_id, reference)`,
+      // Which jobs each asset is for, as sent and as linked on the phone.
+      `create table asset_links (
+        asset_id text not null,
+        work_order_id text not null,
+        primary key (asset_id, work_order_id)
+      ) strict`,
+      `create index asset_links_by_job on asset_links (work_order_id)`,
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.at(-1)?.version ?? 0;

@@ -3,7 +3,14 @@ import { type JobForm, jobForms } from '@integr8/offline';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert } from 'react-native';
-import { type EarlierOffer, earlierOffer, startForm } from '~/forms/session';
+import {
+  type AssetStart,
+  carriesOver,
+  type EarlierOffer,
+  earlierOffer,
+  jobAsset,
+  startForm,
+} from '~/forms/session';
 import { formatWhen } from '~/lib/format';
 import { localData } from '~/local/local-data';
 import { useLocalQuery } from '~/local/react';
@@ -14,6 +21,17 @@ import { LocalReadError, Row, Section } from './ui';
  * not started yet is started on the phone, from the answers last given at this
  * site if the engineer wants them.
  */
+/** Opens a form just started for an asset, saying which answers came from its last visit. */
+export function openStarted(id: string, asset: AssetStart): void {
+  router.push({
+    pathname: '/forms/[id]',
+    params:
+      asset.carry === undefined
+        ? { id }
+        : { id, carried: asset.carry.fields.join(','), asset: asset.label },
+  });
+}
+
 export function useOpenForm(workOrderId: string, siteId: string) {
   const { t, i18n } = useTranslation();
   const [opening, setOpening] = useState<string | undefined>(undefined);
@@ -30,9 +48,34 @@ export function useOpenForm(workOrderId: string, siteId: string) {
     }
     setOpening(form.formId);
     try {
+      // For the job's asset (E3): its marked answers carry over from its last
+      // visit. With several assets, the engineer starts it from the asset.
+      const asset = await jobAsset(context, { form, workOrderId });
+      if (asset === 'several' && (await carriesOver(context, form))) {
+        Alert.alert(form.title, t('mobile.assets.chooseForForm'), [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('mobile.assets.fillWithout'),
+            onPress: () => {
+              void startForm(context, { form, workOrderId, startFrom: undefined }).then((id) =>
+                router.push({ pathname: '/forms/[id]', params: { id } }),
+              );
+            },
+          },
+        ]);
+        return;
+      }
+      const forAsset: AssetStart | undefined = asset === 'several' ? undefined : asset;
+      if (forAsset?.carry !== undefined) {
+        openStarted(
+          await startForm(context, { form, workOrderId, startFrom: undefined, asset: forAsset }),
+          forAsset,
+        );
+        return;
+      }
       const offer = await earlierOffer(context, { form, siteId });
       const start = async (startFrom: EarlierOffer | undefined) => {
-        const id = await startForm(context, { form, workOrderId, startFrom });
+        const id = await startForm(context, { form, workOrderId, startFrom, asset: forAsset });
         router.push({
           pathname: '/forms/[id]',
           params:

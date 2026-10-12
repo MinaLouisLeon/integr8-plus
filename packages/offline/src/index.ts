@@ -24,6 +24,7 @@ export * from './sync/clock.js';
 export * from './sync/downloads.js';
 export * from './sync/engine.js';
 export * from './sync/ids.js';
+export * from './assets.js';
 export * from './sync/outbox.js';
 export * from './sync/overlay.js';
 export * from './sync/pull.js';

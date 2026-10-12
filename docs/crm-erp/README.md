@@ -16,9 +16,13 @@ for review.** Nothing after C3 starts without a new instruction.
 
 **State: the CRM MVP (F0–C3) merged in PR #73, the inventory and purchasing
 round (E1, E2) in PR #74, and the sales round (S1) in PR #75. The fourth
-round, B1 (company invoices, payments and job profitability), is built on
-`feat/finance-invoices-payments` and waits for review; E3 onwards wait for a
-new instruction.**
+round, B1 (company invoices, payments and job profitability), in PR #76. The
+fifth round, E3 (assets, tags and service history), is done on
+`feat/assets-service-history` and waits for review; L and A1 wait for a new
+instruction.**
+
+Fifth round — branch `feat/assets-service-history`, from `main` at
+`255bc8e`. Agreed scope: **E3 only, then stop for review.**
 
 Fourth round — branch `feat/finance-invoices-payments`, from `main` at
 `1886f34`. Agreed scope: **B1 only, then stop for review.**
@@ -30,20 +34,20 @@ Second round — branch `feat/erp-inventory-purchasing`, from `main` at `479d3d7
 Agreed scope: **E1 → E2, then stop for review.** S1 onwards wait for a new
 instruction.
 
-| Phase | What it delivers                                                                                                              | Status           | Migrations | Commit                                                                                                                                               |
-| ----- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| F0    | Repository assessment, architecture, feature matrix, dependency audit, ADRs                                                   | `DONE`           | —          | first commit on the branch                                                                                                                           |
-| F1    | CRM switch (feature flag), CRM permissions, navigation, EN/AR keys, first CRM tables                                          | `DONE`           | 0024       | second commit on the branch                                                                                                                          |
-| C1    | Leads: list, filters, create, edit, detail, status changes, archive (web + desktop)                                           | `DONE`           | —          | third commit on the branch                                                                                                                           |
-| C2    | Lead conversion to an existing or new customer, once only; CRM summary on the customer                                        | `DONE`           | —          | fourth commit on the branch                                                                                                                          |
-| C3    | Opportunities, pipeline and stages, activities and follow-ups, Customer 360, dashboard                                        | `DONE`           | 0025       | fifth commit on the branch                                                                                                                           |
-| E1    | Catalogue and immutable stock ledger (aligns with `plan/v1.1-inventory/P22`)                                                  | `DONE`           | 0026       | second commit on the branch                                                                                                                          |
-| E2    | Suppliers, purchasing, goods receipts, van stock, work-order materials (aligns P23)                                           | `DONE`           | 0027, 0028 | third commit: suppliers, purchase orders, receipts, returns (E2a); fourth: parts used on jobs, web, desktop and phone (E2b)                          |
-| S1    | Quotes, sales orders with reservations, jobs linked or created from an order, the customer's acceptance link, printable quote | `DONE`           | 0029       | third round: decisions (S0); quotes (S1a); orders, reservations, delivery by jobs (S1b); customer link and printable quote (S1c)                     |
-| B1    | Company invoices, payments, credit notes, job costing (not Integr8's own billing)                                             | `DONE`           | 0030       | fourth round: decisions (B0); invoices and credit notes (B1a); payments, the customer's account, job cost (B1b); screens and printable invoice (B1c) |
-| E3    | Assets and service history (aligns P24)                                                                                       | `NOT STARTED`    | —          | —                                                                                                                                                    |
-| A1    | General ledger                                                                                                                | `NOT AUTHORIZED` | —          | —                                                                                                                                                    |
-| L     | Pilot release                                                                                                                 | `NOT STARTED`    | —          | —                                                                                                                                                    |
+| Phase | What it delivers                                                                                                              | Status           | Migrations | Commit                                                                                                                                                                     |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F0    | Repository assessment, architecture, feature matrix, dependency audit, ADRs                                                   | `DONE`           | —          | first commit on the branch                                                                                                                                                 |
+| F1    | CRM switch (feature flag), CRM permissions, navigation, EN/AR keys, first CRM tables                                          | `DONE`           | 0024       | second commit on the branch                                                                                                                                                |
+| C1    | Leads: list, filters, create, edit, detail, status changes, archive (web + desktop)                                           | `DONE`           | —          | third commit on the branch                                                                                                                                                 |
+| C2    | Lead conversion to an existing or new customer, once only; CRM summary on the customer                                        | `DONE`           | —          | fourth commit on the branch                                                                                                                                                |
+| C3    | Opportunities, pipeline and stages, activities and follow-ups, Customer 360, dashboard                                        | `DONE`           | 0025       | fifth commit on the branch                                                                                                                                                 |
+| E1    | Catalogue and immutable stock ledger (aligns with `plan/v1.1-inventory/P22`)                                                  | `DONE`           | 0026       | second commit on the branch                                                                                                                                                |
+| E2    | Suppliers, purchasing, goods receipts, van stock, work-order materials (aligns P23)                                           | `DONE`           | 0027, 0028 | third commit: suppliers, purchase orders, receipts, returns (E2a); fourth: parts used on jobs, web, desktop and phone (E2b)                                                |
+| S1    | Quotes, sales orders with reservations, jobs linked or created from an order, the customer's acceptance link, printable quote | `DONE`           | 0029       | third round: decisions (S0); quotes (S1a); orders, reservations, delivery by jobs (S1b); customer link and printable quote (S1c)                                           |
+| B1    | Company invoices, payments, credit notes, job costing (not Integr8's own billing)                                             | `DONE`           | 0030       | fourth round: decisions (B0); invoices and credit notes (B1a); payments, the customer's account, job cost (B1b); screens and printable invoice (B1c)                       |
+| E3    | Assets and service history (aligns P24)                                                                                       | `DONE`           | 0031, 0032 | fifth round: decisions (E0b); register and timeline (E3a); tags, scanning and assets on the phone (E3b); warranty alerts, carry-over from the last visit, CSV import (E3c) |
+| A1    | General ledger                                                                                                                | `NOT AUTHORIZED` | —          | —                                                                                                                                                                          |
+| L     | Pilot release                                                                                                                 | `NOT STARTED`    | —          | —                                                                                                                                                                          |
 
 ### Specification coverage
 
@@ -63,7 +67,7 @@ Every numbered item in PLAN.md §4–§5, so none is forgotten.
 | ERP-04 Quotes → sales orders → work orders | S1         | `DONE`           | One order per quote; reservations on confirmation (ADR-0006); jobs created or linked explicitly; delivery by parts and completion                                                               |
 | ERP-05 Invoicing and payments              | B1         | `DONE`           | Invoices, credit notes, receipts allocated to invoices with the rest on account, printable invoice. Internal record only; no e-invoicing or tax compliance claim; no customer link or email yet |
 | ERP-06 Work-order materials and costing    | E2, B1     | `DONE`           | Parts and their cost on the job (E2); labour at the company's hourly cost, invoiced net and profit per job (B1); parts only, and said so, when no labour cost is set                            |
-| ERP-07 Asset register                      | E3         | `NOT STARTED`    | Update P24 when E3 starts                                                                                                                                                                       |
+| ERP-07 Asset register                      | E3         | `DONE`           | All eight P24 features; the P24 exit check on real equipment and label stock is a manual check before the pilot (09)                                                                            |
 | ERP-08 General ledger                      | A1         | `NOT AUTHORIZED` |                                                                                                                                                                                                 |
 | ERP-09 HR, expenses, payroll               | —          | `DEFERRED`       | No payroll without a country's legal review                                                                                                                                                     |
 | ERP-10 Manufacturing                       | —          | `DEFERRED`       |                                                                                                                                                                                                 |
@@ -161,6 +165,20 @@ or a decision before the pilot (phase L).
 | Printing and sending         | A print-ready invoice in the app, PDF through the browser, English or Arabic. No customer link and no email in B1                                                                                                                                                           |
 | Delivery                     | Same as before: one branch `feat/finance-invoices-payments`, push after each slice, one pull request against `main` at the end                                                                                                                                              |
 
+### Fifth round: assets, tags and service history (2026-10-11)
+
+| Question              | Decision                                                                                                                                                                                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| How far before review | E3 only, then stop; L waits for a new instruction                                                                                                                                                                                                      |
+| What E3 holds         | Everything on the P24 page: the register, printable tags, scanning on the phone offline, the service timeline, condition and status, warranty alerts, prefill from the last visit, CSV import                                                          |
+| Who works with assets | A new `assets` module switch. Owners, admins and dispatchers create, edit, move, retire, tag and import. Engineers read the assets of their job sites and may register one, record its condition and link it to their job from the phone. Viewers read |
+| Identity and jobs     | `AS-000001` onwards per company; an optional manufacturer serial unique within the company; an optional catalogue item; a job names zero or more of its site's assets, and a submission or part may name the one it concerns (ADR-0008)                |
+| Tags                  | A QR code holding a web link to the asset; opening it needs a signed-in seat of the company. Printed from the app as one label or a sheet. The phone scans in the app and opens the asset from its own copy. No NFC                                    |
+| Offline               | Assets of the sites on the phone, with their full history: events, jobs, submissions with answers, parts and full-size photos                                                                                                                          |
+| Warranty alerts       | In the app only: a dashboard list for a company-set window, badges on the asset and its jobs, and a local notification on the engineer's phone. No email                                                                                               |
+| Prefill               | Only fields the form marks "carry over from the asset's last submission", never photos, signatures or files; the screen shows which answers came from last time                                                                                        |
+| Delivery              | Same as before: one branch `feat/assets-service-history`, push after each slice, one pull request against `main` at the end                                                                                                                            |
+
 ## Documents
 
 | File                                                                               | Status                 |
@@ -170,7 +188,7 @@ or a decision before the pilot (phase L).
 | [01-architecture.md](./01-architecture.md)                                         | F0                     |
 | [02-feature-matrix.md](./02-feature-matrix.md)                                     | F0                     |
 | [dependencies.md](./dependencies.md)                                               | F0                     |
-| [decisions/](./decisions/) — ADR-0001 to ADR-0007                                  | F0, E2, S1, B1         |
+| [decisions/](./decisions/) — ADR-0001 to ADR-0008                                  | F0, E2, S1, B1, E3     |
 | [03-data-model.md](./03-data-model.md)                                             | F1, updated each phase |
 | [04-api-contracts.md](./04-api-contracts.md)                                       | C1, updated each phase |
 | [05-permissions-and-security.md](./05-permissions-and-security.md)                 | F1, updated each phase |

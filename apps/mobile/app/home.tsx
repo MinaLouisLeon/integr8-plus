@@ -1,5 +1,12 @@
 import { useTranslation } from '@integr8/i18n';
-import { identity, openJobs, recentlyClosedJobs, searchLocal, sectionJobs } from '@integr8/offline';
+import {
+  assetsEnabled,
+  identity,
+  openJobs,
+  recentlyClosedJobs,
+  searchLocal,
+  sectionJobs,
+} from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -56,6 +63,8 @@ function Jobs() {
     searchLocal(sql, text),
   );
 
+  const assets = useLocalQuery('assets-enabled', ['meta'], assetsEnabled);
+
   const person = me.status === 'ready' ? me.data : undefined;
   const sections = sectionJobs(open.status === 'ready' ? open.data : [], new Date());
   const failed = [me, open, closed, results].some((query) => query.status === 'error');
@@ -85,6 +94,14 @@ function Jobs() {
       </View>
 
       <SyncBanner />
+
+      {assets.status === 'ready' && assets.data ? (
+        <Button
+          label={t('mobile.assets.scan')}
+          variant="secondary"
+          onPress={() => router.push('/assets/scan')}
+        />
+      ) : null}
 
       {failed ? <LocalReadError /> : null}
 

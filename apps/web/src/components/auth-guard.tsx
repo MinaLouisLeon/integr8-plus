@@ -4,6 +4,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ErrorState, LoadingState } from '~/components/ui';
+import { signInReturningTo } from '~/lib/return-path';
 import { ensureAccessToken } from '~/lib/session';
 
 /**
@@ -44,7 +45,9 @@ export function AuthGuard({ children }: { children: ReactNode }) {
       }
 
       if (token === null) {
-        router.replace('/sign-in');
+        // Back to the page they wanted once signed in: a scanned asset tag
+        // opens the asset rather than the dashboard.
+        router.replace(signInReturningTo(`${window.location.pathname}${window.location.search}`));
         return;
       }
 

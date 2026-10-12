@@ -21,6 +21,7 @@ import {
   normaliseDigits,
   offeredOptions,
   pageIndexOfField,
+  hasCarryOver,
   prefillAnswers,
   problemsPerPage,
   progressFraction,
@@ -310,6 +311,23 @@ describe('prefill', () => {
       answers: { make: 'Worcester', fuel: 'gas', checks: ['flue'] },
       filled: ['make', 'fuel', 'checks'],
     });
+  });
+
+  it('carries only the questions marked to carry over, for an asset’s next visit', () => {
+    const form = boilerForm([
+      { id: 'serial', type: 'barcode', label: label('Serial'), carryOver: true },
+      { id: 'charge', type: 'decimal', decimalPlaces: 2, label: label('Charge'), carryOver: true },
+    ]);
+    expect(hasCarryOver(form)).toBe(true);
+    expect(hasCarryOver(boilerForm())).toBe(false);
+    expect(
+      prefillAnswers(
+        form,
+        form,
+        { make: 'Worcester', fuel: 'gas', serial: 'SN-1', charge: '1.25' },
+        { only: 'marked' },
+      ),
+    ).toEqual({ answers: { serial: 'SN-1', charge: '1.25' }, filled: ['serial', 'charge'] });
   });
 
   it('moves answers from an older version: a removed option goes, a new question stays empty', () => {

@@ -181,6 +181,45 @@ The invoice is a commercial record. The issuer block is printed as the company
 typed it, and the settings screen says so; Integr8 makes no tax, e-invoicing
 or compliance claim.
 
+## Assets (phase E3; ADR-0008)
+
+| Permission     | Owner | Admin | Dispatcher | Engineer | Viewer |
+| -------------- | :---: | :---: | :--------: | :------: | :----: |
+| `asset.read`   |   ✓   |   ✓   |     ✓      |    ✓     |   ✓    |
+| `asset.record` |   ✓   |   ✓   |     ✓      |    ✓     |   —    |
+| `asset.manage` |   ✓   |   ✓   |     ✓      |    —     |   —    |
+
+Decided with the product owner on 2026-10-11: the office keeps the register —
+registers anywhere, edits, moves, retires, reissues tags, prints them, links
+and unlinks any job and imports from CSV. Engineers register an asset found at
+the site of a job they are on, record its condition and link it to that job,
+from the phone or the web. Owners, admins, dispatchers and viewers read every
+asset; an engineer reads the assets of sites they have a job at, and anything
+else answers 404 like any record they cannot see. Whoever may read an asset
+reads its whole history, including jobs other engineers worked: opening one of
+those jobs is still subject to the job's own access. Every route also needs the
+company's `assets` module, independent of the others.
+
+A tag's QR code holds only a link, `<web app>/a/<code>`, with a twelve-character
+random code that is unique across Integr8 and says nothing about the asset.
+The page it opens is inside the signed-in app: a stranger who scans a tag
+reaches the sign-in page, and after signing in sees the asset only if their
+company owns it and their role may read it. A reissued tag stops opening
+anything. The sign-in page returns to the scanned page only for a same-origin
+path (`safeReturnPath`), never an outside address.
+
+On the phone, the assets of the engineer's sites are held with their whole
+history and photos, as the jobs are; evicting a site evicts its assets.
+Changes from the phone are idempotent and checked again by the server; a form
+started for an asset the server no longer allows is kept, without the asset.
+
+What the database enforces whatever the role: events are appended and never
+changed (the runtime role has `select, insert`); an asset is never deleted
+(no delete grant); its site belongs to its customer (composite key); serials
+are unique per company and tags across Integr8; numbers are assigned by
+`assign_asset_reference` (security definer, in `SECURITY_DEFINER_FUNCTIONS`)
+and never change.
+
 ## Database
 
 See [03-data-model.md](./03-data-model.md): row-level security on every CRM

@@ -11,6 +11,7 @@ import {
   subscribeToRememberedBrand,
 } from '~/lib/brand-memory';
 import { messageForError } from '~/lib/errors';
+import { safeReturnPath } from '~/lib/return-path';
 import { signIn } from '~/lib/session';
 
 /**
@@ -54,7 +55,8 @@ export default function SignInPage() {
     void (async () => {
       try {
         await signIn(email, password);
-        router.push('/dashboard');
+        const next = safeReturnPath(new URLSearchParams(window.location.search).get('next'));
+        router.push(next ?? '/dashboard');
       } catch (failure) {
         setError(messageForError(failure, t));
       } finally {

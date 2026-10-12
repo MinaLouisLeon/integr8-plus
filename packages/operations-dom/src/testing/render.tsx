@@ -148,6 +148,8 @@ export function renderScreen(
       payments: '/finance/payments',
       payment: (id) => `/finance/payments/${id}`,
       financeSettings: '/finance/settings',
+      assets: '/assets',
+      asset: (id) => `/assets/${id}`,
       ...pathOverrides,
     },
     ...rest,

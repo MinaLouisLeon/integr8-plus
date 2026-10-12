@@ -35,14 +35,32 @@ export interface Prefill {
   filled: ElementId[];
 }
 
-const carries = (field: Field) =>
+const carriesAll = (field: Field) =>
   !EVIDENCE.has(field.type) && !isCalculated(field) && field.readOnly !== true;
 
+/** Marked "carry over from the asset's last visit" (CRM/ERP plan, phase E3). */
+const marked = (field: Field) =>
+  carriesAll(field) && 'carryOver' in field && field.carryOver === true;
+
+/** Whether starting this form for an asset would carry anything over. */
+export function hasCarryOver(form: CompiledForm): boolean {
+  return [...form.elements.values()].some(
+    (element) => element.field !== undefined && marked(element.field),
+  );
+}
+
+/**
+ * `only: 'marked'` carries just the questions the form marks to carry over —
+ * a form started for an asset from that asset's last submission (ADR-0008).
+ * Without it, everything that describes the thing carries, as above.
+ */
 export function prefillAnswers(
   previous: CompiledForm,
   current: CompiledForm,
   answers: Answers,
+  options: { only?: 'marked' } = {},
 ): Prefill {
+  const carries = options.only === 'marked' ? marked : carriesAll;
   const migration = migrateAnswers(previous, current, answers);
   const kept: Record<ElementId, unknown> = {};
   const filled: ElementId[] = [];

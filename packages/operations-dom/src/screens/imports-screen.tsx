@@ -2,6 +2,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { keys, useOperations } from '../api.js';
+import { useAssetAccess } from '../assets/asset-parts.js';
 import {
   buttonClass,
   cardClass,
@@ -14,7 +15,7 @@ import {
   when,
 } from '../ui.js';
 
-type Kind = 'customers' | 'sites' | 'work_orders';
+type Kind = 'customers' | 'sites' | 'work_orders' | 'assets';
 
 /**
  * Bringing customers, sites and jobs in from a spreadsheet.
@@ -26,6 +27,11 @@ type Kind = 'customers' | 'sites' | 'work_orders';
 export function ImportsScreen() {
   const { t } = useTranslation();
   const { client, download, locale, timeZone } = useOperations();
+  // Assets (E3) are offered to those who manage the register, with the module on.
+  const assets = useAssetAccess();
+  const kinds: readonly Kind[] = assets.manage
+    ? ['customers', 'sites', 'work_orders', 'assets']
+    : ['customers', 'sites', 'work_orders'];
   const queryClient = useQueryClient();
   const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const [kind, setKind] = useState<Kind>('customers');
@@ -101,7 +107,7 @@ export function ImportsScreen() {
                 value={kind}
                 onChange={(event) => setKind(event.target.value as Kind)}
               >
-                {(['customers', 'sites', 'work_orders'] as const).map((option) => (
+                {kinds.map((option) => (
                   <option key={option} value={option}>
                     {t(`operations.imports.kinds.${option}`)}
                   </option>

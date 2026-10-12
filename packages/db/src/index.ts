@@ -466,6 +466,19 @@ export {
   type PaymentReceiptInput,
   type ReceiptAmounts,
 } from './repositories/finance-payments.js';
+export {
+  type Asset,
+  type AssetDetailsInput,
+  type AssetEvent,
+  type AssetLink,
+  type AssetListQuery,
+  type AssetPart,
+  type AssetRegistration,
+  type AssetSubmission,
+  type AssetWriteContext,
+  type AssetWriteRefusal,
+  AssetsRepository,
+} from './repositories/assets.js';
 
 export {
   addressLine,
@@ -588,6 +601,7 @@ export {
   type SubmissionEventKind,
   type SubmitLocation,
   type SubmissionStatus,
+  type CarriedOver,
 } from './schema.js';
 
 export {

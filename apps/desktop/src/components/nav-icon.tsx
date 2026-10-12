@@ -98,6 +98,15 @@ const NAV_GLYPHS: Record<NavIcon, Glyph> = {
   ],
   'file-text': ['M6 3h8l4 4v14H6z', 'M14 3v4h4', 'M9 12h6', 'M9 16h6'],
   receipt: ['M6 3h12v18l-3-2-3 2-3-2-3 2z', 'M9 8h6', 'M9 12h6', 'M9 16h3'],
+  'qr-code': [
+    'M4 4h6v6H4z',
+    'M14 4h6v6h-6z',
+    'M4 14h6v6H4z',
+    'M14 14h2v2h-2z',
+    'M18 14h2v2h-2z',
+    'M14 18h2v2h-2z',
+    'M18 18h2v2h-2z',
+  ],
   wallet: ['M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M3 7l12-4v4', 'M16 13h2'],
   heart: ['M12 21s-8-5.3-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.7-8 11-8 11z'],
 };

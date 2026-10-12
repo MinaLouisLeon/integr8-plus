@@ -14,6 +14,7 @@ import {
   type SubmissionDetail,
   useScreens,
 } from './api.js';
+import { say } from '../text.js';
 import { BackLink, Dialog, Failure, Loading } from './parts.js';
 
 /**
@@ -100,6 +101,13 @@ export function SubmissionScreen({ submissionId }: { submissionId: string }) {
                   when: formatDateTime(submission.submittedAt, { locale }),
                 })}
           </p>
+          {detail.data.asset === null ? null : (
+            <p className="text-sm text-content-muted">
+              {t('submissions.detail.forAsset', {
+                asset: `${detail.data.asset.reference} · ${detail.data.asset.name}`,
+              })}
+            </p>
+          )}
         </div>
         {detail.data.can.reopen ? (
           <button
@@ -111,6 +119,17 @@ export function SubmissionScreen({ submissionId }: { submissionId: string }) {
           </button>
         ) : null}
       </header>
+
+      {detail.data.can.edit && detail.data.carriedOver !== null && detail.data.asset !== null ? (
+        <p className="rounded-md bg-surface-muted px-4 py-3 text-sm text-content">
+          {t('submissions.detail.carriedOver', {
+            asset: detail.data.asset.reference,
+            questions: detail.data.carriedOver.fields
+              .map((field) => say(compiled.form.elements.get(field)?.field?.label, locale) || field)
+              .join(', '),
+          })}
+        </p>
+      ) : null}
 
       {justSubmitted ? (
         <p role="status" className="rounded-md bg-success-subtle px-4 py-3 text-sm text-content">

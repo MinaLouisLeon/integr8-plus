@@ -101,6 +101,7 @@ export function editorFor(type: FieldType, property: string): PropertyEditor | u
     case 'options':
       return 'options';
     case 'allowNotApplicable':
+    case 'carryOver':
       return 'boolean';
     case 'maxFileBytes':
       return 'megabytes';

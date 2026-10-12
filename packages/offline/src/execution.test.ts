@@ -222,6 +222,8 @@ describe('syncing the day', () => {
         },
       ],
       vanStock: null,
+      assetSiteIds: [],
+      assets: [],
     };
     const downloads: string[] = [];
     const api = {

@@ -258,7 +258,12 @@ function FieldPanel({
         <Group title={t('forms.config.groups.answer')}>
           {specificProperties(field.type).map((property) => {
             const editor = editorFor(field.type, property);
-            if (editor === undefined || (calculated && property === 'default')) {
+            if (
+              editor === undefined ||
+              (calculated && property === 'default') ||
+              // Worked out or fixed by the form: nothing to carry over (E3).
+              ((calculated || field.readOnly === true) && property === 'carryOver')
+            ) {
               return null;
             }
             return (

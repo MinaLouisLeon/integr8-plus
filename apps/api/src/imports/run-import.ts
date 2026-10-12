@@ -7,9 +7,15 @@ import {
   type TenantTransaction,
   withTenant,
 } from '@integr8/db';
-import { WORK_ORDER_PRIORITIES, type WorkOrderPriority } from '@integr8/core';
+import {
+  ASSET_CONDITIONS,
+  type AssetCondition,
+  WORK_ORDER_PRIORITIES,
+  type WorkOrderPriority,
+} from '@integr8/core';
 import type { Logger } from '../http/logger.js';
 import { GEOCODE_QUEUE } from '../geo/geocode-site.js';
+import { freshTagCode } from '../routes/v1/assets.js';
 import { CsvSyntaxError, normaliseHeader, parseCsv } from './csv.js';
 import { IMPORT_COLUMNS, MAX_IMPORT_ROWS } from './definitions.js';
 import { parseZonedDateTime } from './zoned-time.js';
@@ -216,6 +222,7 @@ const IMPORTERS: Record<
   customers: importCustomer,
   sites: importSite,
   work_orders: importWorkOrder,
+  assets: importAsset,
 };
 
 const value = (row: Row, column: string) => {
@@ -565,4 +572,109 @@ async function importWorkOrder(tx: TenantTransaction, row: Row, context: ImportC
     },
     context.actor,
   );
+}
+
+/** `YYYY-MM-DD`, and a real day. */
+function calendarDate(problems: Problem[], row: Row, column: string): string | undefined {
+  const text = value(row, column);
+  if (text === undefined) {
+    return undefined;
+  }
+  const parsed = new Date(`${text}T00:00:00Z`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/u.test(text) ||
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== text
+  ) {
+    problems.push({
+      column,
+      code: 'invalid',
+      message: `"${text}" is not a date; write it as 2026-11-30.`,
+    });
+    return undefined;
+  }
+  return text;
+}
+
+/** One asset at one of a customer's sites (CRM/ERP plan, phase E3; ADR-0008). */
+async function importAsset(tx: TenantTransaction, row: Row, context: ImportContext) {
+  const problems: Problem[] = [];
+  const customer = await resolveCustomer(tx, row, problems);
+  const siteName = value(row, 'site_name');
+  let siteId: string | undefined;
+  if (siteName === undefined) {
+    problems.push({ column: 'site_name', code: 'required', message: 'site_name is empty.' });
+  } else if (customer !== undefined) {
+    const sites = await tx.sites.findByName(customer.id, siteName);
+    if (sites.length === 0) {
+      problems.push({
+        column: 'site_name',
+        code: 'not_found',
+        message: `${customer.name} has no site called "${siteName}".`,
+      });
+    } else {
+      siteId = sites[0]!.id;
+    }
+  }
+  const name = value(row, 'name');
+  if (name === undefined) {
+    problems.push({ column: 'name', code: 'required', message: 'name is empty.' });
+  }
+  for (const [column, max] of [
+    ['name', 200],
+    ['make', 200],
+    ['model', 200],
+    ['serial_number', 200],
+    ['location', 500],
+    ['notes', 2000],
+  ] as const) {
+    length(problems, row, column, max);
+  }
+  const installDate = calendarDate(problems, row, 'install_date');
+  const warrantyExpiresOn = calendarDate(problems, row, 'warranty_expires_on');
+  const condition = value(row, 'condition')?.toLowerCase();
+  if (condition !== undefined && !(ASSET_CONDITIONS as readonly string[]).includes(condition)) {
+    problems.push({
+      column: 'condition',
+      code: 'invalid',
+      message: `"${condition}" is not a condition; use good, fair, poor or unusable.`,
+    });
+  }
+  const serialNumber = value(row, 'serial_number');
+  if (serialNumber !== undefined && (await tx.assets.findBySerial(serialNumber)) !== undefined) {
+    problems.push({
+      column: 'serial_number',
+      code: 'duplicate',
+      message: `An asset with serial number ${serialNumber} already exists.`,
+    });
+  }
+  if (problems.length > 0 || customer === undefined || siteId === undefined) {
+    throw new RowRefused(problems);
+  }
+  const registered = await tx.assets.register(
+    {
+      name: name!,
+      customerId: customer.id,
+      siteId,
+      tagCode: await freshTagCode(tx),
+      make: value(row, 'make') ?? null,
+      model: value(row, 'model') ?? null,
+      serialNumber: serialNumber ?? null,
+      locationNote: value(row, 'location') ?? null,
+      installDate: installDate ?? null,
+      warrantyExpiresOn: warrantyExpiresOn ?? null,
+      notes: value(row, 'notes') ?? null,
+      ...(condition === undefined ? {} : { condition: condition as AssetCondition }),
+    },
+    context.actor,
+  );
+  if (registered === 'serial_taken') {
+    throw new RowRefused([
+      {
+        column: 'serial_number',
+        code: 'duplicate',
+        message: `An asset with serial number ${serialNumber ?? ''} already exists.`,
+      },
+    ]);
+  }
 }

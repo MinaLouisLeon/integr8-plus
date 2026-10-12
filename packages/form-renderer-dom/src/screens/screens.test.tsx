@@ -138,6 +138,8 @@ describe('the submission screen', () => {
           },
           events: [],
           can: { edit: false, reopen: false },
+          asset: null,
+          carriedOver: null,
         },
       }),
     });
@@ -147,6 +149,59 @@ describe('the submission screen', () => {
     const back = await screen.findByRole('link', { name: 'Back to job WO-000123' });
     fireEvent.click(back);
     expect(navigate).toHaveBeenCalledWith(`/work-orders/${JOB}`);
+  });
+
+  it('says which answers came from the asset’s last visit while it is filled', async () => {
+    const client = fakeClient({
+      [`GET /v1/submissions/${SUBMISSION}`]: () => ({
+        body: {
+          submission: {
+            ...summary,
+            status: 'draft',
+            submittedAt: null,
+            answers: { refrigerant: 'R410A' },
+          },
+          version: {
+            id: summary.formVersionId,
+            versionNumber: 2,
+            definition: {
+              schemaVersion: 1,
+              title: { en: 'Chiller service' },
+              pages: [
+                {
+                  id: 'page_1',
+                  sections: [
+                    {
+                      id: 'section_1',
+                      fields: [
+                        {
+                          id: 'refrigerant',
+                          type: 'text',
+                          label: { en: 'Refrigerant' },
+                          carryOver: true,
+                        },
+                        { id: 'reading', type: 'text', label: { en: 'Reading' } },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          events: [],
+          can: { edit: true, submit: true, reopen: false },
+          asset: { id: JOB, reference: 'AS-000012', name: 'Chiller' },
+          carriedOver: { fromSubmissionId: SUBMISSION, fields: ['refrigerant'] },
+        },
+      }),
+    });
+    renderScreen(<SubmissionScreen submissionId={SUBMISSION} />, client);
+    expect(
+      await screen.findByText(
+        'Carried over from AS-000012’s last visit: Refrigerant. Check each one before you submit.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('For asset AS-000012 · Chiller')).toBeInTheDocument();
   });
 });
 

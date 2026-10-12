@@ -1,3 +1,4 @@
+import { type AssetFileToFetch, assetFilesIn, type AssetSync } from '../assets.js';
 import type { LocalDatabase } from '../database.js';
 import type { SqlConnection } from '../sql.js';
 import type { SyncApi, ByteTransport } from './transport.js';
@@ -107,4 +108,79 @@ export async function markOpened(db: LocalDatabase, fileId: string, now: Date): 
   await db.write(['files'], (sql) =>
     sql.run('update files set last_opened_at = ? where id = ?', [now.toISOString(), fileId]),
   );
+}
+
+/**
+ * Photos and documents in the history of the assets on the phone (phase E3;
+ * ADR-0008), full size, so an asset's history shows its pictures in a plant
+ * room. Filed under the asset's site, so they go when the site does.
+ */
+export async function assetFilesToFetch(
+  db: LocalDatabase,
+  limit = DOWNLOADS_PER_RUN,
+): Promise<(AssetFileToFetch & { siteId: string })[]> {
+  return db.read(async (sql) => {
+    const rows = await sql.all<{ site_id: string; data: string }>(
+      'select site_id, data from assets order by updated_at desc',
+    );
+    const have = new Set(
+      (
+        await sql.all<{ id: string }>(
+          'select id from files union select media_id as id from uploads',
+        )
+      ).map((row) => row.id),
+    );
+    const wanted: (AssetFileToFetch & { siteId: string })[] = [];
+    for (const row of rows) {
+      for (const file of assetFilesIn(JSON.parse(row.data) as AssetSync)) {
+        if (
+          !have.has(file.fileId) &&
+          file.byteSize <= DOWNLOAD_MAX_BYTES &&
+          !wanted.some((candidate) => candidate.fileId === file.fileId)
+        ) {
+          wanted.push({ ...file, siteId: row.site_id });
+          if (wanted.length >= limit) {
+            return wanted;
+          }
+        }
+      }
+    }
+    return wanted;
+  });
+}
+
+/** Fetches one of an asset's files to the phone. Resolves whether it is now there. */
+export async function fetchAssetFile(
+  db: LocalDatabase,
+  api: SyncApi,
+  transport: ByteTransport,
+  file: AssetFileToFetch & { siteId: string },
+  now: Date,
+): Promise<boolean> {
+  const link = await api.mediaLink(file.fileId);
+  if (link === undefined) {
+    return false;
+  }
+  const path = attachmentPath(file.fileId);
+  const response = await transport.download(link.url, path);
+  if (response.status !== 200) {
+    return false;
+  }
+  await db.write(['files'], (sql) =>
+    sql.run(
+      `insert into files (id, owner_kind, owner_id, name, content_type, byte_size, local_path, state, created_at)
+       values (?, 'site', ?, ?, ?, ?, ?, 'downloaded', ?)
+       on conflict (id) do nothing`,
+      [
+        file.fileId,
+        file.siteId,
+        file.title,
+        file.contentType,
+        file.byteSize,
+        path,
+        now.toISOString(),
+      ],
+    ),
+  );
+  return true;
 }

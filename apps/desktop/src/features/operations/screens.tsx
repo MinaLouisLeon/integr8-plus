@@ -19,6 +19,9 @@ import {
   SalesOrderListScreen,
   SalesOrderScreen,
   FinanceSettingsScreen,
+  AssetListScreen,
+  WarrantyAlertsPanel,
+  AssetScreen,
   InvoiceListScreen,
   InvoiceScreen,
   PaymentListScreen,
@@ -58,7 +61,7 @@ function OperationsScreens({ children }: { children: ReactNode }) {
     () => ({
       client: session().client,
       locale: i18n.language,
-      navigate: (to) => void navigate(to),
+      navigate: (to, options) => void navigate(to, { replace: options?.replace === true }),
       paths: {
         workOrders: '/work-orders',
         newWorkOrder: (options) =>
@@ -99,6 +102,8 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         payments: '/finance/payments',
         payment: (id) => `/finance/payments/${id}`,
         financeSettings: '/finance/settings',
+        assets: '/assets',
+        asset: (id) => `/assets/${id}`,
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -427,6 +432,36 @@ export function FinanceSettingsRoute() {
   return (
     <OperationsScreens>
       <FinanceSettingsScreen />
+    </OperationsScreens>
+  );
+}
+
+/** The dashboard's list of assets whose warranty ends soon (E3). */
+export function WarrantyAlerts() {
+  return (
+    <OperationsScreens>
+      <WarrantyAlertsPanel />
+    </OperationsScreens>
+  );
+}
+
+export function AssetsRoute() {
+  // `?warranty=expiring` opens the register filtered, as the dashboard's list does.
+  const [search] = useSearchParams();
+  const filter = search.get('warranty');
+  const warranty = filter === 'expiring' || filter === 'expired' ? filter : '';
+  return (
+    <OperationsScreens>
+      <AssetListScreen key={warranty} initialWarranty={warranty} />
+    </OperationsScreens>
+  );
+}
+
+export function AssetRoute() {
+  const { assetId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <AssetScreen key={assetId} assetId={assetId} />
     </OperationsScreens>
   );
 }

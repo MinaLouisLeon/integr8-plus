@@ -53,7 +53,7 @@ export {
   progressFraction,
   visiblePages,
 } from './navigation.js';
-export { prefillAnswers, type Prefill } from './prefill.js';
+export { hasCarryOver, prefillAnswers, type Prefill } from './prefill.js';
 export {
   SIGNATURE_HEIGHT,
   SIGNATURE_INK,

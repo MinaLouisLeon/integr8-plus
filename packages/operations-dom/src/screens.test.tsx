@@ -675,6 +675,52 @@ describe('imports', () => {
     ]);
     expect(screen.getByText('998 imported, 2 with problems')).toBeInTheDocument();
   });
+
+  it(
+    'offers assets to those who manage the register, with the module on',
+    { timeout: 20_000 },
+    async () => {
+      const me = (permissions: string[], assets: boolean) => () => ({
+        body: {
+          userId: ENGINEER.id,
+          tenantId: CUSTOMER,
+          email: 'o@x.example',
+          displayName: 'Olu',
+          role: 'owner',
+          permissions,
+          features: { assets },
+        },
+      });
+      const kinds = async () => {
+        const picker = await screen.findByRole(
+          'combobox',
+          { name: 'What to import' },
+          { timeout: 5000 },
+        );
+        return within(picker)
+          .getAllByRole('option')
+          .map((option) => option.textContent);
+      };
+      const routes = {
+        'GET /v1/imports/columns/:kind': () => ({ body: { items: [] } }),
+        'GET /v1/imports': () => ({ body: { items: [] } }),
+      };
+      const first = renderScreen(
+        <ImportsScreen />,
+        fakeApi({ ...routes, 'GET /v1/me': me(['import.run', 'asset.manage'], true) }).client,
+      );
+      await waitFor(
+        async () => expect(await kinds()).toEqual(['Customers', 'Sites', 'Work orders', 'Assets']),
+        { timeout: 5000 },
+      );
+      first.unmount();
+      renderScreen(
+        <ImportsScreen />,
+        fakeApi({ ...routes, 'GET /v1/me': me(['import.run', 'asset.manage'], false) }).client,
+      );
+      expect(await kinds()).toEqual(['Customers', 'Sites', 'Work orders']);
+    },
+  );
 });
 
 describe('timesheets', () => {
@@ -994,6 +1040,54 @@ describe('a job’s forms', () => {
     await user.click(within(forms).getByRole('link', { name: 'Gas safety record' }));
     expect(navigate).toHaveBeenCalledWith(`/submissions/${SUBMISSION}`);
   });
+
+  it(
+    'fills a form for the job’s asset, so its answers carry over from its last visit',
+    { timeout: 20_000 },
+    async () => {
+      const user = userEvent.setup();
+      const ASSET = '00000000-0000-4000-8000-00000000a501';
+      const DRAFT = '00000000-0000-4000-8000-000000000552';
+      const asset = {
+        id: ASSET,
+        reference: 'AS-000012',
+        name: 'Chiller',
+        status: 'active',
+        condition: null,
+        warranty: 'none',
+        warrantyExpiresOn: null,
+      };
+      const { client, calls } = fakeApi({
+        'GET /v1/me': () => ({
+          body: {
+            userId: ENGINEER.id,
+            tenantId: CUSTOMER,
+            email: 'e@x.example',
+            displayName: 'Sam',
+            role: 'engineer',
+            permissions: ['asset.read', 'asset.record'],
+            features: { assets: true },
+          },
+        }),
+        'GET /v1/work-orders/:id': () => ({ body: editable() }),
+        'GET /v1/work-orders/:id/assets': () => ({
+          body: { items: [asset], atSite: [], can: { link: false, unlink: false, register: true } },
+        }),
+        'POST /v1/submissions': () => ({ status: 201, body: { submission: { id: DRAFT } } }),
+      });
+      const { navigate } = renderScreen(<WorkOrderScreen workOrderId={JOB} />, client);
+      const forms = await screen.findByRole('region', { name: 'Forms' });
+      const chooser = await within(forms).findByLabelText('Fill forms for', {}, { timeout: 5000 });
+      await waitFor(() => expect(chooser).toHaveValue(ASSET), { timeout: 5000 });
+      await user.click(within(forms).getByRole('button', { name: 'Fill in' }));
+      await waitFor(() => expect(navigate).toHaveBeenCalledWith(`/submissions/${DRAFT}`));
+      expect(calls.find((call) => call.path === '/v1/submissions')?.body).toEqual({
+        formId: FORM,
+        workOrderId: JOB,
+        assetId: ASSET,
+      });
+    },
+  );
 });
 
 describe('row menus', () => {

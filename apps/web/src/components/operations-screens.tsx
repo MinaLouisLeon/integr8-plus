@@ -38,7 +38,7 @@ export function OperationsScreens({ children }: { children: ReactNode }) {
     () => ({
       client: apiClient(),
       locale: i18n.language,
-      navigate: (to) => router.push(to),
+      navigate: (to, options) => (options?.replace === true ? router.replace(to) : router.push(to)),
       paths: {
         workOrders: '/work-orders',
         newWorkOrder: (options) =>
@@ -79,6 +79,8 @@ export function OperationsScreens({ children }: { children: ReactNode }) {
         payments: '/finance/payments',
         payment: (id) => `/finance/payments/${id}`,
         financeSettings: '/finance/settings',
+        assets: '/assets',
+        asset: (id) => `/assets/${id}`,
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),

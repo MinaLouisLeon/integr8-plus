@@ -6,6 +6,7 @@ import {
   directionFor,
   en,
   formatCurrency,
+  formatCalendarDate,
   formatDate,
   formatList,
   formatNumber,
@@ -227,5 +228,9 @@ describe('formatting', () => {
     const german = formatCurrency(10, 'EUR', { locale: 'de-DE' });
 
     expect(british).not.toBe(german);
+  });
+
+  it('formats a calendar date as the same day in any time zone', () => {
+    expect(formatCalendarDate('2026-11-20', { locale: 'en-GB' })).toBe('20 November 2026');
   });
 });

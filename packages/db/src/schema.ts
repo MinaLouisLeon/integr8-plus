@@ -26,6 +26,9 @@ import {
   type StageOutcome,
   type WorkOrderPriority,
   type WorkOrderState,
+  type AssetCondition,
+  type AssetEventKind,
+  type AssetStatus,
 } from '@integr8/core';
 import type { ColumnType, Generated } from 'kysely';
 import { z } from 'zod';
@@ -490,6 +493,13 @@ export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
  * Where a device was when a form was submitted (migration 0012). Coordinates are
  * decimal text, as GPS answers are; `capturedAt` is on the server's clock.
  */
+/** Which answers a draft took from its asset's last submission of the same form (0032). */
+export interface CarriedOver {
+  fromSubmissionId: string;
+  /** Question ids, in reading order. */
+  fields: string[];
+}
+
 export type SubmitLocation =
   | {
       status: 'captured';
@@ -520,6 +530,10 @@ export interface SubmissionsTable {
   search: ColumnType<string, never, never>;
   /** The job this form was filled for. Set at insert; the database refuses a change. */
   work_order_id: ColumnType<string | null, string | null | undefined, never>;
+  /** The asset this form was filled for (0031): one of the job's assets. */
+  asset_id: ColumnType<string | null, string | null | undefined, string | null>;
+  /** Answers taken from the asset's last submission of the form (0032). Set at insert. */
+  carried_over: ColumnType<CarriedOver | null, CarriedOver | null | undefined, never>;
   /** Written only by submitting; see {@link SubmitLocation}. */
   submit_location: ColumnType<
     SubmitLocation | null,
@@ -849,7 +863,7 @@ export type PushDisabledReason = (typeof PUSH_DISABLED_REASONS)[number];
 export const COMMENT_VISIBILITIES = ['internal', 'customer'] as const;
 export type CommentVisibility = (typeof COMMENT_VISIBILITIES)[number];
 
-export const IMPORT_KINDS = ['customers', 'sites', 'work_orders'] as const;
+export const IMPORT_KINDS = ['customers', 'sites', 'work_orders', 'assets'] as const;
 export type ImportKind = (typeof IMPORT_KINDS)[number];
 
 export const IMPORT_STATUSES = ['pending', 'running', 'completed', 'failed'] as const;
@@ -1243,6 +1257,8 @@ export interface ErpWorkOrderMaterialsTable {
   cancelled_by: string | null;
   cancelled_at: Date | null;
   version: Generated<number>;
+  /** The asset the part was fitted to (0031). */
+  asset_id: Generated<string | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -1493,6 +1509,82 @@ export interface ErpPaymentAllocationsTable {
   removed_at: Date | null;
 }
 
+// ---------------------------------------------------------------------------
+// Assets (0031; CRM/ERP plan, phase E3; ADR-0008)
+// ---------------------------------------------------------------------------
+
+export interface ErpAssetSettingsTable {
+  tenant_id: string;
+  warranty_alert_days: Generated<number>;
+  version: Generated<number>;
+  updated_by: string | null;
+  updated_at: Generated<Date>;
+}
+
+export interface AssetReferenceCountersTable {
+  tenant_id: string;
+  last_reference: number;
+}
+
+export interface ErpAssetsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  /** Given by trigger on insert. */
+  reference: Generated<number>;
+  customer_id: string;
+  site_id: string;
+  item_id: string | null;
+  name: string;
+  make: string | null;
+  model: string | null;
+  serial_number: string | null;
+  location_note: string | null;
+  /** `YYYY-MM-DD`. */
+  install_date: ColumnType<string | null, string | null | undefined, string | null>;
+  /** `YYYY-MM-DD`. */
+  warranty_expires_on: ColumnType<string | null, string | null | undefined, string | null>;
+  status: Generated<AssetStatus>;
+  condition: AssetCondition | null;
+  condition_recorded_at: Date | null;
+  condition_recorded_by: string | null;
+  tag_code: string;
+  notes: string | null;
+  client_action_id: string | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: Generated<Date>;
+  retired_at: Date | null;
+  retired_by: string | null;
+}
+
+export interface ErpAssetEventsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  asset_id: string;
+  kind: AssetEventKind;
+  from_customer_id: string | null;
+  from_site_id: string | null;
+  from_status: AssetStatus | null;
+  to_status: AssetStatus | null;
+  condition: AssetCondition | null;
+  changes: ColumnType<Record<string, [unknown, unknown]> | null, string | null | undefined, never>;
+  work_order_id: string | null;
+  note: string | null;
+  actor_id: string;
+  occurred_at: Generated<Date>;
+  recorded_at: CreatedAt;
+  client_action_id: string | null;
+}
+
+export interface ErpWorkOrderAssetsTable {
+  tenant_id: string;
+  work_order_id: string;
+  asset_id: string;
+  linked_by: string;
+  linked_at: CreatedAt;
+}
+
 export interface CustomerContactsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -1689,6 +1781,8 @@ export interface AttachmentsTable {
   customer_id: string | null;
   site_id: string | null;
   work_order_id: string | null;
+  /** The asset it belongs to (0031). */
+  asset_id: Generated<string | null>;
   title: string;
   kind: Generated<AttachmentKind>;
   /** For a job photo: taken before or after the work (0013). */
@@ -2017,6 +2111,11 @@ export interface Database {
   erp_credit_note_lines: ErpCreditNoteLinesTable;
   erp_payment_receipts: ErpPaymentReceiptsTable;
   erp_payment_allocations: ErpPaymentAllocationsTable;
+  erp_asset_settings: ErpAssetSettingsTable;
+  asset_reference_counters: AssetReferenceCountersTable;
+  erp_assets: ErpAssetsTable;
+  erp_asset_events: ErpAssetEventsTable;
+  erp_work_order_assets: ErpWorkOrderAssetsTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -2157,6 +2256,8 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // decided, which the runtime role may not do itself; see 0030.
   'assign_finance_reference',
   'erp_payment_allocations_guard',
+  // Numbers assets from a counter the runtime role cannot write; see 0031.
+  'assign_asset_reference',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -2243,6 +2344,11 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_credit_note_lines: true,
   erp_payment_receipts: true,
   erp_payment_allocations: true,
+  erp_asset_settings: true,
+  asset_reference_counters: true,
+  erp_assets: true,
+  erp_asset_events: true,
+  erp_work_order_assets: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

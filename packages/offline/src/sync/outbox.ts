@@ -10,6 +10,12 @@ import type {
   WorkOrderDetail,
 } from '../api-types.js';
 import type { LocalDatabase } from '../database.js';
+import {
+  applyConditionLocally,
+  type AssetSync,
+  type ConditionValue,
+  writeAsset,
+} from '../assets.js';
 import type { SqlConnection } from '../sql.js';
 import type { DeviceClock } from './clock.js';
 import { type RandomBytes, uuidv7 } from './ids.js';
@@ -128,6 +134,8 @@ const OUTBOX_TABLES = [
   'uploads',
   'files',
   'van_stock',
+  'assets',
+  'asset_links',
 ] as const;
 
 async function actorOf(sql: SqlConnection): Promise<Actor> {
@@ -368,6 +376,261 @@ export async function recordMaterial(
   });
 }
 
+// ---------------------------------------------------------------------------
+// Assets (CRM/ERP plan, phase E3; ADR-0008)
+// ---------------------------------------------------------------------------
+
+/**
+ * Registers an asset found at the site of a job the engineer is on. It shows
+ * on the phone at once, without a number or a tag until the server confirms
+ * it, and is linked to the job. Returns the asset's id, chosen here.
+ */
+export async function recordAssetRegistered(
+  context: ChangeContext,
+  input: {
+    workOrderId: string;
+    name: string;
+    make?: string | undefined;
+    model?: string | undefined;
+    serialNumber?: string | undefined;
+    locationNote?: string | undefined;
+    condition?: ConditionValue | undefined;
+  },
+): Promise<string> {
+  const { db, clock, random } = context;
+  const name = input.name.trim();
+  if (name === '') {
+    throw new LocalChangeError('name_required', 'Give the asset a name.');
+  }
+  return db.write(OUTBOX_TABLES, async (sql) => {
+    const job = await jobDetail(sql, input.workOrderId);
+    const now = clock.now();
+    const at = now.toISOString();
+    const assetId = uuidv7(now.getTime(), random);
+    const mutationId = uuidv7(now.getTime(), random);
+    const actor = await actorOf(sql);
+    const text = (value: string | undefined) =>
+      value === undefined || value.trim() === '' ? undefined : value.trim();
+    const payload = {
+      workOrderId: input.workOrderId,
+      name,
+      ...(text(input.make) === undefined ? {} : { make: text(input.make) }),
+      ...(text(input.model) === undefined ? {} : { model: text(input.model) }),
+      ...(text(input.serialNumber) === undefined ? {} : { serialNumber: text(input.serialNumber) }),
+      ...(text(input.locationNote) === undefined ? {} : { locationNote: text(input.locationNote) }),
+      ...(input.condition === undefined ? {} : { condition: input.condition }),
+    };
+    const local: AssetSync = {
+      asset: {
+        id: assetId,
+        reference: '',
+        name,
+        make: text(input.make) ?? null,
+        model: text(input.model) ?? null,
+        serialNumber: text(input.serialNumber) ?? null,
+        status: 'active',
+        condition: input.condition ?? null,
+        customer: { id: job.customer.id, name: job.customer.name },
+        site: { id: job.site.id, name: job.site.name },
+        locationNote: text(input.locationNote) ?? null,
+        warrantyExpiresOn: null,
+        warranty: 'none',
+        tagCode: '',
+        tagLink: null,
+        version: 0,
+        item: null,
+        installDate: null,
+        notes: null,
+        conditionRecordedAt: input.condition === undefined ? null : at,
+        conditionRecordedBy: input.condition === undefined ? null : actor,
+        createdBy: actor,
+        createdAt: at,
+        updatedAt: at,
+        retiredAt: null,
+        retiredBy: null,
+      },
+      workOrders: [],
+      can: { edit: false, record: true, attach: false },
+      carryOver: [],
+      timeline: [
+        {
+          kind: 'event',
+          id: mutationId,
+          at,
+          event: {
+            kind: 'registered',
+            fromSite: null,
+            fromStatus: null,
+            toStatus: null,
+            condition: null,
+            changes: null,
+            workOrderId: input.workOrderId,
+            note: null,
+            by: actor,
+          },
+        },
+      ],
+    };
+    await writeAsset(sql, local, [input.workOrderId], at, true);
+    await insertChange(sql, {
+      id: mutationId,
+      kind: 'asset.register',
+      entityKey: `asset:${assetId}`,
+      entityId: assetId,
+      workOrderId: input.workOrderId,
+      payload,
+      base: null,
+      at,
+    });
+    return assetId;
+  });
+}
+
+/** Records an asset's condition, on a job or not; it shows on the phone at once. */
+export async function recordAssetCondition(
+  context: ChangeContext,
+  input: {
+    assetId: string;
+    condition: ConditionValue;
+    note?: string | undefined;
+    workOrderId?: string | undefined;
+  },
+): Promise<string> {
+  const { db, clock, random } = context;
+  return db.write(OUTBOX_TABLES, async (sql) => {
+    const row = await sql.get<{ data: string }>('select data from assets where id = ?', [
+      input.assetId,
+    ]);
+    if (row === undefined) {
+      throw new LocalChangeError('asset_not_on_phone', 'This asset is not on this phone.');
+    }
+    const before = JSON.parse(row.data) as AssetSync;
+    if (before.asset.status === 'retired') {
+      throw new LocalChangeError('asset_retired', 'A retired asset takes no condition.');
+    }
+    const now = clock.now();
+    const at = now.toISOString();
+    const id = uuidv7(now.getTime(), random);
+    const note = input.note === undefined || input.note.trim() === '' ? null : input.note.trim();
+    await applyConditionLocally(sql, input.assetId, {
+      id,
+      condition: input.condition,
+      note,
+      workOrderId: input.workOrderId ?? null,
+      at,
+      actor: await actorOf(sql),
+    });
+    await insertChange(sql, {
+      id,
+      kind: 'asset.condition',
+      entityKey: `asset:${input.assetId}`,
+      entityId: input.assetId,
+      workOrderId: input.workOrderId ?? null,
+      payload: {
+        condition: input.condition,
+        ...(note === null ? {} : { note }),
+        ...(input.workOrderId === undefined ? {} : { workOrderId: input.workOrderId }),
+      },
+      // What the phone showed before, so dropping this change can put it back.
+      base: {
+        condition: before.asset.condition,
+        conditionRecordedAt: before.asset.conditionRecordedAt,
+        conditionRecordedBy: before.asset.conditionRecordedBy,
+      },
+      at,
+    });
+    return id;
+  });
+}
+
+/** Says the job is for one of its site's assets too. */
+export async function recordAssetLink(
+  context: ChangeContext,
+  input: { workOrderId: string; assetId: string },
+): Promise<string> {
+  const { db, clock, random } = context;
+  return db.write(OUTBOX_TABLES, async (sql) => {
+    const job = await jobDetail(sql, input.workOrderId);
+    const asset = await sql.get<{ site_id: string; status: string }>(
+      'select site_id, status from assets where id = ?',
+      [input.assetId],
+    );
+    if (asset === undefined) {
+      throw new LocalChangeError('asset_not_on_phone', 'This asset is not on this phone.');
+    }
+    if (asset.site_id !== job.site.id) {
+      throw new LocalChangeError('asset_not_at_site', 'This asset is at another site.');
+    }
+    if (asset.status === 'retired') {
+      throw new LocalChangeError('asset_retired', 'A retired asset is not linked to new work.');
+    }
+    const now = clock.now();
+    const at = now.toISOString();
+    const id = uuidv7(now.getTime(), random);
+    await sql.run(
+      'insert into asset_links (asset_id, work_order_id) values (?, ?) on conflict do nothing',
+      [input.assetId, input.workOrderId],
+    );
+    // An asset registered here and not yet confirmed must reach the server first.
+    const registration = await sql.get<{ id: string }>(
+      `select id from outbox where kind = 'asset.register' and entity_id = ? and state <> 'done'`,
+      [input.assetId],
+    );
+    await insertChange(sql, {
+      id,
+      kind: 'asset.link',
+      entityKey: `work_order:${input.workOrderId}`,
+      entityId: input.workOrderId,
+      workOrderId: input.workOrderId,
+      payload: { assetId: input.assetId },
+      base: null,
+      ...(registration === undefined
+        ? {}
+        : { waitsFor: { media: [], mutations: [registration.id] } }),
+      at,
+    });
+    return id;
+  });
+}
+
+/** Undoes on the phone what a dropped asset change showed. */
+async function discardAssetChange(sql: SqlConnection, row: OutboxRow): Promise<void> {
+  if (row.kind === 'asset.register') {
+    await sql.run('delete from asset_links where asset_id = ?', [row.entityId]);
+    await sql.run('delete from assets where id = ? and local = 1', [row.entityId]);
+  }
+  if (row.kind === 'asset.condition' && row.base !== null) {
+    const asset = await sql.get<{ data: string }>('select data from assets where id = ?', [
+      row.entityId,
+    ]);
+    if (asset !== undefined) {
+      const data = JSON.parse(asset.data) as AssetSync;
+      const base = row.base as Pick<
+        AssetSync['asset'],
+        'condition' | 'conditionRecordedAt' | 'conditionRecordedBy'
+      >;
+      const next: AssetSync = {
+        ...data,
+        asset: { ...data.asset, ...base },
+        timeline: data.timeline.filter((entry) => entry.id !== row.id),
+      };
+      await sql.run('update assets set data = ? where id = ?', [
+        JSON.stringify(next),
+        row.entityId,
+      ]);
+    }
+  }
+  if (row.kind === 'asset.link') {
+    const assetId = (row.payload as { assetId?: string }).assetId;
+    if (assetId !== undefined) {
+      await sql.run('delete from asset_links where asset_id = ? and work_order_id = ?', [
+        assetId,
+        row.entityId,
+      ]);
+    }
+  }
+}
+
 export async function recordComment(
   context: ChangeContext,
   input: { workOrderId: string; body: string; visibility: 'internal' | 'customer' },
@@ -488,7 +751,14 @@ export async function recordAccessChange(
 
 export async function recordFormStarted(
   context: ChangeContext,
-  input: { formId: string; formVersionId: string; workOrderId: string | null },
+  input: {
+    formId: string;
+    formVersionId: string;
+    workOrderId: string | null;
+    /** Filled for one of the job's assets (E3); with the answers carried over, if any. */
+    assetId?: string;
+    carriedOver?: { fromSubmissionId: string; fields: string[] };
+  },
 ): Promise<{ mutationId: string; submissionId: string }> {
   const { db, clock, random } = context;
   return db.write(OUTBOX_TABLES, async (sql) => {
@@ -501,6 +771,15 @@ export async function recordFormStarted(
        values (?, ?, ?, ?, 'draft', '{}', ?)`,
       [submissionId, input.formId, input.formVersionId, input.workOrderId, at],
     );
+    // An asset registered on this phone and not yet sent: the server must have
+    // it before a form can be filled for it.
+    const registration =
+      input.assetId === undefined
+        ? undefined
+        : await sql.get<{ id: string }>(
+            `select id from outbox where kind = 'asset.register' and entity_id = ? and state <> 'done'`,
+            [input.assetId],
+          );
     await insertChange(sql, {
       id: mutationId,
       kind: 'submission.start',
@@ -510,6 +789,9 @@ export async function recordFormStarted(
       payload: input,
       base: null,
       at,
+      ...(registration === undefined
+        ? {}
+        : { waitsFor: { media: [], mutations: [registration.id] } }),
     });
     return { mutationId, submissionId };
   });
@@ -1421,6 +1703,7 @@ export async function discardChange(context: ChangeContext, mutationId: string):
     const row = await outboxRow(sql, mutationId);
     const at = context.clock.now().toISOString();
     await requestRefresh(sql, row.workOrderId);
+    await discardAssetChange(sql, row);
     await sql.run(`update outbox set state = 'done', done_at = ?, last_error = ? where seq = ?`, [
       at,
       JSON.stringify({

@@ -18,6 +18,7 @@ import { APP_VERSION, session, whenSignedOut } from '~/lib/session';
 import { registerBackgroundSync, unregisterBackgroundSync } from '~/local/background';
 import { localData } from '~/local/local-data';
 import { channelNames, listenForPush, registerForPush, unregisterForPush } from '~/local/push';
+import { WarrantyAlerts } from '~/local/warranty-alerts';
 import { useLocalStatus } from '~/local/react';
 import { saveRoute } from '~/local/resume';
 
@@ -121,6 +122,7 @@ function RootLayout() {
         <AppLock>
           <BrandProvider>
             <RouteMemory />
+            <WarrantyAlerts />
             <Stack screenOptions={{ headerShown: false }} />
           </BrandProvider>
         </AppLock>

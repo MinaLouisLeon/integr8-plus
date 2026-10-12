@@ -27,7 +27,8 @@
     "@integr8/core": "workspace:*",
     "@integr8/form-renderer-dom": "workspace:*",
     "@integr8/i18n": "workspace:*",
-    "leaflet": "1.9.4"
+    "leaflet": "1.9.4",
+    "uqr": "0.1.3"
   },
   "peerDependencies": {
     "react": ">=19",

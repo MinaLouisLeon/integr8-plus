@@ -73,8 +73,10 @@ const UNSENT_WORK_AT: Record<number, (driver: SqlDriver) => Promise<void>> = {
   // a version 3 phone was moved to; its outbox had no sent_at yet.
   // Version 5 added outbox.sent_at and uploads.thumbnail_path, which nothing unsent needs.
   5: (driver) => UNSENT_WORK_AT[4]!(driver),
-  // Version 6 added shifts, version 7 the van's stock: neither holds unsent work of its own.
+  // Version 6 added shifts: no unsent work of its own.
   6: (driver) => UNSENT_WORK_AT[5]!(driver),
+  // Version 7 added the van's stock, which is downloaded data, not unsent work.
+  7: (driver) => UNSENT_WORK_AT[6]!(driver),
   4: async (driver) => {
     await UNSENT_WORK_AT[3]!(driver);
     await driver.run(

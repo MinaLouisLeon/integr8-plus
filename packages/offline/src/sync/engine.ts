@@ -8,7 +8,12 @@ import {
   saveClockOffset,
   serverNow,
 } from './clock.js';
-import { attachmentsToFetch, fetchAttachment } from './downloads.js';
+import {
+  assetFilesToFetch,
+  attachmentsToFetch,
+  fetchAssetFile,
+  fetchAttachment,
+} from './downloads.js';
 import { type RandomBytes, uuidv7 } from './ids.js';
 import {
   adoptUnqueuedForms,
@@ -301,6 +306,18 @@ export class SyncEngine {
           break;
         }
         // One file that cannot be fetched does not stop the others.
+      }
+    }
+    // The pictures in the history of the assets on the phone (phase E3).
+    for (const file of await assetFilesToFetch(db)) {
+      try {
+        if (await fetchAssetFile(db, api, transport, file, clock.now())) {
+          fetched += 1;
+        }
+      } catch (error) {
+        if (isNoConnection(error)) {
+          break;
+        }
       }
     }
     return fetched;

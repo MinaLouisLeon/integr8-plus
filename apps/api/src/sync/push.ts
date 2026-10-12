@@ -1,9 +1,18 @@
-import { holds, findTransition, positiveQuantitySchema, type Principal } from '@integr8/core';
+import {
+  assetConditionSchema,
+  findTransition,
+  formatAssetReference,
+  holds,
+  positiveQuantitySchema,
+  type Principal,
+} from '@integr8/core';
 import { type Submission, type TenantTransaction, type WorkOrder, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { ApiError, type ErrorDetail } from '../http/errors.js';
 import { isFeatureEnabled } from '../http/features.js';
 import { fingerprintRequest } from '../http/idempotency.js';
+import { freshTagCode, readableAsset } from '../routes/v1/assets.js';
+import { crmAudit as assetAudit } from '../routes/v1/crm-shared.js';
 import { recordUse } from '../routes/v1/materials.js';
 import { deliverOnCompletion } from '../routes/v1/sales-fulfilment.js';
 import type { RequestContext } from '../http/routes.js';
@@ -18,6 +27,7 @@ import {
 } from '../routes/v1/operations.js';
 import {
   answersSchema,
+  assetToFillFor,
   compiledVersion,
   dateSchema,
   mayEdit,
@@ -102,6 +112,16 @@ export const mutationSchema = z.discriminatedUnion('kind', [
       formId: z.uuid(),
       formVersionId: z.uuid(),
       workOrderId: z.uuid().nullable(),
+      /** Filled for one of the job's assets (E3). Older phones leave it out. */
+      assetId: z.uuid().nullable().optional(),
+      /** Which of the answers that follow the phone carried over from the asset's last visit. */
+      carriedOver: z
+        .object({
+          fromSubmissionId: z.uuid(),
+          fields: z.array(z.string().max(200)).max(1_000),
+        })
+        .nullable()
+        .optional(),
     }),
   }),
   z.object({
@@ -184,6 +204,40 @@ export const mutationSchema = z.discriminatedUnion('kind', [
       quantity: positiveQuantitySchema,
       note: z.string().trim().max(1000).nullable().optional(),
     }),
+  }),
+  z.object({
+    ...common,
+    /**
+     * An asset found on site, registered from the phone on a job the engineer
+     * is working (CRM/ERP plan, phase E3; ADR-0008). `entityId` is the asset's
+     * id, chosen by the phone so its later changes can name it.
+     */
+    kind: z.literal('asset.register'),
+    payload: z.object({
+      workOrderId: z.uuid(),
+      name: z.string().trim().min(1).max(200),
+      make: z.string().trim().max(200).nullable().optional(),
+      model: z.string().trim().max(200).nullable().optional(),
+      serialNumber: z.string().trim().max(200).nullable().optional(),
+      locationNote: z.string().trim().max(500).nullable().optional(),
+      condition: assetConditionSchema.optional(),
+    }),
+  }),
+  z.object({
+    ...common,
+    /** A condition recorded for the asset `entityId`, on a job or not. */
+    kind: z.literal('asset.condition'),
+    payload: z.object({
+      condition: assetConditionSchema,
+      note: z.string().trim().max(1000).nullable().optional(),
+      workOrderId: z.uuid().nullable().optional(),
+    }),
+  }),
+  z.object({
+    ...common,
+    /** The job `entityId` is for this asset too. */
+    kind: z.literal('asset.link'),
+    payload: z.object({ assetId: z.uuid() }),
   }),
 ]);
 
@@ -523,6 +577,12 @@ async function apply(
       return endShift(tx, mutation, push);
     case 'work_order.material':
       return material(tx, mutation, push);
+    case 'asset.register':
+      return registerAsset(tx, mutation, push);
+    case 'asset.condition':
+      return assetCondition(tx, mutation, push);
+    case 'asset.link':
+      return linkAsset(tx, mutation, push);
   }
 }
 
@@ -933,6 +993,160 @@ async function endShift(
 }
 
 // ---------------------------------------------------------------------------
+// Assets (CRM/ERP plan, phase E3; ADR-0008)
+// ---------------------------------------------------------------------------
+
+async function assetsAllowed(principal: Principal): Promise<Outcome | undefined> {
+  if (!(await isFeatureEnabled(principal.tenantId, 'assets'))) {
+    return rejected('feature_disabled', 'Assets are not switched on for your company.');
+  }
+  if (!holds(principal, 'asset.record')) {
+    return rejected('forbidden', 'You may not record assets.');
+  }
+  return undefined;
+}
+
+async function registerAsset(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'asset.register' }>,
+  push: PushContext,
+): Promise<Outcome> {
+  const { principal } = push.context;
+  const refused = await assetsAllowed(principal);
+  if (refused !== undefined) {
+    return refused;
+  }
+  if ((await tx.assets.find(mutation.entityId)) !== undefined) {
+    return applied(null, true);
+  }
+  const job = await jobFor(tx, principal, mutation.payload.workOrderId);
+  if (job === undefined) {
+    return unavailable();
+  }
+  await requireWork(tx, principal, job);
+  const { workOrderId: _job, ...details } = mutation.payload;
+  if (
+    details.serialNumber !== undefined &&
+    details.serialNumber !== null &&
+    details.serialNumber !== ''
+  ) {
+    const holder = await tx.assets.findBySerial(details.serialNumber);
+    if (holder !== undefined) {
+      return rejected('serial_taken', 'Another asset already has this serial number.', [
+        {
+          field: 'payload.serialNumber',
+          code: 'serial_taken',
+          message: `It is ${formatAssetReference(holder.reference)}; open that one instead.`,
+        },
+      ]);
+    }
+  }
+  const result = await tx.assets.register(
+    {
+      ...details,
+      id: mutation.entityId,
+      customerId: job.customerId,
+      siteId: job.siteId,
+      tagCode: await freshTagCode(tx),
+    },
+    principal.userId,
+    { workOrderId: job.id, occurredAt: push.recordedAt(mutation) },
+  );
+  if (result === 'serial_taken') {
+    return { outcome: 'retry', code: 'serial_race', message: 'Checking the serial again.' };
+  }
+  await tx.assets.link(job.id, result.asset.id, principal.userId);
+  await assetAudit(tx, push.context, 'asset.registered', 'asset', result.asset.id, {
+    reference: formatAssetReference(result.asset.reference),
+    siteId: job.siteId,
+    workOrderId: job.id,
+    via: 'phone',
+  });
+  return applied(null);
+}
+
+async function assetCondition(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'asset.condition' }>,
+  push: PushContext,
+): Promise<Outcome> {
+  const { principal } = push.context;
+  const refused = await assetsAllowed(principal);
+  if (refused !== undefined) {
+    return refused;
+  }
+  let asset;
+  try {
+    asset = await readableAsset(tx, principal, mutation.entityId);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return rejected('asset_unavailable', 'This asset is no longer at one of your sites.');
+    }
+    throw error;
+  }
+  if (asset.status === 'retired') {
+    return rejected('asset_retired', 'A retired asset takes no condition.');
+  }
+  const workOrderId = mutation.payload.workOrderId ?? undefined;
+  if (workOrderId !== undefined && (await jobFor(tx, principal, workOrderId)) === undefined) {
+    return unavailable();
+  }
+  const result = await tx.assets.recordCondition(
+    asset.id,
+    mutation.payload.condition,
+    principal.userId,
+    {
+      note: mutation.payload.note,
+      workOrderId,
+      occurredAt: push.recordedAt(mutation),
+      clientActionId: mutation.id,
+    },
+  );
+  if (result === undefined) {
+    return rejected('asset_unavailable', 'This asset no longer exists.');
+  }
+  if (result.created) {
+    await assetAudit(tx, push.context, 'asset.condition_recorded', 'asset', asset.id, {
+      condition: mutation.payload.condition,
+      via: 'phone',
+    });
+  }
+  return applied(null, !result.created);
+}
+
+async function linkAsset(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'asset.link' }>,
+  push: PushContext,
+): Promise<Outcome> {
+  const { principal } = push.context;
+  const refused = await assetsAllowed(principal);
+  if (refused !== undefined) {
+    return refused;
+  }
+  const job = await jobFor(tx, principal, mutation.entityId);
+  if (job === undefined) {
+    return unavailable();
+  }
+  await requireWork(tx, principal, job);
+  const asset = await tx.assets.find(mutation.payload.assetId);
+  if (asset?.siteId !== job.siteId) {
+    return rejected('asset_not_at_site', 'This asset is not at the job’s site any more.');
+  }
+  if (asset.status === 'retired') {
+    return rejected('asset_retired', 'A retired asset is not linked to new work.');
+  }
+  const linked = await tx.assets.link(job.id, asset.id, principal.userId);
+  if (linked) {
+    await assetAudit(tx, push.context, 'asset.linked', 'asset', asset.id, {
+      workOrderId: job.id,
+      via: 'phone',
+    });
+  }
+  return applied(null, !linked);
+}
+
+// ---------------------------------------------------------------------------
 // Sites
 // ---------------------------------------------------------------------------
 
@@ -1037,11 +1251,31 @@ async function startSubmission(
       return rejected('form_not_on_work_order', 'This form is no longer one of the job’s forms.');
     }
   }
+  // The asset is a label on the form, not a condition of it: if the asset was
+  // retired, moved off the job or the module turned off while the phone was
+  // offline, the form is still started — just not for the asset.
+  let assetId: string | undefined;
+  if (mutation.payload.assetId !== undefined && mutation.payload.assetId !== null) {
+    try {
+      assetId = (
+        await assetToFillFor(tx, principal, mutation.payload.assetId, workOrderId ?? undefined)
+      ).id;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status >= 500) {
+        throw error;
+      }
+    }
+  }
+  const carriedOver = mutation.payload.carriedOver;
   const draft = await tx.submissions.startDraft({
     id: mutation.entityId,
     formVersionId: version.id,
     submittedBy: principal.userId,
     ...(workOrderId === null ? {} : { workOrderId }),
+    ...(assetId === undefined ? {} : { assetId }),
+    ...(assetId === undefined || carriedOver === undefined || carriedOver === null
+      ? {}
+      : { carriedOver }),
   });
   return applied(draft.revision, false, draft.answers);
 }

@@ -2976,6 +2976,230 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/assets/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How far ahead warranties are flagged */
+        get: operations["getAssetSettings"];
+        /**
+         * Set how far ahead warranties are flagged
+         * @description `expectedVersion` 0 the first time; 409 `version_conflict` when changed elsewhere.
+         */
+        put: operations["saveAssetSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/assets/by-tag/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Open an asset from its tag
+         * @description The code as printed, typed (case, dashes and look-alike letters forgiven) or the whole scanned link. 404 for a code of another company, an old tag or anything unknown, alike.
+         */
+        get: operations["findAssetByTag"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find assets
+         * @description Newest first. `q` matches a reference (`AS-000123`), a tag code, a serial, the name, make, model or place on site, or words of the customer’s name. `warranty=expiring` keeps those ending within the company’s warning window, `expired` those already ended. Engineers see the assets of sites they are on a job at.
+         */
+        get: operations["listAssets"];
+        put?: never;
+        /**
+         * Register an asset
+         * @description At a site, or at the site of `workOrderId`, which also links it to that job. Engineers register only at the site of a job they are working (422 `work_order_required` without one). A serial already in the company is 422 `serial_taken`. Honours `Idempotency-Key`.
+         */
+        post: operations["createAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An asset, with the jobs it is linked to */
+        get: operations["getAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change an asset’s details
+         * @description Each field given replaces the old one; one `updated` event records what changed, before and after. `expectedVersion` (409 `version_conflict`); a serial already used is 422 `serial_taken`.
+         */
+        patch: operations["updateAsset"];
+        trace?: never;
+    };
+    "/v1/assets/{assetId}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Everything an asset has been through
+         * @description Newest first: its own events, the jobs linked to it, and the submissions, parts and files that name it or whose job has no other asset. Anyone who may read the asset sees all of it, whoever did the work.
+         */
+        get: operations["getAssetTimeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/assets/{assetId}/relocate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move an asset to another site
+         * @description To any site of the company, the same customer’s or another’s; a `relocated` event keeps where it was. 422 `same_site` when it is already there.
+         */
+        post: operations["relocateAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/assets/{assetId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Put an asset out of service, retire it, or bring it back
+         * @description A `status_changed` event keeps what it was. 422 `same_status` when nothing changes.
+         */
+        post: operations["setAssetStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/assets/{assetId}/condition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record what state an asset is in
+         * @description Engineers on a job at its site, and the office. Optionally on a job (`workOrderId`), which an engineer must be working. A retired asset takes no condition (409 `asset_retired`).
+         */
+        post: operations["recordAssetCondition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/assets/{assetId}/tag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a new tag
+         * @description For a lost or damaged label: a new code, and the old tag opens nothing from now on.
+         */
+        post: operations["reissueAssetTag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work-orders/{workOrderId}/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The assets a job is for */
+        get: operations["listWorkOrderAssets"];
+        put?: never;
+        /**
+         * Say a job is for an asset
+         * @description One of the job’s site’s assets (422 `asset_not_at_site`), not retired (409 `asset_retired`). Engineers link only on jobs they are working. Linking twice is harmless.
+         */
+        post: operations["linkWorkOrderAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work-orders/{workOrderId}/assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take an asset off a job */
+        delete: operations["unlinkWorkOrderAsset"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -3286,7 +3510,7 @@ export interface paths {
         get: operations["listImports"];
         put?: never;
         /**
-         * Import customers, sites or work orders from CSV
+         * Import customers, sites, work orders or assets from CSV
          * @description The CSV is sent as text, at most 5 MB and 20000 rows, with the first row naming the columns (see the template). Dates without an offset are read in `timeZone`, which a browser should set to its own. Returns at once; poll the import for progress and per-row errors. Honours `Idempotency-Key`.
          */
         post: operations["startImport"];
@@ -6781,7 +7005,7 @@ export interface operations {
                         displayName: string;
                         /** @enum {string} */
                         role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
-                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue")[];
+                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -9364,6 +9588,8 @@ export interface operations {
                     formId: string;
                     /** Format: uuid */
                     workOrderId?: string;
+                    /** Format: uuid */
+                    assetId?: string;
                 };
             };
         };
@@ -9458,6 +9684,17 @@ export interface operations {
                             submit: boolean;
                             reopen: boolean;
                         };
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                        } | null;
+                        carriedOver: {
+                            /** Format: uuid */
+                            fromSubmissionId: string;
+                            fields: string[];
+                        } | null;
                     };
                 };
             };
@@ -9484,7 +9721,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The job is closed (`work_order_closed`), the form is not one of its forms (`form_not_on_work_order`), or the plan’s submissions for the month are used up (`submission_limit_reached`). */
+            /** @description The job is closed (`work_order_closed`), the form is not one of its forms (`form_not_on_work_order`), the asset is not one of its assets (`asset_not_on_work_order`) or is retired (`asset_retired`), or the plan’s submissions for the month are used up (`submission_limit_reached`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9723,6 +9960,17 @@ export interface operations {
                             submit: boolean;
                             reopen: boolean;
                         };
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                        } | null;
+                        carriedOver: {
+                            /** Format: uuid */
+                            fromSubmissionId: string;
+                            fields: string[];
+                        } | null;
                     };
                 };
             };
@@ -10028,6 +10276,17 @@ export interface operations {
                             submit: boolean;
                             reopen: boolean;
                         };
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                        } | null;
+                        carriedOver: {
+                            /** Format: uuid */
+                            fromSubmissionId: string;
+                            fields: string[];
+                        } | null;
                     };
                 };
             };
@@ -10207,6 +10466,17 @@ export interface operations {
                             submit: boolean;
                             reopen: boolean;
                         };
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                        } | null;
+                        carriedOver: {
+                            /** Format: uuid */
+                            fromSubmissionId: string;
+                            fields: string[];
+                        } | null;
                     };
                 };
             };
@@ -12887,6 +13157,9 @@ export interface operations {
                     } | {
                         /** Format: uuid */
                         workOrderId: string;
+                    } | {
+                        /** Format: uuid */
+                        assetId: string;
                     };
                     /** Format: uuid */
                     fileId: string;
@@ -30788,6 +31061,2465 @@ export interface operations {
             };
         };
     };
+    getAssetSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        warrantyAlertDays: number;
+                        version: number;
+                        can: {
+                            edit: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveAssetSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    warrantyAlertDays: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        warrantyAlertDays: number;
+                        version: number;
+                        can: {
+                            edit: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    findAssetByTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The asset. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No asset with this tag. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listAssets: {
+        parameters: {
+            query?: {
+                q?: string;
+                customerId?: string;
+                siteId?: string;
+                status?: ("active" | "out_of_service" | "retired") | ("active" | "out_of_service" | "retired")[];
+                warranty?: "expiring" | "expired";
+                cursor?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of assets. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                            make: string | null;
+                            model: string | null;
+                            serialNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "out_of_service" | "retired";
+                            /** @enum {string|null} */
+                            condition: "good" | "fair" | "poor" | "unusable" | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            locationNote: string | null;
+                            /** Format: date */
+                            warrantyExpiresOn: string | null;
+                            /** @enum {string} */
+                            warranty: "none" | "covered" | "expiring" | "expired";
+                            tagCode: string;
+                            tagLink: string | null;
+                            version: number;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createAsset: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    make?: string | null;
+                    model?: string | null;
+                    serialNumber?: string | null;
+                    /** Format: uuid */
+                    itemId?: string | null;
+                    locationNote?: string | null;
+                    /** Format: date */
+                    installDate?: string | null;
+                    /** Format: date */
+                    warrantyExpiresOn?: string | null;
+                    notes?: string | null;
+                    /** Format: uuid */
+                    siteId?: string;
+                    /** Format: uuid */
+                    workOrderId?: string;
+                    /** @enum {string} */
+                    condition?: "good" | "fair" | "poor" | "unusable";
+                };
+            };
+        };
+        responses: {
+            /** @description The asset. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                            make: string | null;
+                            model: string | null;
+                            serialNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "out_of_service" | "retired";
+                            /** @enum {string|null} */
+                            condition: "good" | "fair" | "poor" | "unusable" | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            locationNote: string | null;
+                            /** Format: date */
+                            warrantyExpiresOn: string | null;
+                            /** @enum {string} */
+                            warranty: "none" | "covered" | "expiring" | "expired";
+                            tagCode: string;
+                            tagLink: string | null;
+                            version: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            } | null;
+                            /** Format: date */
+                            installDate: string | null;
+                            notes: string | null;
+                            /** Format: date-time */
+                            conditionRecordedAt: string | null;
+                            conditionRecordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            retiredAt: string | null;
+                            retiredBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                        };
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** Format: date-time */
+                            linkedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            record: boolean;
+                            attach: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such site, job or item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No site, a serial already used, or an engineer without a job. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The asset. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                            make: string | null;
+                            model: string | null;
+                            serialNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "out_of_service" | "retired";
+                            /** @enum {string|null} */
+                            condition: "good" | "fair" | "poor" | "unusable" | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            locationNote: string | null;
+                            /** Format: date */
+                            warrantyExpiresOn: string | null;
+                            /** @enum {string} */
+                            warranty: "none" | "covered" | "expiring" | "expired";
+                            tagCode: string;
+                            tagLink: string | null;
+                            version: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            } | null;
+                            /** Format: date */
+                            installDate: string | null;
+                            notes: string | null;
+                            /** Format: date-time */
+                            conditionRecordedAt: string | null;
+                            conditionRecordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            retiredAt: string | null;
+                            retiredBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                        };
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** Format: date-time */
+                            linkedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            record: boolean;
+                            attach: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such asset, or not one of this engineer’s sites. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    make?: string | null;
+                    model?: string | null;
+                    serialNumber?: string | null;
+                    /** Format: uuid */
+                    itemId?: string | null;
+                    locationNote?: string | null;
+                    /** Format: date */
+                    installDate?: string | null;
+                    /** Format: date */
+                    warrantyExpiresOn?: string | null;
+                    notes?: string | null;
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The asset. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                            make: string | null;
+                            model: string | null;
+                            serialNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "out_of_service" | "retired";
+                            /** @enum {string|null} */
+                            condition: "good" | "fair" | "poor" | "unusable" | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            locationNote: string | null;
+                            /** Format: date */
+                            warrantyExpiresOn: string | null;
+                            /** @enum {string} */
+                            warranty: "none" | "covered" | "expiring" | "expired";
+                            tagCode: string;
+                            tagLink: string | null;
+                            version: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            } | null;
+                            /** Format: date */
+                            installDate: string | null;
+                            notes: string | null;
+                            /** Format: date-time */
+                            conditionRecordedAt: string | null;
+                            conditionRecordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            retiredAt: string | null;
+                            retiredBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                        };
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** Format: date-time */
+                            linkedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            record: boolean;
+                            attach: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such asset or item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A serial already used. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getAssetTimeline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The timeline. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entries: ({
+                            /** @enum {string} */
+                            kind: "event";
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date-time */
+                            at: string;
+                            event: {
+                                /** @enum {string} */
+                                kind: "registered" | "updated" | "relocated" | "status_changed" | "condition_recorded" | "tag_reissued";
+                                fromSite: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    customer: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                } | null;
+                                /** @enum {string|null} */
+                                fromStatus: "active" | "out_of_service" | "retired" | null;
+                                /** @enum {string|null} */
+                                toStatus: "active" | "out_of_service" | "retired" | null;
+                                /** @enum {string|null} */
+                                condition: "good" | "fair" | "poor" | "unusable" | null;
+                                changes: {
+                                    [key: string]: (unknown | unknown)[];
+                                } | null;
+                                /** Format: uuid */
+                                workOrderId: string | null;
+                                note: string | null;
+                                by: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                            };
+                        } | {
+                            /** @enum {string} */
+                            kind: "job";
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date-time */
+                            at: string;
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: number;
+                                referenceLabel: string;
+                                title: string;
+                                /** @enum {string} */
+                                state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                /** @enum {string} */
+                                priority: "low" | "normal" | "high" | "urgent";
+                                dueFrom: string | null;
+                                dueBy: string | null;
+                                customer: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                site: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    city: string | null;
+                                };
+                                jobType: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    code: string;
+                                };
+                                crew: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    lead: boolean;
+                                }[];
+                                revision: number;
+                                stateChangedAt: string;
+                                createdAt: string;
+                                updatedAt: string;
+                            };
+                        } | {
+                            /** @enum {string} */
+                            kind: "submission";
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date-time */
+                            at: string;
+                            submission: {
+                                /** Format: uuid */
+                                id: string;
+                                form: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: uuid */
+                                workOrderId: string | null;
+                                status: string;
+                                explicit: boolean;
+                                by: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                photos: {
+                                    /** Format: uuid */
+                                    mediaId: string;
+                                    contentType: string;
+                                    byteSize: number;
+                                }[];
+                            };
+                        } | {
+                            /** @enum {string} */
+                            kind: "part";
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date-time */
+                            at: string;
+                            part: {
+                                item: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    sku: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    kind: "stock_item" | "non_stock_item" | "service";
+                                    /** @enum {string} */
+                                    unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                };
+                                quantity: string;
+                                returnedQuantity: string;
+                                /** Format: uuid */
+                                workOrderId: string;
+                                explicit: boolean;
+                                by: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                            };
+                        } | {
+                            /** @enum {string} */
+                            kind: "attachment";
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date-time */
+                            at: string;
+                            attachment: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                fileId: string;
+                                title: string;
+                                /** @enum {string} */
+                                kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                                /** @enum {string|null} */
+                                stage: "before" | "after" | null;
+                                contentType: string;
+                                byteSize: number;
+                                addedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                createdAt: string;
+                                /** Format: uuid */
+                                workOrderId: string | null;
+                            };
+                        })[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such asset. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    relocateAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** Format: uuid */
+                    siteId: string;
+                    locationNote?: string | null;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The asset. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                            make: string | null;
+                            model: string | null;
+                            serialNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "out_of_service" | "retired";
+                            /** @enum {string|null} */
+                            condition: "good" | "fair" | "poor" | "unusable" | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            locationNote: string | null;
+                            /** Format: date */
+                            warrantyExpiresOn: string | null;
+                            /** @enum {string} */
+                            warranty: "none" | "covered" | "expiring" | "expired";
+                            tagCode: string;
+                            tagLink: string | null;
+                            version: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            } | null;
+                            /** Format: date */
+                            installDate: string | null;
+                            notes: string | null;
+                            /** Format: date-time */
+                            conditionRecordedAt: string | null;
+                            conditionRecordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            retiredAt: string | null;
+                            retiredBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                        };
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** Format: date-time */
+                            linkedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            record: boolean;
+                            attach: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such asset or site. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already at that site. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setAssetStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** @enum {string} */
+                    status: "active" | "out_of_service" | "retired";
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The asset. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                            make: string | null;
+                            model: string | null;
+                            serialNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "out_of_service" | "retired";
+                            /** @enum {string|null} */
+                            condition: "good" | "fair" | "poor" | "unusable" | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            locationNote: string | null;
+                            /** Format: date */
+                            warrantyExpiresOn: string | null;
+                            /** @enum {string} */
+                            warranty: "none" | "covered" | "expiring" | "expired";
+                            tagCode: string;
+                            tagLink: string | null;
+                            version: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            } | null;
+                            /** Format: date */
+                            installDate: string | null;
+                            notes: string | null;
+                            /** Format: date-time */
+                            conditionRecordedAt: string | null;
+                            conditionRecordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            retiredAt: string | null;
+                            retiredBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                        };
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** Format: date-time */
+                            linkedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            record: boolean;
+                            attach: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such asset. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already in that status. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    recordAssetCondition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    condition: "good" | "fair" | "poor" | "unusable";
+                    note?: string | null;
+                    /** Format: uuid */
+                    workOrderId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The asset. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                            make: string | null;
+                            model: string | null;
+                            serialNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "out_of_service" | "retired";
+                            /** @enum {string|null} */
+                            condition: "good" | "fair" | "poor" | "unusable" | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            locationNote: string | null;
+                            /** Format: date */
+                            warrantyExpiresOn: string | null;
+                            /** @enum {string} */
+                            warranty: "none" | "covered" | "expiring" | "expired";
+                            tagCode: string;
+                            tagLink: string | null;
+                            version: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            } | null;
+                            /** Format: date */
+                            installDate: string | null;
+                            notes: string | null;
+                            /** Format: date-time */
+                            conditionRecordedAt: string | null;
+                            conditionRecordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            retiredAt: string | null;
+                            retiredBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                        };
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** Format: date-time */
+                            linkedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            record: boolean;
+                            attach: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such asset or job. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The asset is retired. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reissueAssetTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The asset. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                            make: string | null;
+                            model: string | null;
+                            serialNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "out_of_service" | "retired";
+                            /** @enum {string|null} */
+                            condition: "good" | "fair" | "poor" | "unusable" | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            locationNote: string | null;
+                            /** Format: date */
+                            warrantyExpiresOn: string | null;
+                            /** @enum {string} */
+                            warranty: "none" | "covered" | "expiring" | "expired";
+                            tagCode: string;
+                            tagLink: string | null;
+                            version: number;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            } | null;
+                            /** Format: date */
+                            installDate: string | null;
+                            notes: string | null;
+                            /** Format: date-time */
+                            conditionRecordedAt: string | null;
+                            conditionRecordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            retiredAt: string | null;
+                            retiredBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                        };
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** Format: date-time */
+                            linkedAt: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            record: boolean;
+                            attach: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such asset. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listWorkOrderAssets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The assets, first linked first, and those at the site that are not linked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                            make: string | null;
+                            model: string | null;
+                            serialNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "out_of_service" | "retired";
+                            /** @enum {string|null} */
+                            condition: "good" | "fair" | "poor" | "unusable" | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            locationNote: string | null;
+                            /** Format: date */
+                            warrantyExpiresOn: string | null;
+                            /** @enum {string} */
+                            warranty: "none" | "covered" | "expiring" | "expired";
+                            tagCode: string;
+                            tagLink: string | null;
+                            version: number;
+                        }[];
+                        atSite: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            name: string;
+                            make: string | null;
+                            model: string | null;
+                            serialNumber: string | null;
+                            /** @enum {string} */
+                            status: "active" | "out_of_service" | "retired";
+                            /** @enum {string|null} */
+                            condition: "good" | "fair" | "poor" | "unusable" | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            locationNote: string | null;
+                            /** Format: date */
+                            warrantyExpiresOn: string | null;
+                            /** @enum {string} */
+                            warranty: "none" | "covered" | "expiring" | "expired";
+                            tagCode: string;
+                            tagLink: string | null;
+                            version: number;
+                        }[];
+                        can: {
+                            link: boolean;
+                            unlink: boolean;
+                            register: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such job. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    linkWorkOrderAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    assetId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Linked. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such job or asset. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The asset is retired. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not at the job’s site. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    unlinkWorkOrderAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workOrderId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Unlinked. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not linked. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listJobTypes: {
         parameters: {
             query?: {
@@ -36539,7 +39271,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             /** @enum {string} */
-                            kind: "customers" | "sites" | "work_orders";
+                            kind: "customers" | "sites" | "work_orders" | "assets";
                             /** @enum {string} */
                             status: "pending" | "running" | "completed" | "failed";
                             fileName: string;
@@ -36628,7 +39360,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    kind: "customers" | "sites" | "work_orders";
+                    kind: "customers" | "sites" | "work_orders" | "assets";
                     fileName: string;
                     csv: string;
                     /** @default UTC */
@@ -36647,7 +39379,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         /** @enum {string} */
-                        kind: "customers" | "sites" | "work_orders";
+                        kind: "customers" | "sites" | "work_orders" | "assets";
                         /** @enum {string} */
                         status: "pending" | "running" | "completed" | "failed";
                         fileName: string;
@@ -36733,7 +39465,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "customers" | "sites" | "work_orders";
+                kind: "customers" | "sites" | "work_orders" | "assets";
             };
             cookie?: never;
         };
@@ -36809,7 +39541,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "customers" | "sites" | "work_orders";
+                kind: "customers" | "sites" | "work_orders" | "assets";
             };
             cookie?: never;
         };
@@ -36908,7 +39640,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         /** @enum {string} */
-                        kind: "customers" | "sites" | "work_orders";
+                        kind: "customers" | "sites" | "work_orders" | "assets";
                         /** @enum {string} */
                         status: "pending" | "running" | "completed" | "failed";
                         fileName: string;
@@ -37622,6 +40354,309 @@ export interface operations {
                                 onHand: string;
                             }[];
                         } | null;
+                        assetSiteIds: string[];
+                        assets: {
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                name: string;
+                                make: string | null;
+                                model: string | null;
+                                serialNumber: string | null;
+                                /** @enum {string} */
+                                status: "active" | "out_of_service" | "retired";
+                                /** @enum {string|null} */
+                                condition: "good" | "fair" | "poor" | "unusable" | null;
+                                customer: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                site: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                locationNote: string | null;
+                                /** Format: date */
+                                warrantyExpiresOn: string | null;
+                                /** @enum {string} */
+                                warranty: "none" | "covered" | "expiring" | "expired";
+                                tagCode: string;
+                                tagLink: string | null;
+                                version: number;
+                                item: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    sku: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    kind: "stock_item" | "non_stock_item" | "service";
+                                    /** @enum {string} */
+                                    unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                } | null;
+                                /** Format: date */
+                                installDate: string | null;
+                                notes: string | null;
+                                /** Format: date-time */
+                                conditionRecordedAt: string | null;
+                                conditionRecordedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                createdBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                /** Format: date-time */
+                                retiredAt: string | null;
+                                retiredBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                            };
+                            workOrders: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: number;
+                                referenceLabel: string;
+                                title: string;
+                                /** @enum {string} */
+                                state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                /** @enum {string} */
+                                priority: "low" | "normal" | "high" | "urgent";
+                                dueFrom: string | null;
+                                dueBy: string | null;
+                                customer: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                site: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    city: string | null;
+                                };
+                                jobType: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    code: string;
+                                };
+                                crew: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    lead: boolean;
+                                }[];
+                                revision: number;
+                                stateChangedAt: string;
+                                createdAt: string;
+                                updatedAt: string;
+                                /** Format: date-time */
+                                linkedAt: string;
+                            }[];
+                            can: {
+                                edit: boolean;
+                                record: boolean;
+                                attach: boolean;
+                            };
+                            timeline: ({
+                                /** @enum {string} */
+                                kind: "event";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                                event: {
+                                    /** @enum {string} */
+                                    kind: "registered" | "updated" | "relocated" | "status_changed" | "condition_recorded" | "tag_reissued";
+                                    fromSite: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        customer: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            name: string;
+                                        };
+                                    } | null;
+                                    /** @enum {string|null} */
+                                    fromStatus: "active" | "out_of_service" | "retired" | null;
+                                    /** @enum {string|null} */
+                                    toStatus: "active" | "out_of_service" | "retired" | null;
+                                    /** @enum {string|null} */
+                                    condition: "good" | "fair" | "poor" | "unusable" | null;
+                                    changes: {
+                                        [key: string]: (unknown | unknown)[];
+                                    } | null;
+                                    /** Format: uuid */
+                                    workOrderId: string | null;
+                                    note: string | null;
+                                    by: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                kind: "job";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                                workOrder: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: number;
+                                    referenceLabel: string;
+                                    title: string;
+                                    /** @enum {string} */
+                                    state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                    /** @enum {string} */
+                                    priority: "low" | "normal" | "high" | "urgent";
+                                    dueFrom: string | null;
+                                    dueBy: string | null;
+                                    customer: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                    site: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        city: string | null;
+                                    };
+                                    jobType: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        code: string;
+                                    };
+                                    crew: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        lead: boolean;
+                                    }[];
+                                    revision: number;
+                                    stateChangedAt: string;
+                                    createdAt: string;
+                                    updatedAt: string;
+                                };
+                            } | {
+                                /** @enum {string} */
+                                kind: "submission";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                                submission: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    form: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                    /** Format: uuid */
+                                    workOrderId: string | null;
+                                    status: string;
+                                    explicit: boolean;
+                                    by: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                    photos: {
+                                        /** Format: uuid */
+                                        mediaId: string;
+                                        contentType: string;
+                                        byteSize: number;
+                                    }[];
+                                };
+                            } | {
+                                /** @enum {string} */
+                                kind: "part";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                                part: {
+                                    item: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        sku: string;
+                                        name: string;
+                                        /** @enum {string} */
+                                        kind: "stock_item" | "non_stock_item" | "service";
+                                        /** @enum {string} */
+                                        unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                    };
+                                    quantity: string;
+                                    returnedQuantity: string;
+                                    /** Format: uuid */
+                                    workOrderId: string;
+                                    explicit: boolean;
+                                    by: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                kind: "attachment";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                                attachment: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    fileId: string;
+                                    title: string;
+                                    /** @enum {string} */
+                                    kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                                    /** @enum {string|null} */
+                                    stage: "before" | "after" | null;
+                                    contentType: string;
+                                    byteSize: number;
+                                    addedBy: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                    createdAt: string;
+                                    /** Format: uuid */
+                                    workOrderId: string | null;
+                                };
+                            })[];
+                            carryOver: {
+                                /** Format: uuid */
+                                formId: string;
+                                /** Format: uuid */
+                                formVersionId: string;
+                                /** Format: uuid */
+                                fromSubmissionId: string;
+                                fields: string[];
+                                answers: {
+                                    [key: string]: unknown;
+                                };
+                            }[];
+                        }[];
                     };
                 };
             };
@@ -37783,6 +40818,13 @@ export interface operations {
                             formVersionId: string;
                             /** Format: uuid */
                             workOrderId: string | null;
+                            /** Format: uuid */
+                            assetId?: string | null;
+                            carriedOver?: {
+                                /** Format: uuid */
+                                fromSubmissionId: string;
+                                fields: string[];
+                            } | null;
                         };
                     } | {
                         /** Format: uuid */
@@ -37957,6 +40999,55 @@ export interface operations {
                             itemId: string;
                             quantity: string;
                             note?: string | null;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "asset.register";
+                        payload: {
+                            /** Format: uuid */
+                            workOrderId: string;
+                            name: string;
+                            make?: string | null;
+                            model?: string | null;
+                            serialNumber?: string | null;
+                            locationNote?: string | null;
+                            /** @enum {string} */
+                            condition?: "good" | "fair" | "poor" | "unusable";
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "asset.condition";
+                        payload: {
+                            /** @enum {string} */
+                            condition: "good" | "fair" | "poor" | "unusable";
+                            note?: string | null;
+                            /** Format: uuid */
+                            workOrderId?: string | null;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "asset.link";
+                        payload: {
+                            /** Format: uuid */
+                            assetId: string;
                         };
                     })[];
                 };

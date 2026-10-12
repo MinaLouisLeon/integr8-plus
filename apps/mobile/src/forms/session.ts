@@ -1,6 +1,10 @@
 import { type CompiledForm, compileDefinition } from '@integr8/form-engine';
-import { prefillAnswers } from '@integr8/form-input';
+import { hasCarryOver, prefillAnswers } from '@integr8/form-input';
 import {
+  type AssetCarryOver,
+  assetCarryOver,
+  assetsEnabled,
+  assetsOfJob,
   type ChangeContext,
   earlierAnswersAtSite,
   type JobForm,
@@ -83,22 +87,116 @@ export async function earlierOffer(
       };
 }
 
-/** Starts a job's form on the phone, optionally from earlier answers. Returns its id. */
+/** A form started for one of the job's assets (CRM/ERP plan, phase E3; ADR-0008). */
+export interface AssetStart {
+  assetId: string;
+  /** Its number, or its name while it has none. */
+  label: string;
+  /** What the form carries over from the asset's last visit, if anything. */
+  carry: AssetCarryOver | undefined;
+}
+
+/** Whether this job's form, as the phone holds it, marks questions to carry over. */
+export async function carriesOver(context: ChangeContext, form: JobForm): Promise<boolean> {
+  const liveVersionId = form.liveVersionId;
+  if (liveVersionId === null) {
+    return false;
+  }
+  const live = await context.db.read((sql) =>
+    sql.get<{ definition: string }>('select definition from form_versions where id = ?', [
+      liveVersionId,
+    ]),
+  );
+  const compiled =
+    live === undefined
+      ? undefined
+      : compiledVersion(liveVersionId, JSON.parse(live.definition) as unknown);
+  return compiled !== undefined && hasCarryOver(compiled);
+}
+
+/** Starting a form for this asset: what it would carry over, from the phone's copy. */
+export async function assetStart(
+  context: ChangeContext,
+  input: { form: JobForm; workOrderId: string; assetId: string },
+): Promise<AssetStart | undefined> {
+  const { form, workOrderId, assetId } = input;
+  const liveVersionId = form.liveVersionId;
+  if (liveVersionId === null) {
+    return undefined;
+  }
+  return context.db.read(async (sql) => {
+    const asset = (await assetsOfJob(sql, workOrderId)).find(
+      (candidate) => candidate.data.asset.id === assetId,
+    );
+    if (asset === undefined || asset.data.asset.status === 'retired') {
+      return undefined;
+    }
+    return {
+      assetId,
+      label: asset.data.asset.reference === '' ? asset.data.asset.name : asset.data.asset.reference,
+      carry: await assetCarryOver(sql, {
+        assetId,
+        formId: form.formId,
+        formVersionId: liveVersionId,
+      }),
+    };
+  });
+}
+
+/**
+ * The asset a job's form is filled for when it is opened from the job: the
+ * job's one asset in use, or none; `several` when the engineer must choose it
+ * from the asset's own screen.
+ */
+export async function jobAsset(
+  context: ChangeContext,
+  input: { form: JobForm; workOrderId: string },
+): Promise<AssetStart | 'several' | undefined> {
+  const { form, workOrderId } = input;
+  const assets = await context.db.read(async (sql) =>
+    (await assetsEnabled(sql))
+      ? (await assetsOfJob(sql, workOrderId)).filter(
+          (asset) => asset.data.asset.status !== 'retired',
+        )
+      : [],
+  );
+  if (assets.length === 0) {
+    return undefined;
+  }
+  if (assets.length > 1) {
+    return 'several';
+  }
+  return assetStart(context, { form, workOrderId, assetId: assets[0]!.data.asset.id });
+}
+
+/** Starts a job's form on the phone, optionally from earlier answers or for an asset. Returns its id. */
 export async function startForm(
   context: ChangeContext,
-  input: { form: JobForm; workOrderId: string; startFrom: EarlierOffer | undefined },
+  input: {
+    form: JobForm;
+    workOrderId: string;
+    startFrom: EarlierOffer | undefined;
+    asset?: AssetStart | undefined;
+  },
 ): Promise<string> {
-  const { form, workOrderId, startFrom } = input;
+  const { form, workOrderId, startFrom, asset } = input;
   if (form.liveVersionId === null) {
     throw new Error('This form has no published version on this phone.');
   }
+  const carry = asset?.carry;
   const { submissionId } = await recordFormStarted(context, {
     formId: form.formId,
     formVersionId: form.liveVersionId,
     workOrderId,
+    ...(asset === undefined ? {} : { assetId: asset.assetId }),
+    ...(carry === undefined
+      ? {}
+      : { carriedOver: { fromSubmissionId: carry.fromSubmissionId, fields: carry.fields } }),
   });
-  if (startFrom !== undefined) {
-    await recordAnswers(context, { submissionId, answers: startFrom.answers });
+  // The asset's carried-over answers take the place of the site's earlier ones.
+  const answers = carry?.answers ?? startFrom?.answers;
+  if (answers !== undefined) {
+    await recordAnswers(context, { submissionId, answers });
   }
   return submissionId;
 }

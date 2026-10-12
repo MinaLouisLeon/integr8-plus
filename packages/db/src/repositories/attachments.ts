@@ -3,7 +3,12 @@ import { type Selectable, sql } from 'kysely';
 import type { AttachmentKind, AttachmentsTable, PhotoStage } from '../schema.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
-export type AttachmentOwner = { customerId: string } | { siteId: string } | { workOrderId: string };
+export type AttachmentOwner =
+  | { customerId: string }
+  | { siteId: string }
+  | { workOrderId: string }
+  /** A machine on the asset register (0031). */
+  | { assetId: string };
 
 export interface Attachment {
   id: string;
@@ -23,6 +28,9 @@ function ownerColumn(owner: AttachmentOwner) {
   }
   if ('siteId' in owner) {
     return { column: 'site_id' as const, id: owner.siteId };
+  }
+  if ('assetId' in owner) {
+    return { column: 'asset_id' as const, id: owner.assetId };
   }
   return { column: 'work_order_id' as const, id: owner.workOrderId };
 }
@@ -117,13 +125,15 @@ export class AttachmentsRepository extends TenantScopedRepository {
   }
 }
 
-function toAttachment(row: Selectable<AttachmentsTable>): Attachment {
+export function toAttachment(row: Selectable<AttachmentsTable>): Attachment {
   const owner: AttachmentOwner =
     row.customer_id !== null
       ? { customerId: row.customer_id }
       : row.site_id !== null
         ? { siteId: row.site_id }
-        : { workOrderId: row.work_order_id! };
+        : row.asset_id !== null
+          ? { assetId: row.asset_id }
+          : { workOrderId: row.work_order_id! };
   return {
     id: row.id,
     fileId: row.file_id,

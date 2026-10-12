@@ -361,8 +361,36 @@ describe('field configuration, checked at publish', () => {
       field('number', 'total', { calculation: plus(answer('a'), num('1')), default: 3 }),
       /default: A calculated field cannot also have a default/u,
     ],
+    [
+      field('number', 'total', { calculation: plus(answer('a'), num('1')), carryOver: true }),
+      /carryOver: A calculated field is worked out by the form/u,
+    ],
+    [
+      field('text', 'site_code', { readOnly: true, carryOver: true }),
+      /carryOver: A read-only field is fixed by the form/u,
+    ],
   ])('refuses %j', (target, message) => {
     expect(messages(target).join('\n')).toMatch(message);
+  });
+
+  it('lets a question that describes the thing carry over, never evidence of the visit', () => {
+    const label = { en: 'Q' };
+    for (const type of ['text', 'decimal', 'dropdown', 'yes_no', 'barcode'] as const) {
+      const candidate = { id: 'q', label, type, carryOver: true, ...extra(type) };
+      expect(fieldSchema.safeParse(candidate).success, type).toBe(true);
+    }
+    for (const type of ['signature', 'photo', 'file', 'gps'] as const) {
+      expect(fieldSchema.safeParse({ id: 'q', label, type, carryOver: true }).success, type).toBe(
+        false,
+      );
+    }
+    function extra(type: string) {
+      return type === 'decimal'
+        ? { decimalPlaces: 2 }
+        : type === 'dropdown'
+          ? { options: [{ value: 'a', label: { en: 'A' } }] }
+          : {};
+    }
   });
 
   it('refuses two custom rules with the same id', () => {
