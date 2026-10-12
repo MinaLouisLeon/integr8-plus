@@ -1,6 +1,6 @@
 # ADR-0009 — General ledger
 
-**Status:** Accepted (A1 planning, 2026-10-12)
+**Status:** Accepted (A1 planning, 2026-10-12); implemented in A1 (migrations 0033–0035)
 
 ## Context
 
@@ -57,7 +57,7 @@ EAS or IFRS, or any other standard; the screens and reports say so.
 
 - **Double entry:** every journal balances — total debits equal total
   credits — and each line is a debit or a credit, never both. The database
-  checks it when the transaction commits, whatever the code does.
+  checks it when the journal is posted, whatever the code does.
 - **Immutable:** a posted journal and its lines never change and are never
   deleted. A mistake is corrected by a reversal: a new journal that mirrors
   it, dated in an open month, naming the journal it reverses; a journal is
@@ -140,3 +140,41 @@ only goods received against "goods received not invoiced" until supplier
 invoices and payables exist, so that account only grows until then; the
 screens say so. Payables, supplier invoices, bank reconciliation, budgets,
 cost centres, multi-currency revaluation and tax returns are left for later.
+
+## As built (A1)
+
+- Journals are written as drafts and posted by changing their status; the
+  database's guard checks everything at that moment (set up, on or after the
+  start, an open month, balanced on two lines or more, accounts in use, the
+  second person) and refuses any change afterwards. The routes check the same
+  first, so a refusal is said in words.
+- A void posts its own journal (`invoice_void`), the mirror of what its
+  invoice posts, dated when it was voided. A credit note or void never posts
+  before its invoice: it waits for it, posts with it, and is set aside with it.
+- What each document posts is defined once, in SQL (`erp_ledger_proposal`),
+  and used by the automatic posting, the unposted list and the API. Posting
+  runs in a subtransaction: a failure is kept on the document as `failed`
+  with the database's words and never blocks the invoice, payment or stock
+  movement.
+- Setting up the ledger, or moving its start before anything is posted,
+  queues what was recorded since the start for review (`before_set_up`),
+  rather than leaving it out: the company decides what to post.
+- A foreign document posted at a typed rate converts each line; rounding
+  goes on the largest line so the journal balances, and every line keeps its
+  foreign amount.
+- Closing a year needs nothing in draft and nothing waiting in it. Because
+  months are locked as they finish, the closing journal and the reversal that
+  reopens a year are the only journals allowed into a locked month — on the
+  year's last day, and on income, expense and retained earnings only (0035).
+  Reopening keeps the months locked; the owner unlocks the ones that need
+  work. A month of a closed year is not unlocked.
+- The receivables reconciliation compares, per customer, the receivables
+  account at a date with what invoices (not voided by then), credit notes and
+  payments before it say in the company's currency; aging is of the invoices
+  open today, with payments not yet allocated listed beside them.
+- The profit and loss leaves closing journals out, so it shows what the year
+  earned after it is closed; the balance sheet shows earnings not yet closed
+  as a line of equity.
+- CSV is written in the browser from the report's JSON, with a byte-order
+  mark so Arabic opens correctly, and cells that would start a formula
+  escaped.

@@ -225,3 +225,45 @@ and never change.
 See [03-data-model.md](./03-data-model.md): row-level security on every CRM
 table, no delete grant on leads, composite tenant keys on every reference, and
 the conversion rule enforced by a trigger.
+
+## The general ledger (phase A1; ADR-0009)
+
+| Permission      | Owner | Admin | Dispatcher | Engineer | Viewer |
+| --------------- | :---: | :---: | :--------: | :------: | :----: |
+| `ledger.read`   |   ✓   |   ✓   |     —      |    —     |   ✓    |
+| `ledger.post`   |   ✓   |   ✓   |     —      |    —     |   —    |
+| `ledger.manage` |   ✓   |   ✓   |     —      |    —     |   —    |
+| `ledger.unlock` |   ✓   |   —   |     —      |    —     |   —    |
+
+Decided with the product owner on 2026-10-12: owners, admins and viewers read
+the ledger; owners and admins draft and post journals, work the unposted list,
+lock months, close years and change the chart and settings; only the owner
+unlocks a month or reopens a year, always with a reason, and only the owner
+allows a person to post a journal they drafted. Dispatchers and engineers see
+nothing of the ledger. Every route also needs the company's `ledger` module,
+independent of `finance`, `inventory` and `purchasing`; the automatic postings
+come from those modules' documents whenever the ledger is set up.
+
+Segregation of duties: a `manual` or `opening` journal is posted by someone
+other than its drafter, and rewriting a draft makes its writer the drafter.
+When the owner allows self-approval, the poster confirms it and the journal
+keeps `self_approved`, shown wherever it is read and kept in the audit.
+
+What the database enforces whatever the role: a journal is inserted as a
+draft; it posts only when the ledger is set up, dated on or after the start, in
+an open month, balanced on two lines or more, on accounts in use, and approved
+by a second person when written by hand; a posted journal and its lines never
+change or disappear (`erp_journals_guard`, `erp_journal_lines_guard`); only a
+year's closing journal and its reversal go into a locked month, on the year's
+last day and on income, expense and retained earnings (0035); an account's
+type is fixed once posted to; the start and fiscal year are fixed once a
+journal is posted. The unposted list is written only by the database's
+functions (the runtime role may read it and update a waiting row, and a
+resolved row never changes). Four security-definer functions come with A1 —
+`assign_journal_reference`, `erp_ledger_capture`, `erp_ledger_try_post`,
+`erp_ledger_backfill` — all listed in `SECURITY_DEFINER_FUNCTIONS`. Posting a
+document runs in a subtransaction: a failure is recorded on the document and
+never blocks an invoice, payment or stock movement.
+
+It is a management ledger. Reports say so; Integr8 makes no tax, statutory
+accounts or compliance claim for it.
