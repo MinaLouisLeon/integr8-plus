@@ -56,6 +56,8 @@ const settings = (overrides: Partial<NonNullable<LedgerOverview['settings']>> = 
   fiscalStartMonth: 1,
   autoPostSales: true,
   autoPostStock: true,
+  autoPostExpenses: true,
+  autoPostPayroll: true,
   allowSelfApproval: false,
   accounts: {
     receivables: RECEIVABLES,

@@ -128,8 +128,10 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     answer: [
       'An owner can do everything in the company, including billing and closing the account. An admin can do everything except billing and company settings.',
       'Forms and job types are the exception for both: Integr8 builds and maintains those for you, so nobody in the company needs to.',
+      'An HR manager keeps employee profiles, ID and bank details, expense approvals and payroll, and nothing else. An inventory manager keeps stock, purchasing and manufacturing, and nothing else.',
       'A dispatcher manages jobs, customers and sites. An engineer does the work assigned to them and fills in forms. A viewer can read and nothing else.',
-      'Nobody can give somebody a role above their own.',
+      'Either manager’s work can also be given on top of somebody’s role, from People: a dispatcher who also keeps the store, for example.',
+      'Nobody can give somebody a role above their own, and only the owner makes somebody an HR manager.',
     ],
   },
   {

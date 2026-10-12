@@ -54,6 +54,8 @@ const PATHS: Readonly<Record<NavIcon, string>> = {
   heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z',
   book: 'M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5zM5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3M9 7h6M9 11h6',
   'bar-chart': 'M4 20h16M7 20v-6M12 20V6M17 20v-9',
+  'id-card':
+    'M3 6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM9 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 16a3 3 0 0 1 6 0M14 9h4M14 13h4',
 };
 
 type GlyphProps = Omit<SVGProps<SVGSVGElement>, 'children' | 'd'>;

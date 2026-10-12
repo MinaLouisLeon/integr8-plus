@@ -77,6 +77,13 @@ export interface OperationsConfig {
     ledgerPeriods: string;
     ledgerReports: string;
     ledgerSettings: string;
+    /** HR: employee profiles (seventh round; ADR-0010). */
+    employees: string;
+    employee: (id: string) => string;
+    newEmployee: string;
+    editEmployee: (id: string) => string;
+    /** The signed-in person's own employee profile. */
+    myProfile: string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -121,7 +128,8 @@ export interface RowTarget {
     | 'payment'
     | 'asset'
     | 'journal'
-    | 'posting';
+    | 'posting'
+    | 'employee';
   id: string;
   label: string;
 }
@@ -276,6 +284,16 @@ export type AccountActivity = Json<'/v1/ledger/reports/account-activity', 'get',
 export type ReceivablesReport = Json<'/v1/ledger/reports/receivables', 'get', 200>;
 export type ProfitAndLoss = Json<'/v1/ledger/reports/profit-and-loss', 'get', 200>;
 export type BalanceSheet = Json<'/v1/ledger/reports/balance-sheet', 'get', 200>;
+export type EmployeePage = Json<'/v1/hr/employees', 'get', 200>;
+export type Employee = Json<'/v1/hr/employees/{employeeId}', 'get', 200>;
+export type EmployeeStatus = Employee['status'];
+export type EmployeeCreateBody = NonNullable<
+  paths['/v1/hr/employees']['post']['requestBody']
+>['content']['application/json'];
+export type EmployeeUpdateBody = NonNullable<
+  paths['/v1/hr/employees/{employeeId}']['patch']['requestBody']
+>['content']['application/json'];
+export type SealedFieldName = Json<'/v1/hr/employees/{employeeId}/reveal', 'post', 200>['field'];
 
 export const keys = {
   me: ['me'] as const,
@@ -329,6 +347,11 @@ export const keys = {
   postings: (query: object) => ['ledger', 'postings', query] as const,
   posting: (id: string) => ['ledger', 'posting', id] as const,
   ledgerReport: (report: string, query: object) => ['ledger', 'report', report, query] as const,
+  // HR. A revealed ID or bank number is never put under any key: it lives in
+  // the screen that asked for it and goes when the screen does.
+  employees: (query: object) => ['hr', 'employees', query] as const,
+  employee: (id: string) => ['hr', 'employee', id] as const,
+  myProfile: ['hr', 'me'] as const,
   forms: ['forms'] as const,
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,

@@ -85,6 +85,22 @@ describe('the ledger', () => {
   });
 });
 
+describe('HR', () => {
+  const HR: ShellRoute[] = [
+    { key: 'employees', href: NAV_PATHS.employees },
+    { key: 'myProfile', href: NAV_PATHS.myProfile },
+  ];
+
+  it('keeps an employee, a new one and an edit under employees, and one’s own profile apart', () => {
+    expect(routeForPathname(HR, '/hr/employees')).toEqual({ route: HR[0], nested: false });
+    expect(routeForPathname(HR, '/hr/employees/e1')).toEqual({ route: HR[0], nested: true });
+    expect(routeForPathname(HR, '/hr/employees/new')?.route.key).toBe('employees');
+    expect(routeForPathname(HR, '/hr/employees/e1/edit')?.route.key).toBe('employees');
+    expect(routeForPathname(HR, '/hr/me')).toEqual({ route: HR[1], nested: false });
+    expect(routeForPathname(HR, '/hr')).toBeNull();
+  });
+});
+
 describe('the current item', () => {
   it('is current on its own page and below it', () => {
     expect(isCurrentRoute(ROUTES[1]!, '/work-orders')).toBe(true);

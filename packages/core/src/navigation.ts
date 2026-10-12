@@ -44,7 +44,8 @@ export type NavIcon =
   | 'qr-code'
   | 'heart'
   | 'book'
-  | 'bar-chart';
+  | 'bar-chart'
+  | 'id-card';
 
 export type NavGroup =
   | 'overview'
@@ -53,6 +54,7 @@ export type NavGroup =
   | 'sales'
   | 'finance'
   | 'accounting'
+  | 'hr'
   | 'inventory'
   | 'operations'
   | 'setup'
@@ -112,6 +114,8 @@ export type NavPath =
   | 'ledger'
   | 'journals'
   | 'ledgerReports'
+  | 'employees'
+  | 'myProfile'
   | 'assets';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
@@ -121,6 +125,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   'sales',
   'finance',
   'accounting',
+  'hr',
   'inventory',
   'operations',
   'setup',
@@ -249,6 +254,18 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     permission: 'ledger.read',
     feature: 'ledger',
   },
+
+  // HR (seventh round; ADR-0010): the company's `hr` module. Everybody has
+  // their own profile; the list is for those who read everybody's.
+  {
+    key: 'employees',
+    group: 'hr',
+    path: 'employees',
+    icon: 'users',
+    permission: 'hr.read',
+    feature: 'hr',
+  },
+  { key: 'myProfile', group: 'hr', path: 'myProfile', icon: 'id-card', feature: 'hr' },
 
   // Inventory (CRM/ERP plan, phase E1): the company's `inventory` module.
   {

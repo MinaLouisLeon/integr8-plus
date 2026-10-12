@@ -61,3 +61,7 @@ export { UnpostedScreen } from './ledger/unposted-screen.js';
 export { LedgerPeriodsScreen } from './ledger/ledger-periods.js';
 export { LEDGER_REPORTS, type LedgerReport, LedgerReportsScreen } from './ledger/ledger-reports.js';
 export { LedgerSettingsScreen } from './ledger/ledger-settings.js';
+export { EmployeeListScreen } from './hr/employee-list.js';
+export { EmployeeScreen } from './hr/employee-screen.js';
+export { EmployeeEditorScreen } from './hr/employee-editor.js';
+export { MyProfileScreen } from './hr/my-profile.js';

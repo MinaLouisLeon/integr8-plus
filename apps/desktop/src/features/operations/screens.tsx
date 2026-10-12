@@ -29,6 +29,10 @@ import {
   LedgerPeriodsScreen,
   LedgerReportsScreen,
   LedgerSettingsScreen,
+  EmployeeListScreen,
+  EmployeeScreen,
+  EmployeeEditorScreen,
+  MyProfileScreen,
   AssetListScreen,
   WarrantyAlertsPanel,
   AssetScreen,
@@ -126,6 +130,11 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         ledgerPeriods: '/ledger/periods',
         ledgerReports: '/ledger/reports',
         ledgerSettings: '/ledger/settings',
+        employees: '/hr/employees',
+        employee: (id) => `/hr/employees/${id}`,
+        newEmployee: '/hr/employees/new',
+        editEmployee: (id) => `/hr/employees/${id}/edit`,
+        myProfile: '/hr/me',
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -579,6 +588,49 @@ export function LedgerSettingsRoute() {
   return (
     <OperationsScreens>
       <LedgerSettingsScreen />
+    </OperationsScreens>
+  );
+}
+
+/** HR: employee profiles (seventh round; ADR-0010). */
+export function EmployeesRoute() {
+  return (
+    <OperationsScreens>
+      <EmployeeListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function NewEmployeeRoute() {
+  return (
+    <OperationsScreens>
+      <EmployeeEditorScreen />
+    </OperationsScreens>
+  );
+}
+
+export function EmployeeRoute() {
+  const { employeeId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <EmployeeScreen key={employeeId} employeeId={employeeId} />
+    </OperationsScreens>
+  );
+}
+
+export function EditEmployeeRoute() {
+  const { employeeId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <EmployeeEditorScreen key={employeeId} employeeId={employeeId} />
+    </OperationsScreens>
+  );
+}
+
+export function MyProfileRoute() {
+  return (
+    <OperationsScreens>
+      <MyProfileScreen />
     </OperationsScreens>
   );
 }

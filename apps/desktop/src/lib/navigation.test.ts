@@ -62,6 +62,23 @@ describe('finding the section a route is in', () => {
     expect(routeChrome('/ledger/settings').back).toEqual({ to: '/ledger', section: 'ledger' });
   });
 
+  it('finds HR’s employees and one’s own profile apart', () => {
+    expect(sectionPathFor('/hr/employees')).toBe('employees');
+    expect(sectionPathFor('/hr/employees/new')).toBe('employees');
+    expect(sectionPathFor('/hr/employees/e1/edit')).toBe('employees');
+    expect(sectionPathFor('/hr/me')).toBe('myProfile');
+    expect(routeChrome('/hr/employees/e1')).toEqual({
+      section: 'employees',
+      back: { to: '/hr/employees', section: 'employees' },
+    });
+    expect(routeChrome('/hr/me')).toEqual({ section: 'myProfile', back: undefined });
+    expect(
+      desktopNavigation(['hr.read'], { hr: true })
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.to),
+    ).toEqual(['/hr/employees', '/hr/me']);
+  });
+
   it('reads a site as part of its customers', () => {
     expect(sectionPathFor('/sites/s1')).toBe('customers');
   });

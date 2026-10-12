@@ -518,7 +518,11 @@ export const revealEmployeeFieldRoute = defineRoute({
       await audit(tx, context, 'hr.field_revealed', 'hr_employee', employee.id, { field });
       return opened;
     });
-    return { status: 200, body: { field: body.field, value } };
+    return {
+      status: 200,
+      body: { field: body.field, value },
+      headers: { 'cache-control': 'no-store' },
+    };
   },
 });
 

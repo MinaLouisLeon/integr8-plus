@@ -116,6 +116,12 @@ const NAV_GLYPHS: Record<NavIcon, Glyph> = {
     'M9 11h6',
   ],
   'bar-chart': ['M4 20h16', 'M7 20v-6', 'M12 20V6', 'M17 20v-9'],
+  'id-card': [
+    'M3 6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z',
+    'M11 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0z',
+    'M6 16a3 3 0 0 1 6 0',
+    'M14 9h4M14 13h4',
+  ],
 };
 
 export type ChromeIcon =
