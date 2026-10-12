@@ -79,6 +79,8 @@ const UNSENT_WORK_AT: Record<number, (driver: SqlDriver) => Promise<void>> = {
   7: (driver) => UNSENT_WORK_AT[6]!(driver),
   // Version 8 added assets, downloaded data like the van's stock.
   8: (driver) => UNSENT_WORK_AT[7]!(driver),
+  // Version 9 added what the van's stock has free and item images: downloaded data.
+  9: (driver) => UNSENT_WORK_AT[8]!(driver),
   4: async (driver) => {
     await UNSENT_WORK_AT[3]!(driver);
     await driver.run(

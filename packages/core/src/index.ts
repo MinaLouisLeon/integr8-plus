@@ -176,6 +176,9 @@ export {
 
 export {
   ITEM_KINDS,
+  ITEM_TRACKINGS,
+  itemTrackingSchema,
+  type ItemTracking,
   itemKindSchema,
   type ItemKind,
   UNITS,

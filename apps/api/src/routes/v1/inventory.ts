@@ -3,6 +3,7 @@ import {
   type Principal,
   ITEM_KINDS,
   itemKindSchema,
+  itemTrackingSchema,
   LOCATION_KINDS,
   locationKindSchema,
   locationOwnershipSchema,
@@ -47,6 +48,8 @@ export const itemSummarySchema = z.object({
   name: z.string(),
   kind: itemKindSchema,
   unit: unitSchema,
+  /** Whether each unit carries a serial number, or stock a batch code (ADR-0013). */
+  tracking: itemTrackingSchema,
 });
 
 export const itemSchema = itemSummarySchema.extend({
@@ -69,7 +72,14 @@ export const itemSchema = itemSummarySchema.extend({
 });
 
 export function itemSummary(item: Item): z.infer<typeof itemSummarySchema> {
-  return { id: item.id, sku: item.sku, name: item.name, kind: item.kind, unit: item.unit };
+  return {
+    id: item.id,
+    sku: item.sku,
+    name: item.name,
+    kind: item.kind,
+    unit: item.unit,
+    tracking: item.tracking,
+  };
 }
 
 export function itemBody(item: Item, seeCosts: boolean): z.infer<typeof itemSchema> {
@@ -459,6 +469,16 @@ const stockLineSchema = z.object({
   available: z.string(),
   /** The reorder level here, if one is set. */
   minimum: z.string().nullable(),
+  /** For a tracked item: the serial numbers or batches here, earliest expiry first (ADR-0013). */
+  lots: z.array(
+    z.object({
+      lotId: z.uuid(),
+      kind: z.enum(['serial', 'batch']),
+      code: z.string(),
+      expiresOn: z.iso.date().nullable(),
+      onHand: z.string(),
+    }),
+  ),
 });
 
 export const itemDetailSchema = z.object({
@@ -507,6 +527,23 @@ export async function itemDetailBody(
   item: Item,
 ): Promise<z.infer<typeof itemDetailSchema>> {
   const balances = await tx.inventoryStock.balances({ itemId: item.id });
+  const lotsHere = new Map<string, z.infer<typeof stockLineSchema>['lots']>();
+  if (item.tracking !== 'none') {
+    for (const balance of balances) {
+      if (compareDecimals(balance.onHand, '0') > 0) {
+        lotsHere.set(
+          balance.locationId,
+          (await tx.inventoryLots.available(item.id, balance.locationId)).map((lot) => ({
+            lotId: lot.id,
+            kind: lot.kind,
+            code: lot.code,
+            expiresOn: lot.expiresOn,
+            onHand: lot.onHand,
+          })),
+        );
+      }
+    }
+  }
   const [places, reserved, total] = await Promise.all([
     tx.inventoryStock.findLocations(balances.map((row) => row.locationId)),
     reservedAt(tx, { itemId: item.id }),
@@ -529,6 +566,7 @@ export async function itemDetailBody(
               onHand: row.onHand,
               ...availability(row.onHand, reserved.get(`${row.itemId}:${row.locationId}`)),
               minimum: row.minimum,
+              lots: lotsHere.get(row.locationId) ?? [],
             },
           ];
     }),

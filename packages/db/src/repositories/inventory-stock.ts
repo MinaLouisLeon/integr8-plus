@@ -13,6 +13,7 @@ import type {
   ErpStockMovementsTable,
 } from '../schema.js';
 import { trimDecimal } from './crm-leads.js';
+import { InventoryLotsRepository } from './inventory-lots.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
 /**
@@ -62,6 +63,8 @@ export interface MovementInput {
   reason?: string | null;
   stockCountId?: string | null;
   reversalOf?: string | null;
+  /** The serial or batch moved, for a tracked item (ADR-0013). */
+  lotId?: string | null;
 }
 
 export interface Movement {
@@ -78,6 +81,8 @@ export interface Movement {
   reversalOf: string | null;
   actorId: UserId;
   occurredAt: Date;
+  /** The serial or batch moved, for a tracked item. */
+  lotId: string | null;
 }
 
 export interface MovementQuery {
@@ -116,6 +121,10 @@ export interface StockCount {
 
 export interface StockCountLine {
   itemId: string;
+  /** For a tracked item: the serial or batch counted, or a new one's code (ADR-0013). */
+  lotId: string | null;
+  lotCode: string | null;
+  lotExpiresOn: string | null;
   countedQuantity: string;
   /** What the system held when the count was posted; null while it is a draft. */
   expectedQuantity: string | null;
@@ -143,6 +152,22 @@ export class DuplicatePostingError extends Error {
   constructor() {
     super('This stock posting has already been made');
     this.name = 'DuplicatePostingError';
+  }
+}
+
+/** A tracked item moved without naming its serial or batch, or with one of another item's. */
+export class LotMismatchError extends Error {
+  constructor() {
+    super('A tracked item moves by its own serial numbers or batches');
+    this.name = 'LotMismatchError';
+  }
+}
+
+/** A serial number would be in stock twice. Nothing was written. */
+export class SerialInStockError extends Error {
+  constructor() {
+    super('This serial number is already in stock');
+    this.name = 'SerialInStockError';
   }
 }
 
@@ -326,6 +351,7 @@ export class InventoryStockRepository extends TenantScopedRepository {
             reason: blankToNull(movement.reason) ?? null,
             stock_count_id: movement.stockCountId ?? null,
             reversal_of: movement.reversalOf ?? null,
+            lot_id: movement.lotId ?? null,
             actor_id: toUserId(meta.actorId),
           })),
         )
@@ -334,8 +360,23 @@ export class InventoryStockRepository extends TenantScopedRepository {
       return rows.map(toMovement);
     } catch (error) {
       const { code, constraint } = error as { code?: string; constraint?: string };
-      if (code === '23514' && constraint === 'erp_stock_balances_not_negative') {
+      if (
+        code === '23514' &&
+        (constraint === 'erp_stock_balances_not_negative' ||
+          constraint === 'erp_stock_lot_balances_not_negative')
+      ) {
         throw new InsufficientStockError();
+      }
+      if (code === '23514' && constraint === 'erp_stock_serial_once') {
+        throw new SerialInStockError();
+      }
+      if (
+        code === '23514' &&
+        (constraint === 'erp_stock_movements_lot_required' ||
+          constraint === 'erp_stock_movements_lot_matches' ||
+          constraint === 'erp_stock_movements_serial_one')
+      ) {
+        throw new LotMismatchError();
       }
       if (code === '23505' && constraint === 'erp_stock_movements_source_unique') {
         throw new DuplicatePostingError();
@@ -558,12 +599,22 @@ export class InventoryStockRepository extends TenantScopedRepository {
     return (
       await this.db
         .selectFrom('erp_stock_count_lines')
-        .selectAll()
+        .select([
+          'item_id',
+          'lot_id',
+          'lot_code',
+          sql<string | null>`lot_expires_on::text`.as('lot_expires_on'),
+          'counted_quantity',
+          'expected_quantity',
+        ])
         .where('tenant_id', '=', this.tenantId)
         .where('count_id', '=', countId)
         .execute()
     ).map((row) => ({
       itemId: row.item_id,
+      lotId: row.lot_id,
+      lotCode: row.lot_code,
+      lotExpiresOn: row.lot_expires_on,
       countedQuantity: trimDecimal(row.counted_quantity),
       expectedQuantity: row.expected_quantity === null ? null : trimDecimal(row.expected_quantity),
     }));
@@ -599,7 +650,13 @@ export class InventoryStockRepository extends TenantScopedRepository {
   async setCountLines(
     countId: string,
     expectedVersion: number,
-    lines: readonly { itemId: string; countedQuantity: string }[],
+    lines: readonly {
+      itemId: string;
+      countedQuantity: string;
+      lotId?: string | null | undefined;
+      lotCode?: string | null | undefined;
+      lotExpiresOn?: string | null | undefined;
+    }[],
   ): Promise<StockCount | StockRefusal | 'not_draft'> {
     const count = await this.#lockCount(countId);
     if (count === undefined) {
@@ -625,6 +682,9 @@ export class InventoryStockRepository extends TenantScopedRepository {
             count_id: countId,
             item_id: line.itemId,
             counted_quantity: line.countedQuantity,
+            lot_id: line.lotId ?? null,
+            lot_code: line.lotId == null ? (line.lotCode?.trim() ?? null) : null,
+            lot_expires_on: line.lotId == null ? (line.lotExpiresOn ?? null) : null,
           })),
         )
         .execute();
@@ -688,8 +748,29 @@ export class InventoryStockRepository extends TenantScopedRepository {
       return 'not_draft';
     }
     const lines = await this.countLines(countId);
+    const trackingOf = new Map(
+      lines.length === 0
+        ? []
+        : (
+            await this.db
+              .selectFrom('erp_items')
+              .select(['id', 'tracking'])
+              .where('tenant_id', '=', this.tenantId)
+              .where('id', 'in', [...new Set(lines.map((line) => line.itemId))])
+              .execute()
+          ).map((row) => [row.id, row.tracking] as const),
+    );
+    const lots = new InventoryLotsRepository(this.scope);
     const movements: MovementInput[] = [];
-    for (const line of lines) {
+    const variance = async (counted: string, held: string) => {
+      const { rows } = await sql<{ variance: string }>`
+        select (${counted}::numeric - ${held}::numeric)::text as variance
+      `.execute(this.db);
+      const value = rows[0]!.variance;
+      return /^-?0*(\.0*)?$/u.test(value) ? undefined : trimDecimal(value);
+    };
+
+    for (const line of lines.filter((row) => (trackingOf.get(row.itemId) ?? 'none') === 'none')) {
       const held = await this.lockBalance(line.itemId, count.locationId);
       await this.db
         .updateTable('erp_stock_count_lines')
@@ -698,21 +779,104 @@ export class InventoryStockRepository extends TenantScopedRepository {
         .where('count_id', '=', countId)
         .where('item_id', '=', line.itemId)
         .execute();
-      const { rows } = await sql<{ variance: string }>`
-        select (${line.countedQuantity}::numeric - ${held}::numeric)::text as variance
-      `.execute(this.db);
-      const variance = rows[0]!.variance;
-      if (!/^-?0*(\.0*)?$/u.test(variance)) {
+      const quantity = await variance(line.countedQuantity, held);
+      if (quantity !== undefined) {
         movements.push({
           itemId: line.itemId,
           locationId: count.locationId,
           kind: 'count_adjustment',
-          quantity: variance,
+          quantity,
           sourceKey: `count:${countId}:${line.itemId}`,
           stockCountId: countId,
         });
       }
     }
+
+    // A tracked item is counted lot by lot (ADR-0013): a lot it holds here that
+    // the count does not list was counted as none.
+    const trackedItems = [
+      ...new Set(
+        lines
+          .filter((row) => (trackingOf.get(row.itemId) ?? 'none') !== 'none')
+          .map((row) => row.itemId),
+      ),
+    ];
+    for (const itemId of trackedItems) {
+      const kind = trackingOf.get(itemId) as 'serial' | 'batch';
+      await this.lockBalance(itemId, count.locationId);
+      const counted = new Map<string, string>();
+      for (const line of lines.filter((row) => row.itemId === itemId)) {
+        let lotId = line.lotId;
+        if (lotId === null) {
+          const lot = await lots.getOrCreate(
+            { itemId, kind, code: line.lotCode ?? '', expiresOn: line.lotExpiresOn },
+            meta.actorId,
+          );
+          lotId = lot.id;
+          await this.db
+            .updateTable('erp_stock_count_lines')
+            .set({ lot_id: lotId, lot_code: null, lot_expires_on: null })
+            .where('tenant_id', '=', this.tenantId)
+            .where('count_id', '=', countId)
+            .where('item_id', '=', itemId)
+            .where('lot_code', '=', line.lotCode)
+            .execute();
+        }
+        counted.set(lotId, line.countedQuantity);
+      }
+      const holding = (await lots.available(itemId, count.locationId)).map((lot) => lot.id);
+      for (const lotId of holding.filter((id) => !counted.has(id))) {
+        await this.db
+          .insertInto('erp_stock_count_lines')
+          .values({
+            tenant_id: this.tenantId,
+            count_id: countId,
+            item_id: itemId,
+            lot_id: lotId,
+            counted_quantity: '0',
+          })
+          .execute();
+        counted.set(lotId, '0');
+      }
+      for (const [lotId, quantityCounted] of counted) {
+        const held = await lots.lockBalance(lotId, count.locationId);
+        await this.db
+          .updateTable('erp_stock_count_lines')
+          .set({ expected_quantity: held })
+          .where('tenant_id', '=', this.tenantId)
+          .where('count_id', '=', countId)
+          .where('item_id', '=', itemId)
+          .where('lot_id', '=', lotId)
+          .execute();
+        const quantity = await variance(quantityCounted, held);
+        if (quantity === undefined) {
+          continue;
+        }
+        if (kind === 'serial') {
+          // A serial number is one unit: found (+1) or missing (−1).
+          movements.push({
+            itemId,
+            locationId: count.locationId,
+            kind: 'count_adjustment',
+            quantity: quantity.startsWith('-') ? '-1' : '1',
+            sourceKey: `count:${countId}:${itemId}:${lotId}`,
+            stockCountId: countId,
+            lotId,
+          });
+          continue;
+        }
+        movements.push({
+          itemId,
+          locationId: count.locationId,
+          kind: 'count_adjustment',
+          quantity,
+          sourceKey: `count:${countId}:${itemId}:${lotId}`,
+          stockCountId: countId,
+          lotId,
+        });
+      }
+    }
+
     const posted = await this.post(movements, meta);
     const row = await this.db
       .updateTable('erp_stock_counts')
@@ -828,6 +992,7 @@ function toMovement(row: Selectable<ErpStockMovementsTable>): Movement {
     reversalOf: row.reversal_of,
     actorId: toUserId(row.actor_id),
     occurredAt: row.occurred_at,
+    lotId: row.lot_id,
   };
 }
 

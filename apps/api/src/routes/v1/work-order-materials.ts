@@ -13,6 +13,7 @@ import {
   seesCosts,
 } from './materials.js';
 import { peopleOf, readableWorkOrder, requireWork } from './operations.js';
+import { lotSpecsSchema } from './stock-lots.js';
 import { detailBody, detailSchema, workOrderParams } from './work-orders.js';
 
 /**
@@ -53,6 +54,10 @@ export const recordMaterialRoute = defineRoute({
     locationId: z.uuid().optional(),
     quantity: positiveQuantitySchema,
     note: z.string().trim().max(1000).nullable().optional(),
+    /** For a serial-numbered or batched item: which ones; the batch expiring first when none are named. */
+    lots: lotSpecsSchema.optional(),
+    /** Use an expired batch anyway; the note says why. */
+    allowExpired: z.boolean().optional(),
   }),
   responses: {
     201: {
@@ -63,7 +68,7 @@ export const recordMaterialRoute = defineRoute({
     404: { description: 'No such job (this person may see) or item.' },
     422: {
       description:
-        'No van assigned (`no_van`), no location given by a dispatcher (`location_required`), or the item is archived.',
+        'No van assigned (`no_van`), no location given by a dispatcher (`location_required`), the item is archived, or its serial numbers or batches do not fit (`serial_single_unit`, `lots_quantity_mismatch`, `lot_repeated`, `batch_expired`, `item_not_tracked`).',
     },
   },
   handler: async ({ params, body }, context) => {
@@ -75,6 +80,8 @@ export const recordMaterialRoute = defineRoute({
         locationId: body.locationId ?? null,
         quantity: body.quantity,
         note: body.note ?? null,
+        lots: body.lots,
+        allowExpired: body.allowExpired,
       });
       return detailBody(tx, context.principal, job);
     });
@@ -101,6 +108,11 @@ export const resolveMaterialRoute = defineRoute({
       action: z.literal('retry'),
       quantity: positiveQuantitySchema.optional(),
       locationId: z.uuid().optional(),
+      /** Other serial numbers or batches; those first asked for when the quantity is unchanged. */
+      lots: lotSpecsSchema.optional(),
+      allowExpired: z.boolean().optional(),
+      /** Why an expired batch is used. */
+      reason: z.string().trim().max(1000).optional(),
     }),
   ]),
   responses: {
@@ -137,6 +149,8 @@ export const returnMaterialRoute = defineRoute({
   body: z.object({
     quantity: positiveQuantitySchema,
     reason: z.string().trim().max(1000).nullable().optional(),
+    /** Which serial numbers or batches come back; by default, those used. */
+    lots: lotSpecsSchema.optional(),
   }),
   responses: {
     201: { description: 'The job as it now is.', schema: detailSchema },
@@ -153,6 +167,7 @@ export const returnMaterialRoute = defineRoute({
         quantity: body.quantity,
         reason: body.reason ?? null,
         idempotencyKey: context.idempotencyKey!,
+        lots: body.lots,
       });
       return detailBody(tx, context.principal, job);
     });

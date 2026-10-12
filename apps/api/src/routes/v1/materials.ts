@@ -6,8 +6,11 @@ import {
   type Principal,
 } from '@integr8/core';
 import {
+  addDecimals,
   DuplicatePostingError,
+  type Item,
   type Material,
+  type MaterialLot,
   type TenantTransaction,
   type WorkOrder,
 } from '@integr8/db';
@@ -19,7 +22,9 @@ import { requireLocation } from './inventory-stock.js';
 import { availableForJob, deliverForJob } from './sales-fulfilment.js';
 import { itemSummary, itemSummarySchema, seesCosts } from './inventory.js';
 import { type People, personBody, personSchema } from './operations.js';
+import { companyToday } from './sales-quotes.js';
 import { iso } from './schemas.js';
+import { byLot, type LotAllocation, type LotSpec, lotsHeld, lotsLeaving } from './stock-lots.js';
 
 /**
  * Parts used on jobs (CRM/ERP plan, phase E2; ADR-0005): the record, and the
@@ -54,6 +59,21 @@ export const materialSchema = z.object({
   /** The phone's own id for the action, when it came from the phone. */
   clientActionId: z.string().nullable(),
   version: z.number().int(),
+  /**
+   * The serial numbers or batches the part came from (ADR-0013): those taken
+   * once posted, those asked for while a conflict; null for an untracked item.
+   */
+  lots: z
+    .array(
+      z.object({
+        lotId: z.uuid(),
+        kind: z.enum(['serial', 'batch']),
+        code: z.string(),
+        expiresOn: z.iso.date().nullable(),
+        quantity: z.string(),
+      }),
+    )
+    .nullable(),
 });
 
 export type MaterialBody = z.infer<typeof materialSchema>;
@@ -67,14 +87,16 @@ export async function materialBodies(
   if (materials.length === 0) {
     return [];
   }
-  const [items, locations] = await Promise.all([
+  const [items, locations, lots] = await Promise.all([
     tx.inventoryCatalogue.findItems(materials.map((row) => row.itemId)),
     tx.inventoryStock.findLocations(
       materials.flatMap((row) => (row.locationId === null ? [] : [row.locationId])),
     ),
+    tx.inventoryLots.find(materials.flatMap((row) => (row.lots ?? []).map((lot) => lot.lotId))),
   ]);
   const item = new Map(items.map((row) => [row.id, row]));
   const location = new Map(locations.map((row) => [row.id, row]));
+  const lot = new Map(lots.map((row) => [row.id, row]));
   return materials.map((material) => {
     const where = material.locationId === null ? undefined : location.get(material.locationId);
     return {
@@ -93,6 +115,23 @@ export async function materialBodies(
       cancelledBy: material.cancelledBy === null ? null : personBody(material.cancelledBy, people),
       clientActionId: material.clientActionId,
       version: material.version,
+      lots:
+        material.lots === null
+          ? null
+          : material.lots.flatMap((entry) => {
+              const found = lot.get(entry.lotId);
+              return found === undefined
+                ? []
+                : [
+                    {
+                      lotId: found.id,
+                      kind: found.kind,
+                      code: found.code,
+                      expiresOn: found.expiresOn,
+                      quantity: entry.quantity,
+                    },
+                  ];
+            }),
     };
   });
 }
@@ -116,6 +155,10 @@ export interface UseInput {
   /** The phone's id for the action; the same id arriving again finds the first record. */
   clientActionId?: string | null;
   occurredAt?: Date;
+  /** For a serial-numbered or batched item: which ones; the earliest expiry when none are named. */
+  lots?: readonly LotSpec[] | undefined;
+  /** Use an expired batch anyway; the note says why. */
+  allowExpired?: boolean | undefined;
 }
 
 export type UseOutcome =
@@ -208,7 +251,13 @@ export async function recordUse(
   const location = await sourceLocation(tx, principal, input.locationId);
   const held = await tx.inventoryStock.lockBalance(item.id, location.id);
   const { available } = await availableForJob(tx, job, item.id, location.id, held);
-  const enough = compareDecimals(available, input.quantity) >= 0;
+  let enough = compareDecimals(available, input.quantity) >= 0;
+  const lots = await lotsForUse(tx, item, location.id, input.quantity, input.lots, {
+    allowExpired: input.allowExpired,
+    reason: input.note,
+    fromPhone: clientActionId !== null,
+  });
+  enough &&= lots.held;
   let material: Material;
   try {
     material = await tx.inventoryMaterials.create({
@@ -223,6 +272,7 @@ export async function recordUse(
       note: input.note ?? null,
       recordedBy: principal.userId,
       ...(input.occurredAt === undefined ? {} : { occurredAt: input.occurredAt }),
+      lots: lots.lots,
     });
   } catch (error) {
     // Two arrivals of the same phone action at once: the other one won.
@@ -247,6 +297,7 @@ export async function recordUse(
     itemId: item.id,
     locationId: location.id,
     quantity: input.quantity,
+    ...(lots.lots === null ? {} : { lots: lots.lots }),
     ...(enough ? {} : { available, held }),
     ...(clientActionId === null ? {} : { clientActionId }),
   });
@@ -254,6 +305,52 @@ export async function recordUse(
     await deliverForJob(tx, context, job, item.id, input.quantity);
   }
   return { outcome: enough ? 'posted' : 'conflict', material };
+}
+
+/** Refusals a phone could not have known offline: the use is kept as a conflict instead. */
+const PHONE_CLASHES = new Set(['batch_expired', 'reason_required', 'lot_not_found']);
+
+/**
+ * Which serial numbers or batches a use takes, and whether the location holds
+ * them. Untracked items take none. A short location, or on the phone a lot it
+ * could not have known was wrong, is a conflict rather than a refusal.
+ */
+async function lotsForUse(
+  tx: TenantTransaction,
+  item: Item,
+  locationId: string,
+  quantity: string,
+  specs: readonly LotSpec[] | undefined,
+  options: {
+    allowExpired?: boolean | undefined;
+    reason?: string | null | undefined;
+    fromPhone: boolean;
+  },
+): Promise<{ lots: MaterialLot[] | null; held: boolean }> {
+  if (item.tracking === 'none') {
+    await lotsLeaving(tx, item, locationId, quantity, specs, { today: '' });
+    return { lots: null, held: true };
+  }
+  let allocations: LotAllocation[];
+  try {
+    allocations = await lotsLeaving(tx, item, locationId, quantity, specs, {
+      today: await companyToday(tx),
+      allowExpired: options.allowExpired,
+      reason: options.reason,
+    });
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      (error.code === 'insufficient_stock' || (options.fromPhone && PHONE_CLASHES.has(error.code)))
+    ) {
+      return { lots: null, held: false };
+    }
+    throw error;
+  }
+  const lots = allocations.flatMap((allocation) =>
+    allocation.lotId === null ? [] : [{ lotId: allocation.lotId, quantity: allocation.quantity }],
+  );
+  return { lots, held: await lotsHeld(tx, locationId, allocations) };
 }
 
 /** The ledger key a use posts under: the phone's own id when it has one (ADR-0005). */
@@ -269,7 +366,7 @@ async function postUse(
 ): Promise<void> {
   try {
     await tx.inventoryStock.post(
-      [
+      byLot(
         {
           itemId: material.itemId,
           locationId: material.locationId!,
@@ -279,7 +376,8 @@ async function postUse(
           sourceKey: useSourceKey(material),
           reason: formatWorkOrderReference(job.reference),
         },
-      ],
+        material.lots ?? [{ lotId: null, quantity: material.quantity }],
+      ),
       { postingId: material.id, actorId: context.principal.userId },
     );
   } catch (error) {
@@ -296,7 +394,15 @@ async function postUse(
 
 export type Resolution =
   | { action: 'cancel' }
-  | { action: 'retry'; quantity?: string | undefined; locationId?: string | undefined };
+  | {
+      action: 'retry';
+      quantity?: string | undefined;
+      locationId?: string | undefined;
+      /** Other serial numbers or batches; those first asked for when the quantity is unchanged. */
+      lots?: readonly LotSpec[] | undefined;
+      allowExpired?: boolean | undefined;
+      reason?: string | undefined;
+    };
 
 /**
  * Settles a use the location could not cover. Cancelling needs the recorder
@@ -338,13 +444,25 @@ export async function resolveUse(
   }
   const held = await tx.inventoryStock.lockBalance(item.id, location.id);
   const { available } = await availableForJob(tx, job, item.id, location.id, held);
-  const enough = compareDecimals(available, quantity) >= 0;
+  let enough = compareDecimals(available, quantity) >= 0;
+  const asked =
+    resolution.lots ??
+    (resolution.quantity === undefined && material.lots !== null && material.lots.length > 0
+      ? material.lots.map((lot) => ({ lotId: lot.lotId, quantity: lot.quantity }))
+      : undefined);
+  const lots = await lotsForUse(tx, item, location.id, quantity, asked, {
+    allowExpired: resolution.allowExpired,
+    reason: resolution.reason,
+    fromPhone: false,
+  });
+  enough &&= lots.held;
   const updated = await tx.inventoryMaterials.update(material.id, {
     quantity,
     locationId: location.id,
     status: enough ? 'posted' : 'conflict',
     unitCost: enough ? item.averageUnitCost : null,
     availableQuantity: enough ? null : available,
+    lots: lots.lots,
   });
   if (enough) {
     await postUse(tx, context, job, updated, item.averageUnitCost);
@@ -371,7 +489,13 @@ export async function returnUse(
   context: RequestContext,
   job: WorkOrder,
   material: Material,
-  input: { quantity: string; reason: string | null; idempotencyKey: string },
+  input: {
+    quantity: string;
+    reason: string | null;
+    idempotencyKey: string;
+    /** Which serial numbers or batches come back; by default, those used, in order. */
+    lots?: readonly LotSpec[] | undefined;
+  },
 ): Promise<Material> {
   if (material.status !== 'posted') {
     throw conflict('not_posted', 'Only a posted use can be returned.');
@@ -389,7 +513,34 @@ export async function returnUse(
     }
     throw error;
   }
-  if (material.locationId !== null) {
+  if (material.locationId !== null && material.lots !== null && material.lots.length > 0) {
+    // Serial numbers and batches go back as they came (ADR-0013).
+    const allocations = await lotsReturning(tx, material, input.quantity, input.lots);
+    const movements = [];
+    for (const allocation of allocations) {
+      const original = await tx.inventoryStock.findMovementBySourceKey(
+        `${useSourceKey(material)}:lot:${allocation.lotId}`,
+      );
+      movements.push({
+        itemId: material.itemId,
+        locationId: material.locationId,
+        kind: 'consumption_return' as const,
+        quantity: allocation.quantity,
+        unitCost: material.unitCost,
+        lotId: allocation.lotId,
+        sourceKey: `material-return:${material.id}:${input.idempotencyKey}:lot:${allocation.lotId}`,
+        reason: input.reason ?? formatWorkOrderReference(job.reference),
+        reversalOf: original?.id ?? null,
+      });
+    }
+    await tx.inventoryStock.post(movements, {
+      postingId: randomUUID(),
+      actorId: context.principal.userId,
+    });
+  } else if (material.locationId !== null) {
+    if (input.lots !== undefined && input.lots.length > 0) {
+      throw unprocessable('item_not_tracked', 'This item has no serial numbers or batches.');
+    }
     const original = await tx.inventoryStock.findMovementBySourceKey(useSourceKey(material));
     await tx.inventoryStock.post(
       [
@@ -413,6 +564,81 @@ export async function returnUse(
     reason: input.reason,
   });
   return updated;
+}
+
+/**
+ * The serial numbers or batches a return gives back: those named, each within
+ * what the use took of it less what came back before, or else the use's own
+ * in order.
+ */
+async function lotsReturning(
+  tx: TenantTransaction,
+  material: Material,
+  quantity: string,
+  specs: readonly LotSpec[] | undefined,
+): Promise<{ lotId: string; quantity: string }[]> {
+  const returned = new Map(
+    (await tx.inventoryLots.movedBySource(`material-return:${material.id}:`)).map((row) => [
+      row.lotId,
+      row.quantity,
+    ]),
+  );
+  const left = new Map(
+    material.lots!.map((lot) => [
+      lot.lotId,
+      addDecimals(lot.quantity, `-${returned.get(lot.lotId) ?? '0'}`),
+    ]),
+  );
+  const over = () =>
+    unprocessable('over_returned', 'That is more than was used on this job. Nothing was recorded.');
+  if (specs !== undefined && specs.length > 0) {
+    const named = await tx.inventoryLots.find(specs.flatMap((spec) => spec.lotId ?? []));
+    const byCode = await tx.inventoryLots.byCodes(
+      material.itemId,
+      specs.flatMap((spec) =>
+        spec.lotId === undefined && spec.code !== undefined ? [spec.code] : [],
+      ),
+    );
+    const byId = new Map(named.map((lot) => [lot.id, lot]));
+    let sum = '0';
+    const allocations = specs.map((spec) => {
+      const lot = spec.lotId === undefined ? byCode.get(spec.code!) : byId.get(spec.lotId);
+      const remaining = lot === undefined ? undefined : left.get(lot.id);
+      if (lot === undefined || remaining === undefined) {
+        throw new ApiError(404, 'lot_not_found', 'This serial number or batch was not used here.');
+      }
+      if (compareDecimals(spec.quantity, remaining) > 0) {
+        throw over();
+      }
+      left.set(lot.id, addDecimals(remaining, `-${spec.quantity}`));
+      sum = addDecimals(sum, spec.quantity);
+      return { lotId: lot.id, quantity: spec.quantity };
+    });
+    if (compareDecimals(sum, quantity) !== 0) {
+      throw unprocessable(
+        'lots_quantity_mismatch',
+        'The serial numbers or batches do not add up to the quantity.',
+      );
+    }
+    return allocations;
+  }
+  const allocations: { lotId: string; quantity: string }[] = [];
+  let rest = quantity;
+  for (const [lotId, remaining] of left) {
+    if (compareDecimals(rest, '0') <= 0) {
+      break;
+    }
+    if (compareDecimals(remaining, '0') <= 0) {
+      continue;
+    }
+    const take = compareDecimals(remaining, rest) < 0 ? remaining : rest;
+    allocations.push({ lotId, quantity: take });
+    rest = addDecimals(rest, `-${take}`);
+  }
+  if (compareDecimals(rest, '0') > 0) {
+    throw over();
+  }
+  return allocations;
 }
 
 /** Whether this seat sees what parts cost: the same rule as the rest of the inventory. */

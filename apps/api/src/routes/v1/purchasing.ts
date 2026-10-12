@@ -1,4 +1,5 @@
 import {
+  compareDecimals,
   currencyCodeSchema,
   holds,
   type Principal,
@@ -12,6 +13,7 @@ import {
   decimalAmountSchema,
 } from '@integr8/core';
 import {
+  addDecimals,
   type GoodsReceipt,
   type MovementInput,
   type PurchaseOrder,
@@ -31,6 +33,7 @@ import {
   versionConflict,
 } from './crm-shared.js';
 import { requireLocation, stockRefusal } from './inventory-stock.js';
+import { byLot, lotSpecsSchema, lotsArriving, lotsLeaving } from './stock-lots.js';
 import { itemSummary, itemSummarySchema, seesCosts } from './inventory.js';
 import { stripUndefined } from './customers.js';
 import { companyToday } from './sales-quotes.js';
@@ -1020,6 +1023,8 @@ export const receiveOrderRoute = defineRoute({
           orderLineId: z.uuid(),
           quantity: positiveQuantitySchema,
           unitCost: decimalAmountSchema.optional(),
+          /** For a serial-numbered or batched item: the codes arriving (ADR-0013). */
+          lots: lotSpecsSchema.optional(),
         }),
       )
       .min(1)
@@ -1080,6 +1085,7 @@ export const receiveOrderRoute = defineRoute({
           itemId: orderLine.itemId,
           quantity: line.quantity,
           unitCost: line.unitCost ?? orderLine.unitPrice,
+          lots: line.lots,
         };
       });
       const receipt = await tx.inventoryPurchasing
@@ -1109,16 +1115,25 @@ export const receiveOrderRoute = defineRoute({
         if (item.kind !== 'stock_item') {
           continue;
         }
-        await tx.inventoryStock.applyReceiptCost(item.id, line.quantity, line.unitCost);
-        movements.push({
-          itemId: item.id,
-          locationId: location.id,
-          kind: 'receipt',
-          quantity: line.quantity,
-          unitCost: line.unitCost,
-          sourceKey: `receipt-line:${receipt.lines[index]!.id}`,
-          reason: formatReference(order.reference),
+        const allocations = await lotsArriving(tx, item, line.quantity, line.lots, {
+          actorId: principal.userId,
+          field: `body.lines.${index}.lots`,
         });
+        await tx.inventoryStock.applyReceiptCost(item.id, line.quantity, line.unitCost);
+        movements.push(
+          ...byLot(
+            {
+              itemId: item.id,
+              locationId: location.id,
+              kind: 'receipt',
+              quantity: line.quantity,
+              unitCost: line.unitCost,
+              sourceKey: `receipt-line:${receipt.lines[index]!.id}`,
+              reason: formatReference(order.reference),
+            },
+            allocations,
+          ),
+        );
       }
       const postingId = randomUUID();
       await tx.inventoryStock
@@ -1156,7 +1171,14 @@ export const returnToSupplierRoute = defineRoute({
   body: z.object({
     reason: z.string().trim().min(1).max(1000),
     lines: z
-      .array(z.object({ receiptLineId: z.uuid(), quantity: positiveQuantitySchema }))
+      .array(
+        z.object({
+          receiptLineId: z.uuid(),
+          quantity: positiveQuantitySchema,
+          /** For a tracked item: which go back; by default, those this line brought in. */
+          lots: lotSpecsSchema.optional(),
+        }),
+      )
       .min(1)
       .max(200),
   }),
@@ -1195,6 +1217,9 @@ export const returnToSupplierRoute = defineRoute({
           `receipt-line:${received.id}`,
         );
         if (original !== undefined) {
+          if ((line.lots?.length ?? 0) > 0) {
+            throw unprocessable('item_not_tracked', 'This item has no serial numbers or batches.');
+          }
           movements.push({
             itemId: original.itemId,
             locationId: original.locationId,
@@ -1205,6 +1230,46 @@ export const returnToSupplierRoute = defineRoute({
             reason: body.reason,
             reversalOf: original.id,
           });
+          continue;
+        }
+        // Serial numbers and batches (ADR-0013): those named, or else those
+        // this line brought in that are still where they arrived.
+        const brought = await tx.inventoryLots.movedBySource(`receipt-line:${received.id}:lot:`);
+        if (brought.length === 0) {
+          continue;
+        }
+        const first = await tx.inventoryStock.findMovementBySourceKey(
+          `receipt-line:${received.id}:lot:${brought[0]!.lotId}`,
+        );
+        const item = await tx.inventoryCatalogue.findItem(first!.itemId);
+        const allocations =
+          (line.lots?.length ?? 0) > 0
+            ? await lotsLeaving(tx, item!, receipt.locationId, line.quantity, line.lots, {
+                today: await companyToday(tx),
+                allowExpired: true,
+                reason: body.reason,
+                field: `body.lines.${index}.lots`,
+              })
+            : await broughtStillHere(tx, receipt.locationId, brought, line.quantity);
+        for (const allocation of allocations) {
+          const arrived = await tx.inventoryStock.findMovementBySourceKey(
+            `receipt-line:${received.id}:lot:${allocation.lotId}`,
+          );
+          movements.push(
+            ...byLot(
+              {
+                itemId: first!.itemId,
+                locationId: receipt.locationId,
+                kind: 'return_to_supplier',
+                quantity: `-${allocation.quantity}`,
+                unitCost: arrived?.unitCost ?? first!.unitCost,
+                sourceKey: `${key}:${received.id}`,
+                reason: body.reason,
+                reversalOf: arrived?.id ?? null,
+              },
+              [allocation],
+            ),
+          );
         }
       }
       const postingId = randomUUID();
@@ -1239,3 +1304,37 @@ export const purchasingRoutes = [
   receiveOrderRoute,
   returnToSupplierRoute,
 ];
+
+/**
+ * The lots a receipt line brought in that are still where they arrived, in
+ * the order they came, for a return that names none.
+ */
+async function broughtStillHere(
+  tx: TenantTransaction,
+  locationId: string,
+  brought: readonly { lotId: string; quantity: string }[],
+  quantity: string,
+): Promise<{ lotId: string; quantity: string }[]> {
+  const allocations: { lotId: string; quantity: string }[] = [];
+  let left = quantity;
+  for (const lot of brought) {
+    if (compareDecimals(left, '0') <= 0) {
+      break;
+    }
+    const held = await tx.inventoryLots.lockBalance(lot.lotId, locationId);
+    const most = compareDecimals(held, lot.quantity) < 0 ? held : lot.quantity;
+    if (compareDecimals(most, '0') <= 0) {
+      continue;
+    }
+    const take = compareDecimals(most, left) < 0 ? most : left;
+    allocations.push({ lotId: lot.lotId, quantity: take });
+    left = addDecimals(left, `-${take}`);
+  }
+  if (compareDecimals(left, '0') > 0) {
+    throw conflict(
+      'insufficient_stock',
+      'What this line brought in is no longer all there. Name the serial numbers or batches going back.',
+    );
+  }
+  return allocations;
+}

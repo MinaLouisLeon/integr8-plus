@@ -4985,6 +4985,9 @@ export const en = {
     // code in @integr8/offline that is not also an API code; a test in the
     // mobile app fails when one is missing.
     localRefusal: {
+      lot_not_in_van: 'This serial number or batch is not in your van. Sync, then choose again.',
+      lots_mismatch: 'The serial numbers or batches chosen do not match the quantity.',
+      serial_required: 'Choose the serial number of each part fitted.',
       work_order_not_on_phone: 'This job is not on this phone. Sync, then try again.',
       name_required: 'Give the asset a name.',
       asset_not_on_phone: 'This asset is not on this phone. Sync, then try again.',

@@ -2684,7 +2684,7 @@ export interface paths {
         get?: never;
         /**
          * Record what was counted
-         * @description Replaces a draft count’s lines. Stock items only, one line each.
+         * @description Replaces a draft count’s lines. Stock items only, one line each — for a tracked item one line per serial number or batch, named by `lotId` or, for one not seen before, `lotCode` (and `lotExpiresOn`); a serial number is counted 0 or 1. When posted, a tracked item’s serial numbers or batches held here that the count does not list are counted as none.
          */
         put: operations["setStockCountLines"];
         post?: never;
@@ -2725,6 +2725,86 @@ export interface paths {
         put?: never;
         /** Cancel a draft count */
         post: operations["cancelStockCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/items/{itemId}/tracking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Track an item by serial number or batch, or stop
+         * @description With nothing on hand the change is immediate. With stock, `lots` names the serial numbers or batches making up each location’s stock, adding up exactly to what is there (422 `lots_quantity_mismatch`); the stock is relabelled in place and its value is untouched. Stopping keeps the stock and forgets which unit is which. Stock items only. Send `expectedVersion` as read. Needs `Idempotency-Key`.
+         */
+        post: operations["setItemTracking"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/items/{itemId}/lots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The serial numbers or batches an item has in stock
+         * @description At one location when `locationId` is given — earliest expiry first, the order stock should leave in — or everywhere. Only what is held.
+         */
+        get: operations["listItemLots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/lots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find a serial number or batch
+         * @description Codes starting with `code`, ignoring case, across items; at most 20.
+         */
+        get: operations["searchLots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/inventory/lots/{lotId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A serial number or batch: where it is and where it has been
+         * @description Where it is now, and every movement oldest first with what caused it: a receipt, a transfer, a part used on a job (with the job and the asset it was fitted to), a delivery, a count.
+         */
+        get: operations["getLot"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -20178,6 +20258,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             currencyCode: string;
                             minQuantity: string;
@@ -20298,6 +20380,8 @@ export interface operations {
                             kind: "stock_item" | "non_stock_item" | "service";
                             /** @enum {string} */
                             unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
                         };
                         currencyCode: string;
                         minQuantity: string;
@@ -20428,6 +20512,8 @@ export interface operations {
                             kind: "stock_item" | "non_stock_item" | "service";
                             /** @enum {string} */
                             unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
                         };
                         currencyCode: string;
                         minQuantity: string;
@@ -20620,6 +20706,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             minimum: string;
                             onHand: string;
@@ -20857,6 +20945,14 @@ export interface operations {
                                 sku: string | null;
                                 unit: string;
                                 quantity: string;
+                                lots: {
+                                    /** @enum {string} */
+                                    kind: "serial" | "batch";
+                                    code: string;
+                                    /** Format: date */
+                                    expiresOn: string | null;
+                                    quantity: string;
+                                }[];
                             }[];
                         }[];
                     };
@@ -20948,6 +21044,16 @@ export interface operations {
                         /** Format: uuid */
                         orderLineId: string;
                         quantity: string;
+                        lots?: {
+                            /** Format: uuid */
+                            lotId?: string;
+                            code?: string;
+                            /** Format: date */
+                            expiresOn?: string;
+                            /** @default 1 */
+                            quantity?: string;
+                        }[];
+                        allowExpired?: boolean;
                     }[];
                 };
             };
@@ -20985,6 +21091,14 @@ export interface operations {
                                 sku: string | null;
                                 unit: string;
                                 quantity: string;
+                                lots: {
+                                    /** @enum {string} */
+                                    kind: "serial" | "batch";
+                                    code: string;
+                                    /** Format: date */
+                                    expiresOn: string | null;
+                                    quantity: string;
+                                }[];
                             }[];
                         };
                         order: {
@@ -21260,6 +21374,14 @@ export interface operations {
                             sku: string | null;
                             unit: string;
                             quantity: string;
+                            lots: {
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[];
                         }[];
                         notes: string | null;
                         order: {
@@ -21434,6 +21556,8 @@ export interface operations {
                                     kind: "stock_item" | "non_stock_item" | "service";
                                     /** @enum {string} */
                                     unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                    /** @enum {string} */
+                                    tracking: "none" | "serial" | "batch";
                                 };
                                 requested: string;
                                 picked: string | null;
@@ -21582,6 +21706,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             requested: string;
                             picked: string | null;
@@ -21698,6 +21824,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             onHand: string;
                             minimum: string;
@@ -21827,6 +21955,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             requested: string;
                             picked: string | null;
@@ -21920,6 +22050,15 @@ export interface operations {
                         /** Format: uuid */
                         itemId: string;
                         quantity: string;
+                        lots?: {
+                            /** Format: uuid */
+                            lotId?: string;
+                            code?: string;
+                            /** Format: date */
+                            expiresOn?: string;
+                            /** @default 1 */
+                            quantity?: string;
+                        }[];
                     }[];
                 };
             };
@@ -21980,6 +22119,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             requested: string;
                             picked: string | null;
@@ -22131,6 +22272,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             requested: string;
                             picked: string | null;
@@ -22242,6 +22385,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             } | null;
                             description: string;
                             merchant: string | null;
@@ -22392,6 +22537,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             } | null;
                             description: string;
                             merchant: string | null;
@@ -22541,6 +22688,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             } | null;
                             description: string;
                             merchant: string | null;
@@ -22683,6 +22832,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             } | null;
                             description: string;
                             merchant: string | null;
@@ -23649,6 +23800,8 @@ export interface operations {
                             kind: "stock_item" | "non_stock_item" | "service";
                             /** @enum {string} */
                             unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
                             description: string | null;
                             /** Format: uuid */
                             categoryId: string | null;
@@ -23777,6 +23930,8 @@ export interface operations {
                         kind: "stock_item" | "non_stock_item" | "service";
                         /** @enum {string} */
                         unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        /** @enum {string} */
+                        tracking: "none" | "serial" | "batch";
                         description: string | null;
                         /** Format: uuid */
                         categoryId: string | null;
@@ -23895,6 +24050,8 @@ export interface operations {
                             kind: "stock_item" | "non_stock_item" | "service";
                             /** @enum {string} */
                             unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
                             description: string | null;
                             /** Format: uuid */
                             categoryId: string | null;
@@ -23926,6 +24083,16 @@ export interface operations {
                             reserved: string;
                             available: string;
                             minimum: string | null;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                onHand: string;
+                            }[];
                         }[];
                         onHand: string;
                         reserved: string;
@@ -24049,6 +24216,8 @@ export interface operations {
                         kind: "stock_item" | "non_stock_item" | "service";
                         /** @enum {string} */
                         unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        /** @enum {string} */
+                        tracking: "none" | "serial" | "batch";
                         description: string | null;
                         /** Format: uuid */
                         categoryId: string | null;
@@ -24177,6 +24346,8 @@ export interface operations {
                             kind: "stock_item" | "non_stock_item" | "service";
                             /** @enum {string} */
                             unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
                             description: string | null;
                             /** Format: uuid */
                             categoryId: string | null;
@@ -24208,6 +24379,16 @@ export interface operations {
                             reserved: string;
                             available: string;
                             minimum: string | null;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                onHand: string;
+                            }[];
                         }[];
                         onHand: string;
                         reserved: string;
@@ -24306,6 +24487,8 @@ export interface operations {
                         kind: "stock_item" | "non_stock_item" | "service";
                         /** @enum {string} */
                         unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        /** @enum {string} */
+                        tracking: "none" | "serial" | "batch";
                         description: string | null;
                         /** Format: uuid */
                         categoryId: string | null;
@@ -24659,6 +24842,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             onHand: string;
                             reserved: string;
@@ -24891,6 +25076,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -24991,6 +25178,16 @@ export interface operations {
                     quantity: string;
                     unitCost?: string;
                     reason?: string;
+                    lots?: {
+                        /** Format: uuid */
+                        lotId?: string;
+                        code?: string;
+                        /** Format: date */
+                        expiresOn?: string;
+                        /** @default 1 */
+                        quantity?: string;
+                    }[];
+                    allowExpired?: boolean;
                 } | {
                     /** @enum {string} */
                     type: "issue";
@@ -25000,6 +25197,16 @@ export interface operations {
                     locationId: string;
                     quantity: string;
                     reason: string;
+                    lots?: {
+                        /** Format: uuid */
+                        lotId?: string;
+                        code?: string;
+                        /** Format: date */
+                        expiresOn?: string;
+                        /** @default 1 */
+                        quantity?: string;
+                    }[];
+                    allowExpired?: boolean;
                 } | {
                     /** @enum {string} */
                     type: "transfer";
@@ -25011,6 +25218,16 @@ export interface operations {
                     toLocationId: string;
                     quantity: string;
                     reason?: string;
+                    lots?: {
+                        /** Format: uuid */
+                        lotId?: string;
+                        code?: string;
+                        /** Format: date */
+                        expiresOn?: string;
+                        /** @default 1 */
+                        quantity?: string;
+                    }[];
+                    allowExpired?: boolean;
                 } | {
                     /** @enum {string} */
                     type: "adjustment";
@@ -25022,6 +25239,16 @@ export interface operations {
                     direction: "in" | "out";
                     quantity: string;
                     reason: string;
+                    lots?: {
+                        /** Format: uuid */
+                        lotId?: string;
+                        code?: string;
+                        /** Format: date */
+                        expiresOn?: string;
+                        /** @default 1 */
+                        quantity?: string;
+                    }[];
+                    allowExpired?: boolean;
                 };
             };
         };
@@ -25049,6 +25276,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -25177,6 +25406,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -25492,7 +25723,16 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
+                            lot: {
+                                /** Format: uuid */
+                                id: string | null;
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                            } | null;
                             countedQuantity: string;
                             expectedQuantity: string | null;
                             onHand: string;
@@ -25617,7 +25857,16 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
+                            lot: {
+                                /** Format: uuid */
+                                id: string | null;
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                            } | null;
                             countedQuantity: string;
                             expectedQuantity: string | null;
                             onHand: string;
@@ -25708,6 +25957,11 @@ export interface operations {
                         /** Format: uuid */
                         itemId: string;
                         countedQuantity: string;
+                        /** Format: uuid */
+                        lotId?: string;
+                        lotCode?: string;
+                        /** Format: date */
+                        lotExpiresOn?: string;
                     }[];
                 };
             };
@@ -25753,7 +26007,16 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
+                            lot: {
+                                /** Format: uuid */
+                                id: string | null;
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                            } | null;
                             countedQuantity: string;
                             expectedQuantity: string | null;
                             onHand: string;
@@ -25891,7 +26154,16 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
+                            lot: {
+                                /** Format: uuid */
+                                id: string | null;
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                            } | null;
                             countedQuantity: string;
                             expectedQuantity: string | null;
                             onHand: string;
@@ -26029,7 +26301,16 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
+                            lot: {
+                                /** Format: uuid */
+                                id: string | null;
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                            } | null;
                             countedQuantity: string;
                             expectedQuantity: string | null;
                             onHand: string;
@@ -26067,6 +26348,534 @@ export interface operations {
             };
             /** @description Changed by somebody else, or not a draft (`count_not_draft`). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setItemTracking: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    tracking: "none" | "serial" | "batch";
+                    expectedVersion: number;
+                    lots?: {
+                        /** Format: uuid */
+                        locationId: string;
+                        code: string;
+                        /** Format: date */
+                        expiresOn?: string;
+                        /** @default 1 */
+                        quantity?: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The item as it now is. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        item: {
+                            /** Format: uuid */
+                            id: string;
+                            sku: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "stock_item" | "non_stock_item" | "service";
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
+                            description: string | null;
+                            /** Format: uuid */
+                            categoryId: string | null;
+                            barcode: string | null;
+                            defaultUnitCost: string | null;
+                            salePrice: string | null;
+                            averageUnitCost: string | null;
+                            /** Format: uuid */
+                            preferredSupplierId: string | null;
+                            supplierPartNumber: string | null;
+                            leadTimeDays: number | null;
+                            version: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: date-time */
+                            archivedAt: string | null;
+                        };
+                        stock: {
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            onHand: string;
+                            reserved: string;
+                            available: string;
+                            minimum: string | null;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                onHand: string;
+                            }[];
+                        }[];
+                        onHand: string;
+                        reserved: string;
+                        available: string;
+                        can: {
+                            manage: boolean;
+                            move: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed by somebody else (`version_conflict`), or a serial number already in stock (`serial_in_stock`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a stock item (`not_stock_item`); the serial numbers or batches do not make up the stock (`lots_quantity_mismatch`, `serial_single_unit`, `lot_repeated`); or a code used before for the other kind (`lot_code_taken`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listItemLots: {
+        parameters: {
+            query?: {
+                locationId?: string;
+            };
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The lots and where they are. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            lotId: string;
+                            /** @enum {string} */
+                            kind: "serial" | "batch";
+                            code: string;
+                            /** Format: date */
+                            expiresOn: string | null;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            onHand: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    searchLots: {
+        parameters: {
+            query: {
+                code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matches. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            lotId: string;
+                            /** @enum {string} */
+                            kind: "serial" | "batch";
+                            code: string;
+                            /** Format: date */
+                            expiresOn: string | null;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getLot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The lot. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        lotId: string;
+                        /** @enum {string} */
+                        kind: "serial" | "batch";
+                        code: string;
+                        /** Format: date */
+                        expiresOn: string | null;
+                        item: {
+                            /** Format: uuid */
+                            id: string;
+                            sku: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "stock_item" | "non_stock_item" | "service";
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        stock: {
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            onHand: string;
+                        }[];
+                        history: {
+                            /** Format: uuid */
+                            movementId: string;
+                            /** Format: date-time */
+                            at: string;
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            } | null;
+                            kind: string;
+                            quantity: string;
+                            reason: string | null;
+                            by: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            source: {
+                                /** @enum {string} */
+                                kind: "manual" | "customer_site" | "receipt" | "supplier_return" | "van_request" | "delivery" | "assembly" | "count" | "job_part" | "job_part_return" | "tracking" | "other";
+                                /** Format: uuid */
+                                id: string | null;
+                            };
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                referenceLabel: string;
+                            } | null;
+                            /** Format: uuid */
+                            assetId: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `inventory` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such serial number or batch. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -26833,6 +27642,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             description: string;
                             quantityOrdered: string;
@@ -27018,6 +27829,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             description: string;
                             quantityOrdered: string;
@@ -27217,6 +28030,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             description: string;
                             quantityOrdered: string;
@@ -27408,6 +28223,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             description: string;
                             quantityOrdered: string;
@@ -27598,6 +28415,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             description: string;
                             quantityOrdered: string;
@@ -27735,6 +28554,15 @@ export interface operations {
                         orderLineId: string;
                         quantity: string;
                         unitCost?: string;
+                        lots?: {
+                            /** Format: uuid */
+                            lotId?: string;
+                            code?: string;
+                            /** Format: date */
+                            expiresOn?: string;
+                            /** @default 1 */
+                            quantity?: string;
+                        }[];
                     }[];
                 };
             };
@@ -27802,6 +28630,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             description: string;
                             quantityOrdered: string;
@@ -27941,6 +28771,15 @@ export interface operations {
                         /** Format: uuid */
                         receiptLineId: string;
                         quantity: string;
+                        lots?: {
+                            /** Format: uuid */
+                            lotId?: string;
+                            code?: string;
+                            /** Format: date */
+                            expiresOn?: string;
+                            /** @default 1 */
+                            quantity?: string;
+                        }[];
                     }[];
                 };
             };
@@ -28008,6 +28847,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             description: string;
                             quantityOrdered: string;
@@ -28148,6 +28989,16 @@ export interface operations {
                     locationId?: string;
                     quantity: string;
                     note?: string | null;
+                    lots?: {
+                        /** Format: uuid */
+                        lotId?: string;
+                        code?: string;
+                        /** Format: date */
+                        expiresOn?: string;
+                        /** @default 1 */
+                        quantity?: string;
+                    }[];
+                    allowExpired?: boolean;
                 };
             };
         };
@@ -28432,6 +29283,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -28461,6 +29314,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -28531,7 +29394,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description No van assigned (`no_van`), no location given by a dispatcher (`location_required`), or the item is archived. */
+            /** @description No van assigned (`no_van`), no location given by a dispatcher (`location_required`), the item is archived, or its serial numbers or batches do not fit (`serial_single_unit`, `lots_quantity_mismatch`, `lot_repeated`, `batch_expired`, `item_not_tracked`). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -28588,6 +29451,17 @@ export interface operations {
                     quantity?: string;
                     /** Format: uuid */
                     locationId?: string;
+                    lots?: {
+                        /** Format: uuid */
+                        lotId?: string;
+                        code?: string;
+                        /** Format: date */
+                        expiresOn?: string;
+                        /** @default 1 */
+                        quantity?: string;
+                    }[];
+                    allowExpired?: boolean;
+                    reason?: string;
                 };
             };
         };
@@ -28872,6 +29746,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -28901,6 +29777,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -29016,6 +29902,15 @@ export interface operations {
                 "application/json": {
                     quantity: string;
                     reason?: string | null;
+                    lots?: {
+                        /** Format: uuid */
+                        lotId?: string;
+                        code?: string;
+                        /** Format: date */
+                        expiresOn?: string;
+                        /** @default 1 */
+                        quantity?: string;
+                    }[];
                 };
             };
         };
@@ -29300,6 +30195,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -29329,6 +30226,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -29465,6 +30372,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -29494,6 +30403,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                             workOrder: {
                                 /** Format: uuid */
                                 id: string;
@@ -33765,6 +34684,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             description: string;
                             location: {
@@ -39033,6 +39954,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             } | null;
                             /** Format: date */
                             installDate: string | null;
@@ -39238,6 +40161,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             } | null;
                             /** Format: date */
                             installDate: string | null;
@@ -39454,6 +40379,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             } | null;
                             /** Format: date */
                             installDate: string | null;
@@ -39751,6 +40678,8 @@ export interface operations {
                                     kind: "stock_item" | "non_stock_item" | "service";
                                     /** @enum {string} */
                                     unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                    /** @enum {string} */
+                                    tracking: "none" | "serial" | "batch";
                                 };
                                 quantity: string;
                                 returnedQuantity: string;
@@ -39762,6 +40691,14 @@ export interface operations {
                                     id: string;
                                     name: string;
                                 };
+                                lots: {
+                                    /** Format: uuid */
+                                    lotId: string;
+                                    /** @enum {string} */
+                                    kind: "serial" | "batch";
+                                    code: string;
+                                    quantity: string;
+                                }[];
                             };
                         } | {
                             /** @enum {string} */
@@ -39925,6 +40862,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             } | null;
                             /** Format: date */
                             installDate: string | null;
@@ -40137,6 +41076,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             } | null;
                             /** Format: date */
                             installDate: string | null;
@@ -40350,6 +41291,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             } | null;
                             /** Format: date */
                             installDate: string | null;
@@ -40561,6 +41504,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             } | null;
                             /** Format: date */
                             installDate: string | null;
@@ -50189,6 +51134,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             version: number;
                             labourCost: string | null;
@@ -50204,6 +51151,8 @@ export interface operations {
                                     kind: "stock_item" | "non_stock_item" | "service";
                                     /** @enum {string} */
                                     unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                    /** @enum {string} */
+                                    tracking: "none" | "serial" | "batch";
                                 };
                                 quantity: string;
                                 unitCost: string | null;
@@ -50336,6 +51285,8 @@ export interface operations {
                             kind: "stock_item" | "non_stock_item" | "service";
                             /** @enum {string} */
                             unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
                         };
                         version: number;
                         labourCost: string | null;
@@ -50351,6 +51302,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             quantity: string;
                             unitCost: string | null;
@@ -50538,6 +51491,8 @@ export interface operations {
                             kind: "stock_item" | "non_stock_item" | "service";
                             /** @enum {string} */
                             unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
                         };
                         version: number;
                         labourCost: string | null;
@@ -50553,6 +51508,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             quantity: string;
                             unitCost: string | null;
@@ -50669,6 +51626,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             bom: {
                                 /** Format: uuid */
@@ -50829,6 +51788,8 @@ export interface operations {
                             kind: "stock_item" | "non_stock_item" | "service";
                             /** @enum {string} */
                             unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
                         };
                         bom: {
                             /** Format: uuid */
@@ -50886,6 +51847,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             quantity: string;
                             onHand: string;
@@ -50903,6 +51866,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             quantity: string;
                         }[];
@@ -51009,6 +51974,8 @@ export interface operations {
                             kind: "stock_item" | "non_stock_item" | "service";
                             /** @enum {string} */
                             unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
                         };
                         bom: {
                             /** Format: uuid */
@@ -51066,6 +52033,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             quantity: string;
                             onHand: string;
@@ -51083,6 +52052,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             quantity: string;
                         }[];
@@ -51202,6 +52173,8 @@ export interface operations {
                             kind: "stock_item" | "non_stock_item" | "service";
                             /** @enum {string} */
                             unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
                         };
                         bom: {
                             /** Format: uuid */
@@ -51259,6 +52232,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             quantity: string;
                             onHand: string;
@@ -51276,6 +52251,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             quantity: string;
                         }[];
@@ -51370,6 +52347,19 @@ export interface operations {
             content: {
                 "application/json": {
                     expectedVersion: number;
+                    outputLots?: {
+                        /** Format: uuid */
+                        itemId: string;
+                        lots: {
+                            /** Format: uuid */
+                            lotId?: string;
+                            code?: string;
+                            /** Format: date */
+                            expiresOn?: string;
+                            /** @default 1 */
+                            quantity?: string;
+                        }[];
+                    }[];
                 };
             };
         };
@@ -51395,6 +52385,8 @@ export interface operations {
                             kind: "stock_item" | "non_stock_item" | "service";
                             /** @enum {string} */
                             unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
                         };
                         bom: {
                             /** Format: uuid */
@@ -51452,6 +52444,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             quantity: string;
                             onHand: string;
@@ -51469,6 +52463,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             quantity: string;
                         }[];
@@ -51512,14 +52508,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The request failed validation. */
+            /** @description Serial numbers needed for what comes out (`lots_required`), or they do not add up (`lots_quantity_mismatch`, `serial_single_unit`). */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {
@@ -51588,6 +52582,8 @@ export interface operations {
                             kind: "stock_item" | "non_stock_item" | "service";
                             /** @enum {string} */
                             unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            /** @enum {string} */
+                            tracking: "none" | "serial" | "batch";
                         };
                         bom: {
                             /** Format: uuid */
@@ -51645,6 +52641,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             quantity: string;
                             onHand: string;
@@ -51662,6 +52660,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             quantity: string;
                         }[];
@@ -51882,6 +52882,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             /** @enum {string} */
                             action: "build" | "buy";
@@ -52032,6 +53034,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             /** @enum {string} */
                             action: "build" | "buy";
@@ -52202,6 +53206,8 @@ export interface operations {
                                     kind: "stock_item" | "non_stock_item" | "service";
                                     /** @enum {string} */
                                     unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                    /** @enum {string} */
+                                    tracking: "none" | "serial" | "batch";
                                 };
                                 /** @enum {string} */
                                 action: "build" | "buy";
@@ -53258,6 +54264,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -53287,6 +54295,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -53792,6 +54810,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -53821,6 +54841,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -54222,6 +55252,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -54251,6 +55283,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -54650,6 +55692,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -54679,6 +55723,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -55076,6 +56130,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -55105,6 +56161,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -55504,6 +56570,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -55533,6 +56601,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -55929,6 +57007,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -55958,6 +57038,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -56348,6 +57438,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -56377,6 +57469,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -56766,6 +57868,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -56795,6 +57899,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -57177,6 +58291,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -57206,6 +58322,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -57607,6 +58733,8 @@ export interface operations {
                                 kind: "stock_item" | "non_stock_item" | "service";
                                 /** @enum {string} */
                                 unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                /** @enum {string} */
+                                tracking: "none" | "serial" | "batch";
                             };
                             location: {
                                 /** Format: uuid */
@@ -57636,6 +58764,16 @@ export interface operations {
                             } | null;
                             clientActionId: string | null;
                             version: number;
+                            lots: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @enum {string} */
+                                kind: "serial" | "batch";
+                                code: string;
+                                /** Format: date */
+                                expiresOn: string | null;
+                                quantity: string;
+                            }[] | null;
                         }[];
                         materialsCost: string | null;
                         van: {
@@ -58824,6 +59962,8 @@ export interface operations {
                                     kind: "stock_item" | "non_stock_item" | "service";
                                     /** @enum {string} */
                                     unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                    /** @enum {string} */
+                                    tracking: "none" | "serial" | "batch";
                                 };
                                 location: {
                                     /** Format: uuid */
@@ -58853,6 +59993,16 @@ export interface operations {
                                 } | null;
                                 clientActionId: string | null;
                                 version: number;
+                                lots: {
+                                    /** Format: uuid */
+                                    lotId: string;
+                                    /** @enum {string} */
+                                    kind: "serial" | "batch";
+                                    code: string;
+                                    /** Format: date */
+                                    expiresOn: string | null;
+                                    quantity: string;
+                                }[] | null;
                             }[];
                             materialsCost: string | null;
                             van: {
@@ -59149,12 +60299,24 @@ export interface operations {
                                     kind: "stock_item" | "non_stock_item" | "service";
                                     /** @enum {string} */
                                     unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                    /** @enum {string} */
+                                    tracking: "none" | "serial" | "batch";
                                 };
                                 onHand: string;
                                 reserved: string;
                                 available: string;
                                 /** Format: uuid */
                                 mainImageFileId: string | null;
+                                lots: {
+                                    /** Format: uuid */
+                                    lotId: string;
+                                    /** @enum {string} */
+                                    kind: "serial" | "batch";
+                                    code: string;
+                                    /** Format: date */
+                                    expiresOn: string | null;
+                                    onHand: string;
+                                }[];
                             }[];
                         } | null;
                         assetSiteIds: string[];
@@ -59198,6 +60360,8 @@ export interface operations {
                                     kind: "stock_item" | "non_stock_item" | "service";
                                     /** @enum {string} */
                                     unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                    /** @enum {string} */
+                                    tracking: "none" | "serial" | "batch";
                                 } | null;
                                 /** Format: date */
                                 installDate: string | null;
@@ -59406,6 +60570,8 @@ export interface operations {
                                         kind: "stock_item" | "non_stock_item" | "service";
                                         /** @enum {string} */
                                         unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                        /** @enum {string} */
+                                        tracking: "none" | "serial" | "batch";
                                     };
                                     quantity: string;
                                     returnedQuantity: string;
@@ -59417,6 +60583,14 @@ export interface operations {
                                         id: string;
                                         name: string;
                                     };
+                                    lots: {
+                                        /** Format: uuid */
+                                        lotId: string;
+                                        /** @enum {string} */
+                                        kind: "serial" | "batch";
+                                        code: string;
+                                        quantity: string;
+                                    }[];
                                 };
                             } | {
                                 /** @enum {string} */
@@ -59807,6 +60981,13 @@ export interface operations {
                             itemId: string;
                             quantity: string;
                             note?: string | null;
+                            lots?: {
+                                /** Format: uuid */
+                                lotId: string;
+                                /** @default 1 */
+                                quantity?: string;
+                            }[];
+                            allowExpired?: boolean;
                         };
                     } | {
                         /** Format: uuid */

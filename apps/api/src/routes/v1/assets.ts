@@ -157,6 +157,15 @@ const partEntry = z.object({
     workOrderId: z.uuid(),
     explicit: z.boolean(),
     by: personSchema,
+    /** The serial numbers or batches fitted (ADR-0013), each linking to its trace. */
+    lots: z.array(
+      z.object({
+        lotId: z.uuid(),
+        kind: z.enum(['serial', 'batch']),
+        code: z.string(),
+        quantity: z.string(),
+      }),
+    ),
   }),
 });
 
@@ -384,7 +393,7 @@ export async function assetTimeline(tx: TenantTransaction, asset: Asset): Promis
   const fromSites = [
     ...new Set(events.flatMap((event) => (event.fromSiteId === null ? [] : [event.fromSiteId]))),
   ];
-  const [sites, forms, items, summaries, attachmentRows] = await Promise.all([
+  const [sites, forms, items, summaries, attachmentRows, fitted] = await Promise.all([
     tx.sites.findMany(fromSites),
     tx.forms.listForms(),
     tx.inventoryCatalogue.findItems([...new Set(parts.map((part) => part.itemId))]),
@@ -394,7 +403,9 @@ export async function assetTimeline(tx: TenantTransaction, asset: Asset): Promis
       attachments.filter((row) => seen('workOrderId' in row.owner ? row.owner.workOrderId : null)),
       people,
     ),
+    tx.inventoryLots.find(parts.flatMap((part) => (part.lots ?? []).map((lot) => lot.lotId))),
   ]);
+  const lot = new Map(fitted.map((row) => [row.id, row]));
   const customers = new Map(
     (await tx.customers.findMany([...new Set(sites.map((site) => site.customerId))])).map((row) => [
       row.id,
@@ -451,6 +462,12 @@ export async function assetTimeline(tx: TenantTransaction, asset: Asset): Promis
           workOrderId: row.workOrderId,
           explicit: row.explicit,
           by: personBody(row.recordedBy, people),
+          lots: (row.lots ?? []).flatMap((entry) => {
+            const found = lot.get(entry.lotId);
+            return found === undefined
+              ? []
+              : [{ lotId: found.id, kind: found.kind, code: found.code, quantity: entry.quantity }];
+          }),
         },
       })),
     ...attachmentRows.map((row): TimelineEntry => ({

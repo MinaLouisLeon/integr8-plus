@@ -15,6 +15,8 @@ import {
   type Movement,
   type MovementInput,
   NotStockItemError,
+  LotMismatchError,
+  SerialInStockError,
   type StockCount,
   type StockLocation,
   type TenantTransaction,
@@ -38,6 +40,8 @@ import {
 } from './inventory.js';
 import { booleanQuery, many } from './operations.js';
 import { iso, isoOrNull } from './schemas.js';
+import { companyToday } from './sales-quotes.js';
+import { byLot, lotSpecsSchema, lotsArriving, lotsLeaving } from './stock-lots.js';
 
 /**
  * Moving stock, balances and stock counts (CRM/ERP plan, phase E1; ADR-0003).
@@ -105,6 +109,15 @@ export function stockRefusal(error: unknown): never {
   }
   if (error instanceof NotStockItemError) {
     throw unprocessable('not_stock_item', 'Only stock items have stock.');
+  }
+  if (error instanceof SerialInStockError) {
+    throw conflict('serial_in_stock', 'This serial number is already in stock. Nothing was moved.');
+  }
+  if (error instanceof LotMismatchError) {
+    throw unprocessable(
+      'lots_required',
+      'A tracked item moves by its own serial numbers or batches. Nothing was moved.',
+    );
   }
   throw error;
 }
@@ -205,6 +218,16 @@ export const listMovementsRoute = defineRoute({
   },
 });
 
+/**
+ * For a tracked item (ADR-0013): the serial numbers or batches moved. Needed
+ * for stock arriving; for stock leaving, the earliest expiry is taken when
+ * none are named, and an expired batch only with `allowExpired` and a reason.
+ */
+const lotFields = {
+  lots: lotSpecsSchema.optional(),
+  allowExpired: z.boolean().optional(),
+};
+
 const postMovementSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('receipt'),
@@ -214,6 +237,7 @@ const postMovementSchema = z.discriminatedUnion('type', [
     /** What one unit cost, in the company currency. Folds into the average cost. */
     unitCost: decimalAmountSchema.optional(),
     reason: z.string().trim().max(1000).optional(),
+    ...lotFields,
   }),
   z.object({
     type: z.literal('issue'),
@@ -221,6 +245,7 @@ const postMovementSchema = z.discriminatedUnion('type', [
     locationId: z.uuid(),
     quantity: positiveQuantitySchema,
     reason: z.string().trim().min(1).max(1000),
+    ...lotFields,
   }),
   z.object({
     type: z.literal('transfer'),
@@ -229,6 +254,7 @@ const postMovementSchema = z.discriminatedUnion('type', [
     toLocationId: z.uuid(),
     quantity: positiveQuantitySchema,
     reason: z.string().trim().max(1000).optional(),
+    ...lotFields,
   }),
   z.object({
     type: z.literal('adjustment'),
@@ -237,6 +263,7 @@ const postMovementSchema = z.discriminatedUnion('type', [
     direction: z.enum(['in', 'out']),
     quantity: positiveQuantitySchema,
     reason: z.string().trim().min(1).max(1000),
+    ...lotFields,
   }),
 ]);
 
@@ -364,6 +391,28 @@ export const postMovementRoute = defineRoute({
             reason: body.reason ?? null,
           },
         ];
+      }
+      // Serial numbers and batches (ADR-0013): each movement split by lot.
+      const today = await companyToday(tx);
+      const lotOptions = { today, allowExpired: body.allowExpired, reason: body.reason };
+      if (body.type === 'transfer') {
+        const leaving = await lotsLeaving(
+          tx,
+          item,
+          body.fromLocationId,
+          body.quantity,
+          body.lots,
+          lotOptions,
+        );
+        movements = [...byLot(movements[0]!, leaving), ...byLot(movements[1]!, leaving)];
+      } else {
+        const base = movements[0]!;
+        const allocations = base.quantity.startsWith('-')
+          ? await lotsLeaving(tx, item, body.locationId, body.quantity, body.lots, lotOptions)
+          : await lotsArriving(tx, item, body.quantity, body.lots, {
+              actorId: principal.userId,
+            });
+        movements = byLot(base, allocations);
       }
       const written = await tx.inventoryStock
         .post(movements, { postingId, actorId: principal.userId })
@@ -543,6 +592,10 @@ const countDetailSchema = z.object({
   lines: z.array(
     z.object({
       item: itemSummarySchema,
+      /** For a tracked item, the serial number or batch counted (ADR-0013). */
+      lot: z
+        .object({ id: z.uuid().nullable(), code: z.string(), expiresOn: z.iso.date().nullable() })
+        .nullable(),
       countedQuantity: z.string(),
       /** What the system held when it was posted; null on a draft. */
       expectedQuantity: z.string().nullable(),
@@ -565,6 +618,18 @@ async function countDetail(tx: TenantTransaction, context: RequestContext, count
     ]),
   );
   const held = new Map(balances.map((row) => [row.itemId, row.onHand]));
+  const lots = new Map(
+    (await tx.inventoryLots.find(lines.flatMap((line) => line.lotId ?? []))).map((lot) => [
+      lot.id,
+      lot,
+    ]),
+  );
+  const lotHeld = new Map(
+    (await tx.inventoryLots.balances({ locationId: count.locationId })).map((row) => [
+      row.lotId,
+      row.onHand,
+    ]),
+  );
   return {
     count: (await countBodies(tx, [count]))[0]!,
     lines: lines
@@ -575,9 +640,24 @@ async function countDetail(tx: TenantTransaction, context: RequestContext, count
           : [
               {
                 item: itemSummary(item),
+                lot:
+                  line.lotId !== null
+                    ? {
+                        id: line.lotId,
+                        code: lots.get(line.lotId)?.code ?? '',
+                        expiresOn: lots.get(line.lotId)?.expiresOn ?? null,
+                      }
+                    : line.lotCode !== null
+                      ? { id: null, code: line.lotCode, expiresOn: line.lotExpiresOn }
+                      : null,
                 countedQuantity: line.countedQuantity,
                 expectedQuantity: line.expectedQuantity,
-                onHand: held.get(line.itemId) ?? '0',
+                onHand:
+                  line.lotId !== null
+                    ? (lotHeld.get(line.lotId) ?? '0')
+                    : line.lotCode !== null
+                      ? '0'
+                      : (held.get(line.itemId) ?? '0'),
               },
             ];
       })
@@ -697,7 +777,8 @@ export const setCountLinesRoute = defineRoute({
   path: '/v1/inventory/counts/:countId/lines',
   operationId: 'setStockCountLines',
   summary: 'Record what was counted',
-  description: 'Replaces a draft count’s lines. Stock items only, one line each.',
+  description:
+    'Replaces a draft count’s lines. Stock items only, one line each — for a tracked item one line per serial number or batch, named by `lotId` or, for one not seen before, `lotCode` (and `lotExpiresOn`); a serial number is counted 0 or 1. When posted, a tracked item’s serial numbers or batches held here that the count does not list are counted as none.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'inventory.move',
@@ -707,11 +788,21 @@ export const setCountLinesRoute = defineRoute({
   body: z.object({
     expectedVersion: z.number().int().positive(),
     lines: z
-      .array(z.object({ itemId: z.uuid(), countedQuantity: quantitySchema }))
-      .max(1000)
+      .array(
+        z.object({
+          itemId: z.uuid(),
+          countedQuantity: quantitySchema,
+          lotId: z.uuid().optional(),
+          lotCode: z.string().trim().min(1).max(100).optional(),
+          lotExpiresOn: z.iso.date().optional(),
+        }),
+      )
+      .max(5000)
       .refine(
-        (lines) => new Set(lines.map((line) => line.itemId)).size === lines.length,
-        'One line per item',
+        (lines) =>
+          new Set(lines.map((line) => `${line.itemId}:${line.lotId ?? line.lotCode ?? ''}`))
+            .size === lines.length,
+        'One line per item, or per serial number or batch',
       ),
   }),
   responses: {
@@ -722,7 +813,52 @@ export const setCountLinesRoute = defineRoute({
   handler: async ({ params, body }, context) => {
     const detail = await withTenant(context.principal.tenantId, async (tx) => {
       for (const [index, line] of body.lines.entries()) {
-        await requireStockItem(tx, line.itemId, `body.lines.${index}.itemId`);
+        const item = await requireStockItem(tx, line.itemId, `body.lines.${index}.itemId`);
+        const named = line.lotId !== undefined || line.lotCode !== undefined;
+        if (item.tracking === 'none' && named) {
+          throw unprocessable('item_not_tracked', 'This item has no serial numbers or batches.', [
+            {
+              field: `body.lines.${index}`,
+              code: 'item_not_tracked',
+              message: 'Check the serial number or batch.',
+            },
+          ]);
+        }
+        if (item.tracking !== 'none' && !named) {
+          throw unprocessable(
+            'lots_required',
+            'Count a tracked item by its serial numbers or batches.',
+            [
+              {
+                field: `body.lines.${index}`,
+                code: 'lots_required',
+                message: 'Check the serial number or batch.',
+              },
+            ],
+          );
+        }
+        if (
+          item.tracking === 'serial' &&
+          !['0', '1'].includes(line.countedQuantity.replace(/\.0+$/u, ''))
+        ) {
+          throw unprocessable('serial_single_unit', 'A serial number is counted 0 or 1.', [
+            {
+              field: `body.lines.${index}.countedQuantity`,
+              code: 'serial_single_unit',
+              message: '0 or 1.',
+            },
+          ]);
+        }
+        if (line.lotId !== undefined) {
+          const [lot] = await tx.inventoryLots.find([line.lotId]);
+          if (lot?.itemId !== item.id) {
+            throw new ApiError(
+              404,
+              'lot_not_found',
+              'This serial number or batch is not one of this item’s.',
+            );
+          }
+        }
       }
       const result = await tx.inventoryStock.setCountLines(
         params.countId,

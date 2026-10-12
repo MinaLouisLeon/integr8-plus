@@ -21,8 +21,9 @@ import { requireLocation, stockRefusal } from './inventory-stock.js';
 import { locationSummary, locationSummarySchema } from './inventory.js';
 import { addressSchema, peopleOf, personBody, personSchema } from './operations.js';
 import { orderDetail, salesOrderDetailSchema } from './sales-orders.js';
-import { FEATURE, TAGS } from './sales-quotes.js';
+import { companyToday, FEATURE, TAGS } from './sales-quotes.js';
 import { iso } from './schemas.js';
+import { byLot, lotSpecsSchema, lotsLeaving } from './stock-lots.js';
 
 /**
  * Deliveries by hand on sales orders (eighth round; ADR-0012): whoever
@@ -37,6 +38,15 @@ const deliveryLineSchema = z.object({
   sku: z.string().nullable(),
   unit: z.string(),
   quantity: z.string(),
+  /** The serial numbers or batches handed over (ADR-0013), for the note. */
+  lots: z.array(
+    z.object({
+      kind: z.enum(['serial', 'batch']),
+      code: z.string(),
+      expiresOn: z.iso.date().nullable(),
+      quantity: z.string(),
+    }),
+  ),
 });
 
 const deliverySummarySchema = z.object({
@@ -94,6 +104,18 @@ async function deliveryBodies(tx: TenantTransaction, deliveries: readonly SalesD
     ).map((item) => [item.id, item]),
   );
   const locationOf = new Map(locations.map((location) => [location.id, location]));
+  const lotsOfLine = new Map<string, { lotId: string; quantity: string }[]>();
+  for (const line of lines) {
+    const moved = await tx.inventoryLots.movedBySource(`delivery-line:${line.id}:lot:`);
+    if (moved.length > 0) {
+      lotsOfLine.set(line.id, moved);
+    }
+  }
+  const lotOf = new Map(
+    (await tx.inventoryLots.find([...lotsOfLine.values()].flat().map((row) => row.lotId))).map(
+      (lot) => [lot.id, lot],
+    ),
+  );
   return deliveries.map((delivery) => ({
     id: delivery.id,
     reference: formatDeliveryReference(delivery.reference),
@@ -111,6 +133,19 @@ async function deliveryBodies(tx: TenantTransaction, deliveries: readonly SalesD
           sku: item?.sku ?? null,
           unit: orderLine?.unit ?? 'each',
           quantity: line.quantity,
+          lots: (lotsOfLine.get(line.id) ?? []).flatMap((moved) => {
+            const lot = lotOf.get(moved.lotId);
+            return lot === undefined
+              ? []
+              : [
+                  {
+                    kind: lot.kind,
+                    code: lot.code,
+                    expiresOn: lot.expiresOn,
+                    quantity: moved.quantity.replace(/^-/u, ''),
+                  },
+                ];
+          }),
         };
       }),
   }));
@@ -137,7 +172,16 @@ export const deliverSalesOrderRoute = defineRoute({
     locationId: z.uuid(),
     notes: z.string().trim().max(2000).nullable().optional(),
     lines: z
-      .array(z.object({ orderLineId: z.uuid(), quantity: positiveQuantitySchema }))
+      .array(
+        z.object({
+          orderLineId: z.uuid(),
+          quantity: positiveQuantitySchema,
+          /** For a tracked item: which serial numbers or batches; the earliest expiry when none are named. */
+          lots: lotSpecsSchema.optional(),
+          /** Hand over an expired batch anyway; the notes say why. */
+          allowExpired: z.boolean().optional(),
+        }),
+      )
       .min(1)
       .max(200),
   }),
@@ -251,21 +295,33 @@ export const deliverSalesOrderRoute = defineRoute({
         principal.userId,
       );
       const lineIdOf = new Map(created.lines.map((line) => [line.orderLineId, line.id]));
-      const movements: MovementInput[] = planned.flatMap(({ input, stock }) =>
-        stock === undefined
-          ? []
-          : [
-              {
-                itemId: stock.id,
-                locationId: location.id,
-                kind: 'issue' as const,
-                quantity: `-${input.quantity}`,
-                unitCost: stock.averageUnitCost,
-                sourceKey: `delivery-line:${lineIdOf.get(input.orderLineId)!}`,
-                reason: `${formatDeliveryReference(created.delivery.reference)} for ${formatSalesOrderReference(order.reference)}`,
-              },
-            ],
-      );
+      const movements: MovementInput[] = [];
+      const today = await companyToday(tx);
+      for (const [index, { input, stock }] of planned.entries()) {
+        if (stock === undefined) {
+          continue;
+        }
+        const leaving = await lotsLeaving(tx, stock, location.id, input.quantity, input.lots, {
+          today,
+          allowExpired: input.allowExpired,
+          reason: body.notes,
+          field: `body.lines.${index}.lots`,
+        });
+        movements.push(
+          ...byLot(
+            {
+              itemId: stock.id,
+              locationId: location.id,
+              kind: 'issue',
+              quantity: `-${input.quantity}`,
+              unitCost: stock.averageUnitCost,
+              sourceKey: `delivery-line:${lineIdOf.get(input.orderLineId)!}`,
+              reason: `${formatDeliveryReference(created.delivery.reference)} for ${formatSalesOrderReference(order.reference)}`,
+            },
+            leaving,
+          ),
+        );
+      }
       await tx.inventoryStock
         .post(movements, { postingId: created.delivery.id, actorId: principal.userId })
         .catch(stockRefusal);

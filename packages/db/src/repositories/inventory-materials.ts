@@ -1,6 +1,6 @@
 import { type MaterialStatus, type UserId, toUserId } from '@integr8/core';
 import { type Selectable, sql } from 'kysely';
-import type { ErpWorkOrderMaterialsTable } from '../schema.js';
+import type { ErpWorkOrderMaterialsTable, MaterialLot } from '../schema.js';
 import { trimDecimal } from './crm-leads.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
@@ -32,6 +32,10 @@ export interface Material {
   cancelledBy: UserId | null;
   cancelledAt: Date | null;
   version: number;
+  /** The serial numbers or batches the part came from (0042): as taken once posted, as asked for while in conflict. */
+  lots: MaterialLot[] | null;
+  /** The asset the part was fitted to, when the job named one (0031). */
+  assetId: string | null;
 }
 
 export interface MaterialInput {
@@ -46,6 +50,7 @@ export interface MaterialInput {
   note?: string | null;
   recordedBy: UserId | string;
   occurredAt?: Date;
+  lots?: readonly MaterialLot[] | null;
 }
 
 export interface MaterialPatch {
@@ -56,6 +61,7 @@ export interface MaterialPatch {
   availableQuantity?: string | null;
   note?: string | null;
   cancelledBy?: UserId | string | null;
+  lots?: readonly MaterialLot[] | null;
 }
 
 export class InventoryMaterialsRepository extends TenantScopedRepository {
@@ -79,6 +85,7 @@ export class InventoryMaterialsRepository extends TenantScopedRepository {
         note: blankToNull(input.note),
         recorded_by: toUserId(input.recordedBy),
         ...(input.occurredAt === undefined ? {} : { occurred_at: input.occurredAt }),
+        ...(input.lots === undefined || input.lots === null ? {} : { lots: lotsJson(input.lots) }),
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -161,6 +168,9 @@ export class InventoryMaterialsRepository extends TenantScopedRepository {
           : patch.cancelledBy === null
             ? { cancelled_by: null, cancelled_at: null }
             : { cancelled_by: toUserId(patch.cancelledBy), cancelled_at: sql<Date>`now()` }),
+        ...(patch.lots === undefined
+          ? {}
+          : { lots: patch.lots === null ? null : lotsJson(patch.lots) }),
         version: sql<number>`version + 1`,
       })
       .where('tenant_id', '=', this.tenantId)
@@ -202,6 +212,13 @@ export class InventoryMaterialsRepository extends TenantScopedRepository {
   }
 }
 
+/** node-pg writes a JavaScript array as a Postgres array; jsonb wants the text. */
+function lotsJson(lots: readonly MaterialLot[]) {
+  return sql<
+    MaterialLot[]
+  >`${JSON.stringify(lots.map(({ lotId, quantity }) => ({ lotId, quantity })))}::jsonb`;
+}
+
 function blankToNull(value: string | null | undefined): string | null {
   if (value === undefined || value === null) {
     return null;
@@ -229,5 +246,7 @@ function toMaterial(row: Selectable<ErpWorkOrderMaterialsTable>): Material {
     cancelledBy: row.cancelled_by === null ? null : toUserId(row.cancelled_by),
     cancelledAt: row.cancelled_at,
     version: row.version,
+    lots: row.lots,
+    assetId: row.asset_id,
   };
 }

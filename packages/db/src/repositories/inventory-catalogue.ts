@@ -1,5 +1,6 @@
 import {
   type ItemKind,
+  type ItemTracking,
   type TenantId,
   type Unit,
   type UserId,
@@ -43,6 +44,8 @@ export interface Item {
   supplierPartNumber: string | null;
   /** Days to build or to arrive; the preferred supplier's when null (0039). */
   leadTimeDays: number | null;
+  /** How its units are told apart (ADR-0013). */
+  tracking: ItemTracking;
   version: number;
   createdBy: UserId;
   createdAt: Date;
@@ -200,6 +203,27 @@ export class InventoryCatalogueRepository extends TenantScopedRepository {
     return row === undefined ? undefined : toItem(row);
   }
 
+  /**
+   * Sets how an item's units are told apart (ADR-0013). The API decides when
+   * that is allowed: with nothing on hand, or through a count.
+   */
+  async setTracking(
+    itemId: string,
+    tracking: ItemTracking,
+    expectedVersion?: number,
+  ): Promise<Item | undefined> {
+    let update = this.db
+      .updateTable('erp_items')
+      .set({ tracking, version: sql<number>`version + 1` })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', itemId);
+    if (expectedVersion !== undefined) {
+      update = update.where('version', '=', expectedVersion);
+    }
+    const row = await update.returningAll().executeTakeFirst();
+    return row === undefined ? undefined : toItem(row);
+  }
+
   /** Changes an item, provided nobody has changed it since `expectedVersion`. */
   async updateItem(
     itemId: string,
@@ -327,6 +351,7 @@ export function toItem(row: Omit<Selectable<ErpItemsTable>, 'search'>): Item {
     preferredSupplierId: row.preferred_supplier_id,
     supplierPartNumber: row.supplier_part_number,
     leadTimeDays: row.lead_time_days,
+    tracking: row.tracking,
     version: row.version,
     createdBy: toUserId(row.created_by),
     createdAt: row.created_at,

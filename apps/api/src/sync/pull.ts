@@ -289,12 +289,53 @@ export async function vanStockBody(tx: TenantTransaction, principal: Principal) 
   }
   const balances = await tx.inventoryStock.balances({ locationId: van.id, limit: 2000 });
   const itemIds = balances.map((row) => row.itemId);
-  const [found, reserved, images] = await Promise.all([
+  const [found, reserved, images, lotBalances] = await Promise.all([
     tx.inventoryCatalogue.findItems(itemIds),
     reservedAt(tx, { locationId: van.id }),
     tx.attachments.mainImages(itemIds),
+    tx.inventoryLots.balances({ locationId: van.id }),
   ]);
   const items = new Map(found.map((item) => [item.id, item]));
+  // The van's serial numbers and batches, for picking offline (ADR-0013).
+  const lotsHeld = await tx.inventoryLots.find(lotBalances.map((row) => row.lotId));
+  const lot = new Map(lotsHeld.map((row) => [row.id, row]));
+  const lotsOf = new Map<
+    string,
+    {
+      lotId: string;
+      kind: 'serial' | 'batch';
+      code: string;
+      expiresOn: string | null;
+      onHand: string;
+    }[]
+  >();
+  for (const balance of lotBalances) {
+    const found = lot.get(balance.lotId);
+    if (found === undefined) {
+      continue;
+    }
+    const list = lotsOf.get(balance.itemId) ?? [];
+    list.push({
+      lotId: found.id,
+      kind: found.kind,
+      code: found.code,
+      expiresOn: found.expiresOn,
+      onHand: balance.onHand,
+    });
+    lotsOf.set(balance.itemId, list);
+  }
+  for (const list of lotsOf.values()) {
+    // The earliest expiry first, then by code: the order the phone suggests.
+    list.sort((a, b) =>
+      a.expiresOn === b.expiresOn
+        ? a.code.localeCompare(b.code)
+        : a.expiresOn === null
+          ? 1
+          : b.expiresOn === null
+            ? -1
+            : a.expiresOn.localeCompare(b.expiresOn),
+    );
+  }
   return {
     location: { id: van.id, name: van.name },
     items: balances.flatMap((row) => {
@@ -307,6 +348,7 @@ export async function vanStockBody(tx: TenantTransaction, principal: Principal) 
               onHand: row.onHand,
               ...availability(row.onHand, reserved.get(`${row.itemId}:${van.id}`)),
               mainImageFileId: images.get(item.id) ?? null,
+              lots: item.tracking === 'none' ? [] : (lotsOf.get(item.id) ?? []),
             },
           ];
     }),

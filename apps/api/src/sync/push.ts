@@ -209,6 +209,16 @@ export const mutationSchema = z.discriminatedUnion('kind', [
       itemId: z.uuid(),
       quantity: positiveQuantitySchema,
       note: z.string().trim().max(1000).nullable().optional(),
+      /**
+       * Serial numbers or batches picked from the van's list offline (ADR-0013);
+       * one the van no longer holds makes the use a conflict.
+       */
+      lots: z
+        .array(z.object({ lotId: z.uuid(), quantity: positiveQuantitySchema.default('1') }))
+        .max(500)
+        .optional(),
+      /** An expired batch confirmed on the phone; the note says why. */
+      allowExpired: z.boolean().optional(),
     }),
   }),
   z.object({
@@ -1018,6 +1028,8 @@ async function material(
     note: mutation.payload.note ?? null,
     clientActionId: mutation.payload.materialId,
     occurredAt: push.recordedAt(mutation),
+    lots: mutation.payload.lots,
+    allowExpired: mutation.payload.allowExpired,
   });
   return applied(null, result.outcome === 'already_recorded');
 }

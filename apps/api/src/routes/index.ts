@@ -20,6 +20,7 @@ import { vanRequestRoutes } from './v1/van-requests.js';
 import { workOrderPurchaseRoutes } from './v1/work-order-purchases.js';
 import { crmRoutes } from './v1/crm.js';
 import { stockRoutes } from './v1/inventory-stock.js';
+import { stockTrackingRoutes } from './v1/stock-tracking.js';
 import { catalogueRoutes } from './v1/inventory.js';
 import { purchasingRoutes } from './v1/purchasing.js';
 import { invoiceRoutes } from './v1/finance-invoices.js';
@@ -85,6 +86,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...activityRoutes,
     ...catalogueRoutes,
     ...stockRoutes,
+    ...stockTrackingRoutes,
     ...purchasingRoutes,
     ...materialRoutes,
     ...quoteRoutes,

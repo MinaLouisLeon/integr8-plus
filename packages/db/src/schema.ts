@@ -8,6 +8,7 @@ import {
   type ItemKind,
   type LocationKind,
   type LocationOwnership,
+  type ItemTracking,
   type MovementKind,
   type MaterialStatus,
   type QuoteAnswerVia,
@@ -1108,6 +1109,8 @@ export interface ErpItemsTable {
   supplier_part_number: string | null;
   /** Days to build or to arrive (0039). */
   lead_time_days: number | null;
+  /** How its units are told apart (0042). */
+  tracking: Generated<ItemTracking>;
   version: Generated<number>;
   created_by: string;
   created_at: CreatedAt;
@@ -1152,6 +1155,33 @@ export interface ErpStockCountLinesTable {
   item_id: string;
   counted_quantity: string;
   expected_quantity: string | null;
+  /** The serial or batch counted, for a tracked item (0042). */
+  lot_id: Generated<string | null>;
+  /** A serial or batch the company has not seen before, created when the count is posted. */
+  lot_code: Generated<string | null>;
+  lot_expires_on: ColumnType<string | null, string | null | undefined, string | null>;
+}
+
+/** A serial number or batch of a tracked item (0042; ADR-0013). */
+export interface ErpStockLotsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  item_id: string;
+  kind: 'serial' | 'batch';
+  code: string;
+  /** A calendar date, read as `YYYY-MM-DD` text. */
+  expires_on: ColumnType<string | null, string | null | undefined, never>;
+  created_by: string;
+  created_at: CreatedAt;
+}
+
+export interface ErpStockLotBalancesTable {
+  tenant_id: string;
+  lot_id: string;
+  location_id: string;
+  item_id: string;
+  on_hand: string;
+  updated_at: CreatedAt;
 }
 
 export interface ErpStockMovementsTable {
@@ -1170,6 +1200,8 @@ export interface ErpStockMovementsTable {
   reversal_of: string | null;
   actor_id: string;
   occurred_at: CreatedAt;
+  /** The serial or batch moved, for a tracked item (0042). */
+  lot_id: Generated<string | null>;
 }
 
 export interface ErpStockBalancesTable {
@@ -1296,6 +1328,14 @@ export interface ErpWorkOrderMaterialsTable {
   version: Generated<number>;
   /** The asset the part was fitted to (0031). */
   asset_id: Generated<string | null>;
+  /** The serial numbers or batches the part came from, as asked for (0042). */
+  lots: Jsonb<MaterialLot[] | null>;
+}
+
+/** A serial number or batch a part came from: the lot and how much of it. */
+export interface MaterialLot {
+  lotId: string;
+  quantity: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -2700,6 +2740,8 @@ export interface Database {
   erp_mrp_plans: ErpMrpPlansTable;
   erp_mrp_suggestions: ErpMrpSuggestionsTable;
   erp_supplier_prices: ErpSupplierPricesTable;
+  erp_stock_lots: ErpStockLotsTable;
+  erp_stock_lot_balances: ErpStockLotBalancesTable;
   erp_sales_deliveries: ErpSalesDeliveriesTable;
   erp_sales_delivery_lines: ErpSalesDeliveryLinesTable;
   erp_van_requests: ErpVanRequestsTable;
@@ -2837,6 +2879,9 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // Locks a balance row for the caller's own company, which the runtime role
   // can only read; see 0026.
   'erp_stock_lock_balance',
+  // The same for each serial number's or batch's balance; see 0042 and ADR-0013.
+  'erp_stock_apply_lot_movement',
+  'erp_stock_lock_lot_balance',
   // Hands out purchase order references from a counter the runtime role cannot write; see 0027.
   'assign_purchase_order_reference',
   'assign_sales_reference',
@@ -2974,6 +3019,8 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_mrp_plans: true,
   erp_mrp_suggestions: true,
   erp_supplier_prices: true,
+  erp_stock_lots: true,
+  erp_stock_lot_balances: true,
   erp_sales_deliveries: true,
   erp_sales_delivery_lines: true,
   erp_van_requests: true,
