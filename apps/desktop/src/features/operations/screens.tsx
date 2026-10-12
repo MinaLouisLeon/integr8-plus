@@ -31,6 +31,7 @@ import {
   SalesOrderScreen,
   DeliveryNoteScreen,
   ReorderScreen,
+  ReorderStartScreen,
   VanRequestsScreen,
   FinanceSettingsScreen,
   LedgerHomeScreen,
@@ -305,6 +306,15 @@ export function ReorderRoute() {
   return (
     <OperationsScreens>
       <ReorderScreen key={locationId} locationId={locationId} />
+    </OperationsScreens>
+  );
+}
+
+/** The menu's way into reordering: which location first (G1c). */
+export function ReorderStartRoute() {
+  return (
+    <OperationsScreens>
+      <ReorderStartScreen />
     </OperationsScreens>
   );
 }

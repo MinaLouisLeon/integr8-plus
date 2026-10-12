@@ -335,9 +335,89 @@ export function NewOpportunityDialog({
 }
 
 /**
+ * Closing a deal: why, when it was lost; a confirmation, when it was won. The
+ * stage select asks it for lost, and dropping a card on won or lost asks it
+ * for both; cancelling leaves the deal where it was.
+ */
+export function CloseDealDialog({
+  opportunity,
+  stage,
+  onConfirm,
+  onCancel,
+}: {
+  opportunity: Pick<Opportunity, 'id' | 'title'>;
+  stage: Stage;
+  onConfirm: (lostReason?: string) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const stageName = useStageName();
+  const [reason, setReason] = useState('');
+  const losing = stage.outcome === 'lost';
+  const formId = `crm-close-${opportunity.id}`;
+
+  return (
+    <Dialog
+      title={losing ? t('crm.opportunities.loseTitle') : t('crm.opportunities.winTitle')}
+      onClose={onCancel}
+      footer={
+        <>
+          <button type="button" className={buttonClass.secondary} onClick={onCancel}>
+            {t('crm.leads.cancel')}
+          </button>
+          <button
+            type="submit"
+            form={formId}
+            className={buttonClass.primary}
+            disabled={losing && reason.trim() === ''}
+          >
+            {losing ? t('crm.opportunities.markLost') : t('crm.opportunities.markWon')}
+          </button>
+        </>
+      }
+    >
+      <form
+        id={formId}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!losing) {
+            onConfirm();
+          } else if (reason.trim() !== '') {
+            onConfirm(reason.trim());
+          }
+        }}
+      >
+        {losing ? (
+          <Field label={t('crm.opportunities.fields.lostReason')}>
+            {(id) => (
+              <textarea
+                id={id}
+                required
+                rows={3}
+                maxLength={1000}
+                className={inputClass}
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+              />
+            )}
+          </Field>
+        ) : (
+          <p className="text-sm text-content">
+            {t('crm.opportunities.winNote', {
+              title: opportunity.title,
+              stage: stageName(stage),
+            })}
+          </p>
+        )}
+      </form>
+    </Dialog>
+  );
+}
+
+/**
  * Moving an opportunity to another stage: a select of its pipeline's live
- * stages, and a reason when the choice is "lost". The accessible alternative
- * to dragging a card.
+ * stages, and a reason when the choice is "lost". The keyboard's way, beside
+ * dragging a card on the board.
  */
 export function MoveControl({
   opportunity,
@@ -346,16 +426,14 @@ export function MoveControl({
   disabled,
   label,
 }: {
-  opportunity: Pick<Opportunity, 'id' | 'stage'>;
+  opportunity: Pick<Opportunity, 'id' | 'title' | 'stage'>;
   stages: readonly Stage[];
   onMove: (stageId: string, lostReason?: string) => void;
   disabled?: boolean;
   label: string;
 }) {
-  const { t } = useTranslation();
   const stageName = useStageName();
   const [losing, setLosing] = useState<Stage | null>(null);
-  const [reason, setReason] = useState('');
 
   return (
     <>
@@ -372,7 +450,6 @@ export function MoveControl({
                 return;
               }
               if (stage.outcome === 'lost') {
-                setReason('');
                 setLosing(stage);
               } else {
                 onMove(stage.id);
@@ -390,54 +467,15 @@ export function MoveControl({
         )}
       </Field>
       {losing === null ? null : (
-        <Dialog
-          title={t('crm.opportunities.loseTitle')}
-          onClose={() => setLosing(null)}
-          footer={
-            <>
-              <button
-                type="button"
-                className={buttonClass.secondary}
-                onClick={() => setLosing(null)}
-              >
-                {t('crm.leads.cancel')}
-              </button>
-              <button
-                type="submit"
-                form={`crm-lose-${opportunity.id}`}
-                className={buttonClass.primary}
-                disabled={reason.trim() === ''}
-              >
-                {t('crm.opportunities.markLost')}
-              </button>
-            </>
-          }
-        >
-          <form
-            id={`crm-lose-${opportunity.id}`}
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (reason.trim() !== '') {
-                onMove(losing.id, reason.trim());
-                setLosing(null);
-              }
-            }}
-          >
-            <Field label={t('crm.opportunities.fields.lostReason')}>
-              {(id) => (
-                <textarea
-                  id={id}
-                  required
-                  rows={3}
-                  maxLength={1000}
-                  className={inputClass}
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                />
-              )}
-            </Field>
-          </form>
-        </Dialog>
+        <CloseDealDialog
+          opportunity={opportunity}
+          stage={losing}
+          onCancel={() => setLosing(null)}
+          onConfirm={(lostReason) => {
+            onMove(losing.id, lostReason);
+            setLosing(null);
+          }}
+        />
       )}
     </>
   );

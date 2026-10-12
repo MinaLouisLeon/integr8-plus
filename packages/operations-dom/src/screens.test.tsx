@@ -1172,6 +1172,7 @@ describe('parts used on the job', { timeout: 20_000 }, () => {
     name: 'Ball valve 15mm',
     kind: 'stock_item',
     unit: 'each',
+    tracking: 'none',
   } as const;
   const VAN = { id: '00000000-0000-4000-8000-00000000f102', name: 'Van 1' };
   const used = (overrides: Partial<WorkOrderDetail['materials'][number]> = {}) => ({
@@ -1183,6 +1184,7 @@ describe('parts used on the job', { timeout: 20_000 }, () => {
     unitCost: '12',
     status: 'posted' as const,
     availableQuantity: null,
+    lots: null,
     note: null,
     recordedBy: ENGINEER,
     recordedAt: '2026-10-11T09:00:00.000Z',

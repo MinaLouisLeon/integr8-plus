@@ -164,6 +164,7 @@ const delivery = (): SalesDelivery => ({
       sku: 'VAL-15',
       unit: 'each',
       quantity: '1',
+      lots: [],
     },
   ],
 });
