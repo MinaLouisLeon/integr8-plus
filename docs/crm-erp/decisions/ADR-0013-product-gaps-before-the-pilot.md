@@ -67,3 +67,35 @@ and amounts), one pull request to `main`, then stop.
 Every permission check reads the member's effective permissions, now from a
 custom role as well as a built-in one. Tracked items add a dimension to the
 stock ledger's balances; untracked items are unchanged.
+
+## As built
+
+- **Company roles (0041):** `tenant_roles` with a fixed base and lists of
+  permissions added and taken away; a member's `role` stays the base, and
+  `custom_role_id` names the company role. The overlay is read at every
+  token mint (`crl` claim); changing a role signs its holders out so it
+  applies at once. New permission `role.manage` (the owner's alone); a
+  company role never holds the owner's own permissions. Giving one keeps
+  the rank rule and adds `role_beyond_own`. Screens on the web only, since
+  the desktop has no people screen.
+- **Serial and batch tracking (0042):** lots, per-lot balances kept by the
+  ledger's trigger, a serial held once anywhere, counts per lot, and every
+  movement, document and the phone's parts through shared rules
+  (`stock-lots.ts`). "Through a count" for existing stock is built as the
+  tracking switch naming each location's lots, which must make up its stock
+  exactly; the stock is relabelled by a transfer out and back in, unseen by
+  the ledger. A batch made by assembly without a code takes the order's
+  reference. Returns give back the lots a part or receipt took; one taken
+  before the item was tracked comes back under a code given.
+- **Board, menus and amounts (0043):** drag-and-drop with `@dnd-kit/core`
+  and `@dnd-kit/utilities` (`@dnd-kit/sortable` was not needed). Won and lost
+  are drop zones below the board, since the board has no columns for them;
+  dropping on won now asks for confirmation as lost does. Menu entries for
+  pipelines, reports, parts used, van requests, the serial lookup and
+  reorder, which opens a small page choosing the location. Amount history is
+  kept by trigger; months before it began use the amount each deal had when
+  it began (today's amount on the day of this release), marked as estimated.
+
+Left for later: lots on the location screen and on a sales order's
+delivery list; choosing which batch comes back on a return from a job; a
+link from a lot's receipt to its purchase order in the trace.

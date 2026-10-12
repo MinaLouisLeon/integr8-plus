@@ -760,7 +760,7 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase G1 — Product gaps before the pilot (authorized 2026-10-12)
 
-**Status:** `IN PROGRESS` — ninth round; see the [phase tracker](./README.md#phase-tracker) and ADR-0013.
+**Status:** `DONE` — ninth round; see the [phase tracker](./README.md#phase-tracker) and ADR-0013.
 
 - [x] Custom roles built on a base role, created by the owner and assigned by owners and admins (G1a).
 - [x] Serial and batch tracking through every stock movement, on the phone offline, with a serial lookup (G1b).

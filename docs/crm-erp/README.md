@@ -22,8 +22,8 @@ round, A1 (the general ledger), in PR #78. The seventh round, H1 (HR, staff
 expenses and Egyptian payroll) and M1 (bills of materials, assembly and
 planning), authorized by the product owner on 2026-10-12, went to `main` in PR #79. The eighth round, F2 (follow-ups before the
 pilot), authorized on 2026-10-12, went to `main` in PR #80. The ninth round, G1 (product gaps before the
-pilot), authorized on 2026-10-12, is in progress on `feat/product-gaps`; L
-waits for a new instruction.**
+pilot), authorized on 2026-10-12, is done on `feat/product-gaps` and goes
+to `main` in one pull request; L waits for a new instruction.**
 
 Seventh round — branch `feat/hr-payroll-manufacturing`, from `main` at
 `64f9025`. Agreed scope: **H1 then M1, one pull request, then stop for
@@ -61,7 +61,7 @@ instruction.
 | H1    | HR profiles and roles, staff expense claims, Egyptian payroll (ERP-09)                                                                                                                                                                                         | `DONE`        | 0036–0038  | seventh round: roles, grants and profiles (H1a); expense claims, phone included (H1b); payroll rule sets, pay runs, payslips and files (H1c)                               |
 | M1    | Bills of materials, assembly and disassembly, material planning (ERP-10)                                                                                                                                                                                       | `DONE`        | 0039       | seventh round: bills, assembly and disassembly (M1a); planning drafting orders (M1b)                                                                                       |
 | F2    | Follow-ups before the pilot: error codes in both languages, CI licence check, self-hosting audit, seventh-round follow-ups, pipelines, Customer 360, analytics and exports, site stock, item media, price lists and reorder, hand deliveries, phone stock work | `DONE`        | 0040       | eighth round, branch `feat/follow-ups` from `main` at `98739a2` (ADR-0012)                                                                                                 |
-| G1    | Product gaps before the pilot: custom roles, serial and batch tracking, drag-and-drop on the board, menu entries, amount history                                                                                                                               | `IN PROGRESS` | —          | ninth round, branch `feat/product-gaps` from `main` at `720b2a7` (ADR-0013)                                                                                                |
+| G1    | Product gaps before the pilot: custom roles, serial and batch tracking, drag-and-drop on the board, menu entries, amount history                                                                                                                               | `DONE`        | 0041–0043  | ninth round, branch `feat/product-gaps` from `main` at `720b2a7` (ADR-0013)                                                                                                |
 | L     | Pilot release                                                                                                                                                                                                                                                  | `NOT STARTED` | —          | —                                                                                                                                                                          |
 
 ### Specification coverage
@@ -122,6 +122,8 @@ or a decision before the pilot (phase L).
 - [x] Movement history export (P22 "filterable and exportable"), with the CSV protections above. Done in F2 (ADR-0012).
 - [ ] Update `plan/ROADMAP.md` when the round merges.
 - [x] Menu entries for the F2 screens (pipelines, reports, parts used, van requests, reorder); today they are reached from links on the screens they belong to. Done in G1 (ADR-0013).
+- [ ] Lots on the location screen and on a sales order's delivery list; choosing which batch comes back on a return from a job; a link from a lot's receipt to its purchase order in the trace (G1).
+- [ ] Try the phone's G1 lot picking on a device: scan a serial from the van offline, fit it, reconnect, and find it on the asset.
 - [ ] Try the phone's F2 screens on a device: My van offline, refill, merchant parts with a receipt in aeroplane mode, receiving by scan (the scanner closes after each code, so a barcode is never counted twice).
 - [x] Amount history on opportunities, if value by stage should use the amount a deal had at each month end rather than today's. Done in G1 (ADR-0013).
 
