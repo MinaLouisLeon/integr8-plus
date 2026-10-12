@@ -22,6 +22,14 @@ export const ITEM_KINDS = ['stock_item', 'non_stock_item', 'service'] as const;
 export const itemKindSchema = z.enum(ITEM_KINDS);
 export type ItemKind = z.infer<typeof itemKindSchema>;
 
+/**
+ * How a stock item's units are told apart (ADR-0013): not at all, one serial
+ * number per unit, or a batch code (with an optional expiry) per lot.
+ */
+export const ITEM_TRACKINGS = ['none', 'serial', 'batch'] as const;
+export const itemTrackingSchema = z.enum(ITEM_TRACKINGS);
+export type ItemTracking = z.infer<typeof itemTrackingSchema>;
+
 /** Units of measure every company has. Screens translate them (`inventory.unit.<code>`). */
 export const UNITS = [
   'each',

@@ -9,7 +9,7 @@ import {
   type UserId,
 } from '@integr8/core';
 import { type Selectable, sql } from 'kysely';
-import type { ErpAssetEventsTable, ErpAssetsTable } from '../schema.js';
+import type { ErpAssetEventsTable, ErpAssetsTable, MaterialLot } from '../schema.js';
 import { type Attachment, toAttachment } from './attachments.js';
 import { toDayString, trimDecimal } from './crm-leads.js';
 import { prefixQuery } from './customers.js';
@@ -153,6 +153,8 @@ export interface AssetPart {
   explicit: boolean;
   recordedBy: UserId;
   occurredAt: Date;
+  /** The serial numbers or batches fitted (0042); null for an untracked item. */
+  lots: MaterialLot[] | null;
 }
 
 const DETAIL_COLUMNS: Record<keyof AssetDetailsInput, keyof Selectable<ErpAssetsTable>> = {
@@ -860,10 +862,11 @@ export class AssetsRepository extends TenantScopedRepository {
       explicit: boolean;
       recorded_by: string;
       occurred_at: Date;
+      lots: MaterialLot[] | null;
     }>`
       select m.id, m.work_order_id, m.item_id, m.quantity::text as quantity,
              m.returned_quantity::text as returned_quantity, (m.asset_id is not null) as explicit,
-             m.recorded_by, m.occurred_at
+             m.recorded_by, m.occurred_at, m.lots
         from erp_work_order_materials m
        where m.tenant_id = ${this.tenantId}
          and m.status = 'posted'
@@ -880,6 +883,7 @@ export class AssetsRepository extends TenantScopedRepository {
       explicit: row.explicit,
       recordedBy: toUserId(row.recorded_by),
       occurredAt: row.occurred_at,
+      lots: row.lots,
     }));
   }
 

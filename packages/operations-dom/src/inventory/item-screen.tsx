@@ -11,6 +11,8 @@ import { ItemSupplierPrices } from '../purchasing/price-list.js';
 import { useSuppliers } from '../purchasing/purchasing-parts.js';
 import { emptyItemDraft, ItemFields, type ItemDraft } from './item-list.js';
 import { ItemGallery } from './item-media.js';
+import { StockLots, TrackingDialog } from './item-tracking.js';
+import { TrackingBadge } from './lots.js';
 import {
   formatQuantity,
   KindBadge,
@@ -72,6 +74,7 @@ export function ItemScreen({ itemId }: { itemId: string }) {
   const [editing, setEditing] = useState<ItemDraft | null>(null);
   const [levels, setLevels] = useState<Record<string, string> | null>(null);
   const [moving, setMoving] = useState(false);
+  const [tracking, setTracking] = useState(false);
   const me = useQuery({
     queryKey: keys.me,
     queryFn: async () => (await client.GET('/v1/me')).data!,
@@ -208,6 +211,15 @@ export function ItemScreen({ itemId }: { itemId: string }) {
                 >
                   {t('inventory.items.edit')}
                 </button>
+                {item.kind === 'stock_item' && item.archivedAt === null ? (
+                  <button
+                    type="button"
+                    className={buttonClass.secondary}
+                    onClick={() => setTracking(true)}
+                  >
+                    {t('inventory.lots.switch.action')}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className={buttonClass.secondary}
@@ -300,6 +312,11 @@ export function ItemScreen({ itemId }: { itemId: string }) {
             <Detail label={t('inventory.items.fields.barcode')}>
               {item.barcode === null ? null : <span dir="ltr">{item.barcode}</span>}
             </Detail>
+            {item.kind === 'stock_item' ? (
+              <Detail label={t('inventory.lots.tracking.label')}>
+                <TrackingBadge tracking={item.tracking} />
+              </Detail>
+            ) : null}
             {item.kind === 'stock_item' ? (
               <Detail label={t('inventory.items.onHand')}>
                 {formatQuantity(onHand, item.unit, locale, unitName)}
@@ -488,6 +505,7 @@ export function ItemScreen({ itemId }: { itemId: string }) {
                       </span>
                     )}
                   </span>
+                  <StockLots lots={row.lots} unit={item.unit} />
                 </li>
               ))}
             </ul>
@@ -557,6 +575,17 @@ export function ItemScreen({ itemId }: { itemId: string }) {
 
       {moving ? (
         <MoveStockDialog item={item} canSeeCosts={seesCosts} onClose={() => setMoving(false)} />
+      ) : null}
+      {tracking ? (
+        <TrackingDialog
+          detail={detail.data}
+          onClose={() => setTracking(false)}
+          onDone={(next) => {
+            setTracking(false);
+            queries.setQueryData(keys.item(itemId), next);
+            void settle();
+          }}
+        />
       ) : null}
     </div>
   );

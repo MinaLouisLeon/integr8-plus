@@ -1,7 +1,8 @@
+import { compareDecimals } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useOperations, type WorkOrderDetail } from '../api.js';
+import { type ItemRow, useOperations, type WorkOrderDetail } from '../api.js';
 import { formatAmount } from '../crm/lead-parts.js';
 import {
   formatQuantity,
@@ -9,6 +10,7 @@ import {
   useLocations,
   useUnitName,
 } from '../inventory/inventory-parts.js';
+import { type LeavingLots, leavingBody, LotList, LotsLeaving } from '../inventory/lots.js';
 import { useIdempotencyKey } from '../purchasing/purchasing-parts.js';
 import { BoughtForJob, useJobPurchases } from './job-purchases.js';
 import {
@@ -121,6 +123,9 @@ export function Parts({
                         <span className="tabular-nums"> · {money(material.unitCost)}</span>
                       )}
                     </span>
+                    {material.lots === null ? null : (
+                      <LotList lots={material.lots} unit={material.item.unit} />
+                    )}
                     <span className="text-xs text-content-muted">
                       {t('inventory.parts.recordedBy', {
                         name: material.recordedBy.name,
@@ -252,19 +257,27 @@ function RecordDialog({
   const { client } = useOperations();
   const unitName = useUnitName();
   const locations = useLocations();
-  const [item, setItem] = useState<Parameters<typeof ItemPicker>[0]['value']>(null);
+  const [item, setItem] = useState<ItemRow | null>(null);
   const [locationId, setLocationId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [note, setNote] = useState('');
+  // Which serial numbers or batches (ADR-0013); an expired batch's reason is the note.
+  const [lots, setLots] = useState<LeavingLots | undefined>(undefined);
+  const tracked = item !== null && item.kind === 'stock_item' && item.tracking !== 'none';
+  const from = movesStock ? locationId : (job.van?.id ?? '');
   const body = {
     itemId: item?.id ?? '',
     ...(movesStock && locationId !== '' ? { locationId } : {}),
     quantity,
     ...(note.trim() === '' ? {} : { note: note.trim() }),
+    ...(tracked ? leavingBody(lots) : {}),
   };
   const idempotencyKey = useIdempotencyKey(body);
   const ready =
-    item !== null && isPositive(quantity) && (movesStock ? locationId !== '' : job.van !== null);
+    item !== null &&
+    isPositive(quantity) &&
+    (movesStock ? locationId !== '' : job.van !== null) &&
+    (!tracked || lots?.ready === true);
 
   const record = useMutation({
     mutationFn: async () =>
@@ -355,6 +368,18 @@ function RecordDialog({
             />
           )}
         </Field>
+        {tracked ? (
+          <LotsLeaving
+            key={`${item.id}:${from}`}
+            itemId={item.id}
+            tracking={item.tracking}
+            locationId={from}
+            quantity={quantity}
+            unit={item.unit}
+            formReason={note}
+            onChange={setLots}
+          />
+        ) : null}
         <Field label={t('inventory.parts.note')}>
           {(id) => (
             <input
@@ -388,9 +413,23 @@ function ReturnDialog({
   const unitName = useUnitName();
   const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState('');
-  const body = { quantity, ...(reason.trim() === '' ? {} : { reason: reason.trim() }) };
+  // Which serial numbers come back (ADR-0013); none chosen gives back those used.
+  const [back, setBack] = useState<readonly string[]>([]);
+  const serials = (material.lots ?? []).filter((lot) => lot.kind === 'serial');
+  const chosen = serials.filter((lot) => back.includes(lot.lotId));
+  const body = {
+    quantity,
+    ...(reason.trim() === '' ? {} : { reason: reason.trim() }),
+    ...(chosen.length === 0
+      ? {}
+      : { lots: chosen.map((lot) => ({ lotId: lot.lotId, quantity: '1' })) }),
+  };
   const idempotencyKey = useIdempotencyKey(body);
-  const back = useMutation({
+  // Serial numbers come back one unit each: as many chosen as are returned.
+  const returnReady =
+    isPositive(quantity) &&
+    (chosen.length === 0 || compareDecimals(String(chosen.length), quantity) === 0);
+  const giveBack = useMutation({
     mutationFn: async () =>
       (
         await client.POST('/v1/work-orders/{workOrderId}/materials/{materialId}/return', {
@@ -416,9 +455,9 @@ function ReturnDialog({
             type="submit"
             form="job-return-part"
             className={buttonClass.primary}
-            disabled={!isPositive(quantity) || back.isPending}
+            disabled={!returnReady || giveBack.isPending}
           >
-            {back.isPending ? t('inventory.parts.returning') : t('inventory.parts.return')}
+            {giveBack.isPending ? t('inventory.parts.returning') : t('inventory.parts.return')}
           </button>
         </>
       }
@@ -428,8 +467,8 @@ function ReturnDialog({
         className="flex flex-col gap-3"
         onSubmit={(event) => {
           event.preventDefault();
-          if (isPositive(quantity)) {
-            back.mutate();
+          if (returnReady) {
+            giveBack.mutate();
           }
         }}
       >
@@ -449,6 +488,33 @@ function ReturnDialog({
             />
           )}
         </Field>
+        {serials.length === 0 ? null : (
+          <fieldset className="flex flex-col gap-1">
+            <legend className="mb-1 text-sm font-medium text-content">
+              {t('inventory.lots.returnWhich')}
+            </legend>
+            <p className="text-xs text-content-muted">{t('inventory.lots.returnHint')}</p>
+            {serials.map((lot) => (
+              <span key={lot.lotId} className="flex items-center gap-2 text-sm">
+                <input
+                  id={`return-${lot.lotId}`}
+                  type="checkbox"
+                  checked={back.includes(lot.lotId)}
+                  onChange={(event) => {
+                    const next = back.filter((lotId) => lotId !== lot.lotId);
+                    setBack(event.target.checked ? [...next, lot.lotId] : next);
+                    if (event.target.checked || next.length > 0) {
+                      setQuantity(String(event.target.checked ? next.length + 1 : next.length));
+                    }
+                  }}
+                />
+                <label htmlFor={`return-${lot.lotId}`} dir="ltr">
+                  {lot.code}
+                </label>
+              </span>
+            ))}
+          </fieldset>
+        )}
         <Field label={t('inventory.parts.returnReason')}>
           {(id) => (
             <input
@@ -460,7 +526,7 @@ function ReturnDialog({
             />
           )}
         </Field>
-        {back.isError ? <Failure error={back.error} /> : null}
+        {giveBack.isError ? <Failure error={giveBack.error} /> : null}
       </form>
     </Dialog>
   );
@@ -486,10 +552,19 @@ function ResolveDialog({
   const [quantity, setQuantity] = useState(material.quantity);
   const [locationId, setLocationId] = useState(material.location?.id ?? '');
   const [stillShort, setStillShort] = useState(false);
+  const [lots, setLots] = useState<LeavingLots | undefined>(undefined);
+  const tracked = material.item.tracking !== 'none';
+  const retryReady =
+    movesStock && isPositive(quantity) && locationId !== '' && (!tracked || lots?.ready === true);
+  const retry = {
+    action: 'retry' as const,
+    quantity,
+    locationId,
+    ...(tracked ? leavingBody(lots) : {}),
+    ...(tracked && lots?.reason !== undefined ? { reason: lots.reason } : {}),
+  };
   const resolve = useMutation({
-    mutationFn: async (
-      body: { action: 'cancel' } | { action: 'retry'; quantity: string; locationId: string },
-    ) =>
+    mutationFn: async (body: { action: 'cancel' } | typeof retry) =>
       (
         await client.POST('/v1/work-orders/{workOrderId}/materials/{materialId}/resolve', {
           params: { path: { workOrderId: job.workOrder.id, materialId: material.id } },
@@ -527,7 +602,7 @@ function ResolveDialog({
               type="submit"
               form="job-resolve-part"
               className={buttonClass.primary}
-              disabled={!isPositive(quantity) || locationId === '' || resolve.isPending}
+              disabled={!retryReady || resolve.isPending}
             >
               {resolve.isPending ? t('inventory.parts.retrying') : t('inventory.parts.retry')}
             </button>
@@ -540,8 +615,8 @@ function ResolveDialog({
         className="flex flex-col gap-3"
         onSubmit={(event) => {
           event.preventDefault();
-          if (movesStock && isPositive(quantity) && locationId !== '') {
-            resolve.mutate({ action: 'retry', quantity, locationId });
+          if (retryReady) {
+            resolve.mutate(retry);
           }
         }}
       >
@@ -592,6 +667,24 @@ function ResolveDialog({
                 </select>
               )}
             </Field>
+            {tracked ? (
+              <LotsLeaving
+                key={locationId}
+                {...(locationId === material.location?.id && (material.lots?.length ?? 0) > 0
+                  ? {
+                      initial: Object.fromEntries(
+                        material.lots!.map((lot) => [lot.lotId, lot.quantity]),
+                      ),
+                    }
+                  : {})}
+                itemId={material.item.id}
+                tracking={material.item.tracking}
+                locationId={locationId}
+                quantity={quantity}
+                unit={material.item.unit}
+                onChange={setLots}
+              />
+            ) : null}
           </>
         ) : null}
         {stillShort ? (

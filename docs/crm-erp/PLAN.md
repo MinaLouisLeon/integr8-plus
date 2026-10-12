@@ -758,6 +758,15 @@ The report says development/tests run with recording/local adapters, **but produ
 - [x] Site stock locations, item images and datasheets, supplier price lists and reorder drafts, hand deliveries, van refills, merchant parts, scan to receive, reserved stock on the phone (F2c).
 - **Done when:** the tracker's follow-ups list is closed or carries a decision, and the pilot can start.
 
+### Phase G1 — Product gaps before the pilot (authorized 2026-10-12)
+
+**Status:** `DONE` — ninth round; see the [phase tracker](./README.md#phase-tracker) and ADR-0013.
+
+- [x] Custom roles built on a base role, created by the owner and assigned by owners and admins (G1a).
+- [x] Serial and batch tracking through every stock movement, on the phone offline, with a serial lookup (G1b).
+- [x] Drag-and-drop on the pipeline board, menu entries for the eighth round's screens, amount history on opportunities (G1c).
+- **Done when:** the follow-ups list holds only email, PDFs and the pilot's own items.
+
 ### Phase L — Pilot release
 
 **Status:** `NOT STARTED` — see the [phase tracker](./README.md#phase-tracker).

@@ -64,6 +64,8 @@ export const meSchema = z.object({
   role: roleSchema,
   /** Capabilities given on top of the role (ADR-0010). */
   grants: z.array(z.enum(GRANTS)),
+  /** The company's own role, whose base is `role` (ADR-0013); null for a built-in role. */
+  customRole: z.object({ id: z.uuid(), name: z.string() }).nullable().optional(),
   /**
    * What this role may do, resolved server-side.
    *
@@ -150,6 +152,8 @@ export const memberSchema = z.object({
   role: roleSchema,
   /** Capabilities given on top of the role (ADR-0010). */
   grants: z.array(z.enum(GRANTS)),
+  /** The company's own role, whose base is `role` (ADR-0013); null for a built-in role. */
+  customRole: z.object({ id: z.uuid(), name: z.string() }).nullable().optional(),
   status: z.enum(['invited', 'active', 'suspended']),
   createdAt: timestamp,
 });

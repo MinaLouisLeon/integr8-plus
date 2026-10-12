@@ -83,6 +83,16 @@ export const pullRoute = defineRoute({
                 available: z.string(),
                 /** The item's main image, which the phone keeps for offline use. */
                 mainImageFileId: z.uuid().nullable(),
+                /** The serial numbers or batches the van holds, earliest expiry first (ADR-0013). */
+                lots: z.array(
+                  z.object({
+                    lotId: z.uuid(),
+                    kind: z.enum(['serial', 'batch']),
+                    code: z.string(),
+                    expiresOn: z.iso.date().nullable(),
+                    onHand: z.string(),
+                  }),
+                ),
               }),
             ),
           })

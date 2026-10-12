@@ -66,12 +66,15 @@ export const LOCAL_CHANGE_ERROR_CODES = [
   'form_not_on_phone',
   'form_submitted',
   'item_not_in_van',
+  'lot_not_in_van',
+  'lots_mismatch',
   'name_required',
   'not_an_access_conflict',
   'not_an_answers_conflict',
   'part_description_required',
   'purchase_not_on_phone',
   'quantity_invalid',
+  'serial_required',
   'shift_not_open',
   'shift_open',
   'site_not_on_phone',
@@ -351,6 +354,61 @@ export async function recordChecklist(
   });
 }
 
+/** A decimal of up to four places as ten-thousandths, compared exactly. */
+const tenThousandths = (text: string) => {
+  const [whole = '0', fraction = ''] = text.split('.');
+  return BigInt(whole + fraction.padEnd(4, '0').slice(0, 4));
+};
+
+/**
+ * The serial numbers or batches a part use names, checked against the van's
+ * list: each one there, named once, a serial number one unit, adding up to the
+ * quantity. A serial-numbered part names its own; a batch may be left to the
+ * server, which takes the one expiring first.
+ */
+function checkLots(
+  tracking: string,
+  vanLots: readonly { lotId: string }[],
+  quantity: string,
+  lots: readonly { lotId: string; quantity: string }[],
+): { lotId: string; quantity: string }[] {
+  if (tracking === 'none') {
+    if (lots.length > 0) {
+      throw new LocalChangeError('lots_mismatch', 'This part has no serial numbers or batches.');
+    }
+    return [];
+  }
+  if (tracking === 'serial' && lots.length === 0) {
+    throw new LocalChangeError('serial_required', 'Choose the serial number of each part fitted.');
+  }
+  const seen = new Set<string>();
+  let sum = 0n;
+  for (const lot of lots) {
+    if (!vanLots.some((candidate) => candidate.lotId === lot.lotId)) {
+      throw new LocalChangeError(
+        'lot_not_in_van',
+        'This serial number or batch is not in your van.',
+      );
+    }
+    if (
+      seen.has(lot.lotId) ||
+      !/^\d{1,16}(\.\d{1,4})?$/u.test(lot.quantity) ||
+      (tracking === 'serial' && tenThousandths(lot.quantity) !== 10_000n)
+    ) {
+      throw new LocalChangeError('lots_mismatch', 'Check the serial numbers or batches chosen.');
+    }
+    seen.add(lot.lotId);
+    sum += tenThousandths(lot.quantity);
+  }
+  if (lots.length > 0 && sum !== tenThousandths(quantity)) {
+    throw new LocalChangeError(
+      'lots_mismatch',
+      'The serial numbers or batches chosen do not add up to the quantity.',
+    );
+  }
+  return lots.map(({ lotId, quantity: each }) => ({ lotId, quantity: each }));
+}
+
 /**
  * A part used on the job, from the engineer's van (CRM/ERP plan, phase E2;
  * ADR-0005). The item must be one the van holds, as the server last said; the
@@ -359,7 +417,20 @@ export async function recordChecklist(
  */
 export async function recordMaterial(
   context: ChangeContext,
-  input: { workOrderId: string; itemId: string; quantity: string; note?: string },
+  input: {
+    workOrderId: string;
+    itemId: string;
+    quantity: string;
+    note?: string;
+    /**
+     * For a serial-numbered or batched item: which, from the van's list
+     * (ADR-0013). Serial numbers are named one each; a batch named or not —
+     * the server then takes the one expiring first.
+     */
+    lots?: { lotId: string; quantity: string }[];
+    /** An expired batch confirmed; the note says why. */
+    allowExpired?: boolean;
+  },
 ): Promise<string> {
   const { db, clock, random } = context;
   if (!/^\d{1,16}(\.\d{1,4})?$/u.test(input.quantity) || !/[1-9]/u.test(input.quantity)) {
@@ -374,13 +445,22 @@ export async function recordMaterial(
       name: string;
       kind: string;
       unit: string;
+      tracking: string;
+      lots: string | null;
     }>(
-      'select location_id, location_name, sku, name, kind, unit from van_stock where item_id = ?',
+      'select location_id, location_name, sku, name, kind, unit, tracking, lots from van_stock where item_id = ?',
       [input.itemId],
     );
     if (held === undefined) {
       throw new LocalChangeError('item_not_in_van', 'This part is not in your van.');
     }
+    const vanLots = JSON.parse(held.lots ?? '[]') as {
+      lotId: string;
+      kind: 'serial' | 'batch';
+      code: string;
+      expiresOn: string | null;
+    }[];
+    const lots = checkLots(held.tracking, vanLots, input.quantity, input.lots ?? []);
     const now = clock.now();
     const at = now.toISOString();
     const id = uuidv7(now.getTime(), random);
@@ -390,14 +470,28 @@ export async function recordMaterial(
       itemId: input.itemId,
       quantity: input.quantity,
       ...(input.note === undefined || input.note.trim() === '' ? {} : { note: input.note.trim() }),
+      ...(lots.length === 0 ? {} : { lots }),
+      ...(input.allowExpired === true ? { allowExpired: true } : {}),
       item: {
         id: input.itemId,
         sku: held.sku,
         name: held.name,
         kind: held.kind as MaterialBody['item']['kind'],
         unit: held.unit as MaterialBody['item']['unit'],
+        tracking: held.tracking as MaterialBody['item']['tracking'],
       },
       location: { id: held.location_id, name: held.location_name },
+      // What the job shows until the server answers: the codes picked.
+      lotLabels: lots.map((lot) => {
+        const found = vanLots.find((candidate) => candidate.lotId === lot.lotId)!;
+        return {
+          lotId: lot.lotId,
+          kind: found.kind,
+          code: found.code,
+          expiresOn: found.expiresOn,
+          quantity: lot.quantity,
+        };
+      }),
     };
     await applyLocally(sql, input.workOrderId, { kind: 'work_order.material', payload }, at);
     await insertChange(sql, {

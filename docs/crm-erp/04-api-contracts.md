@@ -712,3 +712,59 @@ Audit actions: `inventory_item.media_added`, `inventory_item.main_image_set`,
   included. A `shortage` refusal's details carry `params` (`itemId`, `item`,
   `short`, `needed`, `available`); a plan suggestion's `drafted` carries the
   drafted order's `reference`.
+
+## Product gaps before the pilot (phase G1; ADR-0013)
+
+### Company roles
+
+Source: `roles.ts`, `members.ts`. Test: `roles.integration.test.ts`.
+
+| Method and path                   | Permission                | What it does                                                                                                                                                           |
+| --------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/roles/catalogue`         | `member.read`             | Every permission, the built-in roles' own, and which a company role may add (never the owner's own: `tenant.update`, `billing.manage`, `ledger.unlock`, `role.manage`) |
+| `GET /v1/roles`                   | `member.read`             | The company's roles with what each holds and how many hold it; `archived=true` includes archived ones; `can.manage`                                                    |
+| `POST /v1/roles`                  | `role.manage` (the owner) | Name, description, base role, `added`, `removed`; 409 `name_taken`, 422 `permission_not_addable`                                                                       |
+| `PUT /v1/roles/{id}`              | `role.manage`             | Name, description, `added`, `removed` with `expectedVersion`; everybody holding it is signed out so the next token carries the change                                  |
+| `POST /v1/roles/{id}/archive`     | `role.manage`             | 409 `role_in_use` while anybody holds it                                                                                                                               |
+| `PATCH /v1/members/{userId}/role` | `member.manage`           | `{role}` or `{customRoleId}`; 403 `role_above_own` (a base above the giver's), `role_beyond_own` (a permission the giver does not hold, with the list)                 |
+
+`/v1/me` and the members list give `customRole {id, name}` or null;
+`permissions` include what the company role adds and leave out what it
+takes away.
+
+### Serial numbers and batches
+
+Source: `stock-lots.ts` (the rules every movement shares),
+`stock-tracking.ts`, and each document's route. Test:
+`stock-lots.integration.test.ts`. Needs `inventory`.
+
+| Method and path                          | Permission         | What it does                                                                                                                                                                  |
+| ---------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /v1/inventory/items/{id}/tracking` | `inventory.manage` | `{tracking, expectedVersion, lots?}`. With stock on hand, `lots` (location, code, expiry, quantity) must make up each location's stock exactly (422 `lots_quantity_mismatch`) |
+| `GET /v1/inventory/items/{id}/lots`      | `inventory.read`   | The lots held, at one location (`locationId`) or everywhere, earliest expiry first                                                                                            |
+| `GET /v1/inventory/lots?code=`           | `inventory.read`   | The serial lookup: codes starting so, ignoring case, at most 20                                                                                                               |
+| `GET /v1/inventory/lots/{id}`            | `inventory.read`   | Where it is now and every movement with its source (`receipt`, `van_request`, `job_part` with the job and asset, `delivery`, `count`, …)                                      |
+
+Every request that moves a tracked item takes `lots: [{lotId?, code?,
+expiresOn?, quantity}]` (one unit for a serial): stock movements (all four
+kinds), goods receipt and supplier return lines, van picks, deliveries,
+counts (`lotId` or `lotCode` per line), parts used on jobs (record, retry,
+return; the phone's `work_order.material` takes `lots: [{lotId, quantity}]`
+from the van's list), and assembly completion (`outputLots` by item; a batch
+made without one takes the order's reference). Stock leaving with none named
+takes the earliest expiry, then the oldest; an expired batch only with
+`allowExpired` and a reason. Refusals: 422 `lots_required`, `item_not_tracked`,
+`serial_single_unit`, `lots_quantity_mismatch`, `lot_repeated`,
+`batch_expired`, `reason_required`, `lot_code_taken`; 404 `lot_not_found`;
+409 `serial_in_stock`, `insufficient_stock`. A part use whose lots the van
+no longer holds is kept as a conflict, as a short one is.
+
+Item summaries carry `tracking`; the item, the job's parts, the asset's
+history, delivery notes and the phone's van stock carry the lots.
+
+### Amount history
+
+`GET /v1/analytics/pipelines/{id}/stage-values` counts each deal at the
+amount it had at each month end; each row adds `estimated` (deals counted at
+the amount they had when the history began) and the answer
+`amountsRecordedFrom`.

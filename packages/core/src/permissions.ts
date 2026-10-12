@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Grant, Role } from './roles.js';
+import { ROLES, type Grant, type Role } from './roles.js';
 
 /**
  * What each role may do, as one table.
@@ -111,6 +111,12 @@ export const PERMISSIONS = [
    * end it, and that is not everybody with an admin badge.
    */
   'billing.manage',
+  /**
+   * Define the company's own roles (ADR-0013): named roles built on a
+   * built-in one, adding or taking away permissions. Owner only; owners and
+   * admins give them to members with `member.update_role`.
+   */
+  'role.manage',
 
   // CRM (CRM/ERP plan, phase F1). Every one of these also needs the company's
   // `crm` module switched on (see MODULE_FEATURES in ./crm.ts): a permission
@@ -273,6 +279,13 @@ export const PERMISSIONS = [
 export const permissionSchema = z.enum(PERMISSIONS);
 export type Permission = z.infer<typeof permissionSchema>;
 
+const KNOWN_PERMISSIONS: ReadonlySet<string> = new Set(PERMISSIONS);
+
+/** True for a permission this build knows. */
+export function isPermission(value: string): value is Permission {
+  return KNOWN_PERMISSIONS.has(value);
+}
+
 /**
  * The matrix. Every role lists every permission it holds, in full — no
  * inheritance, no spreading of one role into another.
@@ -288,6 +301,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'branding.manage',
     'billing.read',
     'billing.manage',
+    'role.manage',
     'member.read',
     'member.invite',
     'member.update_role',
@@ -620,6 +634,11 @@ export interface Seat {
   readonly role: Role;
   /** Capabilities given on top of the role (ADR-0010); none when absent. */
   readonly grants?: readonly Grant[] | undefined;
+  /**
+   * The company's own role this seat holds (ADR-0013), on top of `role`, its
+   * base: what it adds and takes away. None when absent.
+   */
+  readonly customRole?: CustomRoleOverlay | undefined;
   /** Present when a super admin is acting through this seat. */
   readonly impersonatedBy?: object | undefined;
 }
@@ -653,8 +672,23 @@ export const GRANT_PERMISSIONS: Readonly<Record<Grant, readonly Permission[]>> =
 /** True when the seat's role, or one of its grants, holds the permission. */
 function seatCan(seat: Seat, permission: Permission): boolean {
   return (
-    can(seat.role, permission) ||
+    roleCan(seat, permission) ||
     (seat.grants ?? []).some((grant) => GRANT_PERMISSIONS[grant].includes(permission))
+  );
+}
+
+/** The seat's role, built-in or the company's own, holds the permission. */
+function roleCan(seat: Seat, permission: Permission): boolean {
+  const custom = seat.customRole;
+  if (custom === undefined || seat.role === 'owner') {
+    return can(seat.role, permission);
+  }
+  if (custom.removed.includes(permission)) {
+    return false;
+  }
+  return (
+    can(seat.role, permission) ||
+    (custom.added.includes(permission) && customRoleMayHold(permission))
   );
 }
 
@@ -680,7 +714,8 @@ export function holds(seat: Seat, permission: Permission): boolean {
 /** Every permission a seat holds right now, for `/v1/me` and the screens built on it. */
 export function permissionsHeld(seat: Seat): Permission[] {
   const granted = (seat.grants ?? []).flatMap((grant) => GRANT_PERMISSIONS[grant]);
-  return [...new Set([...permissionsFor(seat.role), ...granted])].filter((permission) =>
+  const added = seat.customRole?.added ?? [];
+  return [...new Set([...permissionsFor(seat.role), ...added, ...granted])].filter((permission) =>
     holds(seat, permission),
   );
 }
@@ -693,4 +728,52 @@ export function assertHolds(seat: Seat, permission: Permission): void {
   if (!holds(seat, permission)) {
     throw new PermissionDeniedError(seat.role, permission, 'staff_only');
   }
+}
+
+// ---------------------------------------------------------------------------
+// The company's own roles (ADR-0013)
+// ---------------------------------------------------------------------------
+
+/** The built-in roles a custom role may start from: every one but the owner. */
+export const CUSTOM_ROLE_BASES = ROLES.filter(
+  (role): role is Exclude<Role, 'owner'> => role !== 'owner',
+);
+export type CustomRoleBase = (typeof CUSTOM_ROLE_BASES)[number];
+
+/**
+ * Permissions no custom role may hold: what only the owner does (the
+ * company's settings and billing, unlocking a closed month, defining roles),
+ * and what only Integr8 staff do.
+ */
+export const OWNER_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
+  'tenant.update',
+  'billing.manage',
+  'ledger.unlock',
+  'role.manage',
+]);
+
+/** True when a custom role may add this permission to its base. */
+export function customRoleMayHold(permission: Permission): boolean {
+  return !OWNER_ONLY_PERMISSIONS.has(permission) && !STAFF_ONLY_PERMISSIONS.has(permission);
+}
+
+/** A custom role as a seat carries it: what it adds to and takes from its base role. */
+export interface CustomRoleOverlay {
+  readonly id: string;
+  readonly added: readonly Permission[];
+  readonly removed: readonly Permission[];
+}
+
+/** Every permission a custom role on this base holds, before staff-only rules. */
+export function customRolePermissions(
+  base: CustomRoleBase,
+  overlay: Pick<CustomRoleOverlay, 'added' | 'removed'>,
+): Permission[] {
+  const removed = new Set(overlay.removed);
+  return [
+    ...new Set([
+      ...permissionsFor(base).filter((permission) => !removed.has(permission)),
+      ...overlay.added.filter(customRoleMayHold),
+    ]),
+  ];
 }

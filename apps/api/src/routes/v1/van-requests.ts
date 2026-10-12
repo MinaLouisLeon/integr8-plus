@@ -22,7 +22,9 @@ import {
   TAGS,
 } from './inventory.js';
 import { many, peopleOf, personBody, personSchema } from './operations.js';
+import { companyToday } from './sales-quotes.js';
 import { iso, isoOrNull } from './schemas.js';
+import { byLot, lotSpecsSchema, lotsLeaving } from './stock-lots.js';
 
 /**
  * Refilling vans (eighth round; ADR-0012). An engineer asks for items for
@@ -393,7 +395,16 @@ export const pickVanRequestRoute = defineRoute({
   body: z.object({
     expectedVersion: z.number().int().min(1),
     fromLocationId: z.uuid(),
-    lines: z.array(z.object({ itemId: z.uuid(), quantity: quantitySchema })).max(100),
+    lines: z
+      .array(
+        z.object({
+          itemId: z.uuid(),
+          quantity: quantitySchema,
+          /** For a tracked item: the serial numbers or batches picked; the earliest expiry when none are named (ADR-0013). */
+          lots: lotSpecsSchema.optional(),
+        }),
+      )
+      .max(100),
   }),
   responses: {
     200: { description: 'The request, picked.', schema: requestSchema },
@@ -459,33 +470,50 @@ export const pickVanRequestRoute = defineRoute({
       const items = new Map(
         (await tx.inventoryCatalogue.findItems([...picked.keys()])).map((item) => [item.id, item]),
       );
-      const movements: MovementInput[] = [...picked].flatMap(([itemId, quantity]) => {
+      const lotsNamed = new Map(
+        body.lines.map((line, index) => [line.itemId, { lots: line.lots, index }]),
+      );
+      const today = await companyToday(tx);
+      const movements: MovementInput[] = [];
+      for (const [itemId, quantity] of picked) {
         const item = items.get(itemId);
         if (item === undefined || compareDecimals(quantity, '0') <= 0) {
-          return [];
+          continue;
         }
+        const named = lotsNamed.get(itemId);
+        // Serial numbers and batches go to the van as they leave (ADR-0013).
+        const leaving = await lotsLeaving(tx, item, from.id, quantity, named?.lots, {
+          today,
+          field: `body.lines.${named?.index ?? 0}.lots`,
+        });
         const key = `van-request:${current.id}:${itemId}`;
-        return [
-          {
-            itemId,
-            locationId: from.id,
-            kind: 'transfer_out' as const,
-            quantity: `-${quantity}`,
-            unitCost: item.averageUnitCost,
-            sourceKey: `${key}:out`,
-            reason: 'Van refill',
-          },
-          {
-            itemId,
-            locationId: current.vanLocationId,
-            kind: 'transfer_in' as const,
-            quantity,
-            unitCost: item.averageUnitCost,
-            sourceKey: `${key}:in`,
-            reason: 'Van refill',
-          },
-        ];
-      });
+        movements.push(
+          ...byLot(
+            {
+              itemId,
+              locationId: from.id,
+              kind: 'transfer_out',
+              quantity: `-${quantity}`,
+              unitCost: item.averageUnitCost,
+              sourceKey: `${key}:out`,
+              reason: 'Van refill',
+            },
+            leaving,
+          ),
+          ...byLot(
+            {
+              itemId,
+              locationId: current.vanLocationId,
+              kind: 'transfer_in',
+              quantity,
+              unitCost: item.averageUnitCost,
+              sourceKey: `${key}:in`,
+              reason: 'Van refill',
+            },
+            leaving,
+          ),
+        );
+      }
       await tx.inventoryStock
         .post(movements, { postingId: current.id, actorId: principal.userId })
         .catch(stockRefusal);

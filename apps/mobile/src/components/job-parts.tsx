@@ -41,6 +41,18 @@ export function JobParts({ detail, closed }: { detail: Job; closed: boolean }) {
     return <LocalReadError />;
   }
   const pending = unsent.status === 'ready' ? unsent.data : new Set<string>();
+  // The serial numbers or batches used (ADR-0013), in one line.
+  const lotsLine = (
+    lots: NonNullable<Job['materials'][number]['lots']>,
+    quantity: (value: string) => string,
+  ) =>
+    lots.every((lot) => lot.kind === 'serial')
+      ? `${t('inventory.lots.serialsLabel')} ${lots.map((lot) => lot.code).join(', ')}`
+      : lots
+          .map((lot) =>
+            t('inventory.lots.batchLine', { code: lot.code, quantity: quantity(lot.quantity) }),
+          )
+          .join(' · ');
   const format = (value: string, unit: string) =>
     `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 4 }).format(
       value as unknown as number,
@@ -57,6 +69,11 @@ export function JobParts({ detail, closed }: { detail: Job; closed: boolean }) {
           <Text style={[styles.title, { color: theme.text }]}>
             {material.item.name} · {format(material.quantity, material.item.unit)}
           </Text>
+          {material.lots === null || material.lots.length === 0 ? null : (
+            <Body muted>
+              {lotsLine(material.lots, (value) => format(value, material.item.unit))}
+            </Body>
+          )}
           {material.note === null ? null : <Body muted>{material.note}</Body>}
           <View style={styles.badges}>
             {pending.has(material.id) ? (

@@ -49,8 +49,13 @@ export type LocalChange =
         itemId: string;
         quantity: string;
         note?: string;
+        /** The serial numbers or batches picked from the van (ADR-0013). */
+        lots?: { lotId: string; quantity: string }[];
+        allowExpired?: boolean;
         item: MaterialBody['item'];
         location: MaterialBody['location'];
+        /** The picked lots as the job shows them until the server answers. */
+        lotLabels?: NonNullable<MaterialBody['lots']>;
       };
     };
 
@@ -193,6 +198,10 @@ export function applyToJob(
                 cancelledBy: null,
                 clientActionId: payload.materialId,
                 version: 1,
+                lots:
+                  payload.item.tracking === undefined || payload.item.tracking === 'none'
+                    ? null
+                    : (payload.lotLabels ?? []),
               },
             ],
           };

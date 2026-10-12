@@ -164,6 +164,7 @@ const delivery = (): SalesDelivery => ({
       sku: 'VAL-15',
       unit: 'each',
       quantity: '1',
+      lots: [],
     },
   ],
 });
@@ -295,6 +296,16 @@ describe('the delivery note', { timeout: 20_000 }, () => {
   it('shows who, what and where, with a place to sign and no prices', async () => {
     const note: DeliveryNote = {
       ...delivery(),
+      // The serial numbers and batches handed over are printed under the line (ADR-0013).
+      lines: delivery().lines.map((line) => ({
+        ...line,
+        quantity: '3',
+        lots: [
+          { kind: 'serial' as const, code: 'SN-1', expiresOn: null, quantity: '1' },
+          { kind: 'serial' as const, code: 'SN-2', expiresOn: null, quantity: '1' },
+          { kind: 'batch' as const, code: 'B-7', expiresOn: '2099-03-31', quantity: '1' },
+        ],
+      })),
       notes: 'Left with the caretaker.',
       order: { id: ORDER, reference: 'SO-000034', title: 'Valves for Block A' },
       customer: { id: CUSTOMER, name: 'Riverside Housing', address },
@@ -317,6 +328,10 @@ describe('the delivery note', { timeout: 20_000 }, () => {
     expect(within(document).getByText('Riverside Housing')).toBeInTheDocument();
     expect(within(document).getByText('6 Nile Street, Cairo')).toBeInTheDocument();
     expect(within(document).getByRole('cell', { name: 'VAL-15' })).toBeInTheDocument();
+    expect(within(document).getByText('SN-1, SN-2')).toBeInTheDocument();
+    expect(
+      within(document).getByText('Batch B-7: 1 each · Expires March 31, 2099'),
+    ).toBeInTheDocument();
     expect(within(document).getByText('Received by (name)')).toBeInTheDocument();
     expect(within(document).queryByText(/EGP/u)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Back to SO-000034' })).toHaveAttribute(

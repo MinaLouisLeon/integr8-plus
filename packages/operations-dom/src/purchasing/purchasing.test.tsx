@@ -103,7 +103,14 @@ const line = (
 ): PurchaseOrderDetail['lines'][number] => ({
   id: LINE,
   position: 1,
-  item: { id: ITEM, sku: 'VAL-15', name: 'Ball valve 15mm', kind: 'stock_item', unit: 'each' },
+  item: {
+    id: ITEM,
+    sku: 'VAL-15',
+    name: 'Ball valve 15mm',
+    kind: 'stock_item',
+    unit: 'each',
+    tracking: 'none',
+  },
   description: 'Ball valve 15mm',
   quantityOrdered: '10',
   quantityReceived: '0',

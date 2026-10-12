@@ -305,8 +305,29 @@ export async function unsentWorkCount(sql: SqlConnection): Promise<number> {
 // The van (CRM/ERP plan, phase E2)
 // ---------------------------------------------------------------------------
 
+/** A serial number or batch in the van, as the server last said (ADR-0013). */
+export interface VanLot {
+  lotId: string;
+  kind: 'serial' | 'batch';
+  code: string;
+  /** `YYYY-MM-DD`, for a batch that expires. */
+  expiresOn: string | null;
+  onHand: string;
+  /** `onHand` less this phone's own unsent uses of it. */
+  forecast: string;
+}
+
 export interface VanStockRow {
-  item: { id: string; sku: string; name: string; kind: string; unit: string };
+  item: {
+    id: string;
+    sku: string;
+    name: string;
+    kind: string;
+    unit: string;
+    tracking: 'none' | 'serial' | 'batch';
+  };
+  /** The van's serial numbers or batches of the item, earliest expiry first. */
+  lots: VanLot[];
   location: { id: string; name: string };
   /** What the server last said the van held. */
   onHand: string;
@@ -360,6 +381,8 @@ export async function vanStock(sql: SqlConnection): Promise<VanStockRow[]> {
     available: string | null;
     main_image_file_id: string | null;
     image_path: string | null;
+    tracking: string | null;
+    lots: string | null;
     updated_at: string;
   }>(
     `select van_stock.*, item_images.local_path as image_path
@@ -370,16 +393,35 @@ export async function vanStock(sql: SqlConnection): Promise<VanStockRow[]> {
     `select payload from outbox where kind = 'work_order.material' and state <> 'done'`,
   );
   const used = new Map<string, string[]>();
+  const usedOfLot = new Map<string, string[]>();
   for (const row of pending) {
-    const payload = JSON.parse(row.payload) as { itemId: string; quantity: string };
+    const payload = JSON.parse(row.payload) as {
+      itemId: string;
+      quantity: string;
+      lots?: { lotId: string; quantity: string }[];
+    };
     used.set(payload.itemId, [...(used.get(payload.itemId) ?? []), payload.quantity]);
+    for (const lot of payload.lots ?? []) {
+      usedOfLot.set(lot.lotId, [...(usedOfLot.get(lot.lotId) ?? []), lot.quantity]);
+    }
   }
   return rows.map((row) => {
     const own = used.get(row.item_id) ?? [];
     // A row from a server that did not say what is reserved: none is.
     const available = row.available ?? row.on_hand;
     return {
-      item: { id: row.item_id, sku: row.sku, name: row.name, kind: row.kind, unit: row.unit },
+      item: {
+        id: row.item_id,
+        sku: row.sku,
+        name: row.name,
+        kind: row.kind,
+        unit: row.unit,
+        tracking: (row.tracking ?? 'none') as VanStockRow['item']['tracking'],
+      },
+      lots: (JSON.parse(row.lots ?? '[]') as Omit<VanLot, 'forecast'>[]).map((lot) => ({
+        ...lot,
+        forecast: minus(lot.onHand, usedOfLot.get(lot.lotId) ?? []),
+      })),
       location: { id: row.location_id, name: row.location_name },
       onHand: row.on_hand,
       forecast: minus(row.on_hand, own),

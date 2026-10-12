@@ -1,11 +1,12 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { compareDecimals, isZeroDecimal } from '@integr8/core';
-import { formatDateTime, useTranslation } from '@integr8/i18n';
+import { formatCalendarDate, formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { type DeliveryNote, keys, type SalesOrderDetail, useOperations } from '../api.js';
 import { fieldDetail } from '../field-errors.js';
 import { formatQuantity, useLocations, useUnitName } from '../inventory/inventory-parts.js';
+import { type LeavingLots, leavingBody, leavingReady, LotsLeaving } from '../inventory/lots.js';
 import {
   isQuantity,
   QUANTITY_PATTERN,
@@ -65,12 +66,27 @@ export function DeliverDialog({
     Object.fromEntries(open.map((line) => [line.id, leftOf(line)])),
   );
 
+  // Which serial numbers or batches are handed over (ADR-0013); an expired
+  // batch is confirmed, and the notes say why.
+  const [lots, setLots] = useState<Record<string, LeavingLots | undefined>>({});
   const typed = (lineId: string) => (quantities[lineId] ?? '').trim();
   const tooMuch = (line: SalesOrderDetail['lines'][number]) =>
     isQuantity(typed(line.id)) && compareDecimals(typed(line.id), leftOf(line)) > 0;
+  const picking = (line: SalesOrderDetail['lines'][number]) =>
+    line.stock &&
+    line.itemId !== null &&
+    locationId !== '' &&
+    isQuantity(typed(line.id)) &&
+    !isZeroDecimal(typed(line.id));
   const lines = open.flatMap((line) =>
     isQuantity(typed(line.id)) && !isZeroDecimal(typed(line.id))
-      ? [{ orderLineId: line.id, quantity: typed(line.id) }]
+      ? [
+          {
+            orderLineId: line.id,
+            quantity: typed(line.id),
+            ...(picking(line) ? leavingBody(lots[line.id]) : {}),
+          },
+        ]
       : [],
   );
   const body = {
@@ -83,7 +99,11 @@ export function DeliverDialog({
   const ready =
     locationId !== '' &&
     lines.length > 0 &&
-    open.every((line) => typed(line.id) === '' || (isQuantity(typed(line.id)) && !tooMuch(line)));
+    open.every((line) => typed(line.id) === '' || (isQuantity(typed(line.id)) && !tooMuch(line))) &&
+    leavingReady(
+      lots,
+      open.filter(picking).map((line) => line.id),
+    );
 
   const deliver = useMutation({
     mutationFn: async (sent: typeof body) =>
@@ -177,36 +197,49 @@ export function DeliverDialog({
               const server = refusedLeft(line.id);
               const invalid = tooMuch(line) || server !== undefined;
               return (
-                <Field
-                  key={line.id}
-                  label={line.description}
-                  hint={
-                    invalid
-                      ? t('sales.deliveries.atMost', {
-                          quantity: formatQuantity(server ?? left, line.unit, locale, unitName),
-                        })
-                      : t('sales.deliveries.left', {
-                          quantity: formatQuantity(left, line.unit, locale, unitName),
-                        })
-                  }
-                >
-                  {(id, describedBy) => (
-                    <input
-                      id={id}
-                      inputMode="decimal"
-                      dir="ltr"
-                      pattern={QUANTITY_PATTERN}
-                      aria-describedby={describedBy}
-                      aria-invalid={invalid}
-                      className={`${inputClass} sm:w-40`}
-                      value={quantities[line.id] ?? ''}
-                      onChange={(event) => {
-                        deliver.reset();
-                        setQuantities({ ...quantities, [line.id]: event.target.value.trim() });
-                      }}
+                <div key={line.id} className="flex flex-col gap-2">
+                  <Field
+                    label={line.description}
+                    hint={
+                      invalid
+                        ? t('sales.deliveries.atMost', {
+                            quantity: formatQuantity(server ?? left, line.unit, locale, unitName),
+                          })
+                        : t('sales.deliveries.left', {
+                            quantity: formatQuantity(left, line.unit, locale, unitName),
+                          })
+                    }
+                  >
+                    {(id, describedBy) => (
+                      <input
+                        id={id}
+                        inputMode="decimal"
+                        dir="ltr"
+                        pattern={QUANTITY_PATTERN}
+                        aria-describedby={describedBy}
+                        aria-invalid={invalid}
+                        className={`${inputClass} sm:w-40`}
+                        value={quantities[line.id] ?? ''}
+                        onChange={(event) => {
+                          deliver.reset();
+                          setQuantities({ ...quantities, [line.id]: event.target.value.trim() });
+                        }}
+                      />
+                    )}
+                  </Field>
+                  {picking(line) ? (
+                    <LotsLeaving
+                      key={locationId}
+                      itemId={line.itemId!}
+                      locationId={locationId}
+                      quantity={typed(line.id)}
+                      unit={line.unit}
+                      formReason={notes}
+                      legend={t('inventory.lots.lotsOf', { item: line.description })}
+                      onChange={(next) => setLots((current) => ({ ...current, [line.id]: next }))}
                     />
-                  )}
-                </Field>
+                  ) : null}
+                </div>
               );
             })}
           </fieldset>
@@ -454,10 +487,13 @@ export function DeliveryNoteDocument({
         <tbody className="divide-y divide-neutral-300">
           {note.lines.map((line) => (
             <tr key={line.orderLineId}>
-              <td className="py-2" dir="ltr">
+              <td className="py-2 align-top" dir="ltr">
                 {line.sku ?? '—'}
               </td>
-              <td className="py-2">{line.description}</td>
+              <td className="py-2">
+                {line.description}
+                <NoteLots lots={line.lots} unit={line.unit} locale={locale} />
+              </td>
               <td className="py-2 text-end tabular-nums">{quantity(line.quantity)}</td>
               <td className="py-2 ps-3">{unitName(line.unit as Parameters<typeof unitName>[0])}</td>
             </tr>
@@ -497,5 +533,53 @@ export function DeliveryNoteDocument({
 
       <footer className="mt-auto text-xs text-neutral-600">{t('sales.deliveries.noPrices')}</footer>
     </article>
+  );
+}
+
+/**
+ * The serial numbers and batches handed over on a note's line (ADR-0013),
+ * printed under its description for the customer to check against.
+ */
+function NoteLots({
+  lots,
+  unit,
+  locale,
+}: {
+  lots: DeliveryNote['lines'][number]['lots'];
+  unit: string;
+  locale: string;
+}) {
+  const { t } = useTranslation();
+  const unitName = useUnitName();
+  if (lots.length === 0) {
+    return null;
+  }
+  const serials = lots.filter((lot) => lot.kind === 'serial');
+  const batches = lots.filter((lot) => lot.kind === 'batch');
+  const quantity = (value: string) =>
+    formatQuantity(value, unit as Parameters<typeof unitName>[0], locale, unitName);
+  return (
+    <div className="mt-1 flex flex-col gap-0.5 text-xs">
+      {serials.length === 0 ? null : (
+        <p>
+          <span className="text-neutral-600">{t('inventory.lots.serialsLabel')} </span>
+          <span dir="ltr">{serials.map((lot) => lot.code).join(', ')}</span>
+        </p>
+      )}
+      {batches.length === 0 ? null : (
+        <ul className="flex flex-col gap-0.5">
+          {batches.map((lot) => (
+            <li key={lot.code}>
+              {t('inventory.lots.batchLine', { code: lot.code, quantity: quantity(lot.quantity) })}
+              {lot.expiresOn === null
+                ? null
+                : ` · ${t('inventory.lots.expires', {
+                    date: formatCalendarDate(lot.expiresOn, { locale }),
+                  })}`}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

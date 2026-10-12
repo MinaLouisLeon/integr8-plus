@@ -384,6 +384,8 @@ export {
   type MovementPage,
   type MovementQuery,
   NotStockItemError,
+  LotMismatchError,
+  SerialInStockError,
   type StockCount,
   type StockCountLine,
   type StockLocation,
@@ -564,6 +566,20 @@ export {
   type OpportunityRow,
   type MovementRow,
 } from './repositories/analytics.js';
+export {
+  InventoryLotsRepository,
+  type StockLot,
+  type LotKind,
+  type LotBalance,
+  type LotHistoryEntry,
+} from './repositories/inventory-lots.js';
+export type { MaterialLot } from './schema.js';
+export {
+  TenantRolesRepository,
+  type CompanyRole,
+  type TenantRoleInput,
+  type TenantRoleRefusal,
+} from './repositories/tenant-roles.js';
 export {
   SupplierPricesRepository,
   type SupplierPrice,

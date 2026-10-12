@@ -11,6 +11,9 @@ import {
   permissionsHeld,
   GRANT_PERMISSIONS,
   STAFF_ONLY_PERMISSIONS,
+  customRoleMayHold,
+  customRolePermissions,
+  type Permission,
 } from './permissions.js';
 import { ROLES } from './roles.js';
 
@@ -71,6 +74,7 @@ describe('who can do what', () => {
       'tenant.update',
       'branding.manage',
       'billing.manage',
+      'role.manage',
       'ledger.unlock',
       'hr.sensitive',
       'hr.manage',
@@ -325,5 +329,41 @@ describe('HR, payroll and the store (ADR-0010, ADR-0011)', () => {
       }
     }
     expect(holds({ role: 'viewer', grants: ['hr_manager'] }, 'form.manage')).toBe(false);
+  });
+});
+
+describe('custom roles (ADR-0013)', () => {
+  const base = {
+    role: 'dispatcher' as const,
+    customRole: {
+      id: '00000000-0000-4000-8000-000000000001',
+      added: ['finance.issue', 'billing.manage', 'form.manage'] as Permission[],
+      removed: ['customer.manage'] as Permission[],
+    },
+  };
+
+  it('add to and take from their base role', () => {
+    expect(holds(base, 'finance.issue')).toBe(true);
+    expect(holds(base, 'customer.manage')).toBe(false);
+    expect(holds(base, 'work_order.manage')).toBe(true);
+  });
+
+  it('never hold what is the owner’s or Integr8’s', () => {
+    expect(holds(base, 'billing.manage')).toBe(false);
+    expect(holds(base, 'form.manage')).toBe(false);
+    expect(customRoleMayHold('role.manage')).toBe(false);
+    expect(customRolePermissions('dispatcher', base.customRole)).not.toContain('billing.manage');
+  });
+
+  it('list what they hold for the screens', () => {
+    const held = permissionsHeld(base);
+    expect(held).toContain('finance.issue');
+    expect(held).not.toContain('customer.manage');
+    expect(held).not.toContain('billing.manage');
+  });
+
+  it('are ignored on the owner’s seat, and grants still add', () => {
+    expect(holds({ ...base, role: 'owner' }, 'customer.manage')).toBe(true);
+    expect(holds({ ...base, grants: ['inventory_manager'] }, 'inventory.manage')).toBe(true);
   });
 });

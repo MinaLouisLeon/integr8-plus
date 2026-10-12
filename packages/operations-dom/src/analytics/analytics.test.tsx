@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { Stage } from '../api.js';
 import { accessibilityViolations, apiError, fakeApi, renderScreen } from '../testing/render.js';
 import { lastDays, shareOf } from './analytics-parts.js';
-import { CrmReportsScreen } from './crm-reports.js';
+import { CrmReportsScreen, StageValuesSection } from './crm-reports.js';
 import { PartsUsageScreen } from './parts-usage.js';
 
 const USER = '00000000-0000-4000-8000-000000000401';
@@ -140,6 +140,7 @@ describe('the CRM’s reports', { timeout: 20_000 }, () => {
               count: 2,
               amount: '250000.75',
               weighted: '125000.375',
+              estimated: 0,
             },
             {
               monthEnd: '2026-10-12',
@@ -148,8 +149,10 @@ describe('the CRM’s reports', { timeout: 20_000 }, () => {
               count: 1,
               amount: '1000',
               weighted: '300',
+              estimated: 0,
             },
           ],
+          amountsRecordedFrom: '2026-09-01T08:00:00.000Z',
         },
       }),
     });
@@ -201,6 +204,10 @@ describe('the CRM’s reports', { timeout: 20_000 }, () => {
     );
     expect(within(values).getByRole('columnheader', { name: 'Today' })).toBeInTheDocument();
     expect(within(values).queryByRole('row', { name: /^New/u })).toBeNull();
+    // Every figure is from the history: nothing to explain, nothing marked.
+    expect(screen.queryByText(/earlier changes were not kept/u)).toBeNull();
+    expect(within(values).queryByText('Estimated')).toBeNull();
+    expect(calls.some((call) => call.path === '/v1/settings')).toBe(false);
     await user.click(screen.getByLabelText('Weight by each stage’s usual chance'));
     expect(within(values).getByRole('row', { name: /^Proposal/u })).toHaveTextContent(
       'EGP 125,000.375',
@@ -216,7 +223,7 @@ describe('the CRM’s reports', { timeout: 20_000 }, () => {
       'GET /v1/analytics/pipeline': () =>
         apiError(422, 'period_too_long', 'A period is at most two years.'),
       'GET /v1/analytics/pipelines/:id/stage-values': () => ({
-        body: { monthEnds: ['2026-10-12'], items: [] },
+        body: { monthEnds: ['2026-10-12'], items: [], amountsRecordedFrom: null },
       }),
     });
     renderScreen(<CrmReportsScreen />, client);
@@ -236,6 +243,79 @@ describe('the CRM’s reports', { timeout: 20_000 }, () => {
     expect(within(section).getByRole('button', { name: 'Show' })).toBeDisabled();
     expect(within(section).getByText('Choose a start on or before the end.')).toBeVisible();
     expect(calls.some((call) => call.path === '/v1/analytics/quotes')).toBe(false);
+  });
+
+  it('says which month ends count deals at the amount they had when amounts began to be kept', async () => {
+    const value = (monthEnd: string, estimated: number) => ({
+      monthEnd,
+      stageId: stages[1]!.id,
+      currency: 'EGP',
+      count: 2,
+      amount: '1000',
+      weighted: '500',
+      estimated,
+    });
+    const { client } = fakeApi({
+      'GET /v1/crm/pipelines': pipelines,
+      'GET /v1/settings': () => ({ body: { currency: 'EGP', timezone: 'Africa/Cairo' } }),
+      'GET /v1/analytics/pipelines/:id/stage-values': () => ({
+        body: {
+          monthEnds: ['2026-08-31', '2026-09-30', '2026-10-12'],
+          items: [value('2026-08-31', 2), value('2026-09-30', 1), value('2026-10-12', 0)],
+          // Late on the 30th in UTC is the 1st in Cairo: the company's day is the one said.
+          amountsRecordedFrom: '2026-09-30T22:30:00.000Z',
+        },
+      }),
+    });
+    const { container } = renderScreen(<StageValuesSection />, client);
+
+    expect(
+      await screen.findByText(
+        'Amounts before October 1, 2026 are the amounts deals had on October 1, 2026; earlier changes were not kept.',
+      ),
+    ).toBeVisible();
+    const row = within(screen.getByRole('table', { name: 'Pipeline value by month' })).getByRole(
+      'row',
+      { name: /^Proposal/u },
+    );
+    const cells = within(row).getAllByRole('cell');
+    expect(within(cells[0]!).getByText('Estimated')).toHaveAttribute(
+      'title',
+      'Some deals here are counted at the amount they had on October 1, 2026.',
+    );
+    expect(cells[1]).toHaveTextContent('Estimated');
+    expect(cells[2]).not.toHaveTextContent('Estimated');
+    expect(await accessibilityViolations(container)).toEqual([]);
+  });
+
+  it('says so in Arabic too, in the company’s calendar', async () => {
+    const { client } = fakeApi({
+      'GET /v1/crm/pipelines': pipelines,
+      'GET /v1/settings': () => ({ body: { currency: 'EGP', timezone: 'Africa/Cairo' } }),
+      'GET /v1/analytics/pipelines/:id/stage-values': () => ({
+        body: {
+          monthEnds: ['2026-09-30', '2026-10-12'],
+          items: [
+            {
+              monthEnd: '2026-09-30',
+              stageId: stages[1]!.id,
+              currency: 'EGP',
+              count: 1,
+              amount: '1000',
+              weighted: '500',
+              estimated: 1,
+            },
+          ],
+          amountsRecordedFrom: '2026-09-30T22:30:00.000Z',
+        },
+      }),
+    });
+    renderScreen(<StageValuesSection />, client, { locale: 'ar' });
+
+    expect(
+      await screen.findByText(/^المبالغ قبل .+ هي المبالغ التي كانت للصفقات في /u),
+    ).toBeVisible();
+    expect(screen.getByText('تقديري')).toBeInTheDocument();
   });
 
   it('says so without the CRM, and asks for no figures', async () => {

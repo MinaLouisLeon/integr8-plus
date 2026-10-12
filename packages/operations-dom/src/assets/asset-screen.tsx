@@ -31,6 +31,7 @@ import {
   SitePicker,
   WarrantyBadge,
 } from './asset-parts.js';
+import { LotList } from '../inventory/lots.js';
 import { AssetTagSheet } from './asset-tag.js';
 
 /**
@@ -399,7 +400,13 @@ function TimelineItem({ entry }: { entry: AssetTimelineEntry }) {
         quantity: entry.part.quantity,
         item: entry.part.item.name,
       });
-      extra = jobLink(entry.part.workOrderId);
+      // The serial numbers fitted, each opening its trace (ADR-0013).
+      extra = (
+        <>
+          <LotList lots={entry.part.lots} unit={entry.part.item.unit} />
+          {jobLink(entry.part.workOrderId)}
+        </>
+      );
       break;
     case 'attachment':
       who = entry.attachment.addedBy.name;

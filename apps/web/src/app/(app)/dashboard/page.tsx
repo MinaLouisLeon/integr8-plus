@@ -2,7 +2,7 @@
 
 import { ApiRequestError } from '@integr8/api-client';
 import { useTranslation } from '@integr8/i18n';
-import { WarrantyAlertsPanel } from '@integr8/operations-dom';
+import { memberRoleName, WarrantyAlertsPanel } from '@integr8/operations-dom';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { CompanyMark } from '~/components/company-brand';
@@ -131,7 +131,10 @@ export default function DashboardPage() {
             <dt className="text-xs uppercase tracking-wide text-content-muted">
               {t('workspace.roleLabel')}
             </dt>
-            <dd className="text-sm text-content">{person?.role}</dd>
+            {/* A company role by name, with the role it is built on (ADR-0013). */}
+            <dd className="text-sm text-content">
+              {person === undefined ? null : memberRoleName(t, person)}
+            </dd>
           </div>
         </dl>
       </section>

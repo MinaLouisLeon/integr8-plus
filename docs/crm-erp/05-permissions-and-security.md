@@ -352,3 +352,29 @@ Every route also needs the company's module: `hr`, `payroll` (which needs
 - **Licences** — CI fails on a dependency whose licence is not permissive
   unless it is listed, with a reason, in `scripts/licences/exceptions.json`
   (`pnpm licences:check`).
+
+## Product gaps before the pilot (G1; ADR-0013)
+
+- **Company roles** are a built-in base plus permissions added or taken
+  away. Only the owner defines them (`role.manage`, the owner's alone);
+  owners and admins give them out (`member.manage`). A company role never
+  holds what only the owner may (`tenant.update`, `billing.manage`,
+  `ledger.unlock`, `role.manage`: 422 `permission_not_addable`), and the
+  owner never holds a company role.
+- **Giving a role** keeps the rank rule (the base may not rank above the
+  giver: `role_above_own`) and adds one: a company role holding a
+  permission the giver does not hold is the owner's to give
+  (`role_beyond_own`, with what is missing).
+- **Tokens** carry the overlay (`crl`) read when each access token is
+  minted. Changing a role, or a member's role, signs its holders out, so
+  the change applies at once rather than at the next refresh. The member
+  row keeps the base as `role`, so every check that compares ranks or
+  names a built-in role behaves as before.
+- **Lots** follow the inventory permissions: reading lots, the lookup and the
+  trace need `inventory.read`; switching tracking needs `inventory.manage`.
+  Lot balances, like item balances, are written only by the ledger's
+  trigger; the runtime role reads them and locks them only through
+  `erp_stock_lock_lot_balance`, for its own company.
+- **Amount history** is written only by trigger; the runtime role can read
+  it and cannot change it, so value by stage reflects what deals were
+  worth, not what someone later said they were.

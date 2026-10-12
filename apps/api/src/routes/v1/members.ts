@@ -17,6 +17,7 @@ import { conflict, forbidden, notFound, unprocessable } from '../../http/errors.
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { invitationSchema, iso, memberSchema } from './schemas.js';
 import { assertMayAssign } from './member-rules.js';
+import { assertMayGiveRole, customRoleBody, customRoleNames } from './roles.js';
 import { inviterName } from './workspace.js';
 
 /**
@@ -58,10 +59,12 @@ function memberBody(
     email: string;
     displayName: string;
     role: string;
+    customRoleId: string | null;
     status: string;
     createdAt: Date;
   },
   grants: readonly Grant[],
+  roleNames: ReadonlyMap<string, string> = new Map(),
 ) {
   return {
     userId: member.userId,
@@ -69,6 +72,7 @@ function memberBody(
     displayName: member.displayName,
     role: member.role as z.infer<typeof roleSchema>,
     grants: [...grants],
+    customRole: customRoleBody(member.customRoleId, roleNames),
     status: member.status as 'invited' | 'active' | 'suspended',
     createdAt: iso(member.createdAt),
   };
@@ -203,40 +207,64 @@ export const changeMemberRoleRoute = defineRoute({
   operationId: 'changeMemberRole',
   summary: 'Change what somebody may do',
   description:
-    'Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself. Their sessions are ended, so the next token they get carries the new role — but an access token already issued keeps its old role until it lapses, within fifteen minutes.',
+    'A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role — but an access token already issued keeps its old role until it lapses, within fifteen minutes.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'member.update_role',
   params: z.object({ userId: z.uuid() }),
   query: noSchema,
-  body: z.object({ role: roleSchema }),
+  body: z
+    .object({ role: roleSchema.optional(), customRoleId: z.uuid().optional() })
+    .refine((value) => (value.role === undefined) !== (value.customRoleId === undefined), {
+      message: 'Send a role or a company role, not both.',
+      path: ['role'],
+    }),
   responses: {
     200: { description: 'The person, with their new role.', schema: memberSchema },
-    404: { description: 'No such person in this company.' },
+    404: { description: 'No such person or company role in this company.' },
     409: { description: 'This is the company’s only owner (`last_owner`).' },
-    422: { description: 'A role above the caller’s own (`role_above_own`).' },
+    422: {
+      description:
+        'A role above the caller’s own (`role_above_own`), or a company role holding what the caller does not (`role_beyond_own`).',
+    },
   },
   handler: async ({ params, body }, context) => {
     const tenantId = context.principal.tenantId;
     const target = await memberOr404(tenantId, params.userId);
     assertOutranks(context.principal, target, 'change the role of');
-
     // Making or unmaking an HR manager is the owner's alone.
-    assertMayAssign(context.principal, body.role);
     assertMayAssign(context.principal, target.role);
 
-    if (roleRank(body.role) > roleRank(context.principal.role)) {
-      throw unprocessable('role_above_own', 'You cannot give somebody a role above your own.', [
-        { field: 'body.role', code: 'role_above_own', message: 'Above your own role.' },
-      ]);
+    const companyRole =
+      body.customRoleId === undefined
+        ? undefined
+        : await withTenant(tenantId, (tx) => tx.tenantRoles.find(body.customRoleId!));
+    if (body.customRoleId !== undefined && companyRole?.archivedAt !== null) {
+      throw notFound('No such role in this company.');
+    }
+    const role: Role = companyRole?.baseRole ?? body.role!;
+
+    if (companyRole === undefined) {
+      assertMayAssign(context.principal, role);
+      if (roleRank(role) > roleRank(context.principal.role)) {
+        throw unprocessable('role_above_own', 'You cannot give somebody a role above your own.', [
+          { field: 'body.role', code: 'role_above_own', message: 'Above your own role.' },
+        ]);
+      }
+    } else {
+      assertMayGiveRole(context.principal, companyRole);
     }
 
-    if (body.role !== 'owner') {
+    if (role !== 'owner') {
       await assertNotLastOwner(tenantId, params.userId, 'moved off the owner role');
     }
 
     const updated = await withTenant(tenantId, async (tx) => {
-      const member = await tx.tenantUsers.updateRole(toUserId(params.userId), body.role);
+      const member = await tx.tenantUsers.updateRole(
+        toUserId(params.userId),
+        role,
+        companyRole?.id ?? null,
+      );
       await tx.auditLog.append({
         actorKind: 'tenant_user',
         actorId: context.principal.userId,
@@ -244,7 +272,12 @@ export const changeMemberRoleRoute = defineRoute({
         action: 'member.role_changed',
         resourceType: 'tenant_user',
         resourceId: params.userId,
-        metadata: { role: body.role, was: member === undefined ? null : member.role },
+        metadata: {
+          role,
+          customRoleId: companyRole?.id ?? null,
+          was: member === undefined ? null : target.role,
+          wasCustomRoleId: target.customRoleId,
+        },
       });
       return member;
     });
@@ -262,8 +295,11 @@ export const changeMemberRoleRoute = defineRoute({
       'revoked_by_admin',
     );
 
-    const grants = await withTenant(tenantId, (tx) => tx.memberGrants.forUser(updated.userId));
-    return { status: 200, body: memberBody(updated, grants) };
+    const { grants, names } = await withTenant(tenantId, async (tx) => ({
+      grants: await tx.memberGrants.forUser(updated.userId),
+      names: await customRoleNames(tx),
+    }));
+    return { status: 200, body: memberBody(updated, grants, names) };
   },
 });
 
@@ -323,8 +359,11 @@ export const setMemberStatusRoute = defineRoute({
       );
     }
 
-    const grants = await withTenant(tenantId, (tx) => tx.memberGrants.forUser(updated.userId));
-    return { status: 200, body: memberBody(updated, grants) };
+    const { grants, names } = await withTenant(tenantId, async (tx) => ({
+      grants: await tx.memberGrants.forUser(updated.userId),
+      names: await customRoleNames(tx),
+    }));
+    return { status: 200, body: memberBody(updated, grants, names) };
   },
 });
 
@@ -425,7 +464,8 @@ async function grantChange(
       'revoked_by_admin',
     );
   }
-  return { status: 200 as const, body: memberBody(target, grants.now) };
+  const names = await withTenant(tenantId, (tx) => customRoleNames(tx));
+  return { status: 200 as const, body: memberBody(target, grants.now, names) };
 }
 
 export const giveGrantRoute = defineRoute({

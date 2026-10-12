@@ -1,6 +1,7 @@
 import {
   accessTokenClaimsSchema,
   type AccessTokenClaims,
+  type CustomRoleOverlay,
   type ImpersonationClaim,
   offlineGrantClaimsSchema,
   type OfflineGrantClaims,
@@ -54,6 +55,8 @@ export interface MintAccessTokenInput {
   role: Role;
   /** Capabilities on top of the role (ADR-0010); left out of the token when none. */
   grants?: readonly Grant[] | undefined;
+  /** The company's own role on top of `role` (ADR-0013); left out when none. */
+  customRole?: CustomRoleOverlay | undefined;
   sessionId: string;
   impersonation?: ImpersonationClaim | undefined;
 }
@@ -109,6 +112,15 @@ export class TokenService {
       ...(input.grants === undefined || input.grants.length === 0
         ? {}
         : { grt: [...input.grants] }),
+      ...(input.customRole === undefined
+        ? {}
+        : {
+            crl: {
+              id: input.customRole.id,
+              add: [...input.customRole.added],
+              rm: [...input.customRole.removed],
+            },
+          }),
       sid: input.sessionId,
       ...(input.impersonation === undefined ? {} : { imp: input.impersonation }),
     });

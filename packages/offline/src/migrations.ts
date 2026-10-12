@@ -442,6 +442,17 @@ export const MIGRATIONS: readonly Migration[] = [
       ) strict`,
     ],
   },
+  {
+    version: 10,
+    name: 'serial numbers and batches in the van',
+    statements: [
+      // Whether the item is tracked by serial number or batch, and the van's
+      // own, as the server last said (ninth round; ADR-0013): the parts
+      // picker offers them offline. `lots` is the server's list as JSON.
+      `alter table van_stock add column tracking text not null default 'none'`,
+      `alter table van_stock add column lots text`,
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.at(-1)?.version ?? 0;

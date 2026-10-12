@@ -101,3 +101,66 @@ describe('a part used from the van', () => {
     ).rejects.toMatchObject({ code: 'quantity_invalid' });
   });
 });
+
+describe('a serial-numbered part from the van', () => {
+  const METER = '00000000-0000-4000-8000-00000000f003';
+  const SN1 = '00000000-0000-4000-8000-00000000a101';
+  const SN2 = '00000000-0000-4000-8000-00000000a102';
+
+  async function withMeters() {
+    const setup = await phone();
+    await setup.db.write(['van_stock'], async (sql) => {
+      await sql.run(
+        `insert into van_stock (item_id, location_id, location_name, sku, name, kind, unit, on_hand,
+                                tracking, lots, updated_at)
+         values (?, ?, 'Van 1', 'MTR-1', 'Gas meter', 'stock_item', 'each', '2', 'serial', ?, ?)`,
+        [
+          METER,
+          VAN,
+          JSON.stringify([
+            { lotId: SN1, kind: 'serial', code: 'SN-1', expiresOn: null, onHand: '1' },
+            { lotId: SN2, kind: 'serial', code: 'SN-2', expiresOn: null, onHand: '1' },
+          ]),
+          NOW.toISOString(),
+        ],
+      );
+    });
+    return setup;
+  }
+
+  it('names its serial number from the van, shows it on the job, and takes it off the van', async () => {
+    const { db, context, job } = await withMeters();
+    const base = { workOrderId: job.workOrder.id, itemId: METER, quantity: '1' };
+    await expect(recordMaterial(context, base)).rejects.toMatchObject({
+      code: 'serial_required',
+    });
+    await expect(
+      recordMaterial(context, {
+        ...base,
+        lots: [{ lotId: '00000000-0000-4000-8000-00000000a999', quantity: '1' }],
+      }),
+    ).rejects.toMatchObject({ code: 'lot_not_in_van' });
+    await expect(
+      recordMaterial(context, { ...base, lots: [{ lotId: SN1, quantity: '2' }] }),
+    ).rejects.toMatchObject({ code: 'lots_mismatch' });
+
+    await recordMaterial(context, { ...base, lots: [{ lotId: SN1, quantity: '1' }] });
+    const { rows } = await db.read((sql) => selectBatch(sql, NOW));
+    expect(rows[0]?.payload).toMatchObject({ lots: [{ lotId: SN1, quantity: '1' }] });
+    const local = await db.read(async (sql) => {
+      const row = await sql.get<{ data: string }>('select data from work_orders where id = ?', [
+        job.workOrder.id,
+      ]);
+      return JSON.parse(row!.data) as typeof job;
+    });
+    expect(local.materials[0]?.lots).toEqual([
+      { lotId: SN1, kind: 'serial', code: 'SN-1', expiresOn: null, quantity: '1' },
+    ]);
+    const meter = (await db.read(vanStock)).find((row) => row.item.id === METER)!;
+    expect(meter.item.tracking).toBe('serial');
+    expect(meter.lots.map((lot) => [lot.code, lot.forecast])).toEqual([
+      ['SN-1', '0'],
+      ['SN-2', '1'],
+    ]);
+  });
+});

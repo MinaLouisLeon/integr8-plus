@@ -177,4 +177,59 @@ describe('the dashboard map', () => {
     expect(hr({ role: 'owner' }, { hr: false, payroll: true })).toBeUndefined();
     expect(hr({ role: 'owner' }, { hr: true })).not.toContain('myPayslips');
   });
+
+  it('lists the eighth round’s screens, each to the seats its screen serves', () => {
+    const group = (
+      app: 'web' | 'desktop',
+      seat: Parameters<typeof permissionsHeld>[0],
+      name: 'crm' | 'inventory',
+      features: Record<string, boolean>,
+    ) =>
+      visibleNavigation(app, permissionsHeld(seat), features)
+        .find((entry) => entry.group === name)
+        ?.sections.map((section) => section.key);
+    const everything = { crm: true, inventory: true, purchasing: true };
+
+    // Pipelines to those who keep them; reports to everybody who reads the CRM.
+    for (const app of ['web', 'desktop'] as const) {
+      expect(group(app, { role: 'owner' }, 'crm', everything)).toEqual([
+        'crm',
+        'leads',
+        'opportunities',
+        'activities',
+        'pipelines',
+        'crmReports',
+      ]);
+    }
+    expect(group('web', { role: 'dispatcher' }, 'crm', everything)).not.toContain('pipelines');
+    expect(group('web', { role: 'viewer' }, 'crm', everything)).toContain('crmReports');
+    expect(group('web', { role: 'owner' }, 'crm', { inventory: true })).toBeUndefined();
+
+    // Parts used to whoever reads stock; the van queue to those who move it;
+    // the serial lookup (ninth round) to whoever reads stock; reorder, after
+    // purchase orders, to those who buy.
+    expect(group('desktop', { role: 'owner' }, 'inventory', everything)).toEqual([
+      'inventory',
+      'items',
+      'stockLocations',
+      'partsUsage',
+      'vanRequests',
+      'serialLookup',
+      'suppliers',
+      'purchaseOrders',
+      'reorder',
+    ]);
+    expect(group('web', { role: 'dispatcher' }, 'inventory', everything)).toEqual(
+      expect.arrayContaining(['partsUsage', 'vanRequests', 'reorder']),
+    );
+    const engineer = group('web', { role: 'engineer' }, 'inventory', everything);
+    expect(engineer).toContain('partsUsage');
+    expect(engineer).not.toContain('vanRequests');
+    expect(engineer).not.toContain('reorder');
+    expect(group('web', { role: 'viewer' }, 'inventory', everything)).not.toContain('reorder');
+    // Reorder is purchasing's: without that module, no entry.
+    expect(group('web', { role: 'owner' }, 'inventory', { inventory: true })).not.toContain(
+      'reorder',
+    );
+  });
 });

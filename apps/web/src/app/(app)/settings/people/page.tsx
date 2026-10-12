@@ -3,8 +3,11 @@
 import { ApiRequestError } from '@integr8/api-client';
 import type { Grant, Role } from '@integr8/core';
 import { type TFunction, useTranslation } from '@integr8/i18n';
+import { MemberRolePicker } from '@integr8/operations-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
+import { OperationsScreens } from '~/components/operations-screens';
 import { Button, ErrorState, Field, LoadingState } from '~/components/ui';
 import { messageForError } from '~/lib/errors';
 import {
@@ -33,6 +36,10 @@ import { apiClient } from '~/lib/session';
  * Since ADR-0010 it also shows and changes grants: HR or inventory work given
  * on top of a role. Only the owner makes somebody an HR manager, by role,
  * invitation or grant, so nobody else is offered it.
+ *
+ * Since ADR-0013 a member may hold one of the company's own roles instead of
+ * a built-in one: the role picker offers both, and the company roles screen
+ * is reached from here.
  */
 
 type Status = 'invited' | 'active' | 'suspended';
@@ -43,6 +50,8 @@ interface Member {
   displayName: string;
   role: Role;
   grants: Grant[];
+  /** The company's own role, whose base is `role` (ADR-0013). */
+  customRole?: { id: string; name: string } | null;
   status: Status;
 }
 
@@ -120,57 +129,44 @@ export default function PeoplePage() {
   }
 
   return (
-    <main className="flex flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold text-content">{t('workspace.members.manage')}</h1>
-        <p className="text-sm text-content-muted">{t('workspace.members.manageSubtitle')}</p>
-      </header>
+    <OperationsScreens>
+      <main className="flex flex-col gap-8">
+        <header className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold text-content">{t('workspace.members.manage')}</h1>
+          <p className="text-sm text-content-muted">{t('workspace.members.manageSubtitle')}</p>
+        </header>
 
-      {notice === null || notice === '' ? null : (
-        <p role="status" className="rounded-md bg-surface-muted px-3 py-2 text-sm text-content">
-          {notice}
-        </p>
-      )}
+        {/* The company's own roles (ADR-0013), kept beside the people who hold them. */}
+        <Link
+          href="/settings/people/roles"
+          className="flex flex-col gap-1 self-start rounded-lg border border-border-subtle bg-surface px-4 py-3 text-start hover:bg-surface-muted"
+        >
+          <span className="text-sm font-semibold text-content">{t('roles.open')}</span>
+          <span className="text-xs text-content-muted">{t('roles.openHint')}</span>
+        </Link>
 
-      <InviteForm
-        viewer={viewer}
-        onDone={(message) => {
-          setNotice(message);
-          refresh();
-        }}
-      />
+        {notice === null || notice === '' ? null : (
+          <p role="status" className="rounded-md bg-surface-muted px-3 py-2 text-sm text-content">
+            {notice}
+          </p>
+        )}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold text-content">{t('workspace.members.title')}</h2>
-        <ul className="flex flex-col gap-2">
-          {members.data.items.map((member) => (
-            <MemberRow
-              key={member.userId}
-              member={member}
-              viewer={viewer}
-              onDone={(message) => {
-                setNotice(message);
-                refresh();
-              }}
-            />
-          ))}
-        </ul>
-        {/*
-          Said here because this is where somebody acts on it, and a person
-          removing a dismissed employee deserves to know it is not instant.
-        */}
-        <p className="text-xs text-content-muted">{t('workspace.members.accessNote')}</p>
-        <p className="text-xs text-content-muted">{t('workspace.members.grantsNote')}</p>
-      </section>
+        <InviteForm
+          viewer={viewer}
+          onDone={(message) => {
+            setNotice(message);
+            refresh();
+          }}
+        />
 
-      {invitations.data === undefined || invitations.data.items.length === 0 ? null : (
         <section className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-content">{t('workspace.members.pending')}</h2>
+          <h2 className="text-base font-semibold text-content">{t('workspace.members.title')}</h2>
           <ul className="flex flex-col gap-2">
-            {invitations.data.items.map((invitation) => (
-              <InvitationRow
-                key={invitation.id}
-                invitation={invitation as Invitation}
+            {members.data.items.map((member) => (
+              <MemberRow
+                key={member.userId}
+                member={member}
+                viewer={viewer}
                 onDone={(message) => {
                   setNotice(message);
                   refresh();
@@ -178,9 +174,36 @@ export default function PeoplePage() {
               />
             ))}
           </ul>
+          <p className="text-xs text-content-muted">{t('roles.picker.note')}</p>
+          {/*
+            Said here because this is where somebody acts on it, and a person
+            removing a dismissed employee deserves to know it is not instant.
+          */}
+          <p className="text-xs text-content-muted">{t('workspace.members.accessNote')}</p>
+          <p className="text-xs text-content-muted">{t('workspace.members.grantsNote')}</p>
         </section>
-      )}
-    </main>
+
+        {invitations.data === undefined || invitations.data.items.length === 0 ? null : (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-base font-semibold text-content">
+              {t('workspace.members.pending')}
+            </h2>
+            <ul className="flex flex-col gap-2">
+              {invitations.data.items.map((invitation) => (
+                <InvitationRow
+                  key={invitation.id}
+                  invitation={invitation as Invitation}
+                  onDone={(message) => {
+                    setNotice(message);
+                    refresh();
+                  }}
+                />
+              ))}
+            </ul>
+          </section>
+        )}
+      </main>
+    </OperationsScreens>
   );
 }
 
@@ -253,7 +276,6 @@ function InviteForm({ viewer, onDone }: { viewer: Viewer; onDone: (message: stri
 }
 
 type MemberAction =
-  | { kind: 'role'; role: Role }
   | { kind: 'grant'; grant: Grant; give: boolean }
   | { kind: 'status'; status: 'active' | 'suspended' }
   | { kind: 'remove' };
@@ -281,13 +303,6 @@ function MemberRow({
           : apiClient().DELETE('/v1/members/{userId}/grants/{capability}', { params }));
         return;
       }
-      if (action.kind === 'role') {
-        await apiClient().PATCH('/v1/members/{userId}/role', {
-          params: { path: { userId: member.userId } },
-          body: { role: action.role },
-        });
-        return;
-      }
       if (action.kind === 'status') {
         await apiClient().PATCH('/v1/members/{userId}/status', {
           params: { path: { userId: member.userId } },
@@ -313,10 +328,7 @@ function MemberRow({
       onDone('');
     },
     onError: (failure, action) => {
-      const touchesHr =
-        (action.kind === 'role' &&
-          (action.role === 'hr_manager' || member.role === 'hr_manager')) ||
-        (action.kind === 'grant' && action.grant === 'hr_manager');
+      const touchesHr = action.kind === 'grant' && action.grant === 'hr_manager';
       setError(peopleError(failure, t, touchesHr));
     },
   });
@@ -327,20 +339,17 @@ function MemberRow({
         <span className="font-medium text-content">{member.displayName}</span>
         <span className="text-content-muted">{member.email}</span>
 
-        <select
-          value={member.role}
-          onChange={(event) => act.mutate({ kind: 'role', role: event.target.value as Role })}
+        {/*
+          Built-in roles and the company's own (ADR-0013); a refusal is said
+          under the picker, in words.
+        */}
+        <MemberRolePicker
+          member={member}
+          roles={roleOptions(viewer.role, member.role)}
           disabled={act.isPending || roleLocked}
-          className="rounded-md border border-border-subtle bg-surface px-2 py-1 text-content"
-          aria-label={t('workspace.members.changeRole')}
-          {...(roleLocked ? { title: t('workspace.members.hrOwnerOnly') } : {})}
-        >
-          {roleOptions(viewer.role, member.role).map((option) => (
-            <option key={option} value={option}>
-              {t(`workspace.role.${option}`)}
-            </option>
-          ))}
-        </select>
+          disabledHint={t('workspace.members.hrOwnerOnly')}
+          onChanged={onDone}
+        />
 
         <span className="text-xs text-content-muted">
           {t(`workspace.members.status.${member.status}`)}

@@ -189,8 +189,8 @@ async function applyPage(
       for (const row of items) {
         await sql.run(
           `insert into van_stock (item_id, location_id, location_name, sku, name, kind, unit, on_hand,
-                                  reserved, available, main_image_file_id, updated_at)
-           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                  reserved, available, main_image_file_id, tracking, lots, updated_at)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             row.item.id,
             location.id,
@@ -203,6 +203,9 @@ async function applyPage(
             (row as Partial<typeof row>).reserved ?? null,
             (row as Partial<typeof row>).available ?? null,
             (row as Partial<typeof row>).mainImageFileId ?? null,
+            // A server from before serial numbers and batches says nothing: untracked.
+            (row.item as Partial<typeof row.item>).tracking ?? 'none',
+            JSON.stringify((row as Partial<typeof row>).lots ?? []),
             at,
           ],
         );

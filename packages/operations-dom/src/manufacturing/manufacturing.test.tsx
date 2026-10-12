@@ -61,14 +61,23 @@ const pump = {
   name: 'Pump unit',
   kind: 'stock_item',
   unit: 'each',
+  tracking: 'none',
 } as const;
-const motor = { id: MOTOR, sku: 'MOT-1', name: 'Motor', kind: 'stock_item', unit: 'each' } as const;
+const motor = {
+  id: MOTOR,
+  sku: 'MOT-1',
+  name: 'Motor',
+  kind: 'stock_item',
+  unit: 'each',
+  tracking: 'none',
+} as const;
 const casing = {
   id: CASING,
   sku: 'CAS-1',
   name: 'Casing',
   kind: 'stock_item',
   unit: 'each',
+  tracking: 'none',
 } as const;
 const seal = {
   id: SEAL,
@@ -76,6 +85,7 @@ const seal = {
   name: 'Seal kit',
   kind: 'non_stock_item',
   unit: 'set',
+  tracking: 'none',
 } as const;
 const store = { id: STORE, name: 'Main store', kind: 'warehouse' } as const;
 

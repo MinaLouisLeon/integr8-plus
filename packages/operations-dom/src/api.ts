@@ -56,6 +56,9 @@ export interface OperationsConfig {
     reorder: (locationId: string) => string;
     /** The store's queue of requests to refill vans (eighth round; ADR-0012). */
     vanRequests: string;
+    /** Serial numbers and batches (ninth round; ADR-0013): the lookup, and one traced. */
+    lots: string;
+    lot: (id: string) => string;
     /** Purchasing (CRM/ERP plan, phase E2). */
     suppliers: string;
     supplier: (id: string) => string;
@@ -229,6 +232,10 @@ export type ImportRecord = Json<'/v1/imports', 'get', 200>['items'][number];
 export type ImportDetail = Json<'/v1/imports/{importId}', 'get', 200>;
 export type Me = Json<'/v1/me', 'get', 200>;
 export type Member = Json<'/v1/members', 'get', 200>['items'][number];
+/** The company's own roles (ADR-0013), and what they are built from. */
+export type CompanyRoleList = Json<'/v1/roles', 'get', 200>;
+export type CompanyRole = CompanyRoleList['items'][number];
+export type RoleCatalogue = Json<'/v1/roles/catalogue', 'get', 200>;
 export type Timesheet = Json<'/v1/timesheets', 'get', 200>;
 export type LeadPage = Json<'/v1/crm/leads', 'get', 200>;
 export type Lead = LeadPage['items'][number];
@@ -269,6 +276,13 @@ export type StockMovement = Json<'/v1/inventory/movements', 'get', 200>['items']
 export type StockBalance = Json<'/v1/inventory/balances', 'get', 200>['items'][number];
 export type StockCountDetail = Json<'/v1/inventory/counts/{countId}', 'get', 200>;
 export type StockCountRow = Json<'/v1/inventory/counts', 'get', 200>['items'][number];
+/** Serial numbers and batches (ninth round; ADR-0013). */
+export type ItemTracking = InventoryItem['tracking'];
+export type ItemLot = Json<'/v1/inventory/items/{itemId}/lots', 'get', 200>['items'][number];
+export type LotMatch = Json<'/v1/inventory/lots', 'get', 200>['items'][number];
+export type LotTrace = Json<'/v1/inventory/lots/{lotId}', 'get', 200>;
+export type LotHistoryEntry = LotTrace['history'][number];
+export type LotSourceKind = LotHistoryEntry['source']['kind'];
 export type Supplier = Json<'/v1/purchasing/suppliers', 'get', 200>['items'][number];
 export type SupplierDetail = Json<'/v1/purchasing/suppliers/{supplierId}', 'get', 200>;
 export type SupplierStatus = Supplier['status'];
@@ -389,6 +403,8 @@ export type Payslip = Json<'/v1/hr/me/payslips', 'get', 200>['items'][number];
 export const keys = {
   me: ['me'] as const,
   members: ['members'] as const,
+  roles: (archived: boolean) => ['roles', 'list', archived] as const,
+  roleCatalogue: ['roles', 'catalogue'] as const,
   leads: (query: object) => ['crm', 'leads', query] as const,
   lead: (id: string) => ['crm', 'lead', id] as const,
   leadMatches: (id: string) => ['crm', 'lead', id, 'matches'] as const,
@@ -412,6 +428,10 @@ export const keys = {
   stockCounts: (query: object) => ['inventory', 'counts', query] as const,
   stockCount: (id: string) => ['inventory', 'count', id] as const,
   itemMedia: (itemId: string) => ['inventory', 'item-media', itemId] as const,
+  itemLots: (itemId: string, locationId: string) =>
+    ['inventory', 'item-lots', itemId, locationId] as const,
+  lotSearch: (code: string) => ['inventory', 'lot-search', code] as const,
+  lot: (id: string) => ['inventory', 'lot', id] as const,
   reorder: (locationId: string) => ['inventory', 'reorder', locationId] as const,
   vanRequests: (query: object) => ['inventory', 'van-requests', query] as const,
   jobPurchases: (workOrderId: string) => ['inventory', 'job-purchases', workOrderId] as const,

@@ -597,7 +597,7 @@ orders, invoices and payments (`CustomerTimelineRepository`,
 `tx.customerTimeline`), and the figures and exports read the documents and
 their history (`AnalyticsRepository`, `tx.analytics`). Value by stage at a
 month end is rebuilt from `crm_opportunity_events`, at today's amounts:
-amount changes are not kept.
+amount changes are not kept (they are from G1, 0043).
 
 ### 0040 — inventory and the field
 
@@ -632,3 +632,62 @@ and `mainImages`, `InventoryStockRepository` `hasMovements`.
 ### Company data export
 
 The six new tables are in `EXPORTED_TABLES`.
+
+## Ninth round — product gaps before the pilot (phase G1; ADR-0013)
+
+### 0041 — company roles
+
+| Table / change                | What it holds                                                                                                                                                                                                                                                                                                                              |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `tenant_roles`                | A company's own role: `name` (unique among those not archived, ignoring case and spaces), `description`, `base_role` (any built-in role but the owner; fixed once made: `tenant_roles_base_fixed`), `added` and `removed` permission names (never both), `version`, `archived_at` (refused while somebody holds it: `tenant_roles_in_use`) |
+| `tenant_users.custom_role_id` | The company role a member holds, or null. The member's `role` is always that role's base (`tenant_users_custom_role_base`), so every rank check keeps working on the built-in role; an archived role is not given (`tenant_users_custom_role_usable`)                                                                                      |
+
+The overlay is read when an access token is minted (`tx.tenantRoles.overlayFor`)
+and carried in the `crl` claim; the owner never holds one.
+
+Repository: `TenantRolesRepository` (`tx.tenantRoles`: `list`, `find`,
+`holders`, `holderIds`, `create`, `update`, `archive`, `overlayFor`);
+`TenantUsersRepository.updateRole` takes the company role.
+
+### 0042 — serial numbers and batches
+
+| Table / change                                                 | What it holds                                                                                                                                                                                                                                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `erp_items.tracking`                                           | `none` (default), `serial` or `batch`; a stock item only (`erp_items_tracking_stock_only`)                                                                                                                                                                               |
+| `erp_stock_lots`                                               | A serial number or batch of an item: `kind`, `code` (unique per item), `expires_on` (a batch only), who made it and when. Made the first time stock arrives under the code; never changed or deleted                                                                     |
+| `erp_stock_movements.lot_id`                                   | The lot a movement moved. `erp_stock_movements_lot_check` (before insert): a tracked item's movement names one of its own lots of its kind (`erp_stock_movements_lot_required`, `_lot_matches`), an untracked item's names none, a serial moves one unit (`_serial_one`) |
+| `erp_stock_lot_balances`                                       | What each lot holds at each location: the ledger's projection per lot, written only by `erp_stock_apply_lot_movement` (security definer), never below zero (`erp_stock_lot_balances_not_negative`). A serial number is held once, anywhere (`erp_stock_serial_once`)     |
+| `erp_stock_count_lines.lot_id`, `.lot_code`, `.lot_expires_on` | A tracked item is counted per lot, an existing one by id or a new one by code; one line per item and lot (`erp_stock_count_lines_unique`, nulls not distinct)                                                                                                            |
+| `erp_work_order_materials.lots`                                | The lots a part use took (posted) or asked for (a conflict), as `[{lotId, quantity}]`                                                                                                                                                                                    |
+
+`erp_stock_lock_lot_balance(tenant, lot, location)` locks a lot balance for
+the caller's own company, as `erp_stock_lock_balance` does for an item's.
+Movements of one lot carry the source key of the document with
+`:lot:<lotId>` added, so each posting is still written once; the general
+ledger reads the movements as before and does not see lots. Switching an
+item's tracking with stock on hand relabels it by a `transfer_out` and a
+`transfer_in` at the same location (source key `tracking:`), which the
+ledger skips.
+
+Repository: `InventoryLotsRepository` (`tx.inventoryLots`: `find`,
+`byCodes`, `getOrCreate`, `available`, `lockBalance`, `balances`, `search`,
+`history`, `movedBySource`); `InventoryCatalogueRepository.setTracking`;
+`InventoryStockRepository.post` refuses with `SerialInStockError` and
+`LotMismatchError`, and `postCount` counts tracked items per lot (a lot held
+here and not listed is counted as none).
+
+### 0043 — opportunity amount history
+
+| Table                     | What it holds                                                                                                                                                                                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `crm_opportunity_amounts` | Each amount and currency an opportunity has had, from `changed_at`. Written only by `crm_opportunity_record_amount` (security definer) on insert and on a change of amount or currency; read-only to the app. Deals there when the history began have one `baseline` row |
+
+`AnalyticsRepository.stageValues` counts each deal at the amount it had at
+the month end; a month end before the history began uses the amount it had
+then, and each row says how many deals were counted so (`estimated`);
+`amountsRecordedFrom` gives the day the history began.
+
+### Company data export
+
+`tenant_roles`, `erp_stock_lots` and `crm_opportunity_amounts` are in
+`EXPORTED_TABLES`; `erp_stock_lot_balances` is a projection and is not.

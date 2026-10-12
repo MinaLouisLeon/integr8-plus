@@ -31,6 +31,7 @@ import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
  * system's working state and mean nothing outside it.
  */
 export const EXPORTED_TABLES = [
+  'tenant_roles',
   'tenant_users',
   'customers',
   'customer_contacts',
@@ -60,6 +61,7 @@ export const EXPORTED_TABLES = [
   'crm_pipeline_stages',
   'crm_opportunities',
   'crm_opportunity_events',
+  'crm_opportunity_amounts',
   'crm_activities',
   'crm_activity_leads',
   'crm_activity_customers',
@@ -71,6 +73,7 @@ export const EXPORTED_TABLES = [
   'erp_stock_locations',
   'erp_stock_counts',
   'erp_stock_count_lines',
+  'erp_stock_lots',
   'erp_stock_movements',
   'erp_reorder_levels',
   // Purchasing (0027). The reference counter is working state and is left out.

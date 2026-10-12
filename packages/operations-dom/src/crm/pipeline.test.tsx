@@ -1,11 +1,17 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Activity, CrmDashboard, Opportunity, OpportunityDetail, Stage } from '../api.js';
-import { accessibilityViolations, apiError, fakeApi, renderScreen } from '../testing/render.js';
+import {
+  accessibilityViolations,
+  apiError,
+  type Call,
+  fakeApi,
+  renderScreen,
+} from '../testing/render.js';
 import { ActivitiesScreen, ActivityPanel } from './activities.js';
 import { CrmOverviewScreen } from './crm-overview.js';
-import { OpportunityBoardScreen } from './opportunity-board.js';
+import { boardDrop, OpportunityBoardScreen } from './opportunity-board.js';
 import { OpportunityScreen } from './opportunity-screen.js';
 
 const USER = '00000000-0000-4000-8000-000000000401';
@@ -92,6 +98,87 @@ const pipelines = () => ({
   body: { items: [{ id: PIPELINE, name: 'Sales', isDefault: true, stages }] },
 });
 const noActivities = () => ({ body: { items: [], nextCursor: null } });
+/** A transition the server accepted: the deal at its new stage and next version. */
+const moved = (call: Call) => {
+  const to = stages.find((item) => item.id === (call.body as { stageId: string }).stageId)!;
+  return {
+    body: {
+      opportunity: opportunity({ stage: to, status: to.outcome, version: 5 }),
+      events: [],
+      stages,
+      can: { edit: true },
+    },
+  };
+};
+
+/**
+ * A board whose one deal moves when the server says so: each accepted
+ * transition puts it in its new stage at the next version, as the API does.
+ */
+function boardApi(refuse?: () => ReturnType<typeof apiError>) {
+  let current = opportunity();
+  return fakeApi({
+    'GET /v1/me': me(MANAGE),
+    'GET /v1/members': members,
+    'GET /v1/crm/pipelines': pipelines,
+    'GET /v1/crm/opportunities': () => ({
+      body: { items: current.status === 'open' ? [current] : [], nextCursor: null },
+    }),
+    'POST /v1/crm/opportunities/:id/transitions': (call) => {
+      if (refuse !== undefined) {
+        return refuse();
+      }
+      const { stageId } = call.body as { stageId: string };
+      const to = stages.find((item) => item.id === stageId)!;
+      current = { ...current, stage: to, status: to.outcome, version: current.version + 1 };
+      return { body: { opportunity: current, events: [], stages, can: { edit: true } } };
+    },
+  });
+}
+
+const posts = (calls: Call[]) =>
+  calls.filter((call) => call.method === 'POST').map((call) => call.body);
+
+/**
+ * jsdom lays nothing out, and dragging is all about where things are: the
+ * open stages side by side — first on the left, or on the right in Arabic —
+ * with won and lost in a row beneath, and each card near its column's top.
+ */
+function layOut(container: HTMLElement, direction: 'ltr' | 'rtl') {
+  const open = [...container.querySelectorAll('section[aria-labelledby^="crm-stage-"]')];
+  const closing = [...container.querySelectorAll('[aria-labelledby^="crm-close-zone-"]')];
+  const rect = (left: number, top: number, width: number, height: number) =>
+    ({
+      x: left,
+      y: top,
+      left,
+      top,
+      width,
+      height,
+      right: left + width,
+      bottom: top + height,
+      toJSON: () => ({}),
+    }) as DOMRect;
+  const slot = (index: number, count: number) =>
+    (direction === 'ltr' ? index : count - 1 - index) * 160;
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    const column = open.findIndex((node) => node.contains(this));
+    if (column >= 0) {
+      return this === open[column]
+        ? rect(slot(column, open.length), 0, 150, 400)
+        : rect(slot(column, open.length) + 5, 40, 140, 100);
+    }
+    const zone = closing.indexOf(this);
+    if (zone >= 0) {
+      return rect(slot(zone, open.length), 450, 150, 60);
+    }
+    return rect(0, 0, 0, 0);
+  });
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('the opportunity board', { timeout: 20_000 }, () => {
   it('shows a column per open stage and moves a card with its stage select', async () => {
@@ -103,7 +190,7 @@ describe('the opportunity board', { timeout: 20_000 }, () => {
       'GET /v1/crm/opportunities': () => ({
         body: { items: [opportunity()], nextCursor: null },
       }),
-      'POST /v1/crm/opportunities/:id/transitions': () => ({ body: {} }),
+      'POST /v1/crm/opportunities/:id/transitions': moved,
     });
     const { container } = renderScreen(<OpportunityBoardScreen />, client);
 
@@ -138,7 +225,7 @@ describe('the opportunity board', { timeout: 20_000 }, () => {
       'GET /v1/crm/opportunities': () => ({
         body: { items: [opportunity()], nextCursor: null },
       }),
-      'POST /v1/crm/opportunities/:id/transitions': () => ({ body: {} }),
+      'POST /v1/crm/opportunities/:id/transitions': moved,
     });
     renderScreen(<OpportunityBoardScreen />, client);
 
@@ -156,6 +243,175 @@ describe('the opportunity board', { timeout: 20_000 }, () => {
       stageId: stage('lost').id,
       lostReason: 'Went with a cheaper quote',
     });
+  });
+
+  it('drags a card to another stage at once, says so, and undoes it', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = boardApi();
+    const { container } = renderScreen(<OpportunityBoardScreen />, client);
+    const handle = await screen.findByRole('button', { name: 'Move Chiller maintenance' });
+    layOut(container, 'ltr');
+    expect(await accessibilityViolations(container)).toEqual([]);
+
+    handle.focus();
+    await user.keyboard('[Space]');
+    await user.keyboard('[ArrowRight]');
+    await user.keyboard('[Space]');
+
+    await waitFor(() => expect(posts(calls)).toHaveLength(1));
+    expect(posts(calls)[0]).toEqual({ expectedVersion: 4, stageId: stage('qualified').id });
+    expect(
+      within(screen.getByRole('region', { name: /Qualified/u })).getByRole('link', {
+        name: 'Chiller maintenance',
+      }),
+    ).toBeInTheDocument();
+    // The keyboard stays with the card, in its new column.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Move Chiller maintenance' })).toHaveFocus(),
+    );
+    expect(
+      await screen.findByText('Chiller maintenance dropped in Qualified.'),
+    ).toBeInTheDocument();
+    const notice = await screen.findByText('Chiller maintenance moved to Qualified.');
+
+    // Undo moves it back, from the version the move left it at.
+    await user.click(
+      within(notice.closest('[role="status"]')!).getByRole('button', { name: 'Undo' }),
+    );
+    await waitFor(() => expect(posts(calls)).toHaveLength(2));
+    expect(posts(calls)[1]).toEqual({ expectedVersion: 5, stageId: stage('new').id });
+    expect(
+      await within(screen.getByRole('region', { name: /New/u })).findByRole('link', {
+        name: 'Chiller maintenance',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+  });
+
+  it('puts a dragged card back when the move is refused', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = boardApi(() => apiError(409, 'version_conflict', 'Changed'));
+    const { container } = renderScreen(<OpportunityBoardScreen />, client);
+    const handle = await screen.findByRole('button', { name: 'Move Chiller maintenance' });
+    layOut(container, 'ltr');
+
+    handle.focus();
+    await user.keyboard('[Space]');
+    await user.keyboard('[ArrowRight]');
+    await user.keyboard('[ArrowRight]');
+    await user.keyboard('[Space]');
+
+    await waitFor(() => expect(posts(calls)).toHaveLength(1));
+    expect(posts(calls)[0]).toMatchObject({ stageId: stage('proposal').id });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Somebody else changed this');
+    expect(
+      within(screen.getByRole('region', { name: /New/u })).getByRole('link', {
+        name: 'Chiller maintenance',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+  });
+
+  it('asks before closing a deal dropped on won or lost, and leaves it be on cancel', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = boardApi();
+    const { container } = renderScreen(<OpportunityBoardScreen />, client);
+    const handle = await screen.findByRole('button', { name: 'Move Chiller maintenance' });
+    expect(screen.getByRole('group', { name: 'Won' })).toHaveTextContent(
+      'Drop a card here to close it.',
+    );
+    layOut(container, 'ltr');
+
+    // Won is under the first column: down, and drop.
+    handle.focus();
+    await user.keyboard('[Space]');
+    await user.keyboard('[ArrowDown]');
+    await user.keyboard('[Space]');
+    const won = await screen.findByRole('dialog', { name: 'Was it won?' });
+    expect(won).toHaveTextContent('Chiller maintenance moves to Won and leaves the board.');
+    await user.click(within(won).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(posts(calls)).toHaveLength(0);
+    expect(
+      within(screen.getByRole('region', { name: /New/u })).getByRole('link', {
+        name: 'Chiller maintenance',
+      }),
+    ).toBeInTheDocument();
+
+    // Lost is beside won, and wants a reason.
+    screen.getByRole('button', { name: 'Move Chiller maintenance' }).focus();
+    await user.keyboard('[Space]');
+    await user.keyboard('[ArrowDown]');
+    await user.keyboard('[ArrowRight]');
+    await user.keyboard('[Space]');
+    const lost = await screen.findByRole('dialog', { name: 'Why was it lost?' });
+    expect(within(lost).getByRole('button', { name: 'Mark lost' })).toBeDisabled();
+    await user.type(within(lost).getByLabelText('Why it was lost'), 'No budget this year');
+    await user.click(within(lost).getByRole('button', { name: 'Mark lost' }));
+    await waitFor(() => expect(posts(calls)).toHaveLength(1));
+    expect(posts(calls)[0]).toEqual({
+      expectedVersion: 4,
+      stageId: stage('lost').id,
+      lostReason: 'No budget this year',
+    });
+    // Closed deals leave the board, and there is nothing to undo.
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: 'Chiller maintenance' })).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+  });
+
+  it('mirrors the board in Arabic: the next stage is to the left, by key and by pointer', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = boardApi();
+    const { container } = renderScreen(<OpportunityBoardScreen />, client, { locale: 'ar' });
+    const handle = await screen.findByRole('button', {
+      name: 'نقل الفرصة «Chiller maintenance»',
+    });
+    expect(handle).toHaveAttribute('aria-roledescription', 'بطاقة قابلة للنقل');
+    layOut(container, 'rtl');
+    expect(await accessibilityViolations(container)).toEqual([]);
+
+    // Left from the first stage, which sits on the right, is the second.
+    handle.focus();
+    await user.keyboard('[Space]');
+    await user.keyboard('[ArrowLeft]');
+    await user.keyboard('[Space]');
+    await waitFor(() => expect(posts(calls)).toHaveLength(1));
+    expect(posts(calls)[0]).toEqual({ expectedVersion: 4, stageId: stage('qualified').id });
+    expect(
+      await screen.findByText('أُفلتت الفرصة «Chiller maintenance» في مؤهلة.'),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'تراجع' })).toBeInTheDocument();
+
+    // By pointer: the stage under the pointer, three columns to the left, is where it lands.
+    const card = within(screen.getByRole('region', { name: /مؤهلة/u }))
+      .getByRole('link', { name: 'Chiller maintenance' })
+      .closest('article')!;
+    const from = card.getBoundingClientRect();
+    const negotiation = container
+      .querySelector(`#crm-stage-${stage('negotiation').id}`)!
+      .closest('section')!
+      .getBoundingClientRect();
+    fireEvent.mouseDown(card, { button: 0, clientX: from.left + 20, clientY: from.top + 20 });
+    fireEvent.mouseMove(document, { clientX: from.left, clientY: from.top + 20 });
+    fireEvent.mouseMove(document, {
+      clientX: negotiation.left + 30,
+      clientY: negotiation.top + 30,
+    });
+    fireEvent.mouseUp(document, { clientX: negotiation.left + 30, clientY: negotiation.top + 30 });
+    await waitFor(() => expect(posts(calls)).toHaveLength(2));
+    expect(posts(calls)[1]).toEqual({ expectedVersion: 5, stageId: stage('negotiation').id });
+  });
+
+  it('decides what a drop means: nothing, a move, or a question', () => {
+    const item = { stage: stage('new') };
+    expect(boardDrop(item, undefined)).toEqual({ kind: 'none' });
+    expect(boardDrop(item, stage('new'))).toEqual({ kind: 'none' });
+    expect(boardDrop(item, { ...stage('proposal'), archived: true })).toEqual({ kind: 'none' });
+    expect(boardDrop(item, stage('proposal'))).toEqual({ kind: 'move', stage: stage('proposal') });
+    expect(boardDrop(item, stage('won'))).toEqual({ kind: 'confirm', stage: stage('won') });
+    expect(boardDrop(item, stage('lost'))).toEqual({ kind: 'confirm', stage: stage('lost') });
   });
 
   it('offers nothing to change to someone who may only read', async () => {

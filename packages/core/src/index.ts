@@ -28,6 +28,13 @@ export {
   assertCan,
   permissionsFor,
   permissionsHeld,
+  isPermission,
+  CUSTOM_ROLE_BASES,
+  type CustomRoleBase,
+  OWNER_ONLY_PERMISSIONS,
+  customRoleMayHold,
+  type CustomRoleOverlay,
+  customRolePermissions,
   GRANT_PERMISSIONS,
   holds,
   assertHolds,
@@ -169,6 +176,9 @@ export {
 
 export {
   ITEM_KINDS,
+  ITEM_TRACKINGS,
+  itemTrackingSchema,
+  type ItemTracking,
   itemKindSchema,
   type ItemKind,
   UNITS,

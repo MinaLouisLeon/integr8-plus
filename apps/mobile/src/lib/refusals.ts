@@ -43,6 +43,9 @@ export const LOCAL_REFUSAL_KEYS = {
   part_description_required: 'mobile.localRefusal.part_description_required',
   purchase_not_on_phone: 'mobile.localRefusal.purchase_not_on_phone',
   unit_price_invalid: 'mobile.localRefusal.unit_price_invalid',
+  lot_not_in_van: 'mobile.localRefusal.lot_not_in_van',
+  lots_mismatch: 'mobile.localRefusal.lots_mismatch',
+  serial_required: 'mobile.localRefusal.serial_required',
 } as const;
 
 /** Phone codes that are API codes meaning the same thing, said as the API's. */

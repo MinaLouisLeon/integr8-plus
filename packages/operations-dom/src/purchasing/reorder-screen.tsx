@@ -315,15 +315,68 @@ export function ReorderScreen({ locationId }: { locationId: string }) {
   );
 }
 
-/** From the purchasing area: choose which location to reorder for. */
-export function ReorderLocationDialog({ onClose }: { onClose: () => void }) {
+/**
+ * Which location to reorder for. A reorder list is per location, so the
+ * purchasing area's dialog and the menu's page both start by asking. Only our
+ * own live locations: a customer's stock is not ours to reorder.
+ */
+function ReorderLocationForm({
+  formId,
+  locationId,
+  onChange,
+}: {
+  formId: string;
+  locationId: string;
+  onChange: (locationId: string) => void;
+}) {
   const { t } = useTranslation();
   const { navigate, paths } = useOperations();
   const locations = useLocations();
-  const [locationId, setLocationId] = useState('');
   const ours = (locations.data ?? []).filter(
     (location) => location.archivedAt === null && location.ownership === 'ours',
   );
+  return (
+    <form
+      id={formId}
+      className="flex flex-col gap-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (locationId !== '') {
+          navigate(paths.reorder(locationId));
+        }
+      }}
+    >
+      <p className="text-sm text-content">{t('purchasing.reorder.chooseIntro')}</p>
+      {locations.isError ? (
+        <Failure error={locations.error} onRetry={() => void locations.refetch()} />
+      ) : (
+        <Field label={t('purchasing.reorder.location')}>
+          {(id) => (
+            <select
+              id={id}
+              required
+              className={inputClass}
+              value={locationId}
+              onChange={(event) => onChange(event.target.value)}
+            >
+              <option value="">{t('inventory.move.chooseLocation')}</option>
+              {ours.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+      )}
+    </form>
+  );
+}
+
+/** From the purchasing area: choose which location to reorder for. */
+export function ReorderLocationDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
+  const [locationId, setLocationId] = useState('');
   return (
     <Dialog
       title={t('purchasing.reorder.title')}
@@ -344,40 +397,44 @@ export function ReorderLocationDialog({ onClose }: { onClose: () => void }) {
         </>
       }
     >
-      <form
-        id="purchasing-reorder-location"
-        className="flex flex-col gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (locationId !== '') {
-            navigate(paths.reorder(locationId));
-          }
-        }}
-      >
-        <p className="text-sm text-content">{t('purchasing.reorder.chooseIntro')}</p>
-        {locations.isError ? (
-          <Failure error={locations.error} onRetry={() => void locations.refetch()} />
-        ) : (
-          <Field label={t('purchasing.reorder.location')}>
-            {(id) => (
-              <select
-                id={id}
-                required
-                className={inputClass}
-                value={locationId}
-                onChange={(event) => setLocationId(event.target.value)}
-              >
-                <option value="">{t('inventory.move.chooseLocation')}</option>
-                {ours.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </Field>
-        )}
-      </form>
+      <ReorderLocationForm
+        formId="purchasing-reorder-location"
+        locationId={locationId}
+        onChange={setLocationId}
+      />
     </Dialog>
+  );
+}
+
+/** The menu's way in (G1c): the dialog's question, as a page of its own. */
+export function ReorderStartScreen() {
+  const { t } = useTranslation();
+  const { paths } = useOperations();
+  const [locationId, setLocationId] = useState('');
+  return (
+    <div className="flex flex-col gap-6 text-start">
+      <BackLink
+        to={paths.purchaseOrders}
+        label={t('nav.backTo', { title: t('purchasing.orders.title') })}
+      />
+      <h1 className="text-2xl font-semibold text-content">{t('purchasing.reorder.title')}</h1>
+      <div className={`${cardClass} max-w-xl`}>
+        <ReorderLocationForm
+          formId="purchasing-reorder-start"
+          locationId={locationId}
+          onChange={setLocationId}
+        />
+        <div>
+          <button
+            type="submit"
+            form="purchasing-reorder-start"
+            className={buttonClass.primary}
+            disabled={locationId === ''}
+          >
+            {t('purchasing.reorder.open')}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { platformUserIdSchema, tenantIdSchema, userIdSchema } from './ids.js';
+import { type CustomRoleOverlay, isPermission } from './permissions.js';
 import { grantSchema, roleSchema } from './roles.js';
 
 /**
@@ -69,6 +70,19 @@ export const accessTokenClaimsSchema = z.object({
    * change. Absent on tokens minted before grants existed: none.
    */
   grt: z.array(grantSchema).max(2).optional(),
+  /**
+   * The company's own role (ADR-0013) on top of `role`, its base: its id and
+   * what it adds and takes away, read when the token is minted. Permission
+   * names are plain strings so an older client reads a token naming one it
+   * does not know; unknown names are dropped when the principal is built.
+   */
+  crl: z
+    .object({
+      id: z.uuid(),
+      add: z.array(z.string().max(64)).max(200),
+      rm: z.array(z.string().max(64)).max(200),
+    })
+    .optional(),
   /** The `sessions.id` this token was minted from; revoking it invalidates the token. */
   sid: z.uuid(),
   imp: impersonationClaimSchema.optional(),
@@ -120,6 +134,8 @@ export interface Principal {
   role: z.infer<typeof roleSchema>;
   /** Capabilities given on top of the role; empty for most members. */
   grants: z.infer<typeof grantSchema>[];
+  /** The company's own role on top of `role` (ADR-0013), when the member has one. */
+  customRole?: CustomRoleOverlay;
   sessionId: string;
   tokenId: string;
   expiresAt: Date;
@@ -134,6 +150,15 @@ export function toPrincipal(claims: AccessTokenClaims): Principal {
     tenantId: claims.tid,
     role: claims.role,
     grants: claims.grt ?? [],
+    ...(claims.crl === undefined
+      ? {}
+      : {
+          customRole: {
+            id: claims.crl.id,
+            added: claims.crl.add.filter(isPermission),
+            removed: claims.crl.rm.filter(isPermission),
+          },
+        }),
     sessionId: claims.sid,
     tokenId: claims.jti,
     expiresAt: new Date(claims.exp * 1000),

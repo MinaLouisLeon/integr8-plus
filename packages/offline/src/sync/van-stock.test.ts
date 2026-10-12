@@ -31,6 +31,7 @@ const item = (id: string, name: string) => ({
   name,
   kind: 'stock_item' as const,
   unit: 'each' as const,
+  tracking: 'none' as const,
 });
 
 const page = (cursor: string, vanStock: PullPage['vanStock']): PullPage => ({
@@ -82,6 +83,7 @@ describe('the van’s stock on the phone', () => {
               reserved: '2',
               available: '3',
               mainImageFileId: VALVE_IMAGE,
+              lots: [],
             },
             {
               item: item(TAPE, 'PTFE tape'),
@@ -89,6 +91,7 @@ describe('the van’s stock on the phone', () => {
               reserved: '0',
               available: '10.5',
               mainImageFileId: null,
+              lots: [],
             },
           ],
         }),
@@ -164,6 +167,7 @@ describe('the van’s stock on the phone', () => {
             reserved: '0',
             available: '5',
             mainImageFileId: imageId,
+            lots: [],
           },
         ],
       });

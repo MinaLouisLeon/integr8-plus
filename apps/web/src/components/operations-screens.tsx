@@ -72,6 +72,8 @@ export function OperationsScreens({ children }: { children: ReactNode }) {
         stockCount: (id) => `/inventory/counts/${id}`,
         reorder: (locationId) => `/inventory/locations/${locationId}/reorder`,
         vanRequests: '/inventory/van-requests',
+        lots: '/inventory/lots',
+        lot: (id) => `/inventory/lots/${id}`,
         suppliers: '/purchasing/suppliers',
         supplier: (id) => `/purchasing/suppliers/${id}`,
         purchaseOrders: '/purchasing/orders',

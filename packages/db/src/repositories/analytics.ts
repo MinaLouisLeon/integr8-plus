@@ -39,6 +39,11 @@ export interface StageValue {
   amount: string;
   /** The amount times the stage's usual chance. */
   weighted: string;
+  /**
+   * Deals counted at the amount they had when the history began (0043), the
+   * month end being before then: nothing earlier was kept.
+   */
+  estimated: number;
 }
 
 export interface PartsUsage {
@@ -221,6 +226,17 @@ export class AnalyticsRepository extends TenantScopedRepository {
    * weighted by the stage's usual chance. Amounts are today's: changes to an
    * amount are not kept in the history.
    */
+  /** When the company's amount history began (0043), or null when every deal has had one from the start. */
+  async amountsRecordedFrom(): Promise<Date | null> {
+    const row = await this.db
+      .selectFrom('crm_opportunity_amounts')
+      .select((eb) => eb.fn.min('changed_at').as('from'))
+      .where('tenant_id', '=', this.tenantId)
+      .where('baseline', '=', true)
+      .executeTakeFirst();
+    return row?.from ?? null;
+  }
+
   async stageValues(pipelineId: string, monthEnds: readonly string[]): Promise<StageValue[]> {
     if (monthEnds.length === 0) {
       return [];
@@ -233,20 +249,40 @@ export class AnalyticsRepository extends TenantScopedRepository {
         count: number;
         amount: string;
         weighted: string;
+        estimated: number;
       }>`
         with placed as (
-          select o.id, o.currency_code, coalesce(o.amount, 0) as amount,
+          select o.id,
+                 -- The amount at the month end (0043); before the history
+                 -- began, the amount it had then; failing that, today's.
+                 coalesce(at_end.currency_code, began.currency_code, o.currency_code) as currency_code,
+                 coalesce(
+                   case when at_end.currency_code is not null then at_end.amount
+                        when began.currency_code is not null then began.amount
+                        else o.amount end,
+                   0) as amount,
+                 at_end.currency_code is null as estimated,
                  (select e.to_stage_id from crm_opportunity_events e
                    where e.tenant_id = o.tenant_id and e.opportunity_id = o.id
                      and e.occurred_at < (${monthEnd}::date + 1)
                    order by e.occurred_at desc, e.id desc limit 1) as stage_id
             from crm_opportunities o
+            left join lateral (
+              select a.amount, a.currency_code from crm_opportunity_amounts a
+               where a.tenant_id = o.tenant_id and a.opportunity_id = o.id
+                 and a.changed_at < (${monthEnd}::date + 1)
+               order by a.changed_at desc, a.id desc limit 1) at_end on true
+            left join lateral (
+              select a.amount, a.currency_code from crm_opportunity_amounts a
+               where a.tenant_id = o.tenant_id and a.opportunity_id = o.id
+               order by a.changed_at, a.id limit 1) began on true
            where o.tenant_id = ${this.tenantId} and o.pipeline_id = ${pipelineId}::uuid
              and o.created_at < (${monthEnd}::date + 1)
         )
         select p.stage_id, p.currency_code as currency, count(*)::int as count,
                sum(p.amount)::text as amount,
-               round(sum(p.amount * s.probability_bp / 10000.0), 4)::text as weighted
+               round(sum(p.amount * s.probability_bp / 10000.0), 4)::text as weighted,
+               (count(*) filter (where p.estimated))::int as estimated
           from placed p
           join crm_pipeline_stages s on s.tenant_id = ${this.tenantId} and s.id = p.stage_id
          where s.outcome = 'open'
@@ -260,6 +296,7 @@ export class AnalyticsRepository extends TenantScopedRepository {
           count: row.count,
           amount: trimDecimal(row.amount),
           weighted: trimDecimal(row.weighted),
+          estimated: row.estimated,
         })),
       );
     }

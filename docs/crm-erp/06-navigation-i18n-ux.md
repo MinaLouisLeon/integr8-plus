@@ -255,6 +255,54 @@ belong to:
 - **Refusals** everywhere read from the error catalogue, in the reader's
   language; the server's English is never shown.
 
+## Product gaps before the pilot (G1; ADR-0013)
+
+Menu entries (`packages/core/src/navigation.ts`), in both apps:
+
+| Entry         | Group     | Shown to                         | Route                     |
+| ------------- | --------- | -------------------------------- | ------------------------- |
+| Pipelines     | CRM       | `crm.pipeline.manage`            | `/crm/pipelines`          |
+| Reports       | CRM       | `crm.read`                       | `/crm/reports`            |
+| Parts used    | Inventory | `inventory.read`                 | `/inventory/parts-usage`  |
+| Van requests  | Inventory | `inventory.move`                 | `/inventory/van-requests` |
+| Serial lookup | Inventory | `inventory.read`                 | `/inventory/lots`         |
+| Reorder       | Inventory | `purchasing.manage` (purchasing) | `/purchasing/reorder`     |
+
+Reorder lists are per location, so the menu's Reorder opens a small page
+asking which location, the same choice the purchase orders offer.
+
+- **Company roles** (web, `/settings/people/roles`, from a card on People):
+  the list with base, holders and an archived filter; the owner creates and
+  changes roles with a checklist grouped by area against the base, an
+  "adds / takes away" summary, and a warning that holders are signed out.
+  Each People row has a picker with built-in and company roles; a refusal
+  for a permission the giver lacks names it. Company role names show on the
+  dashboard, the crew picker and the employee editor. Desktop has no people
+  screen, so none.
+- **Serial numbers and batches**: the item shows how it is tracked and its
+  lots per location (expiry, an "Expired" badge), with "Track by serial
+  number / batch" for `inventory.manage`. Every form that moves a tracked
+  item asks for its lots: codes arriving (a row per serial, a paste or scan
+  box that splits lines, batch expiry, a running total), a picker leaving
+  (earliest expiry first, changeable; an expired batch needs a tick and a
+  reason). Counts list each lot, with "Add a code". The serial lookup finds a
+  code and its trace links to the job and the asset; the asset's history
+  shows fitted serials; the delivery note lists serials and batches; the
+  job's parts show their lots.
+- **The phone**: the parts picker shows a tracked item's van lots with what
+  is probably left; a serial item needs each serial ticked or scanned (a scan
+  selects it when it is in the van); a batch proposes the earliest unexpired
+  one or "any batch"; an expired batch needs a confirm and a note; all
+  offline. The van screen shows lots.
+- **The board**: cards drag between open stages (mouse after 8 px, touch
+  after a 250 ms press, keyboard by a handle with arrows following the
+  screen, so mirrored in Arabic) and move at once with Undo. Won and Lost are
+  drop zones below the board for those who manage opportunities; dropping
+  there opens the confirm (a reason for lost); the stage selector stays.
+  Announcements are translated.
+- **Value by stage** marks cells counting deals at the amount they had when
+  the history began, with a note giving the day in the company's time zone.
+
 ## Translation keys
 
 English and Arabic, same keys (the parity test fails otherwise):

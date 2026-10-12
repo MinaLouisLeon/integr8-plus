@@ -12,6 +12,7 @@ import { opportunityRoutes } from './v1/crm-opportunities.js';
 import { pipelineEditRoutes } from './v1/crm-pipelines.js';
 import { customerTimelineRoute } from './v1/customer-timeline.js';
 import { analyticsRoutes } from './v1/analytics.js';
+import { roleRoutes } from './v1/roles.js';
 import { itemMediaRoutes } from './v1/item-media.js';
 import { priceListRoutes } from './v1/price-lists.js';
 import { salesDeliveryRoutes } from './v1/sales-deliveries.js';
@@ -19,6 +20,7 @@ import { vanRequestRoutes } from './v1/van-requests.js';
 import { workOrderPurchaseRoutes } from './v1/work-order-purchases.js';
 import { crmRoutes } from './v1/crm.js';
 import { stockRoutes } from './v1/inventory-stock.js';
+import { stockTrackingRoutes } from './v1/stock-tracking.js';
 import { catalogueRoutes } from './v1/inventory.js';
 import { purchasingRoutes } from './v1/purchasing.js';
 import { invoiceRoutes } from './v1/finance-invoices.js';
@@ -75,6 +77,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...pipelineEditRoutes,
     customerTimelineRoute,
     ...analyticsRoutes,
+    ...roleRoutes,
     ...itemMediaRoutes,
     ...priceListRoutes,
     ...salesDeliveryRoutes,
@@ -83,6 +86,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...activityRoutes,
     ...catalogueRoutes,
     ...stockRoutes,
+    ...stockTrackingRoutes,
     ...purchasingRoutes,
     ...materialRoutes,
     ...quoteRoutes,

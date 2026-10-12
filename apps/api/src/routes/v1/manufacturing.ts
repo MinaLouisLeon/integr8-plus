@@ -53,6 +53,7 @@ import { requireLocation, requireStockItem, stockRefusal } from './inventory-sto
 import { type People, peopleOf, personBody, personSchema } from './operations.js';
 import { companyToday } from './sales-quotes.js';
 import { iso, isoOrNull } from './schemas.js';
+import { byLot, type LotSpec, lotSpecsSchema, lotsArriving, lotsLeaving } from './stock-lots.js';
 
 /**
  * Bills of materials, assembly and disassembly orders (seventh round;
@@ -816,11 +817,26 @@ export const completeAssemblyOrderRoute = defineRoute({
   feature: FEATURE,
   params: orderParams,
   query: noSchema,
-  body: z.object({ expectedVersion: z.number().int().positive() }),
+  body: z.object({
+    expectedVersion: z.number().int().positive(),
+    /**
+     * For what comes out tracked by serial number or batch (ADR-0013): the
+     * codes, by item. A batch made needs none and takes the order's reference;
+     * serial numbers must be named.
+     */
+    outputLots: z
+      .array(z.object({ itemId: z.uuid(), lots: lotSpecsSchema }))
+      .max(100)
+      .optional(),
+  }),
   responses: {
     200: { description: 'The order.', schema: orderDetailSchema },
     404: { description: 'No such order.' },
     409: { description: 'Short of stock, cancelled, or changed elsewhere.' },
+    422: {
+      description:
+        'Serial numbers needed for what comes out (`lots_required`), or they do not add up (`lots_quantity_mismatch`, `serial_single_unit`).',
+    },
   },
   handler: async ({ params, body }, context) => {
     const { principal } = context;
@@ -838,7 +854,7 @@ export const completeAssemblyOrderRoute = defineRoute({
       if (order.version !== body.expectedVersion) {
         throw versionConflict();
       }
-      const completed = await completeOrder(tx, context, order);
+      const completed = await completeOrder(tx, context, order, body.outputLots ?? []);
       return orderDetail(tx, principal, completed);
     });
     return { status: 200, body: detail };
@@ -849,6 +865,7 @@ async function completeOrder(
   tx: TenantTransaction,
   context: RequestContext,
   order: AssemblyOrder,
+  outputLots: readonly { itemId: string; lots: readonly LotSpec[] }[] = [],
 ): Promise<AssemblyOrder> {
   const bom = await tx.manufacturing.bom(order.bomId);
   if (bom === undefined) {
@@ -942,8 +959,29 @@ async function completeOrder(
       });
     }
   }
+  // Serial numbers and batches (ADR-0013): what goes in by earliest expiry,
+  // what comes out under the codes given, or a batch under the order's reference.
+  const today = await companyToday(tx);
+  const named = new Map(outputLots.map((entry) => [entry.itemId, entry.lots]));
+  const split: MovementInput[] = [];
+  for (const movement of movements) {
+    const item = moves.items.get(movement.itemId);
+    if (item === undefined || item.tracking === 'none') {
+      split.push(movement);
+      continue;
+    }
+    const quantity = movement.quantity.replace(/^-/u, '');
+    const allocations = movement.quantity.startsWith('-')
+      ? await lotsLeaving(tx, item, order.locationId, quantity, undefined, { today })
+      : await lotsArriving(tx, item, quantity, named.get(item.id), {
+          actorId: context.principal.userId,
+          field: 'body.outputLots',
+          autoBatchCode: formatAssemblyReference(order.reference),
+        });
+    split.push(...byLot(movement, allocations));
+  }
   try {
-    await tx.inventoryStock.post(movements, {
+    await tx.inventoryStock.post(split, {
       postingId: order.id,
       actorId: context.principal.userId,
     });

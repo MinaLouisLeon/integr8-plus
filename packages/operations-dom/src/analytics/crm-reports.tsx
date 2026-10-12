@@ -1,5 +1,5 @@
 import { DEFAULT_PIPELINE_STAGES, hasFeature, LEAD_SOURCES } from '@integr8/core';
-import { formatCalendarDate, useTranslation } from '@integr8/i18n';
+import { formatCalendarDate, formatDate, useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { keys, type Pipeline, type StageValues, useOperations } from '../api.js';
@@ -376,7 +376,7 @@ export function StageValuesSection() {
           ) : values.data.items.length === 0 ? (
             <p className="text-sm text-content-muted">{t('analytics.stageValues.empty')}</p>
           ) : (
-            <StageValuesTable pipeline={pipeline} values={values.data} weighted={weighted} />
+            <StageValuesFigures pipeline={pipeline} values={values.data} weighted={weighted} />
           )}
         </>
       )}
@@ -384,7 +384,32 @@ export function StageValuesSection() {
   );
 }
 
-function StageValuesTable({
+/**
+ * The day amounts began to be kept (ADR-0013), in the company's calendar, when
+ * any figure shown counts a deal at the amount it had then rather than at the
+ * month end; null when every figure is from the history.
+ */
+function useAmountsRecordedFrom(values: StageValues): string | null {
+  const { client, locale } = useOperations();
+  const from = values.amountsRecordedFrom;
+  const needed = from !== null && values.items.some((item) => item.estimated > 0);
+  const settings = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => (await client.GET('/v1/settings')).data!,
+    enabled: needed,
+  });
+  if (!needed || from === null) {
+    return null;
+  }
+  // The company's day when its settings are to hand; the UTC day otherwise.
+  const timeZone = settings.data?.timezone;
+  return timeZone === undefined
+    ? formatCalendarDate(from, { locale })
+    : formatDate(from, { locale, timeZone });
+}
+
+/** The table, and above it what the figures before amounts were kept stand for. */
+function StageValuesFigures({
   pipeline,
   values,
   weighted,
@@ -392,6 +417,37 @@ function StageValuesTable({
   pipeline: Pipeline;
   values: StageValues;
   weighted: boolean;
+}) {
+  const { t } = useTranslation();
+  const recordedFrom = useAmountsRecordedFrom(values);
+  return (
+    <>
+      {recordedFrom === null ? null : (
+        <p className="text-sm text-content-muted">
+          {t('analytics.stageValues.historyNote', { date: recordedFrom })}
+        </p>
+      )}
+      <StageValuesTable
+        pipeline={pipeline}
+        values={values}
+        weighted={weighted}
+        recordedFrom={recordedFrom}
+      />
+    </>
+  );
+}
+
+function StageValuesTable({
+  pipeline,
+  values,
+  weighted,
+  recordedFrom,
+}: {
+  pipeline: Pipeline;
+  values: StageValues;
+  weighted: boolean;
+  /** When some figures count deals at the amount they had then; null otherwise. */
+  recordedFrom: string | null;
 }) {
   const { t } = useTranslation();
   const { locale } = useOperations();
@@ -402,6 +458,8 @@ function StageValuesTable({
     .filter((stage) => held.has(stage.id))
     .sort((a, b) => a.position - b.position);
   const last = values.monthEnds.length - 1;
+  const estimated =
+    recordedFrom === null ? '' : t('analytics.stageValues.estimatedDetail', { date: recordedFrom });
 
   return (
     <FiguresTable
@@ -438,6 +496,12 @@ function StageValuesTable({
                       <span className="block text-xs text-content-muted">
                         {t('analytics.stageValues.count', { count: cell.count })}
                       </span>
+                      {recordedFrom !== null && cell.estimated > 0 ? (
+                        <span className="block text-xs text-content-muted" title={estimated}>
+                          {t('analytics.stageValues.estimated')}
+                          <span className="sr-only">{` ${estimated}`}</span>
+                        </span>
+                      ) : null}
                     </span>
                   ))
                 )}

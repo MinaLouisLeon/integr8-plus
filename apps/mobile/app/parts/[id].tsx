@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Alert, StyleSheet, TextInput, View } from 'react-native';
 import { JobPurchases } from '~/components/job-purchases';
 import { LocalGate } from '~/components/local-gate';
+import { PartLots } from '~/components/part-lots';
 import { VanStockItem } from '~/components/van-stock-row';
 import {
   Body,
@@ -19,6 +20,7 @@ import {
   useTheme,
 } from '~/components/ui';
 import { formatWhen } from '~/lib/format';
+import { localDay, type PartPick, partUse, pickProblem, proposedBatch } from '~/lib/lot-pick';
 import { recordPart } from '~/local/job-actions';
 import { useLocalQuery } from '~/local/react';
 import { refusalMessage } from '~/lib/refusals';
@@ -53,6 +55,10 @@ function Parts() {
   const [quantity, setQuantity] = useState('1');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  // Serial numbers and batches (ADR-0013), from the van's own list.
+  const [serials, setSerials] = useState<readonly string[]>([]);
+  const [batchId, setBatchId] = useState<string | null>(null);
+  const [expiredConfirmed, setExpiredConfirmed] = useState(false);
 
   if (state.status !== 'ready') {
     return <NotReadyScreen failed={state.status === 'error'} />;
@@ -81,7 +87,19 @@ function Parts() {
       row.item.name.toLowerCase().includes(words) ||
       row.item.sku.toLowerCase().includes(words),
   );
-  const valid = /^\d{1,16}(\.\d{1,4})?$/u.test(quantity.trim()) && /[1-9]/u.test(quantity);
+  const today = localDay(new Date());
+  const tracking = chosen?.item.tracking ?? 'none';
+  const lots = chosen?.lots ?? [];
+  const partPick: PartPick = { tracking, quantity, serials, batchId, expiredConfirmed, note };
+  const problem = pickProblem(partPick, lots, today);
+  const valid = problem === null;
+
+  const choose = (row: VanStockRow) => {
+    setChosen(row);
+    setSerials([]);
+    setExpiredConfirmed(false);
+    setBatchId(row.item.tracking === 'batch' ? proposedBatch(row.lots, today) : null);
+  };
 
   const record = async () => {
     if (chosen === null || !valid) {
@@ -92,7 +110,7 @@ function Parts() {
       await recordPart({
         workOrderId: detail.workOrder.id,
         itemId: chosen.item.id,
-        quantity: quantity.trim(),
+        ...partUse(partPick, lots, today),
         ...(note.trim() === '' ? {} : { note: note.trim() }),
       });
       router.back();
@@ -129,7 +147,7 @@ function Parts() {
             ]}
           />
           {shown.map((row) => (
-            <VanStockItem key={row.item.id} row={row} onPress={() => setChosen(row)} />
+            <VanStockItem key={row.item.id} row={row} onPress={() => choose(row)} />
           ))}
           <Body muted>
             {t('mobile.parts.asOf', {
@@ -144,14 +162,36 @@ function Parts() {
             {t('mobile.parts.forecast', { quantity: format(chosen.forecast, chosen.item.unit) })}
           </Body>
           <Body muted>{t('mobile.van.availableHint')}</Body>
+          {tracking === 'serial' ? null : (
+            <Field
+              label={`${t('mobile.parts.quantity')} (${t(`inventory.unit.${chosen.item.unit}` as 'inventory.unit.each')})`}
+              value={quantity}
+              onChangeText={setQuantity}
+              keyboardType="decimal-pad"
+              {...(problem === 'quantity_invalid'
+                ? { error: t('mobile.parts.invalidQuantity') }
+                : {})}
+            />
+          )}
+          {tracking === 'none' ? null : (
+            <PartLots
+              row={chosen}
+              pick={partPick}
+              today={today}
+              onSerials={setSerials}
+              onBatch={(next) => {
+                setBatchId(next);
+                setExpiredConfirmed(false);
+              }}
+              onExpiredConfirmed={setExpiredConfirmed}
+            />
+          )}
           <Field
-            label={`${t('mobile.parts.quantity')} (${t(`inventory.unit.${chosen.item.unit}` as 'inventory.unit.each')})`}
-            value={quantity}
-            onChangeText={setQuantity}
-            keyboardType="decimal-pad"
-            {...(valid ? {} : { error: t('mobile.parts.invalidQuantity') })}
+            label={t('mobile.parts.note')}
+            value={note}
+            onChangeText={setNote}
+            {...(problem === 'note_required' ? { error: t('mobile.lots.noteRequired') } : {})}
           />
-          <Field label={t('mobile.parts.note')} value={note} onChangeText={setNote} />
           <View style={styles.actions}>
             <Button
               label={t('mobile.back')}

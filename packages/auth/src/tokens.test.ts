@@ -1,6 +1,7 @@
 import { SignJWT } from 'jose';
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { holds } from '@integr8/core';
 import { authConfigSchema } from './config.js';
 import { InvalidTokenError } from './errors.js';
 import { generateSigningKeyPair, loadSigningKey, loadVerificationKeys } from './keys.js';
@@ -68,6 +69,30 @@ describe('access tokens', () => {
       ).token,
     );
     expect(impersonated.impersonatedBy).toEqual({ pid: TEST_PLATFORM_USER, gid: TEST_GRANT });
+  });
+
+  it('carries the company’s own role, and the principal holds what it adds and takes away', async () => {
+    const auth = await buildTestAuth();
+    const principal = await auth.tokens.verifyAccessToken(
+      (
+        await auth.tokens.mintAccessToken({
+          ...access,
+          sessionId: TEST_SESSION,
+          customRole: {
+            id: TEST_GRANT,
+            added: ['work_order.manage'],
+            removed: ['work_order.progress'],
+          },
+        })
+      ).token,
+    );
+    expect(principal.customRole).toEqual({
+      id: TEST_GRANT,
+      added: ['work_order.manage'],
+      removed: ['work_order.progress'],
+    });
+    expect(holds(principal, 'work_order.manage')).toBe(true);
+    expect(holds(principal, 'work_order.progress')).toBe(false);
   });
 });
 
