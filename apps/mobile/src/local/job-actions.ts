@@ -82,6 +82,10 @@ export async function recordPart(input: {
   itemId: string;
   quantity: string;
   note?: string;
+  /** The serial numbers or batch chosen from the van (ADR-0013). */
+  lots?: { lotId: string; quantity: string }[];
+  /** An expired batch confirmed; the note says why. */
+  allowExpired?: boolean;
 }): Promise<void> {
   await recordMaterial(context(), input);
   sent();

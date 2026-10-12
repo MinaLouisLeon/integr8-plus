@@ -209,6 +209,7 @@ const itemDetail = (): ItemDetail => ({
     name: 'Ball valve 15mm',
     kind: 'stock_item',
     unit: 'each',
+    tracking: 'none',
     description: null,
     categoryId: null,
     barcode: null,
@@ -368,12 +369,26 @@ const request = (overrides: Partial<VanRequest> = {}): VanRequest => ({
   version: 1,
   lines: [
     {
-      item: { id: ITEM, sku: 'VAL-15', name: 'Ball valve 15mm', kind: 'stock_item', unit: 'each' },
+      item: {
+        id: ITEM,
+        sku: 'VAL-15',
+        name: 'Ball valve 15mm',
+        kind: 'stock_item',
+        unit: 'each',
+        tracking: 'none',
+      },
       requested: '5',
       picked: null,
     },
     {
-      item: { id: ITEM_2, sku: 'PTFE', name: 'PTFE tape', kind: 'stock_item', unit: 'roll' },
+      item: {
+        id: ITEM_2,
+        sku: 'PTFE',
+        name: 'PTFE tape',
+        kind: 'stock_item',
+        unit: 'roll',
+        tracking: 'none',
+      },
       requested: '2',
       picked: null,
     },

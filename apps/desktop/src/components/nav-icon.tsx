@@ -151,6 +151,11 @@ const NAV_GLYPHS: Record<NavIcon, Glyph> = {
     'M5 7l-3 6a3 3 0 0 0 6 0z',
     'M19 7l-3 6a3 3 0 0 0 6 0z',
   ],
+  barcode: [
+    'M3 7V5a1 1 0 0 1 1-1h2M18 4h2a1 1 0 0 1 1 1v2',
+    'M21 17v2a1 1 0 0 1-1 1h-2M6 20H4a1 1 0 0 1-1-1v-2',
+    'M7 8v8M10 8v8M13 8v8M17 8v8',
+  ],
 };
 
 export type ChromeIcon =

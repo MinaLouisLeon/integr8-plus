@@ -40,6 +40,7 @@ export { LocationListScreen } from './inventory/location-list.js';
 export { LocationScreen } from './inventory/location-screen.js';
 export { StockCountScreen } from './inventory/stock-count-screen.js';
 export { VanRequestsScreen } from './inventory/van-requests.js';
+export { LotLookupScreen, LotScreen } from './inventory/lot-screens.js';
 export { ReorderScreen } from './purchasing/reorder-screen.js';
 export { OrderListScreen } from './purchasing/order-list.js';
 export { OrderScreen } from './purchasing/order-screen.js';

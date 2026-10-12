@@ -56,6 +56,9 @@ export interface OperationsConfig {
     reorder: (locationId: string) => string;
     /** The store's queue of requests to refill vans (eighth round; ADR-0012). */
     vanRequests: string;
+    /** Serial numbers and batches (ninth round; ADR-0013): the lookup, and one traced. */
+    lots: string;
+    lot: (id: string) => string;
     /** Purchasing (CRM/ERP plan, phase E2). */
     suppliers: string;
     supplier: (id: string) => string;
@@ -273,6 +276,13 @@ export type StockMovement = Json<'/v1/inventory/movements', 'get', 200>['items']
 export type StockBalance = Json<'/v1/inventory/balances', 'get', 200>['items'][number];
 export type StockCountDetail = Json<'/v1/inventory/counts/{countId}', 'get', 200>;
 export type StockCountRow = Json<'/v1/inventory/counts', 'get', 200>['items'][number];
+/** Serial numbers and batches (ninth round; ADR-0013). */
+export type ItemTracking = InventoryItem['tracking'];
+export type ItemLot = Json<'/v1/inventory/items/{itemId}/lots', 'get', 200>['items'][number];
+export type LotMatch = Json<'/v1/inventory/lots', 'get', 200>['items'][number];
+export type LotTrace = Json<'/v1/inventory/lots/{lotId}', 'get', 200>;
+export type LotHistoryEntry = LotTrace['history'][number];
+export type LotSourceKind = LotHistoryEntry['source']['kind'];
 export type Supplier = Json<'/v1/purchasing/suppliers', 'get', 200>['items'][number];
 export type SupplierDetail = Json<'/v1/purchasing/suppliers/{supplierId}', 'get', 200>;
 export type SupplierStatus = Supplier['status'];
@@ -418,6 +428,10 @@ export const keys = {
   stockCounts: (query: object) => ['inventory', 'counts', query] as const,
   stockCount: (id: string) => ['inventory', 'count', id] as const,
   itemMedia: (itemId: string) => ['inventory', 'item-media', itemId] as const,
+  itemLots: (itemId: string, locationId: string) =>
+    ['inventory', 'item-lots', itemId, locationId] as const,
+  lotSearch: (code: string) => ['inventory', 'lot-search', code] as const,
+  lot: (id: string) => ['inventory', 'lot', id] as const,
   reorder: (locationId: string) => ['inventory', 'reorder', locationId] as const,
   vanRequests: (query: object) => ['inventory', 'van-requests', query] as const,
   jobPurchases: (workOrderId: string) => ['inventory', 'job-purchases', workOrderId] as const,

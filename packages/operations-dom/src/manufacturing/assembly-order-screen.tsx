@@ -6,7 +6,14 @@ import { useState } from 'react';
 import { type AssemblyOrderDetail, keys, useOperations } from '../api.js';
 import { formatAmount } from '../crm/lead-parts.js';
 import { formatQuantity, useLocations, useUnitName } from '../inventory/inventory-parts.js';
-import { BackLink, buttonClass, cardClass, Field, inputClass, Loading } from '../ui.js';
+import {
+  arrivingCheck,
+  arrivingLots,
+  type ArrivingLots,
+  LotsArriving,
+  NO_ARRIVING,
+} from '../inventory/lots.js';
+import { BackLink, buttonClass, cardClass, Dialog, Field, inputClass, Loading } from '../ui.js';
 import {
   AppLink,
   AssemblyStatusBadge,
@@ -71,6 +78,7 @@ function AssemblyOrder({ orderId }: { orderId: string }) {
   const currency = useCurrency();
   const locations = useLocations();
   const [editing, setEditing] = useState<EditDraft | null>(null);
+  const [naming, setNaming] = useState(false);
 
   const detail = useQuery({
     queryKey: keys.assemblyOrder(orderId),
@@ -101,14 +109,20 @@ function AssemblyOrder({ orderId }: { orderId: string }) {
     },
   });
   const complete = useMutation({
-    mutationFn: async () =>
+    mutationFn: async (outputLots?: OutputLots) =>
       (
         await client.POST('/v1/manufacturing/orders/{orderId}/complete', {
           params: { path: { orderId } },
-          body: { expectedVersion: detail.data!.version },
+          body: {
+            expectedVersion: detail.data!.version,
+            ...(outputLots === undefined || outputLots.length === 0 ? {} : { outputLots }),
+          },
         })
       ).data!,
-    onSuccess: settle,
+    onSuccess: async (next) => {
+      setNaming(false);
+      await settle(next);
+    },
     // What was short is read against the order as it is now.
     onError: () => void detail.refetch(),
   });
@@ -138,7 +152,8 @@ function AssemblyOrder({ orderId }: { orderId: string }) {
 
   const order = detail.data;
   const { can } = order;
-  const error = [update.error, complete.error, cancel.error].find(
+  // While output lots are being named, the dialog says what went wrong.
+  const error = [update.error, naming ? null : complete.error, cancel.error].find(
     (candidate) => candidate !== null,
   );
   const reload = () => {
@@ -232,8 +247,12 @@ function AssemblyOrder({ orderId }: { orderId: string }) {
                 className={buttonClass.primary}
                 disabled={!can.complete || busy}
                 onClick={() => {
-                  if (window.confirm(t('manufacturing.orders.completeConfirm'))) {
-                    complete.mutate();
+                  // What comes out with serial numbers or batches is named first (ADR-0013).
+                  if (order.outputs.some((output) => output.item.tracking !== 'none')) {
+                    complete.reset();
+                    setNaming(true);
+                  } else if (window.confirm(t('manufacturing.orders.completeConfirm'))) {
+                    complete.mutate(undefined);
                   }
                 }}
               >
@@ -568,6 +587,16 @@ function AssemblyOrder({ orderId }: { orderId: string }) {
         </ul>
       </section>
 
+      {naming ? (
+        <OutputLotsDialog
+          order={order}
+          pending={complete.isPending}
+          error={complete.error}
+          onClose={() => setNaming(false)}
+          onComplete={(outputLots) => complete.mutate(outputLots)}
+        />
+      ) : null}
+
       {order.status === 'completed' && order.unitCost !== null ? (
         <section className={cardClass} aria-labelledby="assembly-order-costs">
           <h2 id="assembly-order-costs" className="text-base font-semibold text-content">
@@ -590,5 +619,109 @@ function AssemblyOrder({ orderId }: { orderId: string }) {
         </section>
       ) : null}
     </div>
+  );
+}
+
+type OutputLots = {
+  itemId: string;
+  lots: { code: string; expiresOn?: string; quantity: string }[];
+}[];
+
+/**
+ * Completing an order whose outputs are tracked (ADR-0013): a serial number
+ * for each unit made, and a batch code if the person has one — without, the
+ * order's own reference becomes the batch.
+ */
+function OutputLotsDialog({
+  order,
+  pending,
+  error,
+  onClose,
+  onComplete,
+}: {
+  order: AssemblyOrderDetail;
+  pending: boolean;
+  error: unknown;
+  onClose: () => void;
+  onComplete: (lots: OutputLots) => void;
+}) {
+  const { t } = useTranslation();
+  const [lots, setLots] = useState<Record<string, ArrivingLots>>({});
+  const tracked = order.outputs.filter((output) => output.item.tracking !== 'none');
+  const lotsOf = (itemId: string) => lots[itemId] ?? NO_ARRIVING;
+  /** A batch left empty is coded by the server; a serial number never is. */
+  const leftToServer = (output: (typeof tracked)[number]) =>
+    output.item.tracking === 'batch' &&
+    arrivingLots('batch', output.quantity, lotsOf(output.item.id)).length === 0;
+  const ready = tracked.every(
+    (output) =>
+      leftToServer(output) ||
+      arrivingCheck(output.item.tracking, output.quantity, lotsOf(output.item.id)).complete,
+  );
+  return (
+    <Dialog
+      title={t('inventory.lots.outputs.title')}
+      wide
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className={buttonClass.secondary} onClick={onClose}>
+            {t('inventory.items.cancel')}
+          </button>
+          <button
+            type="submit"
+            form="assembly-output-lots"
+            className={buttonClass.primary}
+            disabled={!ready || pending}
+          >
+            {pending ? t('manufacturing.orders.completing') : t('manufacturing.orders.complete')}
+          </button>
+        </>
+      }
+    >
+      <form
+        id="assembly-output-lots"
+        className="flex flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (ready) {
+            onComplete(
+              tracked.flatMap((output) =>
+                leftToServer(output)
+                  ? []
+                  : [
+                      {
+                        itemId: output.item.id,
+                        lots: arrivingLots(
+                          output.item.tracking,
+                          output.quantity,
+                          lotsOf(output.item.id),
+                        ),
+                      },
+                    ],
+              ),
+            );
+          }
+        }}
+      >
+        <p className="text-sm text-content">{t('inventory.lots.outputs.intro')}</p>
+        {tracked.map((output) => (
+          <div key={output.item.id} className="flex flex-col gap-1">
+            <LotsArriving
+              tracking={output.item.tracking}
+              quantity={output.quantity}
+              unit={output.item.unit}
+              legend={t('inventory.lots.lotsOf', { item: output.item.name })}
+              value={lotsOf(output.item.id)}
+              onChange={(next) => setLots({ ...lots, [output.item.id]: next })}
+            />
+            {output.item.tracking === 'batch' ? (
+              <p className="text-xs text-content-muted">{t('inventory.lots.outputs.batchHint')}</p>
+            ) : null}
+          </div>
+        ))}
+        {error === null ? null : <ManufacturingFailure error={error} />}
+      </form>
+    </Dialog>
   );
 }

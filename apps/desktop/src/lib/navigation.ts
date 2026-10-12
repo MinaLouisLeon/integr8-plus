@@ -39,6 +39,7 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   inventory: '/inventory',
   items: '/inventory/items',
   stockLocations: '/inventory/locations',
+  serialLookup: '/inventory/lots',
   suppliers: '/purchasing/suppliers',
   purchaseOrders: '/purchasing/orders',
   boms: '/manufacturing/boms',

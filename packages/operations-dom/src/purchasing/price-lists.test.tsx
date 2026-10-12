@@ -65,6 +65,7 @@ const valve = {
   name: 'Ball valve 15mm',
   kind: 'stock_item' as const,
   unit: 'each' as const,
+  tracking: 'none' as const,
 };
 const tape = {
   id: ITEM_2,
@@ -72,6 +73,7 @@ const tape = {
   name: 'PTFE tape',
   kind: 'stock_item' as const,
   unit: 'roll' as const,
+  tracking: 'none' as const,
 };
 
 const price = (overrides: Partial<SupplierPrice> = {}): SupplierPrice => ({

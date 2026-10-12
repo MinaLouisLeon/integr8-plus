@@ -52,7 +52,8 @@ export type NavIcon =
   | 'banknote'
   | 'clipboard-check'
   | 'calculator'
-  | 'scale';
+  | 'scale'
+  | 'barcode';
 
 export type NavGroup =
   | 'overview'
@@ -112,6 +113,7 @@ export type NavPath =
   | 'inventory'
   | 'items'
   | 'stockLocations'
+  | 'serialLookup'
   | 'suppliers'
   | 'purchaseOrders'
   | 'boms'
@@ -342,6 +344,15 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     group: 'inventory',
     path: 'stockLocations',
     icon: 'map-pin',
+    permission: 'inventory.read',
+    feature: 'inventory',
+  },
+  // Serial numbers and batches (ninth round; ADR-0013): find one, follow its path.
+  {
+    key: 'serialLookup',
+    group: 'inventory',
+    path: 'serialLookup',
+    icon: 'barcode',
     permission: 'inventory.read',
     feature: 'inventory',
   },

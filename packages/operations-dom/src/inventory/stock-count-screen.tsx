@@ -1,19 +1,26 @@
 import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { type ItemRow, keys, type StockCountDetail, useOperations } from '../api.js';
 import { memberName, useMembers } from '../crm/lead-parts.js';
 import { BackLink, buttonClass, cardClass, Failure, inputClass, Loading } from '../ui.js';
 import { formatQuantity, ItemPicker, useUnitName } from './inventory-parts.js';
+import { LotCode, LotExpiry, TrackingBadge } from './lots.js';
 
 /**
  * A stock count (CRM/ERP plan, phase E1): what was found at a location,
  * against what the system holds. Posting adjusts stock to what was counted,
  * once, naming who posted it.
+ *
+ * A tracked item is counted by serial number or batch (ADR-0013): the ones
+ * the location holds are listed, and a code found that is not is added. A
+ * serial number is there or not; what the count leaves out counts as none.
  */
 
 interface Line {
-  item: Pick<ItemRow, 'id' | 'name' | 'sku' | 'unit'>;
+  item: Pick<ItemRow, 'id' | 'name' | 'sku' | 'unit' | 'tracking'>;
+  /** A tracked item's serial number or batch: known (`id`), or a code first seen here. */
+  lot: { id: string | null; code: string; expiresOn: string } | null;
   counted: string;
   onHand: string;
 }
@@ -21,9 +28,60 @@ interface Line {
 function linesOf(detail: StockCountDetail): Line[] {
   return detail.lines.map((line) => ({
     item: line.item,
+    lot:
+      line.lot === null
+        ? null
+        : { id: line.lot.id, code: line.lot.code, expiresOn: line.lot.expiresOn ?? '' },
     counted: line.countedQuantity,
     onHand: line.onHand,
   }));
+}
+
+const QUANTITY = /^\d{1,16}(\.\d{1,4})?$/u;
+
+/** Whether a line can be saved: a quantity, a serial number 0 or 1, a new code typed. */
+function lineValid(line: Line): boolean {
+  const counted = line.counted.trim();
+  if (!QUANTITY.test(counted)) {
+    return false;
+  }
+  if (line.item.tracking === 'none' || line.lot === null) {
+    return true;
+  }
+  return (
+    (line.lot.id !== null || line.lot.code.trim() !== '') &&
+    (line.item.tracking !== 'serial' || /^[01](\.0+)?$/u.test(counted))
+  );
+}
+
+/** The lines as the API takes them: a lot by id, or a new one by its code and expiry. */
+function lineBodies(lines: readonly Line[]) {
+  return lines.map((line) => ({
+    itemId: line.item.id,
+    countedQuantity: line.counted.trim(),
+    ...(line.lot === null
+      ? {}
+      : line.lot.id !== null
+        ? { lotId: line.lot.id }
+        : {
+            lotCode: line.lot.code.trim(),
+            ...(line.lot.expiresOn === '' ? {} : { lotExpiresOn: line.lot.expiresOn }),
+          }),
+  }));
+}
+
+/** Lines in groups, one per item, in the order items first appear. */
+function groups(lines: readonly Line[]): { item: Line['item']; at: number[] }[] {
+  const out: { item: Line['item']; at: number[] }[] = [];
+  lines.forEach((line, index) => {
+    const group = out.find((candidate) => candidate.item.id === line.item.id);
+    if (group === undefined) {
+      out.push({ item: line.item, at: [index] });
+    } else {
+      group.at.push(index);
+    }
+  });
+  return out;
 }
 
 export function StockCountScreen({ countId }: { countId: string }) {
@@ -33,7 +91,6 @@ export function StockCountScreen({ countId }: { countId: string }) {
   const unitName = useUnitName();
   const members = useMembers();
   const [lines, setLines] = useState<Line[] | null>(null);
-  const [adding, setAdding] = useState<Line['item'] | null>(null);
 
   const detail = useQuery({
     queryKey: keys.stockCount(countId),
@@ -62,10 +119,7 @@ export function StockCountScreen({ countId }: { countId: string }) {
           params: { path: { countId } },
           body: {
             expectedVersion: detail.data!.count.version,
-            lines: next.map((line) => ({
-              itemId: line.item.id,
-              countedQuantity: line.counted.trim(),
-            })),
+            lines: lineBodies(next),
           },
         })
       ).data!,
@@ -83,6 +137,40 @@ export function StockCountScreen({ countId }: { countId: string }) {
         })
       ).data!,
     onSuccess: settle,
+  });
+  // An item joins the count with what the location holds of it: a tracked
+  // item one line per serial number or batch there.
+  const adding = useMutation({
+    mutationFn: async ({
+      item,
+      onHand,
+    }: {
+      item: Line['item'];
+      onHand: string;
+    }): Promise<Line[]> => {
+      if (item.tracking === 'none') {
+        return [{ item, lot: null, counted: '', onHand }];
+      }
+      const locationId = detail.data!.count.location.id;
+      const held = await queries.fetchQuery({
+        queryKey: keys.itemLots(item.id, locationId),
+        queryFn: async () =>
+          (
+            await client.GET('/v1/inventory/items/{itemId}/lots', {
+              params: { path: { itemId: item.id }, query: { locationId } },
+            })
+          ).data!.items,
+      });
+      return held.length === 0
+        ? [newCode(item)]
+        : held.map((lot): Line => ({
+            item,
+            lot: { id: lot.lotId, code: lot.code, expiresOn: lot.expiresOn ?? '' },
+            counted: item.tracking === 'serial' ? '0' : '',
+            onHand: lot.onHand,
+          }));
+    },
+    onSuccess: (added) => setLines((current) => [...(current ?? []), ...added]),
   });
   const cancel = useMutation({
     mutationFn: async () =>
@@ -110,8 +198,11 @@ export function StockCountScreen({ countId }: { countId: string }) {
   const { count, can } = detail.data;
   const shown = lines ?? linesOf(detail.data);
   const editing = lines !== null;
-  const draftValid = shown.every((line) => /^\d{1,16}(\.\d{1,4})?$/u.test(line.counted.trim()));
+  const draftValid = shown.every(lineValid);
   const error = [save.error, post.error, cancel.error].find((candidate) => candidate !== null);
+  const change = (index: number, next: Line) =>
+    setLines(shown.map((candidate, at) => (at === index ? next : candidate)));
+  const remove = (index: number) => setLines(shown.filter((_, at) => at !== index));
   // Items the location holds that are not on the count yet, offered first.
   const unlisted = (location.data?.stock ?? []).filter(
     (row) => !shown.some((line) => line.item.id === row.item.id),
@@ -194,49 +285,46 @@ export function StockCountScreen({ countId }: { countId: string }) {
             }}
           >
             <ul className="flex flex-col divide-y divide-border-subtle text-sm">
-              {shown.map((line, index) => (
-                <li
-                  key={line.item.id}
-                  className="flex flex-wrap items-center justify-between gap-3 py-2"
-                >
-                  <label htmlFor={`counted-${line.item.id}`} className="flex min-w-0 flex-col">
-                    <span className="text-content">{line.item.name}</span>
-                    <span className="text-xs text-content-muted tabular-nums">
-                      {t('inventory.counts.systemHolds', {
-                        quantity: formatQuantity(line.onHand, line.item.unit, locale, unitName),
-                      })}
-                    </span>
-                  </label>
-                  <span className="flex items-center gap-2">
-                    <input
-                      id={`counted-${line.item.id}`}
-                      required
-                      inputMode="decimal"
-                      dir="ltr"
-                      pattern="\d{1,16}(\.\d{1,4})?"
-                      className={`${inputClass} w-32`}
-                      value={line.counted}
-                      onChange={(event) =>
-                        setLines(
-                          shown.map((candidate, at) =>
-                            at === index
-                              ? { ...candidate, counted: event.target.value.trim() }
-                              : candidate,
-                          ),
-                        )
-                      }
+              {groups(shown).map((group) =>
+                group.item.tracking === 'none' ? (
+                  group.at.map((index) => (
+                    <CountLine
+                      key={group.item.id}
+                      line={shown[index]!}
+                      onChange={(next) => change(index, next)}
+                      onRemove={() => remove(index)}
                     />
-                    <button
-                      type="button"
-                      className={buttonClass.ghost}
-                      onClick={() => setLines(shown.filter((_, at) => at !== index))}
-                    >
-                      {t('inventory.counts.removeLine')}
-                    </button>
-                  </span>
-                </li>
-              ))}
+                  ))
+                ) : (
+                  <li key={group.item.id} className="flex flex-col gap-2 py-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-content">{group.item.name}</span>
+                        <TrackingBadge tracking={group.item.tracking} />
+                      </span>
+                      <button
+                        type="button"
+                        className={buttonClass.ghost}
+                        onClick={() => setLines([...shown, newCode(group.item)])}
+                      >
+                        {t('inventory.lots.count.addCode')}
+                      </button>
+                    </div>
+                    <ul className="flex flex-col gap-1 ps-3">
+                      {group.at.map((index) => (
+                        <CountLine
+                          key={`${shown[index]!.lot?.id ?? 'new'}:${index}`}
+                          line={shown[index]!}
+                          onChange={(next) => change(index, next)}
+                          onRemove={() => remove(index)}
+                        />
+                      ))}
+                    </ul>
+                  </li>
+                ),
+              )}
             </ul>
+            {adding.isError ? <Failure error={adding.error} /> : null}
             {unlisted.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {unlisted.map((row) => (
@@ -244,9 +332,8 @@ export function StockCountScreen({ countId }: { countId: string }) {
                     key={row.item.id}
                     type="button"
                     className={buttonClass.secondary}
-                    onClick={() =>
-                      setLines([...shown, { item: row.item, counted: '', onHand: row.onHand }])
-                    }
+                    disabled={adding.isPending}
+                    onClick={() => adding.mutate({ item: row.item, onHand: row.onHand })}
                   >
                     {t('inventory.counts.addNamed', { name: row.item.name })}
                   </button>
@@ -255,12 +342,11 @@ export function StockCountScreen({ countId }: { countId: string }) {
             ) : null}
             <ItemPicker
               label={t('inventory.counts.addItem')}
-              value={adding}
+              value={null}
               onChange={(item) => {
                 if (item !== null && !shown.some((line) => line.item.id === item.id)) {
-                  setLines([...shown, { item, counted: '', onHand: '0' }]);
+                  adding.mutate({ item, onHand: '0' });
                 }
-                setAdding(null);
               }}
             />
             <div className="flex flex-wrap justify-end gap-2">
@@ -301,8 +387,16 @@ export function StockCountScreen({ countId }: { countId: string }) {
             </thead>
             <tbody className="divide-y divide-border-subtle">
               {detail.data.lines.map((line) => (
-                <tr key={line.item.id}>
-                  <td className="py-2 text-content">{line.item.name}</td>
+                <tr key={`${line.item.id}:${line.lot?.id ?? line.lot?.code ?? ''}`}>
+                  <td className="py-2 text-content">
+                    {line.item.name}
+                    {line.lot === null ? null : (
+                      <span className="flex flex-wrap items-center gap-2 text-xs">
+                        <LotCode lotId={line.lot.id} code={line.lot.code} />
+                        <LotExpiry expiresOn={line.lot.expiresOn} />
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2 text-end text-content tabular-nums">
                     {formatQuantity(
                       count.status === 'posted'
@@ -331,5 +425,147 @@ export function StockCountScreen({ countId }: { countId: string }) {
         {t('inventory.counts.backToLocation', { location: count.location.name })}
       </button>
     </div>
+  );
+}
+
+/** A code found on the shelf that the location is not known to hold. */
+function newCode(item: Line['item']): Line {
+  return {
+    item,
+    lot: { id: null, code: '', expiresOn: '' },
+    // Adding a serial number is saying it is here.
+    counted: item.tracking === 'serial' ? '1' : '',
+    onHand: '0',
+  };
+}
+
+/**
+ * One line of a count being edited: an item, or one of a tracked item's
+ * serial numbers (there or not) or batches (how many).
+ */
+function CountLine({
+  line,
+  onChange,
+  onRemove,
+}: {
+  line: Line;
+  onChange: (next: Line) => void;
+  onRemove: () => void;
+}) {
+  const { t } = useTranslation();
+  const { locale } = useOperations();
+  const unitName = useUnitName();
+  const id = useId();
+  const system = t('inventory.counts.systemHolds', {
+    quantity: formatQuantity(line.onHand, line.item.unit, locale, unitName),
+  });
+  const remove = (
+    <button type="button" className={buttonClass.ghost} onClick={onRemove}>
+      {t('inventory.counts.removeLine')}
+    </button>
+  );
+  const counted = (label: string) => (
+    <input
+      id={id}
+      required
+      inputMode="decimal"
+      dir="ltr"
+      pattern="\d{1,16}(\.\d{1,4})?"
+      aria-label={label}
+      className={`${inputClass} w-32`}
+      value={line.counted}
+      onChange={(event) => onChange({ ...line, counted: event.target.value.trim() })}
+    />
+  );
+
+  if (line.lot === null) {
+    return (
+      <li className="flex flex-wrap items-center justify-between gap-3 py-2">
+        <label htmlFor={id} className="flex min-w-0 flex-col">
+          <span className="text-content">{line.item.name}</span>
+          <span className="text-xs text-content-muted tabular-nums">{system}</span>
+        </label>
+        <span className="flex items-center gap-2">
+          <input
+            id={id}
+            required
+            inputMode="decimal"
+            dir="ltr"
+            pattern="\d{1,16}(\.\d{1,4})?"
+            className={`${inputClass} w-32`}
+            value={line.counted}
+            onChange={(event) => onChange({ ...line, counted: event.target.value.trim() })}
+          />
+          {remove}
+        </span>
+      </li>
+    );
+  }
+
+  const { lot } = line;
+  const name = lot.code.trim() === '' ? t('inventory.lots.count.newCode') : lot.code.trim();
+  return (
+    <li className="flex flex-wrap items-end justify-between gap-3 py-1">
+      {lot.id === null ? (
+        <span className="flex flex-wrap items-end gap-2">
+          <span className="flex flex-col gap-1">
+            <label htmlFor={`${id}-code`} className="text-xs text-content-muted">
+              {t('inventory.lots.count.newCode')}
+            </label>
+            <input
+              id={`${id}-code`}
+              dir="ltr"
+              maxLength={100}
+              autoComplete="off"
+              className={`${inputClass} w-48`}
+              value={lot.code}
+              onChange={(event) => onChange({ ...line, lot: { ...lot, code: event.target.value } })}
+            />
+          </span>
+          {line.item.tracking === 'batch' ? (
+            <span className="flex flex-col gap-1">
+              <label htmlFor={`${id}-expires`} className="text-xs text-content-muted">
+                {t('inventory.lots.expiresOn')}
+              </label>
+              <input
+                id={`${id}-expires`}
+                type="date"
+                className={`${inputClass} w-44`}
+                value={lot.expiresOn}
+                onChange={(event) =>
+                  onChange({ ...line, lot: { ...lot, expiresOn: event.target.value } })
+                }
+              />
+            </span>
+          ) : null}
+        </span>
+      ) : (
+        <span className="flex min-w-0 flex-col">
+          <span className="flex flex-wrap items-center gap-2">
+            <LotCode lotId={lot.id} code={lot.code} />
+            <LotExpiry expiresOn={lot.expiresOn === '' ? null : lot.expiresOn} />
+          </span>
+          <span className="text-xs text-content-muted tabular-nums">{system}</span>
+        </span>
+      )}
+      <span className="flex items-center gap-2">
+        {line.item.tracking === 'serial' ? (
+          <span className="flex items-center gap-2">
+            <input
+              id={id}
+              type="checkbox"
+              checked={/^1(\.0+)?$/u.test(line.counted.trim())}
+              onChange={(event) => onChange({ ...line, counted: event.target.checked ? '1' : '0' })}
+            />
+            <label htmlFor={id} className="text-sm text-content">
+              {t('inventory.lots.count.here', { code: name })}
+            </label>
+          </span>
+        ) : (
+          counted(t('inventory.lots.count.counted', { code: name }))
+        )}
+        {remove}
+      </span>
+    </li>
   );
 }
