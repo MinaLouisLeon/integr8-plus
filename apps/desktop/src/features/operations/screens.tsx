@@ -14,6 +14,12 @@ import {
   LocationScreen,
   OrderListScreen,
   OrderScreen,
+  BomListScreen,
+  BomScreen,
+  AssemblyOrderListScreen,
+  AssemblyOrderScreen,
+  MaterialPlanListScreen,
+  MaterialPlanScreen,
   QuoteListScreen,
   QuoteScreen,
   SalesOrderListScreen,
@@ -116,6 +122,12 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         supplier: (id) => `/purchasing/suppliers/${id}`,
         purchaseOrders: '/purchasing/orders',
         purchaseOrder: (id) => `/purchasing/orders/${id}`,
+        boms: '/manufacturing/boms',
+        bom: (itemId) => `/manufacturing/boms/${itemId}`,
+        assemblyOrders: '/manufacturing/orders',
+        assemblyOrder: (id) => `/manufacturing/orders/${id}`,
+        materialPlans: '/manufacturing/plans',
+        materialPlan: (id) => `/manufacturing/plans/${id}`,
         quotes: '/sales/quotes',
         quote: (id) => `/sales/quotes/${id}`,
         salesOrders: '/sales/orders',
@@ -405,6 +417,57 @@ export function PurchaseOrderRoute() {
   return (
     <OperationsScreens>
       <OrderScreen key={orderId} orderId={orderId} />
+    </OperationsScreens>
+  );
+}
+
+export function BomsRoute() {
+  return (
+    <OperationsScreens>
+      <BomListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function BomRoute() {
+  const { itemId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <BomScreen key={itemId} itemId={itemId} />
+    </OperationsScreens>
+  );
+}
+
+export function AssemblyOrdersRoute() {
+  return (
+    <OperationsScreens>
+      <AssemblyOrderListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function AssemblyOrderRoute() {
+  const { orderId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <AssemblyOrderScreen key={orderId} orderId={orderId} />
+    </OperationsScreens>
+  );
+}
+
+export function MaterialPlansRoute() {
+  return (
+    <OperationsScreens>
+      <MaterialPlanListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function MaterialPlanRoute() {
+  const { planId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <MaterialPlanScreen key={planId} planId={planId} />
     </OperationsScreens>
   );
 }

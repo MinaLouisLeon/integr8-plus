@@ -44,6 +44,10 @@ const PATHS: Readonly<Record<NavIcon, string>> = {
     'M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1zM19 10a3 3 0 0 1 0 4M8 15l1 5h3l-1-5',
   layout: 'M4 5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 10h16M10 10v10',
   package: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9',
+  layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5M3 17l9 5 9-5',
+  factory: 'M3 21V10l5 3V10l5 3V10l5 3V4h3v17zM7 17h2M11 17h2M15 17h2',
+  'calendar-check':
+    'M4 6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 10h16M8 3v4M16 3v4M9 15l2 2 4-4',
   truck:
     'M3 6h11v10H3zM14 9h4l3 3v4h-7M6.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
   'file-text': 'M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6',
