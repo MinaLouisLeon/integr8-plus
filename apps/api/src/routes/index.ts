@@ -10,6 +10,8 @@ import { signupRoutes } from './v1/signup.js';
 import { activityRoutes } from './v1/crm-activities.js';
 import { opportunityRoutes } from './v1/crm-opportunities.js';
 import { pipelineEditRoutes } from './v1/crm-pipelines.js';
+import { customerTimelineRoute } from './v1/customer-timeline.js';
+import { analyticsRoutes } from './v1/analytics.js';
 import { crmRoutes } from './v1/crm.js';
 import { stockRoutes } from './v1/inventory-stock.js';
 import { catalogueRoutes } from './v1/inventory.js';
@@ -66,6 +68,8 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...crmRoutes,
     ...opportunityRoutes,
     ...pipelineEditRoutes,
+    customerTimelineRoute,
+    ...analyticsRoutes,
     ...activityRoutes,
     ...catalogueRoutes,
     ...stockRoutes,

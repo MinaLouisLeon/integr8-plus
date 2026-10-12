@@ -544,6 +544,26 @@ export {
   type MrpSuggestionInput,
   type PlanningData,
 } from './repositories/manufacturing.js';
+export {
+  CustomerTimelineRepository,
+  TIMELINE_SOURCES,
+  type TimelineSource,
+  type TimelineKind,
+  type TimelineEntry,
+} from './repositories/customer-timeline.js';
+export {
+  AnalyticsRepository,
+  type QuoteFigures,
+  type PipelineFigures,
+  type StageValue,
+  type PartsUsage,
+  EXPORT_LIMIT,
+  type ExportFilter,
+  type ExportPage,
+  type LeadRow,
+  type OpportunityRow,
+  type MovementRow,
+} from './repositories/analytics.js';
 
 export {
   addressLine,

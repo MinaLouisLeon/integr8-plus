@@ -42,6 +42,8 @@ import { HrEmployeesRepository } from './repositories/hr-employees.js';
 import { HrExpensesRepository } from './repositories/hr-expenses.js';
 import { HrPayrollRepository } from './repositories/hr-payroll.js';
 import { ManufacturingRepository } from './repositories/manufacturing.js';
+import { CustomerTimelineRepository } from './repositories/customer-timeline.js';
+import { AnalyticsRepository } from './repositories/analytics.js';
 import { SalesOrdersRepository } from './repositories/sales-orders.js';
 import { PublicQuotesLookup, SalesQuotesRepository } from './repositories/sales-quotes.js';
 import { CustomersRepository } from './repositories/customers.js';
@@ -148,6 +150,8 @@ export interface TenantTransaction {
   readonly hrExpenses: HrExpensesRepository;
   readonly hrPayroll: HrPayrollRepository;
   readonly manufacturing: ManufacturingRepository;
+  readonly customerTimeline: CustomerTimelineRepository;
+  readonly analytics: AnalyticsRepository;
   readonly sites: SitesRepository;
   readonly jobTypes: JobTypesRepository;
   readonly workOrders: WorkOrdersRepository;
@@ -412,6 +416,8 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     hrExpenses: new HrExpensesRepository(scope),
     hrPayroll: new HrPayrollRepository(scope),
     manufacturing: new ManufacturingRepository(scope),
+    customerTimeline: new CustomerTimelineRepository(scope),
+    analytics: new AnalyticsRepository(scope),
     sites: new SitesRepository(scope),
     jobTypes: new JobTypesRepository(scope),
     workOrders: new WorkOrdersRepository(scope),
