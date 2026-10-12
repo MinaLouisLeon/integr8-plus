@@ -3467,6 +3467,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ledger/postings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Documents captured for the ledger: the unposted list, oldest first
+         * @description By default what waits (`status=pending`), with why. `counts` is what waits, in all and by reason, whatever the filters.
+         */
+        get: operations["listLedgerPostings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ledger/postings/post-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post many waiting documents as proposed
+         * @description The given `ids`, or everything waiting of the given `kind`s (all kinds when none), oldest first, up to 500 a call. Each posts as proposed or keeps waiting with its reason: documents in another currency and stock without a cost are left for one-by-one review. `remaining` says whether more wait.
+         */
+        post: operations["postLedgerPostings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ledger/postings/{postingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A captured document and the journal it would post */
+        get: operations["getLedgerPosting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ledger/postings/{postingId}/post": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post a waiting document
+         * @description As proposed, or on `entryDate` (an open month on or after the start; default the document’s date), or with `lines` written out in the company’s currency. A document in another currency needs `rate` (company currency per unit) and where it came from (`rateSource`); the proposal is converted line by line. A credit note or void posts after its invoice (409 `waits_for_invoice`); stock without a cost needs `lines` (409 `cost_unknown`). Honours `Idempotency-Key`.
+         */
+        post: operations["postLedgerPosting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ledger/postings/{postingId}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a waiting document aside: it will not post
+         * @description With a reason, kept with it. Setting an invoice aside sets aside the credit notes and void waiting on it.
+         */
+        post: operations["skipLedgerPosting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -33832,6 +33929,12 @@ export interface operations {
                             manage: boolean;
                             unlock: boolean;
                         };
+                        unposted: {
+                            total: number;
+                            byReason: {
+                                [key: string]: number;
+                            };
+                        };
                     };
                 };
             };
@@ -33952,6 +34055,12 @@ export interface operations {
                             post: boolean;
                             manage: boolean;
                             unlock: boolean;
+                        };
+                        unposted: {
+                            total: number;
+                            byReason: {
+                                [key: string]: number;
+                            };
                         };
                     };
                 };
@@ -35799,6 +35908,719 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listLedgerPostings: {
+        parameters: {
+            query?: {
+                status?: "pending" | "posted" | "skipped";
+                kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock") | ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock")[];
+                reason?: ("queued" | "auto_off" | "before_set_up" | "foreign_currency" | "cost_unknown" | "period_locked" | "waits_for_invoice" | "failed") | ("queued" | "auto_off" | "before_set_up" | "foreign_currency" | "cost_unknown" | "period_locked" | "waits_for_invoice" | "failed")[];
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            source: {
+                                /** @enum {string} */
+                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                                /** Format: uuid */
+                                id: string;
+                            };
+                            label: string | null;
+                            /** Format: date */
+                            documentDate: string;
+                            currency: string;
+                            amount: string;
+                            /** @enum {string} */
+                            status: "pending" | "posted" | "skipped";
+                            /** @enum {string|null} */
+                            reason: "queued" | "auto_off" | "before_set_up" | "foreign_currency" | "cost_unknown" | "period_locked" | "waits_for_invoice" | "failed" | null;
+                            detail: string | null;
+                            journal: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string | null;
+                            } | null;
+                            resolvedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            resolvedAt: string | null;
+                            skipReason: string | null;
+                            /** Format: date-time */
+                            capturedAt: string;
+                        }[];
+                        nextCursor: string | null;
+                        counts: {
+                            total: number;
+                            byReason: {
+                                [key: string]: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    postLedgerPostings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    ids?: string[];
+                    kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock")[];
+                };
+            };
+        };
+        responses: {
+            /** @description What happened. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        posted: number;
+                        skipped: number;
+                        waiting: {
+                            [key: string]: number;
+                        };
+                        counts: {
+                            total: number;
+                            byReason: {
+                                [key: string]: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getLedgerPosting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                postingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The document. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        source: {
+                            /** @enum {string} */
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            /** Format: uuid */
+                            id: string;
+                        };
+                        label: string | null;
+                        /** Format: date */
+                        documentDate: string;
+                        currency: string;
+                        amount: string;
+                        /** @enum {string} */
+                        status: "pending" | "posted" | "skipped";
+                        /** @enum {string|null} */
+                        reason: "queued" | "auto_off" | "before_set_up" | "foreign_currency" | "cost_unknown" | "period_locked" | "waits_for_invoice" | "failed" | null;
+                        detail: string | null;
+                        journal: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string | null;
+                        } | null;
+                        resolvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        resolvedAt: string | null;
+                        skipReason: string | null;
+                        /** Format: date-time */
+                        capturedAt: string;
+                        lines: {
+                            account: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "asset" | "liability" | "equity" | "income" | "expense";
+                            };
+                            debit: string;
+                            credit: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                        }[];
+                        totals: {
+                            debit: string;
+                            credit: string;
+                            balanced: boolean;
+                        };
+                        companyCurrency: string;
+                        invoice: {
+                            /** Format: uuid */
+                            id: string;
+                            label: string | null;
+                            /** @enum {string} */
+                            status: "pending" | "posted" | "skipped";
+                        } | null;
+                        can: {
+                            post: boolean;
+                            skip: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not captured. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    postLedgerPosting: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                postingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    entryDate?: string;
+                    lines?: {
+                        /** Format: uuid */
+                        accountId: string;
+                        debit?: string;
+                        credit?: string;
+                        memo?: string | null;
+                        /** Format: uuid */
+                        customerId?: string | null;
+                    }[];
+                    rate?: string;
+                    rateSource?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The journal it posted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string | null;
+                        /** @enum {string} */
+                        status: "draft" | "posted";
+                        /** @enum {string} */
+                        kind: "manual" | "opening" | "automatic" | "reversal" | "closing";
+                        /** Format: date */
+                        entryDate: string;
+                        memo: string | null;
+                        total: string;
+                        source: {
+                            /** @enum {string} */
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            /** Format: uuid */
+                            id: string;
+                        } | null;
+                        /** Format: uuid */
+                        reversalOf: string | null;
+                        /** Format: uuid */
+                        reversedBy: string | null;
+                        draftedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        postedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        postedAt: string | null;
+                        selfApproved: boolean;
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            lineNo: number;
+                            account: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "asset" | "liability" | "equity" | "income" | "expense";
+                            };
+                            debit: string;
+                            credit: string;
+                            memo: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            foreignAmount: string | null;
+                        }[];
+                        foreign: {
+                            currency: string;
+                            rate: string;
+                            source: string;
+                        } | null;
+                        totals: {
+                            debit: string;
+                            credit: string;
+                            balanced: boolean;
+                        };
+                        can: {
+                            edit: boolean;
+                            post: boolean;
+                            discard: boolean;
+                            reverse: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not captured. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No longer waiting, waiting for its invoice, without a cost, or in a locked month. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Before the start, unbalanced, a missing rate, or lines not usable. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    skipLedgerPosting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                postingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The document, set aside. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        source: {
+                            /** @enum {string} */
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            /** Format: uuid */
+                            id: string;
+                        };
+                        label: string | null;
+                        /** Format: date */
+                        documentDate: string;
+                        currency: string;
+                        amount: string;
+                        /** @enum {string} */
+                        status: "pending" | "posted" | "skipped";
+                        /** @enum {string|null} */
+                        reason: "queued" | "auto_off" | "before_set_up" | "foreign_currency" | "cost_unknown" | "period_locked" | "waits_for_invoice" | "failed" | null;
+                        detail: string | null;
+                        journal: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string | null;
+                        } | null;
+                        resolvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        resolvedAt: string | null;
+                        skipReason: string | null;
+                        /** Format: date-time */
+                        capturedAt: string;
+                        lines: {
+                            account: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "asset" | "liability" | "equity" | "income" | "expense";
+                            };
+                            debit: string;
+                            credit: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                        }[];
+                        totals: {
+                            debit: string;
+                            credit: string;
+                            balanced: boolean;
+                        };
+                        companyCurrency: string;
+                        invoice: {
+                            /** Format: uuid */
+                            id: string;
+                            label: string | null;
+                            /** @enum {string} */
+                            status: "pending" | "posted" | "skipped";
+                        } | null;
+                        can: {
+                            post: boolean;
+                            skip: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `ledger` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not captured. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No longer waiting. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed validation. */
             422: {

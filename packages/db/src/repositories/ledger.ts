@@ -14,7 +14,10 @@ import type {
   ErpJournalLinesTable,
   ErpJournalsTable,
   ErpLedgerAccountsTable,
+  ErpLedgerPostingsTable,
   ErpLedgerSettingsTable,
+  LedgerPostingReason,
+  LedgerPostingStatus,
 } from '../schema.js';
 import { toDayString, trimDecimal } from './crm-leads.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
@@ -124,6 +127,36 @@ export interface PeriodEvent {
   reason: string | null;
   actorId: UserId;
   occurredAt: Date;
+}
+
+/** A document captured for the ledger: posted, set aside, or waiting in the unposted list. */
+export interface LedgerPosting {
+  id: string;
+  sourceKind: JournalSourceKind;
+  sourceId: string;
+  /** `YYYY-MM-DD`. */
+  documentDate: string;
+  currency: string;
+  status: LedgerPostingStatus;
+  reason: LedgerPostingReason | null;
+  detail: string | null;
+  journalId: string | null;
+  resolvedBy: UserId | null;
+  resolvedAt: Date | null;
+  skipReason: string | null;
+  capturedAt: Date;
+  /** `INV-000012`, `CN-000003`, `RC-000004`; null for stock. */
+  label: string | null;
+  /** The proposal's debits, in the document's currency. */
+  amount: string;
+}
+
+/** One line of the journal a document would post, in the document's currency. */
+export interface ProposedLine {
+  accountId: string;
+  debit: string;
+  credit: string;
+  customerId: string | null;
 }
 
 export interface JournalQuery {
@@ -874,6 +907,247 @@ export class LedgerRepository extends TenantScopedRepository {
       order by customer_id
     `.execute(this.db);
     return rows.map((row) => ({ customerId: row.customer_id, amount: trimDecimal(row.amount) }));
+  }
+
+  // -------------------------------------------------------------------------
+  // Documents captured for posting (0034)
+  // -------------------------------------------------------------------------
+
+  private postingQuery() {
+    return this.db
+      .selectFrom('erp_ledger_postings as p')
+      .selectAll('p')
+      .select([
+        sql<string | null>`erp_ledger_source_label(p.tenant_id, p.source_kind, p.source_id)`.as(
+          'label',
+        ),
+        sql<string>`coalesce((select sum(x.debit) from erp_ledger_proposal(p.tenant_id, p.source_kind, p.source_id) x), 0)::text`.as(
+          'amount',
+        ),
+      ])
+      .where('p.tenant_id', '=', this.tenantId);
+  }
+
+  private toPosting(
+    row: Selectable<ErpLedgerPostingsTable> & { label: string | null; amount: string },
+  ): LedgerPosting {
+    return {
+      id: row.id,
+      sourceKind: row.source_kind,
+      sourceId: row.source_id,
+      documentDate: toDayString(row.document_date) ?? '',
+      currency: row.currency,
+      status: row.status,
+      reason: row.reason,
+      detail: row.detail,
+      journalId: row.journal_id,
+      resolvedBy: row.resolved_by === null ? null : toUserId(row.resolved_by),
+      resolvedAt: row.resolved_at,
+      skipReason: row.skip_reason,
+      capturedAt: row.captured_at,
+      label: row.label,
+      amount: trimDecimal(row.amount),
+    };
+  }
+
+  /** Captured documents, oldest first: the unposted list reads in the order things happened. */
+  async postings(query: {
+    status?: LedgerPostingStatus | undefined;
+    kinds?: readonly JournalSourceKind[] | undefined;
+    reasons?: readonly LedgerPostingReason[] | undefined;
+    after?: { date: string; id: string } | undefined;
+    limit: number;
+  }): Promise<{ items: LedgerPosting[]; next?: { date: string; id: string } }> {
+    let select = this.postingQuery();
+    if (query.status !== undefined) {
+      select = select.where('p.status', '=', query.status);
+    }
+    if (query.kinds !== undefined && query.kinds.length > 0) {
+      select = select.where('p.source_kind', 'in', [...query.kinds]);
+    }
+    if (query.reasons !== undefined && query.reasons.length > 0) {
+      select = select.where('p.reason', 'in', [...query.reasons]);
+    }
+    if (query.after !== undefined) {
+      const { date, id } = query.after;
+      select = select.where(sql<boolean>`(p.document_date, p.id) > (${date}::date, ${id}::uuid)`);
+    }
+    const rows = await select
+      .orderBy('p.document_date')
+      .orderBy('p.id')
+      .limit(query.limit + 1)
+      .execute();
+    const items = rows.slice(0, query.limit).map((row) => this.toPosting(row));
+    const last = items.at(-1);
+    return {
+      items,
+      ...(rows.length > query.limit && last !== undefined
+        ? { next: { date: last.documentDate, id: last.id } }
+        : {}),
+    };
+  }
+
+  async posting(id: string): Promise<LedgerPosting | undefined> {
+    const row = await this.postingQuery().where('p.id', '=', id).executeTakeFirst();
+    return row === undefined ? undefined : this.toPosting(row);
+  }
+
+  async postingBySource(
+    kind: JournalSourceKind,
+    sourceId: string,
+  ): Promise<LedgerPosting | undefined> {
+    const row = await this.postingQuery()
+      .where('p.source_kind', '=', kind)
+      .where('p.source_id', '=', sourceId)
+      .executeTakeFirst();
+    return row === undefined ? undefined : this.toPosting(row);
+  }
+
+  /** Locks a captured document for the rest of the transaction. */
+  async lockPosting(id: string): Promise<LedgerPosting | undefined> {
+    await this.db
+      .selectFrom('erp_ledger_postings')
+      .select('id')
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', id)
+      .forUpdate()
+      .executeTakeFirst();
+    return this.posting(id);
+  }
+
+  /** How many documents wait, by why. */
+  async pendingCounts(): Promise<Partial<Record<LedgerPostingReason, number>>> {
+    const rows = await this.db
+      .selectFrom('erp_ledger_postings')
+      .select(['reason', sql<number>`count(*)::int`.as('n')])
+      .where('tenant_id', '=', this.tenantId)
+      .where('status', '=', 'pending')
+      .groupBy('reason')
+      .execute();
+    const counts: Partial<Record<LedgerPostingReason, number>> = {};
+    for (const row of rows) {
+      if (row.reason !== null) {
+        counts[row.reason] = row.n;
+      }
+    }
+    return counts;
+  }
+
+  /** The journal a document would post, in its own currency. */
+  async proposal(kind: JournalSourceKind, sourceId: string): Promise<ProposedLine[]> {
+    const { rows } = await sql<{
+      account_id: string;
+      debit: string;
+      credit: string;
+      customer_id: string | null;
+    }>`
+      select x.account_id, x.debit::text as debit, x.credit::text as credit, x.customer_id
+        from erp_ledger_proposal(${this.tenantId}::uuid, ${kind}, ${sourceId}::uuid)
+             with ordinality as x(account_id, debit, credit, customer_id, n)
+       order by x.n
+    `.execute(this.db);
+    return rows.map((row) => ({
+      accountId: row.account_id,
+      debit: trimDecimal(row.debit),
+      credit: trimDecimal(row.credit),
+      customerId: row.customer_id,
+    }));
+  }
+
+  /**
+   * Posts a waiting document as its proposal says, or records why it still
+   * waits. `force` ignores the company's switch, as the accountant's "post"
+   * does. Returns `posted`, `skipped`, or the reason it waits.
+   */
+  async tryPost(postingId: string, by: UserId | string, force: boolean): Promise<string> {
+    const { rows } = await sql<{ outcome: string }>`
+      select erp_ledger_try_post(${postingId}::uuid, ${toUserId(by)}::uuid, ${force}) as outcome
+    `.execute(this.db);
+    return rows[0]?.outcome ?? 'missing';
+  }
+
+  /** Queues documents recorded on or after the start for review; returns how many joined. */
+  async backfill(): Promise<number> {
+    const { rows } = await sql<{ added: number }>`
+      select erp_ledger_backfill(${this.tenantId}::uuid) as added
+    `.execute(this.db);
+    return rows[0]?.added ?? 0;
+  }
+
+  /** Marks a waiting document posted by a journal the caller wrote. */
+  async markPosted(postingId: string, journalId: string, by: UserId | string): Promise<void> {
+    await this.db
+      .updateTable('erp_ledger_postings')
+      .set({
+        status: 'posted',
+        journal_id: journalId,
+        reason: null,
+        detail: null,
+        resolved_by: toUserId(by),
+        resolved_at: sql<Date>`now()`,
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', postingId)
+      .where('status', '=', 'pending')
+      .execute();
+  }
+
+  /** Sets a waiting document aside: it will never post. */
+  async skip(postingId: string, by: UserId | string, reason: string): Promise<boolean> {
+    const result = await this.db
+      .updateTable('erp_ledger_postings')
+      .set({
+        status: 'skipped',
+        reason: null,
+        detail: null,
+        skip_reason: reason,
+        resolved_by: toUserId(by),
+        resolved_at: sql<Date>`now()`,
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', postingId)
+      .where('status', '=', 'pending')
+      .executeTakeFirst();
+    return result.numUpdatedRows > 0n;
+  }
+
+  /** The invoice a credit note or a void follows; undefined for anything else. */
+  async parentInvoiceOf(posting: LedgerPosting): Promise<LedgerPosting | undefined> {
+    const { rows } = await sql<{ parent: string | null }>`
+      select erp_ledger_parent_invoice(${this.tenantId}::uuid, ${posting.sourceKind}, ${posting.sourceId}::uuid) as parent
+    `.execute(this.db);
+    const parent = rows[0]?.parent ?? null;
+    return parent === null ? undefined : this.postingBySource('invoice', parent);
+  }
+
+  /** Where these documents stand, without their amounts. */
+  async postingStates(
+    ids: readonly string[],
+  ): Promise<Map<string, { status: LedgerPostingStatus; reason: LedgerPostingReason | null }>> {
+    if (ids.length === 0) {
+      return new Map();
+    }
+    const rows = await this.db
+      .selectFrom('erp_ledger_postings')
+      .select(['id', 'status', 'reason'])
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', 'in', [...ids])
+      .execute();
+    return new Map(rows.map((row) => [row.id, { status: row.status, reason: row.reason }]));
+  }
+
+  /** Waiting credit notes and voids that follow this invoice. */
+  async pendingFollowing(invoiceId: string): Promise<LedgerPosting[]> {
+    const rows = await this.postingQuery()
+      .where('p.status', '=', 'pending')
+      .where('p.source_kind', 'in', ['credit_note', 'invoice_void'])
+      .where(
+        sql<boolean>`erp_ledger_parent_invoice(p.tenant_id, p.source_kind, p.source_id) = ${invoiceId}::uuid`,
+      )
+      .orderBy('p.document_date')
+      .orderBy('p.id')
+      .execute();
+    return rows.map((row) => this.toPosting(row));
   }
 
   /** Customers named on lines, for showing receivables lines. */

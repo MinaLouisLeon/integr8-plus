@@ -26,7 +26,7 @@ import type {
   LedgerSettings,
   TenantTransaction,
 } from '@integr8/db';
-import { withTenant } from '@integr8/db';
+import { LEDGER_POSTING_REASONS, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
@@ -76,7 +76,7 @@ const settingsBodySchema = z.object({
   version: z.number().int(),
 });
 
-const overviewSchema = z.object({
+export const overviewSchema = z.object({
   setUp: z.boolean(),
   settings: settingsBodySchema.nullable(),
   /** The company's currency: the ledger's only one. */
@@ -89,6 +89,11 @@ const overviewSchema = z.object({
     .object({ id: z.uuid(), status: z.enum(['draft', 'posted']), reference: z.string().nullable() })
     .nullable(),
   can: z.object({ post: z.boolean(), manage: z.boolean(), unlock: z.boolean() }),
+  /** Documents waiting in the unposted list, in all and by why. */
+  unposted: z.object({
+    total: z.number().int(),
+    byReason: z.partialRecord(z.enum(LEDGER_POSTING_REASONS), z.number().int()),
+  }),
 });
 
 export const journalSummarySchema = z.object({
@@ -305,7 +310,7 @@ export async function journalDetail(
   };
 }
 
-const lineInputSchema = z
+export const lineInputSchema = z
   .object({
     accountId: z.uuid(),
     debit: ledgerAmountSchema.optional(),
@@ -322,7 +327,7 @@ const linesSchema = z.array(lineInputSchema).min(2).max(500);
 type LineInput = z.infer<typeof lineInputSchema>;
 
 /** Checks lines against the chart: every account exists and is in use, every customer exists. */
-async function checkLines(
+export async function checkLines(
   tx: TenantTransaction,
   lines: readonly LineInput[],
 ): Promise<JournalLineInput[]> {
@@ -377,7 +382,7 @@ async function checkLines(
 }
 
 /** The date checks shared by drafting, posting and reversing. */
-async function checkDate(
+export async function checkDate(
   tx: TenantTransaction,
   settings: LedgerSettings,
   date: string,
@@ -438,7 +443,7 @@ function decodeJournalCursor(
 
 const journalParams = z.object({ journalId: z.uuid() });
 
-async function auditJournal(
+export async function auditJournal(
   tx: TenantTransaction,
   context: RequestContext,
   action: string,
@@ -481,12 +486,13 @@ async function overviewBody(
   tx: TenantTransaction,
   principal: Principal,
 ): Promise<z.infer<typeof overviewSchema>> {
-  const [settings, company, today, fixed, opening] = await Promise.all([
+  const [settings, company, today, fixed, opening, waiting] = await Promise.all([
     tx.ledger.settings(),
     tx.settings.get(),
     companyToday(tx),
     tx.ledger.anyPosted(),
     tx.ledger.openingJournal(),
+    tx.ledger.pendingCounts(),
   ]);
   return {
     setUp: settings !== undefined,
@@ -507,6 +513,10 @@ async function overviewBody(
       post: holds(principal, 'ledger.post'),
       manage: holds(principal, 'ledger.manage'),
       unlock: holds(principal, 'ledger.unlock'),
+    },
+    unposted: {
+      total: Object.values(waiting).reduce((sum, count) => sum + count, 0),
+      byReason: waiting,
     },
   };
 }
@@ -553,10 +563,13 @@ export const setUpLedgerRoute = defineRoute({
       if (result === 'already_set_up') {
         throw conflict('already_set_up', 'The ledger is already set up.');
       }
+      // Documents already recorded since the start wait for review.
+      const queued = await tx.ledger.backfill();
       await audit(tx, context, 'ledger.set_up', 'ledger', principal.tenantId, {
         startDate: body.startDate,
         fiscalStartMonth: body.fiscalStartMonth,
         language: body.language,
+        queued,
       });
       return overviewBody(tx, principal);
     });
@@ -623,8 +636,11 @@ export const saveLedgerSettingsRoute = defineRoute({
       if (result === 'version_conflict') {
         throw versionConflict();
       }
+      // A new start: what was recorded since joins the list, what is now before it leaves.
+      const queued = result.startDate === current.startDate ? 0 : await tx.ledger.backfill();
       await audit(tx, context, 'ledger.settings_updated', 'ledger', principal.tenantId, {
         changed: Object.keys(body).filter((key) => key !== 'expectedVersion'),
+        ...(queued > 0 ? { queued } : {}),
       });
       return result;
     });

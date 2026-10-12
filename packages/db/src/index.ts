@@ -492,6 +492,8 @@ export {
   type JournalQuery,
   type PeriodState,
   type PeriodEvent,
+  type LedgerPosting,
+  type ProposedLine,
 } from './repositories/ledger.js';
 
 export {
@@ -616,6 +618,10 @@ export {
   type SubmitLocation,
   type SubmissionStatus,
   type CarriedOver,
+  LEDGER_POSTING_STATUSES,
+  type LedgerPostingStatus,
+  LEDGER_POSTING_REASONS,
+  type LedgerPostingReason,
 } from './schema.js';
 
 export {

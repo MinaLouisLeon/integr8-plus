@@ -287,6 +287,49 @@ export function convertAmount(amount: string, rate: string): string {
   return fromUnits(product);
 }
 
+/**
+ * A balanced journal in another currency, converted line by line at one rate.
+ * Rounding can leave the sides apart by a few ten-thousandths; the difference
+ * goes on the largest line of the side that needs it, so the result balances.
+ */
+export function convertLines<T extends { debit: string; credit: string }>(
+  lines: readonly T[],
+  rate: string,
+): (T & { foreignAmount: string })[] {
+  const converted = lines.map((line) => ({
+    ...line,
+    foreignAmount: toUnits(line.debit) > 0n ? line.debit : line.credit,
+    debit: toUnits(line.debit) > 0n ? convertAmount(line.debit, rate) : '0',
+    credit: toUnits(line.credit) > 0n ? convertAmount(line.credit, rate) : '0',
+  }));
+  const totals = converted.reduce(
+    (sum, line) => ({
+      debit: sum.debit + toUnits(line.debit),
+      credit: sum.credit + toUnits(line.credit),
+    }),
+    { debit: 0n, credit: 0n },
+  );
+  const gap = totals.debit - totals.credit;
+  if (gap !== 0n) {
+    // Short of credits: raise the largest credit. Short of debits: the largest debit.
+    const side = gap > 0n ? 'credit' : 'debit';
+    let largest = -1;
+    converted.forEach((line, index) => {
+      if (
+        toUnits(line[side]) > 0n &&
+        (largest < 0 || toUnits(line[side]) > toUnits(converted[largest]?.[side] ?? '0'))
+      ) {
+        largest = index;
+      }
+    });
+    const target = converted[largest];
+    if (target !== undefined) {
+      target[side] = fromUnits(toUnits(target[side]) + (gap > 0n ? gap : -gap));
+    }
+  }
+  return converted;
+}
+
 // ---------------------------------------------------------------------------
 // Months and fiscal years
 // ---------------------------------------------------------------------------

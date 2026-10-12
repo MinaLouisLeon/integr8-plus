@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   convertAmount,
+  convertLines,
   DEFAULT_CHART,
   exchangeRateSchema,
   fiscalYearOf,
@@ -92,6 +93,39 @@ describe('amounts', () => {
     expect(convertAmount('100', '48.75')).toBe('4875');
     expect(convertAmount('0.01', '48.12345')).toBe('0.4812');
     expect(convertAmount('0.03', '0.005')).toBe('0.0002');
+  });
+
+  it('converts a journal line by line and keeps it balanced', () => {
+    // Thirds at a rate that rounds each line its own way.
+    const lines = convertLines(
+      [
+        { debit: '100', credit: '0' },
+        { debit: '0', credit: '33.3333' },
+        { debit: '0', credit: '33.3333' },
+        { debit: '0', credit: '33.3334' },
+      ],
+      '1.23456',
+    );
+    expect(lines.map((line) => [line.debit, line.credit, line.foreignAmount])).toEqual([
+      // 123.456, raised by the ten-thousandth the credits rounded up.
+      ['123.4561', '0', '100'],
+      ['0', '41.152', '33.3333'],
+      ['0', '41.152', '33.3333'],
+      ['0', '41.1521', '33.3334'],
+    ]);
+    const twoWay = convertLines(
+      [
+        { debit: '0.0001', credit: '0' },
+        { debit: '0.0001', credit: '0' },
+        { debit: '0', credit: '0.0002' },
+      ],
+      '0.5',
+    );
+    expect(twoWay.map((line) => [line.debit, line.credit])).toEqual([
+      ['0.0001', '0'],
+      ['0.0001', '0'],
+      ['0', '0.0002'],
+    ]);
   });
 });
 

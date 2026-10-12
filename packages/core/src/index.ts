@@ -297,6 +297,7 @@ export {
   sumAmounts,
   journalTotals,
   convertAmount,
+  convertLines,
   monthOf,
   nextMonth,
   monthEnd,

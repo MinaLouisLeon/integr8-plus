@@ -1701,6 +1701,40 @@ export interface ErpJournalLinesTable {
   foreign_amount: string | null;
 }
 
+export const LEDGER_POSTING_STATUSES = ['pending', 'posted', 'skipped'] as const;
+export type LedgerPostingStatus = (typeof LEDGER_POSTING_STATUSES)[number];
+/** Why a captured document waits in the unposted list. */
+export const LEDGER_POSTING_REASONS = [
+  'queued',
+  'auto_off',
+  'before_set_up',
+  'foreign_currency',
+  'cost_unknown',
+  'period_locked',
+  'waits_for_invoice',
+  'failed',
+] as const;
+export type LedgerPostingReason = (typeof LEDGER_POSTING_REASONS)[number];
+
+export interface ErpLedgerPostingsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  source_kind: JournalSourceKind;
+  source_id: string;
+  /** `YYYY-MM-DD`. */
+  document_date: string;
+  currency: string;
+  status: Generated<LedgerPostingStatus>;
+  reason: LedgerPostingReason | null;
+  detail: string | null;
+  journal_id: string | null;
+  resolved_by: string | null;
+  resolved_at: Date | null;
+  skip_reason: string | null;
+  captured_at: CreatedAt;
+  updated_at: Generated<Date>;
+}
+
 export interface ErpLedgerYearClosesTable {
   id: Generated<string>;
   tenant_id: string;
@@ -2254,6 +2288,7 @@ export interface Database {
   erp_journals: ErpJournalsTable;
   erp_journal_lines: ErpJournalLinesTable;
   erp_ledger_year_closes: ErpLedgerYearClosesTable;
+  erp_ledger_postings: ErpLedgerPostingsTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -2398,6 +2433,11 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'assign_asset_reference',
   // Numbers journals when posted from a counter the runtime role cannot write; see 0033.
   'assign_journal_reference',
+  // Capture documents into the ledger's queue, which the runtime role cannot
+  // insert into, and post them; see 0034.
+  'erp_ledger_capture',
+  'erp_ledger_try_post',
+  'erp_ledger_backfill',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -2497,6 +2537,7 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_journals: true,
   erp_journal_lines: true,
   erp_ledger_year_closes: true,
+  erp_ledger_postings: true,
   customer_contacts: true,
   sites: true,
   job_types: true,
