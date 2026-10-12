@@ -206,13 +206,15 @@ describe('the dashboard map', () => {
     expect(group('web', { role: 'owner' }, 'crm', { inventory: true })).toBeUndefined();
 
     // Parts used to whoever reads stock; the van queue to those who move it;
-    // reorder, after purchase orders, to those who buy.
+    // the serial lookup (ninth round) to whoever reads stock; reorder, after
+    // purchase orders, to those who buy.
     expect(group('desktop', { role: 'owner' }, 'inventory', everything)).toEqual([
       'inventory',
       'items',
       'stockLocations',
       'partsUsage',
       'vanRequests',
+      'serialLookup',
       'suppliers',
       'purchaseOrders',
       'reorder',

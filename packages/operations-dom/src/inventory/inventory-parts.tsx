@@ -11,6 +11,16 @@ import {
   useOperations,
 } from '../api.js';
 import { buttonClass, Dialog, Failure, Field, inputClass, Loading } from '../ui.js';
+import {
+  arrivingCheck,
+  arrivingLots,
+  type ArrivingLots,
+  type LeavingLots,
+  leavingBody,
+  LotsArriving,
+  LotsLeaving,
+  NO_ARRIVING,
+} from './lots.js';
 
 /**
  * Pieces the inventory screens share (CRM/ERP plan, phase E1): quantities and
@@ -273,7 +283,7 @@ export function MoveStockDialog({
   canSeeCosts,
   onClose,
 }: {
-  item?: Pick<ItemRow, 'id' | 'name' | 'sku' | 'unit'>;
+  item?: Pick<ItemRow, 'id' | 'name' | 'sku' | 'unit' | 'tracking'>;
   location?: Pick<StockLocation, 'id' | 'name'>;
   canSeeCosts: boolean;
   onClose: () => void;
@@ -291,6 +301,17 @@ export function MoveStockDialog({
   const [unitCost, setUnitCost] = useState('');
   const [direction, setDirection] = useState<'in' | 'out'>('in');
   const [reason, setReason] = useState('');
+  // Serial numbers and batches (ADR-0013): named as they arrive, chosen as they leave.
+  const [arriving, setArriving] = useState<ArrivingLots>(NO_ARRIVING);
+  const [leaving, setLeaving] = useState<LeavingLots | undefined>(undefined);
+  const tracking = chosenItem?.tracking ?? 'none';
+  const arrives = type === 'receipt' || (type === 'adjustment' && direction === 'in');
+  const lots =
+    tracking === 'none'
+      ? {}
+      : arrives
+        ? { lots: arrivingLots(tracking, quantity, arriving) }
+        : leavingBody(leaving);
 
   const body =
     chosenItem === null
@@ -303,6 +324,7 @@ export function MoveStockDialog({
             toLocationId,
             quantity: quantity.trim(),
             ...(reason.trim() === '' ? {} : { reason: reason.trim() }),
+            ...lots,
           }
         : type === 'adjustment'
           ? {
@@ -312,6 +334,7 @@ export function MoveStockDialog({
               direction,
               quantity: quantity.trim(),
               reason: reason.trim(),
+              ...lots,
             }
           : type === 'issue'
             ? {
@@ -320,6 +343,7 @@ export function MoveStockDialog({
                 locationId,
                 quantity: quantity.trim(),
                 reason: reason.trim(),
+                ...lots,
               }
             : {
                 type,
@@ -328,6 +352,7 @@ export function MoveStockDialog({
                 quantity: quantity.trim(),
                 ...(unitCost.trim() === '' ? {} : { unitCost: unitCost.trim() }),
                 ...(reason.trim() === '' ? {} : { reason: reason.trim() }),
+                ...lots,
               };
   const bodyText = JSON.stringify(body ?? null);
   const idempotencyKey = useMemo(
@@ -341,7 +366,9 @@ export function MoveStockDialog({
     quantity.trim() !== '' &&
     locationId !== '' &&
     (type !== 'transfer' || (toLocationId !== '' && toLocationId !== locationId)) &&
-    (!needsReason || reason.trim() !== '');
+    (!needsReason || reason.trim() !== '') &&
+    (tracking === 'none' ||
+      (arrives ? arrivingCheck(tracking, quantity, arriving).complete : leaving?.ready === true));
 
   const post = useMutation({
     mutationFn: async () =>
@@ -490,6 +517,33 @@ export function MoveStockDialog({
             />
           )}
         </Field>
+        {chosenItem === null || tracking === 'none' ? null : arrives ? (
+          <div className="sm:col-span-2">
+            <LotsArriving
+              tracking={tracking}
+              quantity={quantity}
+              unit={chosenItem.unit}
+              value={arriving}
+              onChange={(next) => {
+                post.reset();
+                setArriving(next);
+              }}
+            />
+          </div>
+        ) : (
+          <div className="sm:col-span-2">
+            <LotsLeaving
+              key={`${chosenItem.id}:${locationId}:${type}`}
+              itemId={chosenItem.id}
+              tracking={tracking}
+              locationId={locationId}
+              quantity={quantity}
+              unit={chosenItem.unit}
+              formReason={reason}
+              onChange={setLeaving}
+            />
+          </div>
+        )}
         {type === 'receipt' && canSeeCosts ? (
           <Field label={t('inventory.move.unitCost')} hint={t('inventory.move.unitCostHint')}>
             {(id, describedBy) => (

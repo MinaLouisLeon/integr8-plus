@@ -52,7 +52,8 @@ export type NavIcon =
   | 'banknote'
   | 'clipboard-check'
   | 'calculator'
-  | 'scale';
+  | 'scale'
+  | 'barcode';
 
 export type NavGroup =
   | 'overview'
@@ -116,6 +117,7 @@ export type NavPath =
   | 'stockLocations'
   | 'partsUsage'
   | 'vanRequests'
+  | 'serialLookup'
   | 'suppliers'
   | 'purchaseOrders'
   | 'reorder'
@@ -383,6 +385,15 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'vanRequests',
     icon: 'truck',
     permission: 'inventory.move',
+    feature: 'inventory',
+  },
+  // Serial numbers and batches (ninth round; ADR-0013): find one, follow its path.
+  {
+    key: 'serialLookup',
+    group: 'inventory',
+    path: 'serialLookup',
+    icon: 'barcode',
+    permission: 'inventory.read',
     feature: 'inventory',
   },
   // Purchasing (CRM/ERP plan, phase E2): the company's `purchasing` module.

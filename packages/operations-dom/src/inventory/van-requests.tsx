@@ -4,7 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { keys, useOperations, type VanRequest, type VanRequestStatus } from '../api.js';
 import { fieldDetail } from '../field-errors.js';
-import { isQuantity, QUANTITY_PATTERN } from '../purchasing/purchasing-parts.js';
+import {
+  isPositiveQuantity,
+  isQuantity,
+  QUANTITY_PATTERN,
+} from '../purchasing/purchasing-parts.js';
 import {
   BackLink,
   buttonClass,
@@ -17,6 +21,7 @@ import {
   usePermissions,
 } from '../ui.js';
 import { formatQuantity, useLocations, useUnitName } from './inventory-parts.js';
+import { type LeavingLots, leavingReady, LotsLeaving } from './lots.js';
 
 /**
  * The store's queue of van refills (eighth round; ADR-0012): what engineers
@@ -282,10 +287,19 @@ function PickDialog({
     const typed = quantities[itemId] ?? '';
     return isQuantity(typed) && compareDecimals(typed.trim(), requested) > 0;
   };
+  // Serial numbers and batches go to the van as chosen (ADR-0013); an expired
+  // batch is never sent.
+  const [lots, setLots] = useState<Record<string, LeavingLots | undefined>>({});
+  const picking = (line: VanRequest['lines'][number]) =>
+    line.item.tracking !== 'none' && isPositiveQuantity(quantities[line.item.id] ?? '');
   const ready =
     fromLocationId !== '' &&
     request.lines.every(
       (line) => isQuantity(quantities[line.item.id] ?? '') && !over(line.item.id, line.requested),
+    ) &&
+    leavingReady(
+      lots,
+      request.lines.filter(picking).map((line) => line.item.id),
     );
 
   const pick = useMutation({
@@ -296,10 +310,14 @@ function PickDialog({
           body: {
             expectedVersion: request.version,
             fromLocationId,
-            lines: request.lines.map((line) => ({
-              itemId: line.item.id,
-              quantity: (quantities[line.item.id] ?? '0').trim(),
-            })),
+            lines: request.lines.map((line) => {
+              const named = lots[line.item.id]?.lots ?? [];
+              return {
+                itemId: line.item.id,
+                quantity: (quantities[line.item.id] ?? '0').trim(),
+                ...(picking(line) && named.length > 0 ? { lots: named } : {}),
+              };
+            }),
           },
         })
       ).data!,
@@ -409,6 +427,23 @@ function PickDialog({
                     />
                   )}
                 </Field>
+                {picking(line) ? (
+                  <div className="mt-2">
+                    <LotsLeaving
+                      key={fromLocationId}
+                      itemId={line.item.id}
+                      tracking={line.item.tracking}
+                      locationId={fromLocationId}
+                      quantity={quantities[line.item.id]!}
+                      unit={line.item.unit}
+                      expired="never"
+                      legend={t('inventory.lots.lotsOf', { item: line.item.name })}
+                      onChange={(next) =>
+                        setLots((current) => ({ ...current, [line.item.id]: next }))
+                      }
+                    />
+                  </div>
+                ) : null}
               </li>
             );
           })}

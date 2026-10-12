@@ -110,7 +110,14 @@ const entries: AssetTimelineEntry[] = [
       workOrderId: JOB,
       explicit: false,
       by: { id: USER, name: 'Sam' },
-      lots: [],
+      lots: [
+        {
+          lotId: '00000000-0000-4000-8000-00000000b101',
+          kind: 'serial',
+          code: 'SN-7',
+          quantity: '1',
+        },
+      ],
     },
   },
   {
@@ -174,6 +181,11 @@ describe('assets', { timeout: 20_000 }, () => {
     expect(await screen.findByText('Condition recorded: Poor')).toBeInTheDocument();
     expect(screen.getByText('Flue corroded')).toBeInTheDocument();
     expect(screen.getByText('2 × Ball valve fitted')).toBeInTheDocument();
+    // The serial number fitted, opening its trace (ADR-0013).
+    expect(screen.getByRole('link', { name: 'SN-7' })).toHaveAttribute(
+      'href',
+      '/inventory/lots/00000000-0000-4000-8000-00000000b101',
+    );
     expect(screen.getByText('Details changed: Model, Serial number')).toBeInTheDocument();
     expect(await accessibilityViolations(container)).toEqual([]);
 

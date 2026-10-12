@@ -33,6 +33,8 @@ import {
   ReorderScreen,
   ReorderStartScreen,
   VanRequestsScreen,
+  LotLookupScreen,
+  LotScreen,
   FinanceSettingsScreen,
   LedgerHomeScreen,
   LedgerAccountsScreen,
@@ -133,6 +135,8 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         stockCount: (id) => `/inventory/counts/${id}`,
         reorder: (locationId) => `/inventory/locations/${locationId}/reorder`,
         vanRequests: '/inventory/van-requests',
+        lots: '/inventory/lots',
+        lot: (id) => `/inventory/lots/${id}`,
         suppliers: '/purchasing/suppliers',
         supplier: (id) => `/purchasing/suppliers/${id}`,
         purchaseOrders: '/purchasing/orders',
@@ -324,6 +328,25 @@ export function VanRequestsRoute() {
   return (
     <OperationsScreens>
       <VanRequestsScreen />
+    </OperationsScreens>
+  );
+}
+
+/** The serial lookup (ninth round; ADR-0013). */
+export function LotLookupRoute() {
+  return (
+    <OperationsScreens>
+      <LotLookupScreen />
+    </OperationsScreens>
+  );
+}
+
+/** One serial number or batch, traced. */
+export function LotRoute() {
+  const { lotId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <LotScreen key={lotId} lotId={lotId} />
     </OperationsScreens>
   );
 }

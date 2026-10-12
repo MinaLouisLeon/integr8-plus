@@ -43,6 +43,7 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   stockLocations: '/inventory/locations',
   partsUsage: '/inventory/parts-usage',
   vanRequests: '/inventory/van-requests',
+  serialLookup: '/inventory/lots',
   suppliers: '/purchasing/suppliers',
   purchaseOrders: '/purchasing/orders',
   reorder: '/purchasing/reorder',

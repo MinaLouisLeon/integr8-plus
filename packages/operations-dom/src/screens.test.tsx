@@ -1295,4 +1295,109 @@ describe('parts used on the job', { timeout: 20_000 }, () => {
     );
     expect(await within(parts).findByText('1.5 each', { exact: false })).toBeInTheDocument();
   });
+
+  it('records a serial-numbered part with the serial numbers chosen from the van', async () => {
+    const user = userEvent.setup();
+    const FILTER = { ...VALVE, name: 'Water filter', tracking: 'serial' } as const;
+    const SN_1 = '00000000-0000-4000-8000-00000000b101';
+    const SN_2 = '00000000-0000-4000-8000-00000000b102';
+    const held = (lotId: string, code: string) => ({
+      lotId,
+      kind: 'serial' as const,
+      code,
+      expiresOn: null,
+      location: { ...VAN, kind: 'van' as const },
+      onHand: '1',
+    });
+    let current = detail({
+      materials: [],
+      van: VAN,
+      can: { ...detail().can, recordParts: true },
+    });
+    const { client, calls } = fakeApi({
+      'GET /v1/me': () => ({
+        body: {
+          userId: ENGINEER.id,
+          tenantId: CUSTOMER,
+          email: 'e@x.example',
+          displayName: ENGINEER.name,
+          role: 'engineer',
+          permissions: ['customer.read', 'work_order.progress', 'inventory.consume'],
+          features: { inventory: true },
+        },
+      }),
+      'GET /v1/work-orders/:id': () => ({ body: current }),
+      'GET /v1/inventory/items': () => ({
+        body: {
+          items: [
+            {
+              ...FILTER,
+              description: null,
+              categoryId: null,
+              barcode: null,
+              defaultUnitCost: null,
+              salePrice: null,
+              averageUnitCost: null,
+              preferredSupplierId: null,
+              supplierPartNumber: null,
+              leadTimeDays: null,
+              version: 1,
+              createdAt: '2026-10-01T09:00:00.000Z',
+              updatedAt: '2026-10-01T09:00:00.000Z',
+              archivedAt: null,
+              onHand: '2',
+            },
+          ],
+          nextCursor: null,
+        },
+      }),
+      'GET /v1/inventory/items/:id/lots': () => ({
+        body: { items: [held(SN_1, 'SN-1'), held(SN_2, 'SN-2')] },
+      }),
+      'POST /v1/work-orders/:id/materials': () => {
+        current = {
+          ...current,
+          materials: [
+            used({
+              item: FILTER,
+              quantity: '1',
+              unitCost: null,
+              lots: [{ lotId: SN_2, kind: 'serial', code: 'SN-2', expiresOn: null, quantity: '1' }],
+            }),
+          ],
+        };
+        return { status: 201, body: current };
+      },
+    });
+    renderScreen(<WorkOrderScreen workOrderId={JOB} />, client);
+
+    const parts = await screen.findByRole('region', { name: 'Parts used' });
+    await user.click(within(parts).getByRole('button', { name: 'Record a part' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Record a part' });
+    await user.type(within(dialog).getByLabelText('Part'), 'filter');
+    await user.click(within(dialog).getByRole('button', { name: 'Search' }));
+    await user.click(await within(dialog).findByRole('button', { name: /Water filter/u }));
+    await user.type(within(dialog).getByLabelText('Quantity'), '1');
+
+    // The van's serial numbers, the first proposed; the engineer fitted the other.
+    const serials = await within(dialog).findByRole('group', { name: 'Which serial numbers' });
+    expect(await within(serials).findByRole('checkbox', { name: 'SN-1' })).toBeChecked();
+    await user.click(within(serials).getByRole('checkbox', { name: 'SN-1' }));
+    const record = within(dialog).getByRole('button', { name: 'Record a part' });
+    expect(record).toBeDisabled();
+    await user.click(within(serials).getByRole('checkbox', { name: 'SN-2' }));
+    await user.click(record);
+
+    await waitFor(() =>
+      expect(calls.find((call) => call.method === 'POST')?.body).toEqual({
+        itemId: VALVE.id,
+        quantity: '1',
+        lots: [{ lotId: SN_2, quantity: '1' }],
+      }),
+    );
+    expect(await within(parts).findByRole('link', { name: 'SN-2' })).toHaveAttribute(
+      'href',
+      `/inventory/lots/${SN_2}`,
+    );
+  });
 });

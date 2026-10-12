@@ -4,13 +4,15 @@ import { radii, spacing } from '@integr8/tokens';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { formatQuantity } from '~/lib/format';
 import { ItemImage } from './item-image';
+import { VanLots } from './part-lots';
 import { useTheme } from './ui';
 
 /**
  * One item on the engineer's van, offline (ADR-0012): its picture, what is on
  * hand, what is reserved for customers' orders and what is available —
  * available less this phone's own unsent uses, so it is a forecast like the
- * van's count always was.
+ * van's count always was. A tracked item lists its serial numbers or batches
+ * (ADR-0013), each with what is probably left of it.
  */
 export function VanStockItem({
   row,
@@ -36,6 +38,7 @@ export function VanStockItem({
           {t('mobile.van.reserved', { quantity: quantity(row.reserved) })} ·{' '}
           {t('mobile.van.available', { quantity: quantity(row.availableForecast) })}
         </Text>
+        <VanLots row={row} />
       </View>
     </View>
   );

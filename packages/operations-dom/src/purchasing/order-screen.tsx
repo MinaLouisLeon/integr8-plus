@@ -5,6 +5,16 @@ import { type GoodsReceipt, keys, type PurchaseOrderDetail, useOperations } from
 import { formatAmount, memberName, useMembers } from '../crm/lead-parts.js';
 import { formatQuantity, useLocations, useUnitName } from '../inventory/inventory-parts.js';
 import {
+  arrivingCheck,
+  arrivingLots,
+  type ArrivingLots,
+  type LeavingLots,
+  leavingReady,
+  LotsArriving,
+  LotsLeaving,
+  NO_ARRIVING,
+} from '../inventory/lots.js';
+import {
   BackLink,
   buttonClass,
   cardClass,
@@ -510,6 +520,10 @@ function ReceiveDialog({
   const [notes, setNotes] = useState('');
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [costs, setCosts] = useState<Record<string, string>>({});
+  // The serial numbers or batches arriving on each tracked line (ADR-0013).
+  const [lots, setLots] = useState<Record<string, ArrivingLots>>({});
+  const tracked = (line: PurchaseOrderDetail['lines'][number]) =>
+    line.item.kind === 'stock_item' && line.item.tracking !== 'none';
 
   const lines = open.flatMap((line) => {
     const quantity = (quantities[line.id] ?? '').trim();
@@ -517,7 +531,16 @@ function ReceiveDialog({
       return [];
     }
     const unitCost = (costs[line.id] ?? '').trim();
-    return [{ orderLineId: line.id, quantity, ...(unitCost === '' ? {} : { unitCost }) }];
+    return [
+      {
+        orderLineId: line.id,
+        quantity,
+        ...(unitCost === '' ? {} : { unitCost }),
+        ...(tracked(line)
+          ? { lots: arrivingLots(line.item.tracking, quantity, lots[line.id] ?? NO_ARRIVING) }
+          : {}),
+      },
+    ];
   });
   const valid =
     locationId !== '' &&
@@ -526,6 +549,13 @@ function ReceiveDialog({
       (line) =>
         isPositiveQuantity(line.quantity) &&
         (line.unitCost === undefined || isQuantity(line.unitCost)),
+    ) &&
+    open.every(
+      (line) =>
+        !tracked(line) ||
+        (quantities[line.id] ?? '').trim() === '' ||
+        arrivingCheck(line.item.tracking, quantities[line.id]!, lots[line.id] ?? NO_ARRIVING)
+          .complete,
     );
   const body = {
     expectedVersion: order.version,
@@ -674,6 +704,21 @@ function ReceiveDialog({
                   )}
                 </Field>
               )}
+              {tracked(line) && isPositiveQuantity(quantities[line.id] ?? '') ? (
+                <div className="sm:col-span-3">
+                  <LotsArriving
+                    tracking={line.item.tracking}
+                    quantity={quantities[line.id]!}
+                    unit={line.item.unit}
+                    legend={t('inventory.lots.lotsOf', { item: line.description })}
+                    value={lots[line.id] ?? NO_ARRIVING}
+                    onChange={(next) => {
+                      post.reset();
+                      setLots({ ...lots, [line.id]: next });
+                    }}
+                  />
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -689,6 +734,13 @@ function ReceiveDialog({
 // ---------------------------------------------------------------------------
 // Returns
 // ---------------------------------------------------------------------------
+
+/** The lots a return names, when the person chose any; a return needs no confirmation for an expired batch. */
+function namedLots(result: LeavingLots | undefined): {
+  lots?: { lotId: string; quantity: string }[];
+} {
+  return result?.lots === undefined || result.lots.length === 0 ? {} : { lots: result.lots };
+}
 
 function ReturnDialog({
   detail,
@@ -706,16 +758,41 @@ function ReturnDialog({
   const unitName = useUnitName();
   const [reason, setReason] = useState('');
   const [quantities, setQuantities] = useState<Record<string, string>>({});
+  // Which serial numbers or batches go back (ADR-0013); none chosen sends
+  // back those the receipt brought in that are still there.
+  const [lots, setLots] = useState<Record<string, LeavingLots | undefined>>({});
   const open = receipt.lines.filter((line) => line.returnedQuantity !== line.quantity);
+  const orderedOf = (line: GoodsReceipt['lines'][number]) =>
+    detail.lines.find((candidate) => candidate.id === line.orderLineId);
+  const picking = (line: GoodsReceipt['lines'][number]) => {
+    const item = orderedOf(line)?.item;
+    return (
+      item?.kind === 'stock_item' &&
+      item.tracking !== 'none' &&
+      isPositiveQuantity(quantities[line.id] ?? '')
+    );
+  };
 
   const lines = open.flatMap((line) => {
     const quantity = (quantities[line.id] ?? '').trim();
-    return quantity === '' ? [] : [{ receiptLineId: line.id, quantity }];
+    return quantity === ''
+      ? []
+      : [
+          {
+            receiptLineId: line.id,
+            quantity,
+            ...(picking(line) ? namedLots(lots[line.id]) : {}),
+          },
+        ];
   });
   const valid =
     reason.trim() !== '' &&
     lines.length > 0 &&
-    lines.every((line) => isPositiveQuantity(line.quantity));
+    lines.every((line) => isPositiveQuantity(line.quantity)) &&
+    leavingReady(
+      lots,
+      open.filter(picking).map((line) => line.id),
+    );
   const body = { reason: reason.trim(), lines };
   const idempotencyKey = useIdempotencyKey(body);
 
@@ -777,35 +854,50 @@ function ReturnDialog({
           )}
         </Field>
         {open.map((line) => {
-          const ordered = detail.lines.find((candidate) => candidate.id === line.orderLineId);
+          const ordered = orderedOf(line);
           return (
-            <Field
-              key={line.id}
-              label={`${t('purchasing.returns.quantity')} · ${ordered?.description ?? '—'}`}
-              hint={t('purchasing.returns.ofReceived', {
-                quantity: formatQuantity(
-                  remaining(line.quantity, line.returnedQuantity),
-                  ordered?.item.unit,
-                  locale,
-                  unitName,
-                ),
-              })}
-            >
-              {(id, describedBy) => (
-                <input
-                  id={id}
-                  inputMode="decimal"
-                  dir="ltr"
-                  pattern={QUANTITY_PATTERN}
-                  aria-describedby={describedBy}
-                  className={inputClass}
-                  value={quantities[line.id] ?? ''}
-                  onChange={(event) =>
-                    setQuantities({ ...quantities, [line.id]: event.target.value.trim() })
-                  }
+            <div key={line.id} className="flex flex-col gap-2">
+              <Field
+                label={`${t('purchasing.returns.quantity')} · ${ordered?.description ?? '—'}`}
+                hint={t('purchasing.returns.ofReceived', {
+                  quantity: formatQuantity(
+                    remaining(line.quantity, line.returnedQuantity),
+                    ordered?.item.unit,
+                    locale,
+                    unitName,
+                  ),
+                })}
+              >
+                {(id, describedBy) => (
+                  <input
+                    id={id}
+                    inputMode="decimal"
+                    dir="ltr"
+                    pattern={QUANTITY_PATTERN}
+                    aria-describedby={describedBy}
+                    className={inputClass}
+                    value={quantities[line.id] ?? ''}
+                    onChange={(event) =>
+                      setQuantities({ ...quantities, [line.id]: event.target.value.trim() })
+                    }
+                  />
+                )}
+              </Field>
+              {ordered !== undefined && picking(line) ? (
+                <LotsLeaving
+                  itemId={ordered.item.id}
+                  tracking={ordered.item.tracking}
+                  locationId={receipt.location.id}
+                  quantity={quantities[line.id]!}
+                  unit={ordered.item.unit}
+                  expired="allowed"
+                  optional
+                  legend={t('inventory.lots.lotsOf', { item: ordered.description })}
+                  hint={t('inventory.lots.returnToSupplierHint')}
+                  onChange={(next) => setLots((current) => ({ ...current, [line.id]: next }))}
                 />
-              )}
-            </Field>
+              ) : null}
+            </div>
           );
         })}
         {post.isError ? <Failure error={post.error} /> : null}
