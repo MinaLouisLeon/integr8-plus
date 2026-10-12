@@ -48,6 +48,20 @@ describe('finding the section a route is in', () => {
     expect(sectionPathFor('/settings/branding')).toBe('branding');
   });
 
+  it('finds the ledger, its journals and its reports apart, and other ledger pages in the ledger', () => {
+    expect(sectionPathFor('/ledger')).toBe('ledger');
+    expect(sectionPathFor('/ledger/accounts')).toBe('ledger');
+    expect(sectionPathFor('/ledger/unposted/p1')).toBe('ledger');
+    expect(sectionPathFor('/ledger/journals')).toBe('journals');
+    expect(sectionPathFor('/ledger/journals/j1/edit')).toBe('journals');
+    expect(sectionPathFor('/ledger/reports')).toBe('ledgerReports');
+    expect(routeChrome('/ledger/journals/j1')).toEqual({
+      section: 'journals',
+      back: { to: '/ledger/journals', section: 'journals' },
+    });
+    expect(routeChrome('/ledger/settings').back).toEqual({ to: '/ledger', section: 'ledger' });
+  });
+
   it('reads a site as part of its customers', () => {
     expect(sectionPathFor('/sites/s1')).toBe('customers');
   });

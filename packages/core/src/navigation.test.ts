@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NAV_SECTIONS, visibleNavigation } from './navigation.js';
+import { NAV_GROUPS, NAV_SECTIONS, visibleNavigation } from './navigation.js';
 import { permissionsFor, permissionsHeld } from './permissions.js';
 
 describe('the dashboard map', () => {
@@ -64,5 +64,26 @@ describe('the dashboard map', () => {
     expect(keysFor('owner', { crm: true })).not.toContain('inventory');
     expect(keysFor('viewer', { crm: true })).toContain('crm');
     expect(keysFor('engineer', { crm: true })).not.toContain('crm');
+  });
+
+  it('shows the ledger under accounting to owners, admins and viewers of a company that has it', () => {
+    const groupsFor = (role: 'owner' | 'admin' | 'dispatcher' | 'engineer' | 'viewer') =>
+      visibleNavigation('web', permissionsFor(role), { ledger: true });
+    const accounting = (role: 'owner' | 'admin' | 'dispatcher' | 'engineer' | 'viewer') =>
+      groupsFor(role)
+        .find((group) => group.group === 'accounting')
+        ?.sections.map((section) => section.key);
+
+    expect(accounting('owner')).toEqual(['ledger', 'journals', 'ledgerReports']);
+    expect(accounting('admin')).toEqual(['ledger', 'journals', 'ledgerReports']);
+    expect(accounting('viewer')).toEqual(['ledger', 'journals', 'ledgerReports']);
+    expect(accounting('dispatcher')).toBeUndefined();
+    expect(accounting('engineer')).toBeUndefined();
+    // Without the module, no accounting heading at all.
+    expect(
+      visibleNavigation('desktop', permissionsFor('owner'), { ledger: false }).map((g) => g.group),
+    ).not.toContain('accounting');
+    // Right after finance, in the menu's order.
+    expect(NAV_GROUPS.indexOf('accounting')).toBe(NAV_GROUPS.indexOf('finance') + 1);
   });
 });

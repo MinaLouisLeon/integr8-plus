@@ -481,6 +481,29 @@ export {
 } from './repositories/assets.js';
 
 export {
+  LedgerRepository,
+  type LedgerAccount,
+  type LedgerSettings,
+  type PostingAccounts,
+  type Journal,
+  type JournalLine,
+  type JournalLineInput,
+  type JournalDraftInput,
+  type JournalQuery,
+  type PeriodState,
+  type PeriodEvent,
+  type LedgerPosting,
+  type ProposedLine,
+} from './repositories/ledger.js';
+export {
+  LedgerReportsRepository,
+  type AccountTotals,
+  type ActivityLine,
+  type OpenInvoice,
+  type YearClose,
+} from './repositories/ledger-reports.js';
+
+export {
   addressLine,
   type AccessNotes,
   type GeocodeResult,
@@ -602,6 +625,10 @@ export {
   type SubmitLocation,
   type SubmissionStatus,
   type CarriedOver,
+  LEDGER_POSTING_STATUSES,
+  type LedgerPostingStatus,
+  LEDGER_POSTING_REASONS,
+  type LedgerPostingReason,
 } from './schema.js';
 
 export {

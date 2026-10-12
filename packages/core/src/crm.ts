@@ -26,6 +26,7 @@ export const MODULE_FEATURES = [
   'sales',
   'finance',
   'assets',
+  'ledger',
 ] as const;
 export const moduleFeatureSchema = z.enum(MODULE_FEATURES);
 export type ModuleFeature = z.infer<typeof moduleFeatureSchema>;

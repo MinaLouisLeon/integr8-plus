@@ -14,6 +14,11 @@ import {
   ASSET_STATUSES,
   ASSET_CONDITIONS,
   ASSET_EVENT_KINDS,
+  ACCOUNT_TYPES,
+  JOURNAL_STATUSES,
+  JOURNAL_KINDS,
+  JOURNAL_SOURCE_KINDS,
+  PERIOD_EVENT_KINDS,
   SALES_ORDER_STATUSES,
   STOCK_COUNT_STATUSES,
   SUPPLIER_STATUSES,
@@ -30,6 +35,8 @@ import {
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  LEDGER_POSTING_REASONS,
+  LEDGER_POSTING_STATUSES,
   PLATFORM_TABLES,
   SECURITY_DEFINER_FUNCTIONS,
   SECURITY_DEFINER_VIEWS,
@@ -518,6 +525,16 @@ describe('vocabularies shared with the application', () => {
       ['erp_assets_status_known', ASSET_STATUSES],
       ['erp_assets_condition_known', ASSET_CONDITIONS],
       ['erp_asset_events_kind_known', ASSET_EVENT_KINDS],
+      // Ledger (0033).
+      ['erp_ledger_accounts_type_known', ACCOUNT_TYPES],
+      ['erp_journals_status_known', JOURNAL_STATUSES],
+      ['erp_journals_kind_known', JOURNAL_KINDS],
+      ['erp_journals_source_kind_known', JOURNAL_SOURCE_KINDS],
+      ['erp_ledger_period_events_kind_known', PERIOD_EVENT_KINDS],
+      // Automatic postings (0034).
+      ['erp_ledger_postings_source_kind_known', JOURNAL_SOURCE_KINDS],
+      ['erp_ledger_postings_status_known', LEDGER_POSTING_STATUSES],
+      ['erp_ledger_postings_reason_known', LEDGER_POSTING_REASONS],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,

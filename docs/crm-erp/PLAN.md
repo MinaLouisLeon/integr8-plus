@@ -720,11 +720,11 @@ The report says development/tests run with recording/local adapters, **but produ
 
 ### Phase A1 — General ledger (ONLY AFTER AUTHORIZATION)
 
-**Status:** `NOT AUTHORIZED` — see the [phase tracker](./README.md#phase-tracker).
+**Status:** `DONE` — authorized by the product owner on 2026-10-12, built in the sixth round (migrations 0033–0035); see the [phase tracker](./README.md#phase-tracker) and ADR-0009. Before relying on it, the company's accountant reviews the chart, the posting rules and a month's reports (09, manual checks).
 
-- [ ] Agree fiscal year, chart structure, countries, tax and posting rules with user.
-- [ ] Design and test double-entry journals, posting source references, period locks, reversals.
-- [ ] Trial balance, account activity, AR reconciliation and manual journals with segregation of duties.
+- [x] Agree fiscal year, chart structure, countries, tax and posting rules with user.
+- [x] Design and test double-entry journals, posting source references, period locks, reversals.
+- [x] Trial balance, account activity, AR reconciliation and manual journals with segregation of duties.
 - **Done when:** formal balancing/reversal tests and policy review approve use; avoid prematurely calling accounting legally compliant.
 
 ### Phase L — Pilot release

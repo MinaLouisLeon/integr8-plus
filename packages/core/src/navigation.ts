@@ -42,7 +42,9 @@ export type NavIcon =
   | 'receipt'
   | 'wallet'
   | 'qr-code'
-  | 'heart';
+  | 'heart'
+  | 'book'
+  | 'bar-chart';
 
 export type NavGroup =
   | 'overview'
@@ -50,6 +52,7 @@ export type NavGroup =
   | 'crm'
   | 'sales'
   | 'finance'
+  | 'accounting'
   | 'inventory'
   | 'operations'
   | 'setup'
@@ -106,6 +109,9 @@ export type NavPath =
   | 'salesOrders'
   | 'invoices'
   | 'payments'
+  | 'ledger'
+  | 'journals'
+  | 'ledgerReports'
   | 'assets';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
@@ -114,6 +120,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   'crm',
   'sales',
   'finance',
+  'accounting',
   'inventory',
   'operations',
   'setup',
@@ -215,6 +222,32 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     icon: 'wallet',
     permission: 'finance.read',
     feature: 'finance',
+  },
+
+  // Accounting (CRM/ERP plan, phase A1; ADR-0009): the company's `ledger` module.
+  {
+    key: 'ledger',
+    group: 'accounting',
+    path: 'ledger',
+    icon: 'book',
+    permission: 'ledger.read',
+    feature: 'ledger',
+  },
+  {
+    key: 'journals',
+    group: 'accounting',
+    path: 'journals',
+    icon: 'file-text',
+    permission: 'ledger.read',
+    feature: 'ledger',
+  },
+  {
+    key: 'ledgerReports',
+    group: 'accounting',
+    path: 'ledgerReports',
+    icon: 'bar-chart',
+    permission: 'ledger.read',
+    feature: 'ledger',
   },
 
   // Inventory (CRM/ERP plan, phase E1): the company's `inventory` module.

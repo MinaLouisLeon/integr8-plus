@@ -64,6 +64,19 @@ export interface OperationsConfig {
     /** Assets (CRM/ERP plan, phase E3). */
     assets: string;
     asset: (id: string) => string;
+    /** The general ledger (CRM/ERP plan, phase A1; ADR-0009). */
+    ledger: string;
+    ledgerAccounts: string;
+    journals: string;
+    journal: (id: string) => string;
+    /** A new manual journal, or with `opening` the opening balances. */
+    newJournal: (options?: { opening?: boolean }) => string;
+    editJournal: (id: string) => string;
+    unposted: string;
+    unpostedItem: (id: string) => string;
+    ledgerPeriods: string;
+    ledgerReports: string;
+    ledgerSettings: string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -106,7 +119,9 @@ export interface RowTarget {
     | 'salesOrder'
     | 'invoice'
     | 'payment'
-    | 'asset';
+    | 'asset'
+    | 'journal'
+    | 'posting';
   id: string;
   label: string;
 }
@@ -237,6 +252,30 @@ export type AssetTimelineEntry = Json<
 >['entries'][number];
 export type JobAssets = Json<'/v1/work-orders/{workOrderId}/assets', 'get', 200>;
 export type AssetSettings = Json<'/v1/assets/settings', 'get', 200>;
+export type LedgerOverview = Json<'/v1/ledger', 'get', 200>;
+export type LedgerSettings = NonNullable<LedgerOverview['settings']>;
+export type LedgerAccount = Json<'/v1/ledger/accounts', 'get', 200>['items'][number];
+export type AccountType = LedgerAccount['type'];
+export type PostingRoleKey = NonNullable<LedgerAccount['role']>;
+export type JournalPage = Json<'/v1/ledger/journals', 'get', 200>;
+export type JournalSummary = JournalPage['items'][number];
+export type JournalKindKey = JournalSummary['kind'];
+export type JournalDetail = Json<'/v1/ledger/journals/{journalId}', 'get', 200>;
+export type OpeningReceivables = Json<'/v1/ledger/opening-receivables', 'get', 200>;
+export type LedgerPeriods = Json<'/v1/ledger/periods', 'get', 200>;
+export type PostingPage = Json<'/v1/ledger/postings', 'get', 200>;
+export type PostingRow = PostingPage['items'][number];
+export type PostingSourceKind = PostingRow['source']['kind'];
+export type PostingReason = NonNullable<PostingRow['reason']>;
+export type PostingStatus = PostingRow['status'];
+export type PostingDetail = Json<'/v1/ledger/postings/{postingId}', 'get', 200>;
+export type PostAllResult = Json<'/v1/ledger/postings/post-all', 'post', 200>;
+export type LedgerYear = Json<'/v1/ledger/years', 'get', 200>['items'][number];
+export type TrialBalance = Json<'/v1/ledger/reports/trial-balance', 'get', 200>;
+export type AccountActivity = Json<'/v1/ledger/reports/account-activity', 'get', 200>;
+export type ReceivablesReport = Json<'/v1/ledger/reports/receivables', 'get', 200>;
+export type ProfitAndLoss = Json<'/v1/ledger/reports/profit-and-loss', 'get', 200>;
+export type BalanceSheet = Json<'/v1/ledger/reports/balance-sheet', 'get', 200>;
 
 export const keys = {
   me: ['me'] as const,
@@ -280,6 +319,16 @@ export const keys = {
   assetTimeline: (id: string) => ['assets', 'timeline', id] as const,
   jobAssets: (id: string) => ['assets', 'job', id] as const,
   assetSettings: ['assets', 'settings'] as const,
+  ledger: ['ledger', 'overview'] as const,
+  ledgerAccounts: (archived: boolean) => ['ledger', 'accounts', archived] as const,
+  journals: (query: object) => ['ledger', 'journals', query] as const,
+  journal: (id: string) => ['ledger', 'journal', id] as const,
+  openingReceivables: ['ledger', 'opening-receivables'] as const,
+  ledgerPeriods: (date: string) => ['ledger', 'periods', date] as const,
+  ledgerYears: ['ledger', 'years'] as const,
+  postings: (query: object) => ['ledger', 'postings', query] as const,
+  posting: (id: string) => ['ledger', 'posting', id] as const,
+  ledgerReport: (report: string, query: object) => ['ledger', 'report', report, query] as const,
   forms: ['forms'] as const,
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,

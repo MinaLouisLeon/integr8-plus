@@ -430,3 +430,55 @@ Which assets a job is for: `(tenant_id, work_order_id, asset_id)` with who linke
 ### Company data export
 
 The four company tables (`erp_asset_settings`, `erp_assets`, `erp_asset_events`, `erp_work_order_assets`) are in `EXPORTED_TABLES`; the counter, like the finance counters, is not. Grants: `select, insert, update` on settings and assets (an asset is retired, never deleted); `select, insert` on events; `select, insert, delete` on job links; `select` on the counter.
+
+## 0033–0035 — the general ledger (phase A1; ADR-0009)
+
+Adds the `ledger` feature flag (off unless Integr8 switches it on). A management ledger in the company's currency: a chart of accounts, months locked by hand, balanced journals that never change once posted, documents posted from sales and stock by the database, and the closing of fiscal years. Amounts are `numeric(20,4)`; nothing about it is a claim of tax or statutory compliance.
+
+### `erp_ledger_accounts`
+
+`code` (letters, digits, `.` and `-`, up to 20; unique per company), `name`, `type` — `asset`, `liability`, `equity`, `income`, `expense` (`erp_ledger_accounts_type_known`). Archived, never deleted (`archived_at/by` together); an archived account takes no new postings (checked at posting). Once an account has posted lines its type is fixed (`erp_ledger_accounts_type_fixed`). Set up with `DEFAULT_CHART` (codes 1100–6900, English or Arabic names): an Egypt-oriented start for a service company that the company changes freely.
+
+### `erp_ledger_settings`
+
+One row per company: `start_date` (the first of a month: nothing is dated before it), `fiscal_start_month` (1–12), `auto_post_sales`, `auto_post_stock`, `allow_self_approval` (the owner's choice), and the account each automatic posting uses — receivables, revenue for services and for goods, VAT output, cash, bank, other receipts, inventory, goods received not invoiced, parts cost, stock adjustments, opening balances, retained earnings (tenant composite FKs). The start date and fiscal year change only while nothing is posted (`erp_ledger_settings_fixed`). `version` for optimistic concurrency.
+
+### `erp_ledger_periods`, `erp_ledger_period_events`, `erp_ledger_period_locked()`
+
+A row per month whose lock was ever set (`period_start`, `locked`, who and when); a month without one is open. Every change appends an event; an unlock carries its reason (`erp_ledger_period_events_reason_shape`). `erp_ledger_period_locked(tenant, date)` is what the posting guard reads.
+
+### `erp_journals`, `erp_journal_lines`, `journal_reference_counters`
+
+| Column / rule                                      | Meaning                                                                                                                                                                                                                                      |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `status`                                           | `draft` or `posted`. Inserted as a draft only (`erp_journals_insert_draft`); posted by changing the status                                                                                                                                   |
+| `kind`                                             | `manual`, `opening` (once per company), `automatic` (with `source_kind` and `source_id`: `invoice`, `credit_note`, `invoice_void`, `payment`, `stock`; one journal per source), `reversal` (with `reversal_of`, once per journal), `closing` |
+| `reference`                                        | Numbered when posted (`JV-000001` onwards, `assign_journal_reference()`, security definer); a discarded draft leaves no gap                                                                                                                  |
+| `foreign_currency`, `exchange_rate`, `rate_source` | Set together: a document in another currency posted at a rate someone typed, and where it came from; lines keep `foreign_amount`                                                                                                             |
+| `drafted_by`, `posted_by`, `self_approved`         | A `manual` or `opening` journal is posted by someone other than its drafter, unless the company allows self-approval and the poster says so, which the journal keeps (`erp_journals_self_approval`)                                          |
+| Lines                                              | `account_id`, `debit` or `credit` (one side, above zero), `memo`, `customer_id` (for receivables), `foreign_amount`; frozen once the journal is posted (`erp_journal_lines_frozen`)                                                          |
+
+`erp_journals_guard` checks a journal at the moment it is posted — the ledger is set up, the date is on or after the start, its month is open, it balances on two lines or more, no account is archived, the second person, a reversal's original is posted — and refuses every change afterwards (`erp_journals_frozen`). A draft is deleted; a posted journal is reversed. A purge (`integr8_purging`) removes them with the company.
+
+0035 replaces the guard to let a fiscal year's `closing` journal, and the `reversal` of one, into a locked month — dated on the year's last day (`erp_journals_closing_date`) and on income, expense and the retained earnings account alone (`erp_journals_closing_accounts`). Nothing else meets a locked month.
+
+### `erp_ledger_year_closes`
+
+A fiscal year's close: `year_start`, the closing journal, who and when; reopened with who, when, the reason and the reversing journal (set together: `erp_ledger_year_closes_reopen_pairing`). At most one close in force per year (`erp_ledger_year_closes_open_unique`); a reopened year keeps its history.
+
+### `erp_ledger_postings` (0034): the unposted list
+
+One row per document captured for the ledger (`source_kind`, `source_id`, unique), with its `document_date` and `currency`. `status` is `pending` (with `reason`: `queued`, `auto_off`, `before_set_up`, `foreign_currency`, `cost_unknown`, `period_locked`, `waits_for_invoice`, `failed` and its `detail`), `posted` (with `journal_id`) or `skipped` (with `skip_reason`); once resolved it never changes (`erp_ledger_postings_final`). The runtime role reads it and may update a pending row; only the database's functions insert.
+
+- **Capture.** Triggers on invoices (draft → issued, issued → void), credit notes (draft → issued), payment receipts (insert) and stock movements (a deferred constraint trigger, so every movement of one posting is there; transfers post nothing) call `erp_ledger_capture()` — nothing for a company without a ledger or a document dated before its start.
+- **What a document posts.** `erp_ledger_proposal(tenant, kind, source)` is the one definition: an invoice debits receivables (with the customer) for its total and credits revenue — goods for catalogue items held or bought, services otherwise — at each line's net, and VAT output for the rest; a credit note the reverse; a void mirrors its invoice; a payment debits cash, bank or other receipts by method and credits receivables; stock moves inventory at its recorded cost against goods received (receipts and returns to the supplier), parts cost (used on jobs) or stock adjustments.
+- **Posting.** `erp_ledger_try_post()` (security definer) posts it as an `automatic` journal on the document's date, or records why it waits: the switch is off, another currency, a movement without cost, a locked month, or a credit note or void whose invoice has not posted — one whose invoice was set aside is set aside with it. It runs in a subtransaction: a failure is recorded as `failed` and never stops the invoice, payment or stock movement. An invoice posted takes the documents waiting for it.
+- **Backfill.** `erp_ledger_backfill()` queues what was recorded on or after the start before the ledger existed (`before_set_up`, for review) and drops pending documents now before the start.
+
+### Repositories
+
+`LedgerRepository` (`tx.ledger`): settings, `setUp`, `saveSettings`, `anyPosted`; accounts (`accounts`, `account`, `accountsByIds`, `accountByCode`, `createAccount`, `updateAccount`, `accountUsed`); months (`periods`, `periodLocked`, `setPeriodLocked`, `periodEvents`); journals (`createDraft`, `replaceDraft`, `discardDraft`, `post`, `find`, `lock`, `findBySource`, `reversalFor`, `openingJournal`, `lines`, `linesOf`, `list`); `receivablesAt`; the unposted list (`postings`, `posting`, `postingBySource`, `lockPosting`, `pendingCounts`, `proposal`, `tryPost`, `backfill`, `markPosted`, `skip`, `parentInvoiceOf`, `postingStates`, `pendingFollowing`). `LedgerReportsRepository` (`tx.ledgerReports`): `totals` (by account over a range, closing journals left out when asked), `activity`, `receivablesByCustomer`, `openInvoices`, `unallocatedByCustomer`, `leftOut` (drafts and waiting documents in a range), and the year closes (`yearCloses`, `closeInForce`, `recordClose`, `recordReopen`).
+
+### Company data export
+
+The ledger tables (accounts, settings, periods and their events, journals and lines, year closes, the unposted list) are in `EXPORTED_TABLES`; the journal counter is not. Grants: `select, insert, update` on accounts, settings, periods and year closes; `select, insert` on period events; `select, insert, update, delete` on journals and lines (the guards decide what may change); `select, update` on the unposted list; `select` on the counter.

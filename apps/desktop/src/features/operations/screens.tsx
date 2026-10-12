@@ -19,6 +19,16 @@ import {
   SalesOrderListScreen,
   SalesOrderScreen,
   FinanceSettingsScreen,
+  LedgerHomeScreen,
+  LedgerAccountsScreen,
+  JournalListScreen,
+  JournalEditorScreen,
+  JournalScreen,
+  UnpostedListScreen,
+  UnpostedScreen,
+  LedgerPeriodsScreen,
+  LedgerReportsScreen,
+  LedgerSettingsScreen,
   AssetListScreen,
   WarrantyAlertsPanel,
   AssetScreen,
@@ -104,6 +114,18 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         financeSettings: '/finance/settings',
         assets: '/assets',
         asset: (id) => `/assets/${id}`,
+        ledger: '/ledger',
+        ledgerAccounts: '/ledger/accounts',
+        journals: '/ledger/journals',
+        journal: (id) => `/ledger/journals/${id}`,
+        newJournal: (options) =>
+          options?.opening === true ? '/ledger/journals/new?kind=opening' : '/ledger/journals/new',
+        editJournal: (id) => `/ledger/journals/${id}/edit`,
+        unposted: '/ledger/unposted',
+        unpostedItem: (id) => `/ledger/unposted/${id}`,
+        ledgerPeriods: '/ledger/periods',
+        ledgerReports: '/ledger/reports',
+        ledgerSettings: '/ledger/settings',
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -462,6 +484,101 @@ export function AssetRoute() {
   return (
     <OperationsScreens>
       <AssetScreen key={assetId} assetId={assetId} />
+    </OperationsScreens>
+  );
+}
+
+/** The general ledger (CRM/ERP plan, phase A1; ADR-0009). */
+export function LedgerRoute() {
+  return (
+    <OperationsScreens>
+      <LedgerHomeScreen />
+    </OperationsScreens>
+  );
+}
+
+export function LedgerAccountsRoute() {
+  return (
+    <OperationsScreens>
+      <LedgerAccountsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function JournalsRoute() {
+  return (
+    <OperationsScreens>
+      <JournalListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function NewJournalRoute() {
+  // `?kind=opening` drafts the opening balances rather than a manual journal.
+  const [search] = useSearchParams();
+  const opening = search.get('kind') === 'opening';
+  return (
+    <OperationsScreens>
+      <JournalEditorScreen key={String(opening)} opening={opening} />
+    </OperationsScreens>
+  );
+}
+
+export function JournalRoute() {
+  const { journalId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <JournalScreen key={journalId} journalId={journalId} />
+    </OperationsScreens>
+  );
+}
+
+export function EditJournalRoute() {
+  const { journalId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <JournalEditorScreen key={journalId} journalId={journalId} />
+    </OperationsScreens>
+  );
+}
+
+export function UnpostedRoute() {
+  return (
+    <OperationsScreens>
+      <UnpostedListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function UnpostedItemRoute() {
+  const { postingId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <UnpostedScreen key={postingId} postingId={postingId} />
+    </OperationsScreens>
+  );
+}
+
+export function LedgerPeriodsRoute() {
+  return (
+    <OperationsScreens>
+      <LedgerPeriodsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function LedgerReportsRoute() {
+  return (
+    <OperationsScreens>
+      <LedgerReportsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function LedgerSettingsRoute() {
+  return (
+    <OperationsScreens>
+      <LedgerSettingsScreen />
     </OperationsScreens>
   );
 }

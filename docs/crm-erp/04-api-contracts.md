@@ -435,3 +435,57 @@ Additions elsewhere:
 Audit actions: `asset.registered`, `asset.updated`, `asset.relocated`,
 `asset.status_changed`, `asset.condition_recorded`, `asset.tag_reissued`,
 `asset.linked`, `asset.unlinked`, `asset_settings.updated`.
+
+## The general ledger (phase A1; ADR-0009)
+
+Sources: `apps/api/src/routes/v1/ledger.ts`, `ledger-postings.ts` and
+`ledger-reports.ts`. Tests: `ledger.integration.test.ts`,
+`ledger-postings.integration.test.ts`, `ledger-reports.integration.test.ts`
+beside them. Every route needs the `ledger` feature (403 `feature_disabled`).
+Everything except reading the overview and setting up answers 409
+`ledger_not_set_up` until the ledger is set up. Every rule the database checks
+at posting is checked first, so a refusal comes with words: 422
+`before_start`, `unbalanced`, `invalid_lines`; 409 `period_locked`,
+`account_archived`, `self_approval`.
+
+| Method and path                            | Permission      | What it does                                                                                                                                                                                                                                    |
+| ------------------------------------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/ledger`                           | `ledger.read`   | Whether it is set up, the settings, the company currency and today, whether the start is `fixed`, the opening journal, what this seat may do, and `unposted` (`total`, `byReason`)                                                              |
+| `POST /v1/ledger/setup`                    | `ledger.manage` | `startDate` (first of a month), `fiscalStartMonth`, `language` of the default chart. Once (409 `already_set_up`); queues for review what was recorded since the start. `Idempotency-Key`                                                        |
+| `PUT /v1/ledger/settings`                  | `ledger.manage` | `expectedVersion`; the start and fiscal year only while nothing is posted (409 `settings_fixed`); automatic posting for sales and for stock; posting accounts (422 `account_not_usable`); self-approval only by the owner (403)                 |
+| `GET` / `POST /v1/ledger/accounts`         | read / manage   | The chart (`archived=true` includes archived accounts); a new account (409 `code_taken`)                                                                                                                                                        |
+| `PATCH /v1/ledger/accounts/{id}`           | `ledger.manage` | Code, name, type, archived, with `expectedVersion`; 409 `type_fixed` once posted to, `posting_account` for an account an automatic posting uses                                                                                                 |
+| `GET /v1/ledger/periods`                   | `ledger.read`   | The months of the fiscal year holding `date`, locked or open, and their history                                                                                                                                                                 |
+| `POST /v1/ledger/periods/{month}/lock`     | `ledger.manage` | Locks a month                                                                                                                                                                                                                                   |
+| `POST /v1/ledger/periods/{month}/unlock`   | `ledger.unlock` | Unlocks it with a `reason`; 409 `year_closed` in a closed fiscal year                                                                                                                                                                           |
+| `GET /v1/ledger/journals`                  | `ledger.read`   | Newest first: `status`, `kind`, `from`, `to`, `accountId`, `q` (a `JV-` number or words in the memo), cursor paging                                                                                                                             |
+| `GET /v1/ledger/journals/{id}`             | `ledger.read`   | The journal, its lines with accounts and customers, totals, the rate it was posted at, and `can` (`edit`, `post`, `discard`, `reverse`)                                                                                                         |
+| `POST /v1/ledger/journals`                 | `ledger.post`   | A draft: `kind` `manual` or `opening` (once, dated on the start: 409 `opening_exists`, 422 `opening_date`), `entryDate`, `memo`, `lines`. `Idempotency-Key`                                                                                     |
+| `PUT` / `DELETE /v1/ledger/journals/{id}`  | `ledger.post`   | Rewrites a draft (its writer becomes the drafter) or discards it; 409 `not_draft`                                                                                                                                                               |
+| `POST /v1/ledger/journals/{id}/post`       | `ledger.post`   | Posts a draft written by hand: someone other than its drafter, or the drafter with `selfApprove` when the owner allows it                                                                                                                       |
+| `POST /v1/ledger/journals/{id}/reverse`    | `ledger.post`   | Posts its mirror on `entryDate` (default today), on or after the original; once (409 `already_reversed`); not a reversal or a closing journal. `Idempotency-Key`                                                                                |
+| `GET /v1/ledger/opening-receivables`       | `ledger.post`   | What each customer owed at the start, in the company currency, to start the opening journal from                                                                                                                                                |
+| `GET /v1/ledger/postings`                  | `ledger.read`   | The unposted list, oldest first: `status` (default `pending`), `kind`, `reason`, cursor paging, and the counts by reason                                                                                                                        |
+| `GET /v1/ledger/postings/{id}`             | `ledger.read`   | A captured document, the journal it would post, the invoice it follows, and `can` (`post`, `skip`)                                                                                                                                              |
+| `POST /v1/ledger/postings/{id}/post`       | `ledger.post`   | As proposed, on another `entryDate`, or with `lines` written out; another currency needs `rate` and `rateSource` (422 `rate_required`) and is converted line by line; 409 `waits_for_invoice`, `cost_unknown`, `not_pending`. `Idempotency-Key` |
+| `POST /v1/ledger/postings/post-all`        | `ledger.post`   | The given `ids`, or everything waiting of the given kinds, up to 500: posted as proposed or left waiting with the reason; other currencies and stock without a cost are left for review                                                         |
+| `POST /v1/ledger/postings/{id}/skip`       | `ledger.post`   | Sets it aside with a `reason`; an invoice set aside takes its waiting credit notes and void with it                                                                                                                                             |
+| `GET /v1/ledger/reports/trial-balance`     | `ledger.read`   | Each account's net at `date` on the debit or credit side, the totals, and `leftOut` (drafts and waiting documents not counted)                                                                                                                  |
+| `GET /v1/ledger/reports/account-activity`  | `ledger.read`   | One account's lines from `from` to `to` with the opening, running and closing balance on its normal side; up to 5,000 lines (`truncated`)                                                                                                       |
+| `GET /v1/ledger/reports/receivables`       | `ledger.read`   | Receivables at `date` per customer against what invoices, credit notes and payments say, and the difference; open invoices today by how late (current, 1–30, 31–60, 61–90, over 90 days) and payments not yet allocated                         |
+| `GET /v1/ledger/reports/profit-and-loss`   | `ledger.read`   | Income and expenses from `from` to `to`, closing journals left out; a management report                                                                                                                                                         |
+| `GET /v1/ledger/reports/balance-sheet`     | `ledger.read`   | Assets, liabilities and equity at `date`, earnings not yet closed shown in equity, and whether it balances; a management report                                                                                                                 |
+| `GET /v1/ledger/years`                     | `ledger.read`   | The fiscal years since the start, newest first: open or closed, months locked, the close in force and earlier reopenings, and `can` (`close`, `reopen`)                                                                                         |
+| `POST /v1/ledger/years/{yearStart}/close`  | `ledger.manage` | Once the year has ended (409 `year_not_ended`) with nothing in draft or waiting in it (409 `year_not_ready`): posts the closing journal on its last day and locks every month; 409 `year_closed`, `nothing_to_close`. `Idempotency-Key`         |
+| `POST /v1/ledger/years/{yearStart}/reopen` | `ledger.unlock` | With a `reason`: reverses the closing journal; the months stay locked (409 `year_open` when not closed). `Idempotency-Key`                                                                                                                      |
+
+CSV and printing are the screens': the reports are JSON, written to CSV in the
+browser with `toCsv()` (a byte-order mark, and cells a spreadsheet would run
+as formulas escaped).
+
+Audit actions: `ledger.set_up`, `ledger.settings_updated`,
+`ledger.account_created`, `ledger.account_updated`, `ledger.period_locked`,
+`ledger.period_unlocked`, `ledger.journal_drafted`, `ledger.journal_updated`,
+`ledger.journal_discarded`, `ledger.journal_posted`, `ledger.journal_reversed`,
+`ledger.posting_posted`, `ledger.postings_posted`, `ledger.posting_skipped`,
+`ledger.year_closed`, `ledger.year_reopened`.

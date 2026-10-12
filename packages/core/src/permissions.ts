@@ -213,6 +213,27 @@ export const PERMISSIONS = [
   'asset.record',
   /** Edit, move, retire and tag assets, link them to any job, and import them. */
   'asset.manage',
+
+  // The company's general ledger (CRM/ERP plan, phase A1; ADR-0009). Each also
+  // needs the company's `ledger` module switched on. A management ledger, not
+  // statutory accounts.
+
+  /** See the chart, journals and the ledger's reports. */
+  'ledger.read',
+  /**
+   * Draft and approve manual journals, post or set aside documents waiting in
+   * the unposted list, and reverse journals. A manual journal is approved by
+   * someone other than its drafter unless the owner allows self-approval.
+   */
+  'ledger.post',
+  /** Set up the ledger, edit the chart and posting accounts, lock months and close a year. */
+  'ledger.manage',
+  /**
+   * Unlock a month, reopen a closed year and allow self-approval. Owners only
+   * (product decision, 2026-10-12): reopening the books is answered for by
+   * the person who owns them.
+   */
+  'ledger.unlock',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -278,6 +299,10 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'asset.read',
     'asset.record',
     'asset.manage',
+    'ledger.read',
+    'ledger.post',
+    'ledger.manage',
+    'ledger.unlock',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -333,6 +358,9 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'asset.read',
     'asset.record',
     'asset.manage',
+    'ledger.read',
+    'ledger.post',
+    'ledger.manage',
   ],
 
   // Runs the day: needs to see who is available, not to change who they are.
@@ -412,6 +440,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'sales.read',
     'finance.read',
     'asset.read',
+    'ledger.read',
   ],
 });
 
