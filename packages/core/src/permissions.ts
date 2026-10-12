@@ -134,6 +134,11 @@ export const PERMISSIONS = [
   'crm.opportunity.manage',
   /** Log calls, meetings and notes, and set and complete follow-ups. */
   'crm.activity.manage',
+  /**
+   * Add, rename, reorder and archive pipelines and their stages. Owners and
+   * admins only (product decision, 2026-10-12; ADR-0012).
+   */
+  'crm.pipeline.manage',
 
   // Inventory and purchasing (CRM/ERP plan, phases E1 and E2). Each also needs
   // the company's `inventory` or `purchasing` module switched on.
@@ -312,6 +317,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'crm.lead.convert',
     'crm.opportunity.manage',
     'crm.activity.manage',
+    'crm.pipeline.manage',
     'inventory.read',
     'inventory.manage',
     'inventory.move',
@@ -380,6 +386,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'crm.lead.convert',
     'crm.opportunity.manage',
     'crm.activity.manage',
+    'crm.pipeline.manage',
     'inventory.read',
     'inventory.manage',
     'inventory.move',
