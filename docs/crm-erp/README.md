@@ -22,8 +22,9 @@ round, A1 (the general ledger), in PR #78. The seventh round, H1 (HR, staff
 expenses and Egyptian payroll) and M1 (bills of materials, assembly and
 planning), authorized by the product owner on 2026-10-12, went to `main` in PR #79. The eighth round, F2 (follow-ups before the
 pilot), authorized on 2026-10-12, went to `main` in PR #80. The ninth round, G1 (product gaps before the
-pilot), authorized on 2026-10-12, is done on `feat/product-gaps` and goes
-to `main` in one pull request; L waits for a new instruction.**
+pilot), authorized on 2026-10-12, went to `main` in PR #81, released as
+version 1.1.0. Phase L and the open follow-ups move to version 2
+(`version2.md` at the repository root).**
 
 Seventh round — branch `feat/hr-payroll-manufacturing`, from `main` at
 `64f9025`. Agreed scope: **H1 then M1, one pull request, then stop for
@@ -77,7 +78,7 @@ Every numbered item in PLAN.md §4–§5, so none is forgotten.
 | CRM-05 Quotes and pipeline analytics       | S1         | `DONE`     | Quotes with revisions and the customer link (S1); quote conversion, win rate, cycle time and value by stage (F2)                                                                                                                                             |
 | CRM-06 Campaigns and automations           | —          | `DEFERRED` | P2; no marketing platform or bulk email                                                                                                                                                                                                                      |
 | ERP-01 Products and services catalogue     | E1         | `DONE`     | Images (one main, kept on the phone) and datasheets on items (F2)                                                                                                                                                                                            |
-| ERP-02 Locations and inventory ledger      | E1         | `DONE`     | Serial and batch tracking deferred (P22 lists it; not in scope)                                                                                                                                                                                              |
+| ERP-02 Locations and inventory ledger      | E1         | `DONE`     | Serial numbers and batches with expiry, through every movement and on the phone (G1)                                                                                                                                                                         |
 | ERP-03 Suppliers and purchasing            | E2         | `DONE`     | Price lists with breaks and reorder drafts (F2); sending a PO to the supplier waits for email                                                                                                                                                                |
 | ERP-04 Quotes → sales orders → work orders | S1         | `DONE`     | One order per quote; reservations on confirmation (ADR-0006); jobs created or linked explicitly; delivery by parts and completion                                                                                                                            |
 | ERP-05 Invoicing and payments              | B1         | `DONE`     | Invoices, credit notes, receipts allocated to invoices with the rest on account, printable invoice. Internal record only; no e-invoicing or tax compliance claim; no customer link or email yet                                                              |

@@ -50,7 +50,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: company?.name ?? 'Integr8 Plus',
     slug: identifiers?.slug ?? 'integr8-plus',
-    version: '0.1.0',
+    version: '1.1.0',
     orientation: 'portrait',
     scheme: identifiers?.scheme ?? 'integr8',
     userInterfaceStyle: 'automatic',

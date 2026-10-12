@@ -6,7 +6,7 @@
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Product         | Integr8 Plus: a multi-tenant field-operations platform                                                                                                |
 | Repository      | `MinaLouisLeon/integr8-plus`                                                                                                                          |
-| Version         | `0.1.4` (root `package.json`)                                                                                                                         |
+| Version         | `1.1.0` (root `package.json`)                                                                                                                         |
 | Report date     | 11 October 2026                                                                                                                                       |
 | Source of truth | The `main` branch of the repository, after pull request #71: every number, version and endpoint below was read from the code, not written from memory |
 

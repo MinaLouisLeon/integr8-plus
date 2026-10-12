@@ -16,7 +16,7 @@ export const API_BASE_URL: string =
  * tied to a build, which is what P05's fourth exit criterion is about.
  */
 export const APP_VERSION: string =
-  (import.meta.env.VITE_APP_VERSION as string | undefined) ?? '0.1.0';
+  (import.meta.env.VITE_APP_VERSION as string | undefined) ?? '1.1.0';
 
 export const APP_ENV: string =
   (import.meta.env.VITE_APP_ENV as string | undefined) ?? 'development';
