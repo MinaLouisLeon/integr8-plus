@@ -96,6 +96,13 @@ export const EXPORTED_TABLES = [
   'erp_assets',
   'erp_asset_events',
   'erp_work_order_assets',
+  'erp_ledger_accounts',
+  'erp_ledger_settings',
+  'erp_ledger_periods',
+  'erp_ledger_period_events',
+  'erp_journals',
+  'erp_journal_lines',
+  'erp_ledger_year_closes',
   'audit_log',
 ] as const;
 

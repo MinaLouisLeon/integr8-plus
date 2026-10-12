@@ -64,7 +64,20 @@ describe('who can do what', () => {
     const withheld = PERMISSIONS.filter((permission) => !can('admin', permission));
     // An admin may read the billing state — "why did uploads stop" reaches
     // them first — but may not start or end a recurring charge (P17).
-    expect(withheld).toEqual(['tenant.update', 'branding.manage', 'billing.manage']);
+    // Reopening the books is the owner's (ADR-0009).
+    expect(withheld).toEqual([
+      'tenant.update',
+      'branding.manage',
+      'billing.manage',
+      'ledger.unlock',
+    ]);
+  });
+
+  it('keeps the ledger to owners and admins, read by viewers, and its reopening to owners', () => {
+    expect(ROLES.filter((role) => can(role, 'ledger.read'))).toEqual(['owner', 'admin', 'viewer']);
+    expect(ROLES.filter((role) => can(role, 'ledger.post'))).toEqual(['owner', 'admin']);
+    expect(ROLES.filter((role) => can(role, 'ledger.manage'))).toEqual(['owner', 'admin']);
+    expect(ROLES.filter((role) => can(role, 'ledger.unlock'))).toEqual(['owner']);
   });
 
   it('does not let a dispatcher manage members despite outranking an engineer', () => {

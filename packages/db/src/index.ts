@@ -481,6 +481,20 @@ export {
 } from './repositories/assets.js';
 
 export {
+  LedgerRepository,
+  type LedgerAccount,
+  type LedgerSettings,
+  type PostingAccounts,
+  type Journal,
+  type JournalLine,
+  type JournalLineInput,
+  type JournalDraftInput,
+  type JournalQuery,
+  type PeriodState,
+  type PeriodEvent,
+} from './repositories/ledger.js';
+
+export {
   addressLine,
   type AccessNotes,
   type GeocodeResult,

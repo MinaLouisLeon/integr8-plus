@@ -14,6 +14,11 @@ import {
   ASSET_STATUSES,
   ASSET_CONDITIONS,
   ASSET_EVENT_KINDS,
+  ACCOUNT_TYPES,
+  JOURNAL_STATUSES,
+  JOURNAL_KINDS,
+  JOURNAL_SOURCE_KINDS,
+  PERIOD_EVENT_KINDS,
   SALES_ORDER_STATUSES,
   STOCK_COUNT_STATUSES,
   SUPPLIER_STATUSES,
@@ -518,6 +523,12 @@ describe('vocabularies shared with the application', () => {
       ['erp_assets_status_known', ASSET_STATUSES],
       ['erp_assets_condition_known', ASSET_CONDITIONS],
       ['erp_asset_events_kind_known', ASSET_EVENT_KINDS],
+      // Ledger (0033).
+      ['erp_ledger_accounts_type_known', ACCOUNT_TYPES],
+      ['erp_journals_status_known', JOURNAL_STATUSES],
+      ['erp_journals_kind_known', JOURNAL_KINDS],
+      ['erp_journals_source_kind_known', JOURNAL_SOURCE_KINDS],
+      ['erp_ledger_period_events_kind_known', PERIOD_EVENT_KINDS],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,

@@ -29,6 +29,11 @@ import {
   type AssetCondition,
   type AssetEventKind,
   type AssetStatus,
+  type AccountType,
+  type JournalKind,
+  type JournalSourceKind,
+  type JournalStatus,
+  type PeriodEventKind,
 } from '@integr8/core';
 import type { ColumnType, Generated } from 'kysely';
 import { z } from 'zod';
@@ -1585,6 +1590,131 @@ export interface ErpWorkOrderAssetsTable {
   linked_at: CreatedAt;
 }
 
+// ---------------------------------------------------------------------------
+// The general ledger (0033; CRM/ERP plan, phase A1; ADR-0009)
+// ---------------------------------------------------------------------------
+
+export interface ErpLedgerAccountsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  code: string;
+  name: string;
+  type: AccountType;
+  archived_at: Date | null;
+  archived_by: string | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: Generated<Date>;
+}
+
+export interface ErpLedgerSettingsTable {
+  tenant_id: string;
+  /** `YYYY-MM-01`. */
+  start_date: string;
+  fiscal_start_month: Generated<number>;
+  auto_post_sales: Generated<boolean>;
+  auto_post_stock: Generated<boolean>;
+  allow_self_approval: Generated<boolean>;
+  receivables_account_id: string;
+  revenue_services_account_id: string;
+  revenue_goods_account_id: string;
+  vat_output_account_id: string;
+  cash_account_id: string;
+  bank_account_id: string;
+  other_receipts_account_id: string;
+  inventory_account_id: string;
+  goods_received_account_id: string;
+  parts_cost_account_id: string;
+  stock_adjustments_account_id: string;
+  opening_balances_account_id: string;
+  retained_earnings_account_id: string;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_by: string | null;
+  updated_at: Generated<Date>;
+}
+
+export interface ErpLedgerPeriodsTable {
+  tenant_id: string;
+  /** `YYYY-MM-01`. */
+  period_start: string;
+  locked: boolean;
+  changed_by: string;
+  changed_at: Generated<Date>;
+}
+
+export interface ErpLedgerPeriodEventsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  period_start: string;
+  kind: PeriodEventKind;
+  reason: string | null;
+  actor_id: string;
+  occurred_at: Generated<Date>;
+}
+
+export interface JournalReferenceCountersTable {
+  tenant_id: string;
+  last_reference: number;
+}
+
+export interface ErpJournalsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  /** Given by trigger when posted. */
+  reference: ColumnType<number | null, never, never>;
+  status: Generated<JournalStatus>;
+  kind: JournalKind;
+  /** `YYYY-MM-DD`. */
+  entry_date: string;
+  memo: string | null;
+  source_kind: JournalSourceKind | null;
+  source_id: string | null;
+  reversal_of: string | null;
+  foreign_currency: string | null;
+  /** Up to ten places, as text. */
+  exchange_rate: string | null;
+  rate_source: string | null;
+  drafted_by: string;
+  drafted_at: Generated<Date>;
+  posted_by: string | null;
+  posted_at: Date | null;
+  self_approved: Generated<boolean>;
+  created_at: CreatedAt;
+  updated_at: Generated<Date>;
+}
+
+export interface ErpJournalLinesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  journal_id: string;
+  line_no: number;
+  account_id: string;
+  /** Decimal string. */
+  debit: Generated<string>;
+  /** Decimal string. */
+  credit: Generated<string>;
+  memo: string | null;
+  customer_id: string | null;
+  foreign_amount: string | null;
+}
+
+export interface ErpLedgerYearClosesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  /** `YYYY-MM-01`. */
+  year_start: string;
+  closing_journal_id: string;
+  closed_by: string;
+  closed_at: Generated<Date>;
+  reopened_by: string | null;
+  reopened_at: Date | null;
+  reopen_reason: string | null;
+  reopening_journal_id: string | null;
+}
+
 export interface CustomerContactsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -2116,6 +2246,14 @@ export interface Database {
   erp_assets: ErpAssetsTable;
   erp_asset_events: ErpAssetEventsTable;
   erp_work_order_assets: ErpWorkOrderAssetsTable;
+  erp_ledger_accounts: ErpLedgerAccountsTable;
+  erp_ledger_settings: ErpLedgerSettingsTable;
+  erp_ledger_periods: ErpLedgerPeriodsTable;
+  erp_ledger_period_events: ErpLedgerPeriodEventsTable;
+  journal_reference_counters: JournalReferenceCountersTable;
+  erp_journals: ErpJournalsTable;
+  erp_journal_lines: ErpJournalLinesTable;
+  erp_ledger_year_closes: ErpLedgerYearClosesTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -2258,6 +2396,8 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'erp_payment_allocations_guard',
   // Numbers assets from a counter the runtime role cannot write; see 0031.
   'assign_asset_reference',
+  // Numbers journals when posted from a counter the runtime role cannot write; see 0033.
+  'assign_journal_reference',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -2349,6 +2489,14 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_assets: true,
   erp_asset_events: true,
   erp_work_order_assets: true,
+  erp_ledger_accounts: true,
+  erp_ledger_settings: true,
+  erp_ledger_periods: true,
+  erp_ledger_period_events: true,
+  journal_reference_counters: true,
+  erp_journals: true,
+  erp_journal_lines: true,
+  erp_ledger_year_closes: true,
   customer_contacts: true,
   sites: true,
   job_types: true,
