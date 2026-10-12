@@ -56,6 +56,7 @@ const item = (overrides: Partial<InventoryItem> = {}): InventoryItem => ({
   averageUnitCost: '118.25',
   preferredSupplierId: null,
   supplierPartNumber: null,
+  leadTimeDays: null,
   version: 3,
   createdAt: '2026-10-01T09:00:00.000Z',
   updatedAt: '2026-10-01T09:00:00.000Z',

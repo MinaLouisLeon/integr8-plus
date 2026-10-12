@@ -84,6 +84,14 @@ export interface OperationsConfig {
     editEmployee: (id: string) => string;
     /** The signed-in person's own employee profile. */
     myProfile: string;
+    /** Staff expense claims (seventh round; ADR-0010): one's own, and a new one. */
+    myExpenseClaims: string;
+    newExpenseClaim: string;
+    /** Everybody's claims, for those who approve them. */
+    expenseClaims: string;
+    expenseClaim: (id: string) => string;
+    /** What expenses may be claimed for, kept by those who approve claims. */
+    expenseCategories: string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -129,7 +137,8 @@ export interface RowTarget {
     | 'asset'
     | 'journal'
     | 'posting'
-    | 'employee';
+    | 'employee'
+    | 'expenseClaim';
   id: string;
   label: string;
 }
@@ -294,6 +303,12 @@ export type EmployeeUpdateBody = NonNullable<
   paths['/v1/hr/employees/{employeeId}']['patch']['requestBody']
 >['content']['application/json'];
 export type SealedFieldName = Json<'/v1/hr/employees/{employeeId}/reveal', 'post', 200>['field'];
+export type ExpenseClaimPage = Json<'/v1/expenses', 'get', 200>;
+export type ExpenseClaimRow = ExpenseClaimPage['items'][number];
+export type ExpenseClaimStatus = ExpenseClaimRow['status'];
+export type ExpenseClaimDetail = Json<'/v1/expenses/{claimId}', 'get', 200>;
+export type ExpenseReceipt = ExpenseClaimDetail['receipts'][number];
+export type ExpenseCategory = Json<'/v1/expenses/categories', 'get', 200>['items'][number];
 
 export const keys = {
   me: ['me'] as const,
@@ -352,6 +367,11 @@ export const keys = {
   employees: (query: object) => ['hr', 'employees', query] as const,
   employee: (id: string) => ['hr', 'employee', id] as const,
   myProfile: ['hr', 'me'] as const,
+  expenseClaims: (query: object) => ['expenses', 'claims', query] as const,
+  expenseClaim: (id: string) => ['expenses', 'claim', id] as const,
+  expenseCategories: (archived: boolean) => ['expenses', 'categories', archived] as const,
+  /** The seat's own recent jobs, for saying which job an expense was for. */
+  myRecentJobs: ['work-orders', 'mine-recent'] as const,
   forms: ['forms'] as const,
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,

@@ -87,30 +87,30 @@ describe('the dashboard map', () => {
     expect(NAV_GROUPS.indexOf('accounting')).toBe(NAV_GROUPS.indexOf('finance') + 1);
   });
 
-  it('shows HR after accounting: the list to those who read it, a profile to everybody', () => {
+  it('shows HR after accounting: the lists to those who may use them, a profile and claims to everybody', () => {
     const hr = (seat: Parameters<typeof permissionsHeld>[0], features?: Record<string, boolean>) =>
       visibleNavigation('web', permissionsHeld(seat), features)
         .find((group) => group.group === 'hr')
         ?.sections.map((section) => section.key);
+    const everything = ['employees', 'expenseClaims', 'myProfile', 'myExpenses'];
 
-    expect(hr({ role: 'owner' }, { hr: true })).toEqual(['employees', 'myProfile']);
-    expect(hr({ role: 'admin' }, { hr: true })).toEqual(['employees', 'myProfile']);
-    expect(hr({ role: 'hr_manager' }, { hr: true })).toEqual(['employees', 'myProfile']);
-    expect(hr({ role: 'engineer' }, { hr: true })).toEqual(['myProfile']);
-    // A grant on top of a role brings the list with it.
-    expect(hr({ role: 'dispatcher', grants: ['hr_manager'] }, { hr: true })).toEqual([
-      'employees',
-      'myProfile',
-    ]);
+    expect(hr({ role: 'owner' }, { hr: true })).toEqual(everything);
+    expect(hr({ role: 'admin' }, { hr: true })).toEqual(everything);
+    expect(hr({ role: 'hr_manager' }, { hr: true })).toEqual(everything);
+    // Every member claims expenses back; only approvers see everybody's claims.
+    expect(hr({ role: 'engineer' }, { hr: true })).toEqual(['myProfile', 'myExpenses']);
+    expect(hr({ role: 'viewer' }, { hr: true })).toEqual(['myProfile', 'myExpenses']);
+    // A grant on top of a role brings the lists with it.
+    expect(hr({ role: 'dispatcher', grants: ['hr_manager'] }, { hr: true })).toEqual(everything);
     // Without the module, no HR heading at all, for anybody.
     expect(hr({ role: 'owner' })).toBeUndefined();
     expect(hr({ role: 'owner' }, { hr: false })).toBeUndefined();
     expect(NAV_GROUPS.indexOf('hr')).toBe(NAV_GROUPS.indexOf('accounting') + 1);
-    // The same in the desktop app, which has both screens.
+    // The same in the desktop app, which has every one of these screens.
     expect(
       visibleNavigation('desktop', permissionsHeld({ role: 'viewer' }), { hr: true })
         .flatMap((group) => group.sections)
         .map((section) => section.key),
-    ).toContain('myProfile');
+    ).toEqual(expect.arrayContaining(['myProfile', 'myExpenses']));
   });
 });

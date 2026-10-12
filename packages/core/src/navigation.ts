@@ -45,7 +45,9 @@ export type NavIcon =
   | 'heart'
   | 'book'
   | 'bar-chart'
-  | 'id-card';
+  | 'id-card'
+  | 'banknote'
+  | 'clipboard-check';
 
 export type NavGroup =
   | 'overview'
@@ -116,6 +118,8 @@ export type NavPath =
   | 'ledgerReports'
   | 'employees'
   | 'myProfile'
+  | 'myExpenses'
+  | 'expenseClaims'
   | 'assets';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
@@ -256,7 +260,9 @@ export const NAV_SECTIONS: readonly NavSection[] = [
   },
 
   // HR (seventh round; ADR-0010): the company's `hr` module. Everybody has
-  // their own profile; the list is for those who read everybody's.
+  // their own profile and claims their own expenses; the list of employees is
+  // for those who read everybody's, and everybody's claims for those who
+  // approve them.
   {
     key: 'employees',
     group: 'hr',
@@ -265,7 +271,23 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     permission: 'hr.read',
     feature: 'hr',
   },
+  {
+    key: 'expenseClaims',
+    group: 'hr',
+    path: 'expenseClaims',
+    icon: 'clipboard-check',
+    permission: 'expense.approve',
+    feature: 'hr',
+  },
   { key: 'myProfile', group: 'hr', path: 'myProfile', icon: 'id-card', feature: 'hr' },
+  {
+    key: 'myExpenses',
+    group: 'hr',
+    path: 'myExpenses',
+    icon: 'banknote',
+    permission: 'expense.submit',
+    feature: 'hr',
+  },
 
   // Inventory (CRM/ERP plan, phase E1): the company's `inventory` module.
   {

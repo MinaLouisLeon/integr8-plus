@@ -15,6 +15,7 @@ import { JournalScreen } from './journal-screen.js';
 import { LedgerHomeScreen } from './ledger-home.js';
 import { LedgerPeriodsScreen } from './ledger-periods.js';
 import { LedgerReportsScreen } from './ledger-reports.js';
+import { LedgerSettingsScreen } from './ledger-settings.js';
 import { UnpostedScreen } from './unposted-screen.js';
 
 const USER = '00000000-0000-4000-8000-000000000401';
@@ -661,5 +662,54 @@ describe('months and years', { timeout: 20_000 }, () => {
     expect(
       await within(dialog).findByText(/Post or discard the draft journals/u),
     ).toBeInTheDocument();
+  });
+});
+
+describe('the ledger settings', { timeout: 20_000 }, () => {
+  it('switches automatic posting of expense claims and pay runs where HR and payroll are on', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(MANAGE, { ledger: true, hr: true, payroll: true }),
+      'GET /v1/ledger': () => ({ body: overview() }),
+      'GET /v1/ledger/accounts': () => ({ body: { items: ACCOUNTS } }),
+      'PUT /v1/ledger/settings': () => ({
+        body: settings({ autoPostExpenses: false, autoPostPayroll: false, version: 4 }),
+      }),
+    });
+    const { container } = renderScreen(<LedgerSettingsScreen />, client);
+
+    const expenses = await screen.findByRole('checkbox', {
+      name: 'Post staff expense claims automatically',
+    });
+    const payroll = screen.getByRole('checkbox', { name: 'Post pay runs automatically' });
+    expect(expenses).toBeChecked();
+    expect(payroll).toBeChecked();
+    expect(await accessibilityViolations(container)).toEqual([]);
+
+    await user.click(expenses);
+    await user.click(payroll);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(calls.find((call) => call.method === 'PUT')?.body).toEqual({
+        expectedVersion: 3,
+        autoPostExpenses: false,
+        autoPostPayroll: false,
+      }),
+    );
+  });
+
+  it('leaves the switches out for a company without HR or payroll', async () => {
+    const { client } = fakeApi({
+      'GET /v1/me': me(MANAGE, { ledger: true, hr: true }),
+      'GET /v1/ledger': () => ({ body: overview() }),
+      'GET /v1/ledger/accounts': () => ({ body: { items: ACCOUNTS } }),
+    });
+    renderScreen(<LedgerSettingsScreen />, client);
+    expect(
+      await screen.findByRole('checkbox', { name: 'Post staff expense claims automatically' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: 'Post pay runs automatically' }),
+    ).not.toBeInTheDocument();
   });
 });

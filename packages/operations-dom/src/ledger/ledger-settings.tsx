@@ -21,6 +21,8 @@ interface Draft {
   fiscalStartMonth: number;
   autoPostSales: boolean;
   autoPostStock: boolean;
+  autoPostExpenses: boolean;
+  autoPostPayroll: boolean;
   allowSelfApproval: boolean;
   accounts: Partial<Record<PostingRoleKey, string>>;
 }
@@ -31,16 +33,20 @@ function draftOf(settings: LedgerSettings): Draft {
     fiscalStartMonth: settings.fiscalStartMonth,
     autoPostSales: settings.autoPostSales,
     autoPostStock: settings.autoPostStock,
+    autoPostExpenses: settings.autoPostExpenses,
+    autoPostPayroll: settings.autoPostPayroll,
     allowSelfApproval: settings.allowSelfApproval,
     accounts: { ...settings.accounts },
   };
 }
 
 /**
- * The ledger's settings (ADR-0009): whether sales and stock post on their
- * own, the account each automatic posting uses, and — the owner's alone —
- * whether a person may post a journal they drafted. The start date and the
- * fiscal year change only until the first journal is posted.
+ * The ledger's settings (ADR-0009): whether sales, stock, staff expense
+ * claims and pay runs post on their own (the last two where HR and payroll
+ * are switched on), the account each automatic posting uses, and — the
+ * owner's alone — whether a person may post a journal they drafted. The
+ * start date and the fiscal year change only until the first journal is
+ * posted.
  */
 export function LedgerSettingsScreen() {
   const { t } = useTranslation();
@@ -75,6 +81,12 @@ export function LedgerSettingsScreen() {
             ...(values.autoPostStock === current.autoPostStock
               ? {}
               : { autoPostStock: values.autoPostStock }),
+            ...(values.autoPostExpenses === current.autoPostExpenses
+              ? {}
+              : { autoPostExpenses: values.autoPostExpenses }),
+            ...(values.autoPostPayroll === current.autoPostPayroll
+              ? {}
+              : { autoPostPayroll: values.autoPostPayroll }),
             ...(values.allowSelfApproval === current.allowSelfApproval
               ? {}
               : { allowSelfApproval: values.allowSelfApproval }),
@@ -164,6 +176,46 @@ export function LedgerSettingsScreen() {
             />
             {t('ledger.settings.autoPostStock')}
           </label>
+          {access.hr ? (
+            <div className="flex items-start gap-2 text-sm text-content">
+              <input
+                id="ledger-auto-expenses"
+                type="checkbox"
+                className="mt-1"
+                aria-describedby="ledger-auto-expenses-hint"
+                disabled={!editable}
+                checked={values.autoPostExpenses}
+                onChange={(event) => set({ autoPostExpenses: event.target.checked })}
+              />
+              <div className="flex flex-col">
+                <label htmlFor="ledger-auto-expenses">
+                  {t('ledger.settings.autoPostExpenses')}
+                </label>
+                <span id="ledger-auto-expenses-hint" className="text-content-muted">
+                  {t('ledger.settings.autoPostExpensesHint')}
+                </span>
+              </div>
+            </div>
+          ) : null}
+          {access.payroll ? (
+            <div className="flex items-start gap-2 text-sm text-content">
+              <input
+                id="ledger-auto-payroll"
+                type="checkbox"
+                className="mt-1"
+                aria-describedby="ledger-auto-payroll-hint"
+                disabled={!editable}
+                checked={values.autoPostPayroll}
+                onChange={(event) => set({ autoPostPayroll: event.target.checked })}
+              />
+              <div className="flex flex-col">
+                <label htmlFor="ledger-auto-payroll">{t('ledger.settings.autoPostPayroll')}</label>
+                <span id="ledger-auto-payroll-hint" className="text-content-muted">
+                  {t('ledger.settings.autoPostPayrollHint')}
+                </span>
+              </div>
+            </div>
+          ) : null}
           <p className="text-sm text-content-muted">{t('ledger.settings.whenOff')}</p>
         </section>
 

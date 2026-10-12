@@ -50,6 +50,8 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   ledgerReports: '/ledger/reports',
   employees: '/hr/employees',
   myProfile: '/hr/me',
+  myExpenses: '/hr/expenses',
+  expenseClaims: '/hr/claims',
   assets: '/assets',
 };
 

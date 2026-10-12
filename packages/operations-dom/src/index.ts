@@ -65,3 +65,7 @@ export { EmployeeListScreen } from './hr/employee-list.js';
 export { EmployeeScreen } from './hr/employee-screen.js';
 export { EmployeeEditorScreen } from './hr/employee-editor.js';
 export { MyProfileScreen } from './hr/my-profile.js';
+export { ExpenseClaimsScreen, MyExpenseClaimsScreen } from './expenses/claim-list.js';
+export { NewExpenseClaimScreen } from './expenses/claim-form.js';
+export { ExpenseClaimScreen } from './expenses/claim-screen.js';
+export { ExpenseCategoriesScreen } from './expenses/expense-categories.js';

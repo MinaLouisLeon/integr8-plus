@@ -43,6 +43,9 @@ export function useLedgerAccess() {
     post: enabled && permissions.includes('ledger.post'),
     manage: enabled && permissions.includes('ledger.manage'),
     unlock: enabled && permissions.includes('ledger.unlock'),
+    /** Modules whose documents the ledger may post: staff expenses (HR) and pay runs. */
+    hr: me.data !== undefined && hasFeature(me.data.features, 'hr'),
+    payroll: me.data !== undefined && hasFeature(me.data.features, 'payroll'),
   };
 }
 

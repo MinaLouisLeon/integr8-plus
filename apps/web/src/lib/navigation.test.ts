@@ -101,6 +101,33 @@ describe('HR', () => {
   });
 });
 
+describe('expense claims', () => {
+  const EXPENSES: ShellRoute[] = [
+    { key: 'expenseClaims', href: NAV_PATHS.expenseClaims },
+    { key: 'myExpenses', href: NAV_PATHS.myExpenses },
+  ];
+
+  it('keeps a claim and a new one under one’s own, and the categories under everybody’s', () => {
+    expect(routeForPathname(EXPENSES, '/hr/expenses')).toEqual({
+      route: EXPENSES[1],
+      nested: false,
+    });
+    expect(routeForPathname(EXPENSES, '/hr/expenses/new')).toEqual({
+      route: EXPENSES[1],
+      nested: true,
+    });
+    expect(routeForPathname(EXPENSES, '/hr/expenses/c1')?.route.key).toBe('myExpenses');
+    expect(routeForPathname(EXPENSES, '/hr/claims')).toEqual({
+      route: EXPENSES[0],
+      nested: false,
+    });
+    expect(routeForPathname(EXPENSES, '/hr/claims/categories')).toEqual({
+      route: EXPENSES[0],
+      nested: true,
+    });
+  });
+});
+
 describe('the current item', () => {
   it('is current on its own page and below it', () => {
     expect(isCurrentRoute(ROUTES[1]!, '/work-orders')).toBe(true);

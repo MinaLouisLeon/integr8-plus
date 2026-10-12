@@ -33,6 +33,11 @@ import {
   EmployeeScreen,
   EmployeeEditorScreen,
   MyProfileScreen,
+  MyExpenseClaimsScreen,
+  NewExpenseClaimScreen,
+  ExpenseClaimScreen,
+  ExpenseClaimsScreen,
+  ExpenseCategoriesScreen,
   AssetListScreen,
   WarrantyAlertsPanel,
   AssetScreen,
@@ -135,6 +140,11 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         newEmployee: '/hr/employees/new',
         editEmployee: (id) => `/hr/employees/${id}/edit`,
         myProfile: '/hr/me',
+        myExpenseClaims: '/hr/expenses',
+        newExpenseClaim: '/hr/expenses/new',
+        expenseClaims: '/hr/claims',
+        expenseClaim: (id) => `/hr/expenses/${id}`,
+        expenseCategories: '/hr/claims/categories',
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -631,6 +641,48 @@ export function MyProfileRoute() {
   return (
     <OperationsScreens>
       <MyProfileScreen />
+    </OperationsScreens>
+  );
+}
+
+/** HR: staff expense claims (seventh round; ADR-0010). */
+export function MyExpenseClaimsRoute() {
+  return (
+    <OperationsScreens>
+      <MyExpenseClaimsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function NewExpenseClaimRoute() {
+  return (
+    <OperationsScreens>
+      <NewExpenseClaimScreen />
+    </OperationsScreens>
+  );
+}
+
+export function ExpenseClaimRoute() {
+  const { claimId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <ExpenseClaimScreen key={claimId} claimId={claimId} />
+    </OperationsScreens>
+  );
+}
+
+export function ExpenseClaimsRoute() {
+  return (
+    <OperationsScreens>
+      <ExpenseClaimsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function ExpenseCategoriesRoute() {
+  return (
+    <OperationsScreens>
+      <ExpenseCategoriesScreen />
     </OperationsScreens>
   );
 }

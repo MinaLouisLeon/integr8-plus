@@ -631,6 +631,190 @@ async function discardAssetChange(sql: SqlConnection, row: OutboxRow): Promise<v
   }
 }
 
+// ---------------------------------------------------------------------------
+// Expense claims (seventh round; ADR-0010)
+// ---------------------------------------------------------------------------
+
+const AMOUNT = /^\d{1,16}(\.\d{1,4})?$/u;
+
+/** The phone's own calendar date, `YYYY-MM-DD`: what "spent today or earlier" means where it is. */
+export function deviceToday(now: Date): string {
+  return `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+/** What somebody claims from the phone; the receipts are photos already kept on it. */
+export interface ExpenseClaimInput {
+  categoryId: string;
+  /** `YYYY-MM-DD`, today or earlier. */
+  spentOn: string;
+  /** A decimal string above zero, up to four places, in the company's currency. */
+  amount: string;
+  description: string;
+  workOrderId?: string | undefined;
+  receipts?: readonly { file: CapturedFileInput; title: string }[];
+}
+
+/** Queues one receipt for a claim, after the claim and after its own file. */
+async function queueReceipt(
+  sql: SqlConnection,
+  context: ChangeContext,
+  input: { claimId: string; file: CapturedFileInput; title: string; submittedBy: string | null },
+  now: Date,
+): Promise<{ attachmentId: string; mediaId: string }> {
+  const at = now.toISOString();
+  const mediaId = uuidv7(now.getTime(), context.random);
+  const attachmentId = uuidv7(now.getTime(), context.random);
+  await insertUpload(sql, { ...input.file, mediaId, workOrderId: null, at });
+  const title = input.title.trim() === '' ? 'Receipt' : input.title.trim().slice(0, 200);
+  await insertChange(sql, {
+    id: uuidv7(now.getTime(), context.random),
+    kind: 'expense.receipt',
+    entityKey: `expense:${input.claimId}`,
+    entityId: input.claimId,
+    workOrderId: null,
+    payload: { attachmentId, mediaId, title },
+    base: null,
+    // The claim must reach the server first, and the photo with it.
+    waitsFor: {
+      media: [mediaId],
+      mutations: input.submittedBy === null ? [] : [input.submittedBy],
+    },
+    at,
+  });
+  return { attachmentId, mediaId };
+}
+
+/**
+ * Claims an expense back from the phone, with photos of its receipts, signal
+ * or not. The claim is checked here as the server would check it — a
+ * category the phone was last told is in use, spent today or earlier, an
+ * amount above zero, a description — so a refusal later is rare. It goes to
+ * the server under the id chosen here, which makes a resend land once and
+ * lets each receipt name it; each receipt follows once the claim has arrived
+ * and its photo has uploaded. Returns that id.
+ */
+export async function recordExpenseClaim(
+  context: ChangeContext,
+  input: ExpenseClaimInput,
+): Promise<{ claimId: string; mutationId: string }> {
+  const { db, clock, random } = context;
+  const amount = input.amount.trim();
+  if (!AMOUNT.test(amount) || !/[1-9]/u.test(amount)) {
+    throw new LocalChangeError('amount_invalid', 'Enter an amount above zero, such as 250.50.');
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(input.spentOn)) {
+    throw new LocalChangeError('date_invalid', 'Give the date the money was spent.');
+  }
+  const description = input.description.trim();
+  if (description === '' || description.length > 1000) {
+    throw new LocalChangeError('description_required', 'Say what the expense was for.');
+  }
+  return db.write(OUTBOX_TABLES, async (sql) => {
+    const now = clock.now();
+    if (input.spentOn > deviceToday(now)) {
+      throw new LocalChangeError('spent_in_future', 'An expense is claimed once it is spent.');
+    }
+    const categories = await sql.get<{ value: string }>(
+      `select value from meta where key = 'expense_categories'`,
+    );
+    const known =
+      categories === undefined ? [] : (JSON.parse(categories.value) as { id: string }[]);
+    if (!known.some((category) => category.id === input.categoryId)) {
+      throw new LocalChangeError('category_unknown', 'Choose one of the categories in use.');
+    }
+    if (input.workOrderId !== undefined) {
+      await jobDetail(sql, input.workOrderId);
+    }
+    const at = now.toISOString();
+    const claimId = uuidv7(now.getTime(), random);
+    const mutationId = uuidv7(now.getTime(), random);
+    await insertChange(sql, {
+      id: mutationId,
+      kind: 'expense.submit',
+      entityKey: `expense:${claimId}`,
+      entityId: claimId,
+      // Not the job's work: a claim never holds a job on the phone.
+      workOrderId: null,
+      payload: {
+        categoryId: input.categoryId,
+        spentOn: input.spentOn,
+        amount,
+        description,
+        ...(input.workOrderId === undefined ? {} : { workOrderId: input.workOrderId }),
+      },
+      base: null,
+      at,
+    });
+    for (const receipt of input.receipts ?? []) {
+      await queueReceipt(
+        sql,
+        context,
+        { claimId, file: receipt.file, title: receipt.title, submittedBy: mutationId },
+        now,
+      );
+    }
+    return { claimId, mutationId };
+  });
+}
+
+/**
+ * Another receipt for a claim made on this phone, while the server still
+ * takes receipts on it: it was submitted here and is not known to be decided.
+ */
+export async function recordExpenseReceipt(
+  context: ChangeContext,
+  input: { claimId: string; file: CapturedFileInput; title: string },
+): Promise<{ attachmentId: string; mediaId: string }> {
+  return context.db.write(OUTBOX_TABLES, async (sql) => {
+    const submit = await sql.get<{ id: string; state: OutboxState }>(
+      `select id, state from outbox where kind = 'expense.submit' and entity_id = ?
+       order by seq desc limit 1`,
+      [input.claimId],
+    );
+    if (submit === undefined) {
+      throw new LocalChangeError('claim_not_on_phone', 'This claim was not made on this phone.');
+    }
+    return queueReceipt(
+      sql,
+      context,
+      {
+        claimId: input.claimId,
+        file: input.file,
+        title: input.title,
+        submittedBy: submit.state === 'done' ? null : submit.id,
+      },
+      context.clock.now(),
+    );
+  });
+}
+
+/**
+ * A claim dropped before the server took it takes its receipts with it: they
+ * have nothing to belong to. Their uploads go too, when they have not started.
+ */
+async function discardExpenseChange(sql: SqlConnection, row: OutboxRow, at: string): Promise<void> {
+  if (row.kind !== 'expense.submit') {
+    return;
+  }
+  const receipts = await sql.all<{ seq: number; payload: string }>(
+    `select seq, payload from outbox
+     where kind = 'expense.receipt' and entity_key = ? and state <> 'done'`,
+    [row.entityKey],
+  );
+  for (const receipt of receipts) {
+    const { mediaId } = JSON.parse(receipt.payload) as { mediaId: string };
+    await sql.run(
+      `delete from uploads where media_id = ? and state <> 'confirmed' and bytes_sent = 0 and kind is null`,
+      [mediaId],
+    );
+    await sql.run(`update outbox set state = 'done', done_at = ?, last_error = ? where seq = ?`, [
+      at,
+      JSON.stringify({ code: 'discarded', message: 'Its claim was discarded.' }),
+      receipt.seq,
+    ]);
+  }
+}
+
 export async function recordComment(
   context: ChangeContext,
   input: { workOrderId: string; body: string; visibility: 'internal' | 'customer' },
@@ -1704,6 +1888,7 @@ export async function discardChange(context: ChangeContext, mutationId: string):
     const at = context.clock.now().toISOString();
     await requestRefresh(sql, row.workOrderId);
     await discardAssetChange(sql, row);
+    await discardExpenseChange(sql, row, at);
     await sql.run(`update outbox set state = 'done', done_at = ?, last_error = ? where seq = ?`, [
       at,
       JSON.stringify({

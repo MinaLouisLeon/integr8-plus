@@ -269,6 +269,7 @@ describe('purchase orders', { timeout: 20_000 }, () => {
               averageUnitCost: '24',
               preferredSupplierId: SUPPLIER,
               supplierPartNumber: null,
+              leadTimeDays: null,
               version: 1,
               createdAt: '2026-10-01T09:00:00.000Z',
               updatedAt: '2026-10-01T09:00:00.000Z',

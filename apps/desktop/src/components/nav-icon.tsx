@@ -122,6 +122,16 @@ const NAV_GLYPHS: Record<NavIcon, Glyph> = {
     'M6 16a3 3 0 0 1 6 0',
     'M14 9h4M14 13h4',
   ],
+  banknote: [
+    'M3 7a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z',
+    'M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
+    'M6 12h.01M18 12h.01',
+  ],
+  'clipboard-check': [
+    'M9 4h6v3H9z',
+    'M9 5H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-3',
+    'M9 14l2 2 4-4',
+  ],
 };
 
 export type ChromeIcon =

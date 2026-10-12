@@ -1,6 +1,7 @@
 import { ApiRequestError } from '@integr8/api-client';
 import type { LocalDatabase } from '../database.js';
 import { RETENTION, type RetentionPolicy } from '../eviction.js';
+import { refreshExpenseCategories } from '../expenses.js';
 import {
   clockOffset,
   type DeviceClock,
@@ -177,6 +178,8 @@ export class SyncEngine {
           this.#options.policy ?? RETENTION,
         );
         summary.pulled = pulled.workOrders + (await refreshRequested(db, this.#options.api));
+        // What expenses may be claimed for, so a claim can be made without signal.
+        await refreshExpenseCategories(db, this.#options.api, clock.now());
         summary.evictedFiles = pulled.evicted.filePaths;
         if (summary.uploadsPaused === null) {
           summary.downloaded = await this.#downloadAll();

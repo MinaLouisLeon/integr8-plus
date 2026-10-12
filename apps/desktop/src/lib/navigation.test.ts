@@ -79,6 +79,28 @@ describe('finding the section a route is in', () => {
     ).toEqual(['/hr/employees', '/hr/me']);
   });
 
+  it('finds one’s own expense claims and everybody’s apart', () => {
+    expect(sectionPathFor('/hr/expenses')).toBe('myExpenses');
+    expect(sectionPathFor('/hr/expenses/new')).toBe('myExpenses');
+    expect(sectionPathFor('/hr/claims')).toBe('expenseClaims');
+    expect(routeChrome('/hr/expenses/c1')).toEqual({
+      section: 'myExpenses',
+      back: { to: '/hr/expenses', section: 'myExpenses' },
+    });
+    expect(routeChrome('/hr/claims/categories')).toEqual({
+      section: 'expenseClaims',
+      back: { to: '/hr/claims', section: 'expenseClaims' },
+    });
+    expect(
+      desktopNavigation(['expense.submit', 'expense.approve'], { hr: true })
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.to),
+    ).toEqual(['/hr/claims', '/hr/me', '/hr/expenses']);
+    expect(
+      desktopNavigation(['expense.submit'], { hr: false }).find((group) => group.group === 'hr'),
+    ).toBeUndefined();
+  });
+
   it('reads a site as part of its customers', () => {
     expect(sectionPathFor('/sites/s1')).toBe('customers');
   });
