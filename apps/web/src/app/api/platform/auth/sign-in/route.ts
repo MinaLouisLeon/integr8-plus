@@ -39,7 +39,7 @@ export async function POST(request: Request): Promise<Response> {
     headers: {
       'content-type': 'application/json',
       'x-client-app': 'web',
-      'x-client-version': process.env.NEXT_PUBLIC_APP_VERSION ?? '0.1.0',
+      'x-client-version': process.env.NEXT_PUBLIC_APP_VERSION ?? '1.1.0',
     },
     body: JSON.stringify(credentials),
   });

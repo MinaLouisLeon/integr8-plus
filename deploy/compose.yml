@@ -121,7 +121,7 @@ services:
       args:
         # Baked into the browser bundle: where a customer's browser reaches the API.
         NEXT_PUBLIC_API_BASE_URL: ${PUBLIC_API_URL:?set PUBLIC_API_URL in deploy/.env}
-        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.1.0}
+        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-1.1.0}
         NEXT_PUBLIC_APP_ENV: ${APP_ENV:-staging}
         NEXT_PUBLIC_SENTRY_DSN: ${WEB_PUBLIC_SENTRY_DSN:-}
         NEXT_PUBLIC_SIGNUP: ${PUBLIC_SIGNUP:-off}

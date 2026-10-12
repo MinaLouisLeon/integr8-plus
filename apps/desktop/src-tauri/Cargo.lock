@@ -1584,7 +1584,7 @@ dependencies = [
 
 [[package]]
 name = "integr8-desktop"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
  "keyring",
  "serde",

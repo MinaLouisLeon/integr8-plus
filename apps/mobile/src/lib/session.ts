@@ -15,7 +15,7 @@ let manager: SessionManager | undefined;
 let onSignedOut: ((reason: SignOutReason) => void) | undefined;
 
 /** The build, sent as `x-client-version` and used as the Sentry release. */
-export const APP_VERSION: string = Constants.expoConfig?.version ?? '0.1.0';
+export const APP_VERSION: string = Constants.expoConfig?.version ?? '1.1.0';
 
 export function session(): SessionManager {
   manager ??= new SessionManager({
