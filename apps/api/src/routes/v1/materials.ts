@@ -18,13 +18,20 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { ApiError, conflict, forbidden, unprocessable } from '../../http/errors.js';
 import type { RequestContext } from '../../http/routes.js';
-import { requireLocation } from './inventory-stock.js';
+import { requireLocation, stockRefusal } from './inventory-stock.js';
 import { availableForJob, deliverForJob } from './sales-fulfilment.js';
 import { itemSummary, itemSummarySchema, seesCosts } from './inventory.js';
 import { type People, personBody, personSchema } from './operations.js';
 import { companyToday } from './sales-quotes.js';
 import { iso } from './schemas.js';
-import { byLot, type LotAllocation, type LotSpec, lotsHeld, lotsLeaving } from './stock-lots.js';
+import {
+  byLot,
+  type LotAllocation,
+  type LotSpec,
+  lotsArriving,
+  lotsHeld,
+  lotsLeaving,
+} from './stock-lots.js';
 
 /**
  * Parts used on jobs (CRM/ERP plan, phase E2; ADR-0005): the record, and the
@@ -538,25 +545,31 @@ export async function returnUse(
       actorId: context.principal.userId,
     });
   } else if (material.locationId !== null) {
-    if (input.lots !== undefined && input.lots.length > 0) {
-      throw unprocessable('item_not_tracked', 'This item has no serial numbers or batches.');
-    }
+    // Used before the item was tracked: it comes back under the codes given,
+    // as stock arriving does; an untracked item takes none.
+    const item = await tx.inventoryCatalogue.findItem(material.itemId);
+    const allocations = await lotsArriving(tx, item!, input.quantity, input.lots, {
+      actorId: context.principal.userId,
+    });
     const original = await tx.inventoryStock.findMovementBySourceKey(useSourceKey(material));
-    await tx.inventoryStock.post(
-      [
-        {
-          itemId: material.itemId,
-          locationId: material.locationId,
-          kind: 'consumption_return',
-          quantity: input.quantity,
-          unitCost: material.unitCost,
-          sourceKey: `material-return:${input.idempotencyKey}`,
-          reason: input.reason ?? formatWorkOrderReference(job.reference),
-          reversalOf: original?.id ?? null,
-        },
-      ],
-      { postingId: randomUUID(), actorId: context.principal.userId },
-    );
+    await tx.inventoryStock
+      .post(
+        byLot(
+          {
+            itemId: material.itemId,
+            locationId: material.locationId,
+            kind: 'consumption_return',
+            quantity: input.quantity,
+            unitCost: material.unitCost,
+            sourceKey: `material-return:${input.idempotencyKey}`,
+            reason: input.reason ?? formatWorkOrderReference(job.reference),
+            reversalOf: original?.id ?? null,
+          },
+          allocations,
+        ),
+        { postingId: randomUUID(), actorId: context.principal.userId },
+      )
+      .catch(stockRefusal);
   }
   await audit(tx, context, 'work_order.part_returned', job.id, {
     materialId: material.id,

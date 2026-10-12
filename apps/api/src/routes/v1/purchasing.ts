@@ -1217,19 +1217,36 @@ export const returnToSupplierRoute = defineRoute({
           `receipt-line:${received.id}`,
         );
         if (original !== undefined) {
-          if ((line.lots?.length ?? 0) > 0) {
-            throw unprocessable('item_not_tracked', 'This item has no serial numbers or batches.');
-          }
-          movements.push({
-            itemId: original.itemId,
-            locationId: original.locationId,
-            kind: 'return_to_supplier',
-            quantity: `-${line.quantity}`,
-            unitCost: original.unitCost,
-            sourceKey: `${key}:${received.id}`,
-            reason: body.reason,
-            reversalOf: original.id,
-          });
+          // Received before the item was tracked: it leaves by its lots now.
+          const item = await tx.inventoryCatalogue.findItem(original.itemId);
+          const leaving = await lotsLeaving(
+            tx,
+            item!,
+            original.locationId,
+            line.quantity,
+            line.lots,
+            {
+              today: await companyToday(tx),
+              allowExpired: true,
+              reason: body.reason,
+              field: `body.lines.${index}.lots`,
+            },
+          );
+          movements.push(
+            ...byLot(
+              {
+                itemId: original.itemId,
+                locationId: original.locationId,
+                kind: 'return_to_supplier',
+                quantity: `-${line.quantity}`,
+                unitCost: original.unitCost,
+                sourceKey: `${key}:${received.id}`,
+                reason: body.reason,
+                reversalOf: original.id,
+              },
+              leaving,
+            ),
+          );
           continue;
         }
         // Serial numbers and batches (ADR-0013): those named, or else those

@@ -462,3 +462,45 @@ describe('a count', () => {
     ]);
   });
 });
+
+describe('a part used before its item was tracked', () => {
+  it('comes back under the code given', async () => {
+    const item = await newItem();
+    const store = await newLocation();
+    expect(
+      (await move({ type: 'receipt', itemId: item.id, locationId: store, quantity: '3' }))
+        .statusCode,
+    ).toBe(201);
+    const job = json<{ workOrder: { id: string } }>(
+      await call(dispatcher, 'POST', '/v1/work-orders', {
+        customerId,
+        siteId,
+        jobTypeId,
+        crew: [{ userId: engineer.userId, lead: true }],
+      }),
+    );
+    const used = await call(dispatcher, 'POST', `/v1/work-orders/${job.workOrder.id}/materials`, {
+      itemId: item.id,
+      locationId: store,
+      quantity: '2',
+    });
+    expect(used.statusCode, used.body).toBe(201);
+    const materialId = json<{ materials: { id: string }[] }>(used).materials[0]!.id;
+    expect(
+      (await track(item.id, 'batch', [{ locationId: store, code: 'LEFT', quantity: '1' }]))
+        .statusCode,
+    ).toBe(200);
+
+    const url = `/v1/work-orders/${job.workOrder.id}/materials/${materialId}/return`;
+    expect(code(await call(dispatcher, 'POST', url, { quantity: '1' }))).toBe('lots_required');
+    const back = await call(dispatcher, 'POST', url, {
+      quantity: '1',
+      lots: [{ code: 'BACK', quantity: '1' }],
+    });
+    expect(back.statusCode, back.body).toBe(201);
+    expect((await lotsAt(item.id, store)).map((lot) => [lot.code, lot.onHand]).sort()).toEqual([
+      ['BACK', '1'],
+      ['LEFT', '1'],
+    ]);
+  });
+});
