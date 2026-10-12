@@ -37,6 +37,11 @@ import { FinancePaymentsRepository } from './repositories/finance-payments.js';
 import { AssetsRepository } from './repositories/assets.js';
 import { LedgerRepository } from './repositories/ledger.js';
 import { LedgerReportsRepository } from './repositories/ledger-reports.js';
+import { MemberGrantsRepository } from './repositories/member-grants.js';
+import { HrEmployeesRepository } from './repositories/hr-employees.js';
+import { HrExpensesRepository } from './repositories/hr-expenses.js';
+import { HrPayrollRepository } from './repositories/hr-payroll.js';
+import { ManufacturingRepository } from './repositories/manufacturing.js';
 import { SalesOrdersRepository } from './repositories/sales-orders.js';
 import { PublicQuotesLookup, SalesQuotesRepository } from './repositories/sales-quotes.js';
 import { CustomersRepository } from './repositories/customers.js';
@@ -138,6 +143,11 @@ export interface TenantTransaction {
   readonly assets: AssetsRepository;
   readonly ledger: LedgerRepository;
   readonly ledgerReports: LedgerReportsRepository;
+  readonly memberGrants: MemberGrantsRepository;
+  readonly hrEmployees: HrEmployeesRepository;
+  readonly hrExpenses: HrExpensesRepository;
+  readonly hrPayroll: HrPayrollRepository;
+  readonly manufacturing: ManufacturingRepository;
   readonly sites: SitesRepository;
   readonly jobTypes: JobTypesRepository;
   readonly workOrders: WorkOrdersRepository;
@@ -397,6 +407,11 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     assets: new AssetsRepository(scope),
     ledger: new LedgerRepository(scope),
     ledgerReports: new LedgerReportsRepository(scope),
+    memberGrants: new MemberGrantsRepository(scope),
+    hrEmployees: new HrEmployeesRepository(scope),
+    hrExpenses: new HrExpensesRepository(scope),
+    hrPayroll: new HrPayrollRepository(scope),
+    manufacturing: new ManufacturingRepository(scope),
     sites: new SitesRepository(scope),
     jobTypes: new JobTypesRepository(scope),
     workOrders: new WorkOrdersRepository(scope),

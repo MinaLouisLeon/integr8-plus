@@ -298,6 +298,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/members/{userId}/grants/{capability}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Give somebody a capability on top of their role
+         * @description An HR manager or inventory manager grant (ADR-0010) on top of whatever role the person has. Only the owner gives the HR one; the owner or an admin gives the inventory one. Takes effect at their next token, within fifteen minutes. 409 `role_holds_grant` when their role already includes it.
+         */
+        put: operations["giveMemberGrant"];
+        post?: never;
+        /**
+         * Take a capability back
+         * @description Only the owner takes the HR grant back; the owner or an admin the inventory one. Their sessions end, so the next token they get no longer carries it.
+         */
+        delete: operations["removeMemberGrant"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/signup": {
         parameters: {
             query?: never;
@@ -3718,6 +3742,698 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/hr/employees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Employees, by name
+         * @description `q` matches the name, employee number, title or department. Active ones unless `status=ended` or `status=all`. ID and bank numbers appear only as their last four, and only to owners and HR managers.
+         */
+        get: operations["listEmployees"];
+        put?: never;
+        /**
+         * Add an employee
+         * @description Linked to a member (`userId`; the name defaults to theirs, 409 `member_taken` when they have a profile) or standing alone with a `fullName`. ID, insurance and bank numbers are sealed before they are stored and need `hr.sensitive` and the server’s HR_DATA_KEY (503 `hr_key_missing`). Honours `Idempotency-Key`.
+         */
+        post: operations["createEmployee"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/hr/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My own employee profile
+         * @description Every member reads their own profile, ID and bank details included. 404 when there is none.
+         */
+        get: operations["getMyEmployeeProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/hr/employees/{employeeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An employee profile
+         * @description For `hr.read`, or the person themselves.
+         */
+        get: operations["getEmployee"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change an employee profile, or end their employment
+         * @description With `expectedVersion` (409 `version_conflict`). `endDate` with `endReason` ends the employment; both `null` brings them back. A sensitive number is replaced by sending it, cleared by `null`. The audit names the fields changed, never their values.
+         */
+        patch: operations["updateEmployee"];
+        trace?: never;
+    };
+    "/v1/hr/employees/{employeeId}/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Show one sensitive number in full
+         * @description For owners and HR managers, or the person themselves. Every reveal is audited with who, when and which field.
+         */
+        post: operations["revealEmployeeField"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expenses/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What expenses may be claimed for */
+        get: operations["listExpenseCategories"];
+        put?: never;
+        /**
+         * Add an expense category
+         * @description `accountId`, when given, is an expense account in the ledger (422 `account_not_usable`). 409 `name_taken`.
+         */
+        post: operations["createExpenseCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expenses/categories/{categoryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename, re-point or archive an expense category */
+        patch: operations["updateExpenseCategory"];
+        trace?: never;
+    };
+    "/v1/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Expense claims, newest first
+         * @description `scope=mine` (the default) is one’s own claims; `scope=all` is everybody’s, for approvers (owners, admins, HR managers). `q` is a claim number (`EX-000123`).
+         */
+        get: operations["listExpenseClaims"];
+        put?: never;
+        /**
+         * Claim an expense back
+         * @description In the company’s currency, spent today or earlier, for a category in use, optionally for a job this person may read. Attach receipts with `POST /v1/attachments` and `{ expenseClaimId }`. Honours `Idempotency-Key`; `clientActionId` makes a phone’s resent claim land once.
+         */
+        post: operations["submitExpenseClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expenses/{claimId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An expense claim, its receipts and what this person may do with it */
+        get: operations["getExpenseClaim"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expenses/{claimId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw one’s own claim while it waits */
+        post: operations["withdrawExpenseClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expenses/{claimId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a claim, to be paid back directly or through payroll
+         * @description By an owner, admin or HR manager who is not the claimant (409 `self_approval`). `settleVia: payroll` needs the payroll module (422 `payroll_off`). Posts to the ledger when it is set up.
+         */
+        post: operations["approveExpenseClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expenses/{claimId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a claim, saying why */
+        post: operations["rejectExpenseClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expenses/{claimId}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record paying an approved claim back
+         * @description By cash or bank transfer, with an optional reference. A claim approved to go through payroll is paid by the pay run (409 `settles_through_payroll`). Posts to the ledger when it is set up.
+         */
+        post: operations["payExpenseClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/rule-sets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Payroll rule sets, latest first, and the figures Integr8 offers */
+        get: operations["listPayrollRuleSets"];
+        put?: never;
+        /**
+         * Add a rule set from a month on
+         * @description The 2026 figures when `rules` is left out. An owner confirms it before any run uses it. 409 `month_taken` when a set already starts that month.
+         */
+        post: operations["createPayrollRuleSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/rule-sets/{ruleSetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a rule set nobody confirmed */
+        delete: operations["removePayrollRuleSet"];
+        options?: never;
+        head?: never;
+        /** Change a rule set before it is confirmed */
+        patch: operations["updatePayrollRuleSet"];
+        trace?: never;
+    };
+    "/v1/payroll/rule-sets/{ruleSetId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm a rule set, saying who checked it
+         * @description The owner only (403 `owner_only`). A confirmed set never changes again, and runs from its month on may use it.
+         */
+        post: operations["confirmPayrollRuleSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/hr/employees/{employeeId}/pay-terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An employee’s pay terms, latest first */
+        get: operations["listPayTerms"];
+        put?: never;
+        /**
+         * Set an employee’s pay from a date on
+         * @description Overtime is paid at 135% of the hourly basic (basic over the standard hours) when no rate is given. 409 `date_taken` when terms already start that day.
+         */
+        post: operations["addPayTerms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/pay-terms/{termsId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove pay terms entered by mistake */
+        delete: operations["removePayTerms"];
+        options?: never;
+        head?: never;
+        /**
+         * Correct pay terms
+         * @description Runs already made keep the figures they used.
+         */
+        patch: operations["updatePayTerms"];
+        trace?: never;
+    };
+    "/v1/payroll/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pay runs, latest month first */
+        get: operations["listPayRuns"];
+        put?: never;
+        /**
+         * Prepare a month’s pay run
+         * @description Proposes a line for everyone employed in the month who has pay terms. Needs a confirmed rule set in force (422 `no_confirmed_rules`, or `rules_not_confirmed` when the latest set waits for the owner). No later than next month (422 `month_in_future`); one run a month (409 `month_taken`).
+         */
+        post: operations["createPayRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A pay run with its lines */
+        get: operations["getPayRun"];
+        put?: never;
+        post?: never;
+        /** Discard a draft pay run */
+        delete: operations["discardPayRun"];
+        options?: never;
+        head?: never;
+        /** Set a draft’s pay date or note */
+        patch: operations["updatePayRun"];
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}/recalculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recalculate a draft from today’s terms, hours and claims
+         * @description Keeps what was typed for the run (overtime hours, bonus, deduction, unpaid days, note) for anyone already in it, and uses the confirmed rule set now in force for the month.
+         */
+        post: operations["recalculatePayRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Type a line’s overtime, bonus, deduction or unpaid days */
+        patch: operations["updatePayLine"];
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a pay run somebody else prepared
+         * @description Final: the run never changes after, pays the expense claims it carries and posts to the ledger when it is set up. Refused for whoever last prepared it (409 `self_approval`), an empty run (409 `empty_run`), a line paying less than nothing (409 `negative_net`), and when claims waiting for payroll changed since it was calculated (409 `run_out_of_date`: recalculate).
+         */
+        post: operations["approvePayRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}/payslips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every payslip of an approved run, to print */
+        get: operations["getPayRunPayslips"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/hr/me/payslips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My own payslips, latest first
+         * @description Every member reads their own, from approved runs. Empty without a profile.
+         */
+        get: operations["listMyPayslips"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}/insurance.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The month’s social insurance contributions, as CSV
+         * @description Each insured employee’s insurance number, insurable wage and both shares, with a total. The full insurance number needs HR_DATA_KEY on the server (503 `hr_key_missing`). Audited.
+         */
+        get: operations["getPayRunInsuranceReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payroll/runs/{runId}/bank.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The bank transfer list of an approved run, as CSV
+         * @description One row per employee paid by bank transfer: name, bank, account number and net pay, with the run’s reference. Needs HR_DATA_KEY on the server (503 `hr_key_missing`). Audited.
+         */
+        get: operations["getPayRunBankFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/manufacturing/boms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Items built from a bill of materials */
+        get: operations["listBoms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/manufacturing/boms/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An item’s bill of materials, and its earlier versions */
+        get: operations["getItemBom"];
+        /**
+         * Save a new version of an item’s bill of materials
+         * @description The version in use is kept, superseded, for orders that used it. Components are stock or non-stock items, each once, never the item itself or anything that contains it (422 `contains_itself`).
+         */
+        put: operations["saveItemBom"];
+        post?: never;
+        /** Stop building an item: its bill is superseded with nothing after it */
+        delete: operations["retireItemBom"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/manufacturing/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Assembly and disassembly orders, latest first
+         * @description `q` finds an order by its number (`AO-000123` or `123`).
+         */
+        get: operations["listAssemblyOrders"];
+        put?: never;
+        /**
+         * Draft an assembly or disassembly order
+         * @description From the item’s bill in use (422 `no_bill` when it has none).
+         */
+        post: operations["createAssemblyOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/manufacturing/orders/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An order, with what it needs against what is there */
+        get: operations["getAssemblyOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a draft: where, how many, when, or move it to the bill now in use */
+        patch: operations["updateAssemblyOrder"];
+        trace?: never;
+    };
+    "/v1/manufacturing/orders/{orderId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete an order: move its stock and set the item’s cost
+         * @description Refused, moving nothing, when anything it takes out is short at its location once sales orders’ reservations are kept (409 `shortage`, with what is short). Completing an order already completed returns it unchanged. Posts to the ledger when it is set up.
+         */
+        post: operations["completeAssemblyOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/manufacturing/orders/{orderId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a draft order */
+        post: operations["cancelAssemblyOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/manufacturing/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recent planning runs */
+        get: operations["listMaterialPlans"];
+        put?: never;
+        /**
+         * Plan what to build and buy, for the coming days
+         * @description From confirmed sales orders not yet delivered, draft assembly orders, reorder levels, stock in warehouses and vans, and approved purchase orders due within the horizon. Kept as a snapshot.
+         */
+        post: operations["runMaterialPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/manufacturing/plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A planning run and its suggestions */
+        get: operations["getMaterialPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/manufacturing/plans/{planId}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft assembly and purchase orders from chosen suggestions
+         * @description A build becomes a draft assembly order at the location; buys become one draft purchase order per supplier, delivered to the location, at each item’s default cost. Purchase orders still need approval. Buying needs purchasing rights (403), and a supplier on the item (422 `no_supplier`). A suggestion is drafted once (409 `already_drafted`).
+         */
+        post: operations["draftFromMaterialPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -5068,7 +5784,7 @@ export interface operations {
                             /** Format: uuid */
                             tenantId: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                         }[];
@@ -5246,7 +5962,7 @@ export interface operations {
                             /** Format: uuid */
                             tenantId: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                         }[];
@@ -5430,7 +6146,7 @@ export interface operations {
                             /** Format: uuid */
                             tenantId: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                         }[];
@@ -6040,7 +6756,7 @@ export interface operations {
                         id: string;
                         email: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -6126,7 +6842,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                    role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                 };
             };
         };
@@ -6143,7 +6859,8 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        grants: ("hr_manager" | "inventory_manager")[];
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
                         /** Format: date-time */
@@ -6249,7 +6966,8 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        grants: ("hr_manager" | "inventory_manager")[];
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
                         /** Format: date-time */
@@ -6376,6 +7094,201 @@ export interface operations {
             };
             /** @description This is the company’s only owner (`last_owner`). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    giveMemberGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                capability: "hr_manager" | "inventory_manager";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The person, with their grants. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        userId: string;
+                        email: string;
+                        displayName: string;
+                        /** @enum {string} */
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        grants: ("hr_manager" | "inventory_manager")[];
+                        /** @enum {string} */
+                        status: "invited" | "active" | "suspended";
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The HR grant is the owner’s to give. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such person in this company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Their role already includes it, or they are not active. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    removeMemberGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                capability: "hr_manager" | "inventory_manager";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The person, with their grants. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        userId: string;
+                        email: string;
+                        displayName: string;
+                        /** @enum {string} */
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        grants: ("hr_manager" | "inventory_manager")[];
+                        /** @enum {string} */
+                        status: "invited" | "active" | "suspended";
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The HR grant is the owner’s to take back. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such person in this company. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7522,8 +8435,9 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
-                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock")[];
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        grants: ("hr_manager" | "inventory_manager")[];
+                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -7825,7 +8739,8 @@ export interface operations {
                             email: string;
                             displayName: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            grants: ("hr_manager" | "inventory_manager")[];
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                             /** Format: date-time */
@@ -7911,7 +8826,7 @@ export interface operations {
                             id: string;
                             email: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -7993,7 +8908,7 @@ export interface operations {
                 "application/json": {
                     email: string;
                     /** @enum {string} */
-                    role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                    role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                 };
             };
         };
@@ -8009,7 +8924,7 @@ export interface operations {
                         id: string;
                         email: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -8338,7 +9253,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -8441,7 +9356,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -8584,7 +9499,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -8716,7 +9631,7 @@ export interface operations {
             content: {
                 "application/json": {
                     title?: string;
-                    fillRoles?: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                    fillRoles?: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                     signatureRequired?: boolean;
                     requiredByJobTypeIds?: string[];
                 };
@@ -8733,7 +9648,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         title: string;
-                        fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                        fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                         signatureRequired: boolean;
                         requiredByJobTypeIds: string[];
                         /** Format: uuid */
@@ -8838,7 +9753,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -9843,7 +10758,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -13678,6 +14593,9 @@ export interface operations {
                     } | {
                         /** Format: uuid */
                         assetId: string;
+                    } | {
+                        /** Format: uuid */
+                        expenseClaimId: string;
                     };
                     /** Format: uuid */
                     fileId: string;
@@ -16685,6 +17603,7 @@ export interface operations {
                             /** Format: uuid */
                             preferredSupplierId: string | null;
                             supplierPartNumber: string | null;
+                            leadTimeDays: number | null;
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -16782,6 +17701,7 @@ export interface operations {
                     /** Format: uuid */
                     preferredSupplierId?: string | null;
                     supplierPartNumber?: string | null;
+                    leadTimeDays?: number | null;
                 };
             };
         };
@@ -16811,6 +17731,7 @@ export interface operations {
                         /** Format: uuid */
                         preferredSupplierId: string | null;
                         supplierPartNumber: string | null;
+                        leadTimeDays: number | null;
                         version: number;
                         /** Format: date-time */
                         createdAt: string;
@@ -16928,6 +17849,7 @@ export interface operations {
                             /** Format: uuid */
                             preferredSupplierId: string | null;
                             supplierPartNumber: string | null;
+                            leadTimeDays: number | null;
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -17049,6 +17971,7 @@ export interface operations {
                     /** Format: uuid */
                     preferredSupplierId?: string | null;
                     supplierPartNumber?: string | null;
+                    leadTimeDays?: number | null;
                     expectedVersion: number;
                     archived?: boolean;
                 };
@@ -17080,6 +18003,7 @@ export interface operations {
                         /** Format: uuid */
                         preferredSupplierId: string | null;
                         supplierPartNumber: string | null;
+                        leadTimeDays: number | null;
                         version: number;
                         /** Format: date-time */
                         createdAt: string;
@@ -17207,6 +18131,7 @@ export interface operations {
                             /** Format: uuid */
                             preferredSupplierId: string | null;
                             supplierPartNumber: string | null;
+                            leadTimeDays: number | null;
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -17335,6 +18260,7 @@ export interface operations {
                         /** Format: uuid */
                         preferredSupplierId: string | null;
                         supplierPartNumber: string | null;
+                        leadTimeDays: number | null;
                         version: number;
                         /** Format: date-time */
                         createdAt: string;
@@ -17863,7 +18789,7 @@ export interface operations {
             query?: {
                 itemId?: string;
                 locationId?: string;
-                kind?: ("receipt" | "issue" | "transfer_out" | "transfer_in" | "adjustment" | "count_adjustment" | "consumption" | "consumption_return" | "return_to_supplier") | ("receipt" | "issue" | "transfer_out" | "transfer_in" | "adjustment" | "count_adjustment" | "consumption" | "consumption_return" | "return_to_supplier")[];
+                kind?: ("receipt" | "issue" | "transfer_out" | "transfer_in" | "adjustment" | "count_adjustment" | "consumption" | "consumption_return" | "return_to_supplier" | "assembly_consumption" | "assembly_output") | ("receipt" | "issue" | "transfer_out" | "transfer_in" | "adjustment" | "count_adjustment" | "consumption" | "consumption_return" | "return_to_supplier" | "assembly_consumption" | "assembly_output")[];
                 cursor?: string;
                 limit?: number;
             };
@@ -17903,7 +18829,7 @@ export interface operations {
                                 kind: "warehouse" | "van" | "site";
                             };
                             /** @enum {string} */
-                            kind: "receipt" | "issue" | "transfer_out" | "transfer_in" | "adjustment" | "count_adjustment" | "consumption" | "consumption_return" | "return_to_supplier";
+                            kind: "receipt" | "issue" | "transfer_out" | "transfer_in" | "adjustment" | "count_adjustment" | "consumption" | "consumption_return" | "return_to_supplier" | "assembly_consumption" | "assembly_output";
                             quantity: string;
                             unitCost: string | null;
                             reason: string | null;
@@ -18061,7 +18987,7 @@ export interface operations {
                                 kind: "warehouse" | "van" | "site";
                             };
                             /** @enum {string} */
-                            kind: "receipt" | "issue" | "transfer_out" | "transfer_in" | "adjustment" | "count_adjustment" | "consumption" | "consumption_return" | "return_to_supplier";
+                            kind: "receipt" | "issue" | "transfer_out" | "transfer_in" | "adjustment" | "count_adjustment" | "consumption" | "consumption_return" | "return_to_supplier" | "assembly_consumption" | "assembly_output";
                             quantity: string;
                             unitCost: string | null;
                             reason: string | null;
@@ -34061,6 +34987,8 @@ export interface operations {
                             fiscalStartMonth: number;
                             autoPostSales: boolean;
                             autoPostStock: boolean;
+                            autoPostExpenses: boolean;
+                            autoPostPayroll: boolean;
                             allowSelfApproval: boolean;
                             accounts: {
                                 [key: string]: string;
@@ -34188,6 +35116,8 @@ export interface operations {
                             fiscalStartMonth: number;
                             autoPostSales: boolean;
                             autoPostStock: boolean;
+                            autoPostExpenses: boolean;
+                            autoPostPayroll: boolean;
                             allowSelfApproval: boolean;
                             accounts: {
                                 [key: string]: string;
@@ -34298,6 +35228,8 @@ export interface operations {
                     fiscalStartMonth?: number;
                     autoPostSales?: boolean;
                     autoPostStock?: boolean;
+                    autoPostExpenses?: boolean;
+                    autoPostPayroll?: boolean;
                     allowSelfApproval?: boolean;
                     accounts?: {
                         [key: string]: string;
@@ -34318,6 +35250,8 @@ export interface operations {
                         fiscalStartMonth: number;
                         autoPostSales: boolean;
                         autoPostStock: boolean;
+                        autoPostExpenses: boolean;
+                        autoPostPayroll: boolean;
                         allowSelfApproval: boolean;
                         accounts: {
                             [key: string]: string;
@@ -34412,7 +35346,7 @@ export interface operations {
                             type: "asset" | "liability" | "equity" | "income" | "expense";
                             archived: boolean;
                             /** @enum {string|null} */
-                            role: "receivables" | "revenueServices" | "revenueGoods" | "vatOutput" | "cash" | "bank" | "otherReceipts" | "inventory" | "goodsReceived" | "partsCost" | "stockAdjustments" | "openingBalances" | "retainedEarnings" | null;
+                            role: "receivables" | "revenueServices" | "revenueGoods" | "vatOutput" | "cash" | "bank" | "otherReceipts" | "inventory" | "goodsReceived" | "partsCost" | "stockAdjustments" | "openingBalances" | "retainedEarnings" | "staffClaimsPayable" | "staffExpenses" | "salariesExpense" | "employerInsuranceExpense" | "salariesPayable" | "payrollTaxPayable" | "socialInsurancePayable" | "martyrsFundPayable" | "assemblyAbsorbed" | null;
                             version: number;
                         }[];
                     };
@@ -34507,7 +35441,7 @@ export interface operations {
                         type: "asset" | "liability" | "equity" | "income" | "expense";
                         archived: boolean;
                         /** @enum {string|null} */
-                        role: "receivables" | "revenueServices" | "revenueGoods" | "vatOutput" | "cash" | "bank" | "otherReceipts" | "inventory" | "goodsReceived" | "partsCost" | "stockAdjustments" | "openingBalances" | "retainedEarnings" | null;
+                        role: "receivables" | "revenueServices" | "revenueGoods" | "vatOutput" | "cash" | "bank" | "otherReceipts" | "inventory" | "goodsReceived" | "partsCost" | "stockAdjustments" | "openingBalances" | "retainedEarnings" | "staffClaimsPayable" | "staffExpenses" | "salariesExpense" | "employerInsuranceExpense" | "salariesPayable" | "payrollTaxPayable" | "socialInsurancePayable" | "martyrsFundPayable" | "assemblyAbsorbed" | null;
                         version: number;
                     };
                 };
@@ -34612,7 +35546,7 @@ export interface operations {
                         type: "asset" | "liability" | "equity" | "income" | "expense";
                         archived: boolean;
                         /** @enum {string|null} */
-                        role: "receivables" | "revenueServices" | "revenueGoods" | "vatOutput" | "cash" | "bank" | "otherReceipts" | "inventory" | "goodsReceived" | "partsCost" | "stockAdjustments" | "openingBalances" | "retainedEarnings" | null;
+                        role: "receivables" | "revenueServices" | "revenueGoods" | "vatOutput" | "cash" | "bank" | "otherReceipts" | "inventory" | "goodsReceived" | "partsCost" | "stockAdjustments" | "openingBalances" | "retainedEarnings" | "staffClaimsPayable" | "staffExpenses" | "salariesExpense" | "employerInsuranceExpense" | "salariesPayable" | "payrollTaxPayable" | "socialInsurancePayable" | "martyrsFundPayable" | "assemblyAbsorbed" | null;
                         version: number;
                     };
                 };
@@ -34998,7 +35932,7 @@ export interface operations {
                             total: string;
                             source: {
                                 /** @enum {string} */
-                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
                                 /** Format: uuid */
                                 id: string;
                             } | null;
@@ -35134,7 +36068,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -35290,7 +36224,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -35465,7 +36399,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -35725,7 +36659,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -35899,7 +36833,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -36122,7 +37056,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "pending" | "posted" | "skipped";
-                kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock") | ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock")[];
+                kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly") | ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly")[];
                 reason?: ("queued" | "auto_off" | "before_set_up" | "foreign_currency" | "cost_unknown" | "period_locked" | "waits_for_invoice" | "failed") | ("queued" | "auto_off" | "before_set_up" | "foreign_currency" | "cost_unknown" | "period_locked" | "waits_for_invoice" | "failed")[];
                 cursor?: string;
                 limit?: number;
@@ -36145,7 +37079,7 @@ export interface operations {
                             id: string;
                             source: {
                                 /** @enum {string} */
-                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
                                 /** Format: uuid */
                                 id: string;
                             };
@@ -36252,7 +37186,7 @@ export interface operations {
             content: {
                 "application/json": {
                     ids?: string[];
-                    kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock")[];
+                    kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly")[];
                 };
             };
         };
@@ -36356,7 +37290,7 @@ export interface operations {
                         id: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
                             /** Format: uuid */
                             id: string;
                         };
@@ -36537,7 +37471,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -36697,7 +37631,7 @@ export interface operations {
                         id: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
                             /** Format: uuid */
                             id: string;
                         };
@@ -37579,7 +38513,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -37753,7 +38687,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -37848,6 +38782,7273 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listEmployees: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: "active" | "ended" | "all";
+                department?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            employeeNumber: string | null;
+                            fullName: string;
+                            jobTitle: string | null;
+                            department: string | null;
+                            phone: string | null;
+                            /** Format: date */
+                            hireDate: string;
+                            /** Format: date */
+                            endDate: string | null;
+                            endReason: string | null;
+                            /** @enum {string} */
+                            status: "active" | "ended";
+                            member: {
+                                /** Format: uuid */
+                                userId: string;
+                                displayName: string;
+                                /** @enum {string} */
+                                role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            } | null;
+                            sensitive: {
+                                nationalId: {
+                                    last4: string;
+                                } | null;
+                                insuranceNumber: {
+                                    last4: string;
+                                } | null;
+                                bankName: string | null;
+                                bankAccount: {
+                                    last4: string;
+                                } | null;
+                            } | null;
+                            emergencyContact: {
+                                name: string | null;
+                                phone: string | null;
+                            };
+                            version: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            can: {
+                                edit: boolean;
+                                reveal: boolean;
+                            };
+                        }[];
+                        nextCursor: string | null;
+                        departments: string[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createEmployee: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    userId?: string | null;
+                    employeeNumber?: string | null;
+                    fullName?: string;
+                    jobTitle?: string | null;
+                    department?: string | null;
+                    phone?: string | null;
+                    /** Format: date */
+                    hireDate: string;
+                    nationalId?: string | null;
+                    insuranceNumber?: string | null;
+                    bankName?: string | null;
+                    bankAccount?: string | null;
+                    emergencyContactName?: string | null;
+                    emergencyContactPhone?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The profile. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        employeeNumber: string | null;
+                        fullName: string;
+                        jobTitle: string | null;
+                        department: string | null;
+                        phone: string | null;
+                        /** Format: date */
+                        hireDate: string;
+                        /** Format: date */
+                        endDate: string | null;
+                        endReason: string | null;
+                        /** @enum {string} */
+                        status: "active" | "ended";
+                        member: {
+                            /** Format: uuid */
+                            userId: string;
+                            displayName: string;
+                            /** @enum {string} */
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        } | null;
+                        sensitive: {
+                            nationalId: {
+                                last4: string;
+                            } | null;
+                            insuranceNumber: {
+                                last4: string;
+                            } | null;
+                            bankName: string | null;
+                            bankAccount: {
+                                last4: string;
+                            } | null;
+                        } | null;
+                        emergencyContact: {
+                            name: string | null;
+                            phone: string | null;
+                        };
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        can: {
+                            edit: boolean;
+                            reveal: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The number or the member is already taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No name, or no such member. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description HR_DATA_KEY is not set. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMyEmployeeProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        employeeNumber: string | null;
+                        fullName: string;
+                        jobTitle: string | null;
+                        department: string | null;
+                        phone: string | null;
+                        /** Format: date */
+                        hireDate: string;
+                        /** Format: date */
+                        endDate: string | null;
+                        endReason: string | null;
+                        /** @enum {string} */
+                        status: "active" | "ended";
+                        member: {
+                            /** Format: uuid */
+                            userId: string;
+                            displayName: string;
+                            /** @enum {string} */
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        } | null;
+                        sensitive: {
+                            nationalId: {
+                                last4: string;
+                            } | null;
+                            insuranceNumber: {
+                                last4: string;
+                            } | null;
+                            bankName: string | null;
+                            bankAccount: {
+                                last4: string;
+                            } | null;
+                        } | null;
+                        emergencyContact: {
+                            name: string | null;
+                            phone: string | null;
+                        };
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        can: {
+                            edit: boolean;
+                            reveal: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No profile for this member. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getEmployee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        employeeNumber: string | null;
+                        fullName: string;
+                        jobTitle: string | null;
+                        department: string | null;
+                        phone: string | null;
+                        /** Format: date */
+                        hireDate: string;
+                        /** Format: date */
+                        endDate: string | null;
+                        endReason: string | null;
+                        /** @enum {string} */
+                        status: "active" | "ended";
+                        member: {
+                            /** Format: uuid */
+                            userId: string;
+                            displayName: string;
+                            /** @enum {string} */
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        } | null;
+                        sensitive: {
+                            nationalId: {
+                                last4: string;
+                            } | null;
+                            insuranceNumber: {
+                                last4: string;
+                            } | null;
+                            bankName: string | null;
+                            bankAccount: {
+                                last4: string;
+                            } | null;
+                        } | null;
+                        emergencyContact: {
+                            name: string | null;
+                            phone: string | null;
+                        };
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        can: {
+                            edit: boolean;
+                            reveal: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such employee. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateEmployee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    userId?: string | null;
+                    employeeNumber?: string | null;
+                    fullName?: string;
+                    jobTitle?: string | null;
+                    department?: string | null;
+                    phone?: string | null;
+                    /** Format: date */
+                    hireDate?: string;
+                    nationalId?: string | null;
+                    insuranceNumber?: string | null;
+                    bankName?: string | null;
+                    bankAccount?: string | null;
+                    emergencyContactName?: string | null;
+                    emergencyContactPhone?: string | null;
+                    expectedVersion: number;
+                    /** Format: date */
+                    endDate?: string | null;
+                    endReason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        employeeNumber: string | null;
+                        fullName: string;
+                        jobTitle: string | null;
+                        department: string | null;
+                        phone: string | null;
+                        /** Format: date */
+                        hireDate: string;
+                        /** Format: date */
+                        endDate: string | null;
+                        endReason: string | null;
+                        /** @enum {string} */
+                        status: "active" | "ended";
+                        member: {
+                            /** Format: uuid */
+                            userId: string;
+                            displayName: string;
+                            /** @enum {string} */
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        } | null;
+                        sensitive: {
+                            nationalId: {
+                                last4: string;
+                            } | null;
+                            insuranceNumber: {
+                                last4: string;
+                            } | null;
+                            bankName: string | null;
+                            bankAccount: {
+                                last4: string;
+                            } | null;
+                        } | null;
+                        emergencyContact: {
+                            name: string | null;
+                            phone: string | null;
+                        };
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        can: {
+                            edit: boolean;
+                            reveal: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such employee. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere, or the number or member is taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An end before the hire date, or no such member. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description HR_DATA_KEY is not set. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revealEmployeeField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    field: "nationalId" | "insuranceNumber" | "bankAccount";
+                };
+            };
+        };
+        responses: {
+            /** @description The value. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        field: "nationalId" | "insuranceNumber" | "bankAccount";
+                        value: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such employee. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description HR_DATA_KEY is not set. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listExpenseCategories: {
+        parameters: {
+            query?: {
+                archived?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Categories. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: uuid */
+                            accountId: string | null;
+                            archived: boolean;
+                            version: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createExpenseCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** Format: uuid */
+                    accountId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The category. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** Format: uuid */
+                        accountId: string | null;
+                        archived: boolean;
+                        version: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Another category has this name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateExpenseCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    name?: string;
+                    /** Format: uuid */
+                    accountId?: string | null;
+                    archived?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The category. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** Format: uuid */
+                        accountId: string | null;
+                        archived: boolean;
+                        version: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such category. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere, or the name is taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listExpenseClaims: {
+        parameters: {
+            query?: {
+                scope?: "mine" | "all";
+                status?: ("submitted" | "approved" | "rejected" | "withdrawn" | "paid") | ("submitted" | "approved" | "rejected" | "withdrawn" | "paid")[];
+                claimantId?: string;
+                q?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page, and how many claims wait for a decision (approvers only). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            claimant: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            category: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            /** Format: date */
+                            spentOn: string;
+                            amount: string;
+                            currency: string;
+                            description: string;
+                            /** @enum {string} */
+                            status: "submitted" | "approved" | "rejected" | "withdrawn" | "paid";
+                            /** Format: date-time */
+                            submittedAt: string;
+                            decidedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            decidedAt: string | null;
+                            rejectReason: string | null;
+                            /** @enum {string|null} */
+                            settleVia: "direct" | "payroll" | null;
+                            /** @enum {string|null} */
+                            paidVia: "cash" | "bank_transfer" | "payroll" | null;
+                            paidBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            paidAt: string | null;
+                            paymentReference: string | null;
+                            version: number;
+                        }[];
+                        nextCursor: string | null;
+                        waiting: number | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Everybody’s claims are for approvers. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    submitExpenseClaim: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    categoryId: string;
+                    /** Format: date */
+                    spentOn: string;
+                    amount: string;
+                    description: string;
+                    /** Format: uuid */
+                    workOrderId?: string | null;
+                    /** Format: uuid */
+                    clientActionId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The claim. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        claimant: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        category: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        /** Format: date */
+                        spentOn: string;
+                        amount: string;
+                        currency: string;
+                        description: string;
+                        /** @enum {string} */
+                        status: "submitted" | "approved" | "rejected" | "withdrawn" | "paid";
+                        /** Format: date-time */
+                        submittedAt: string;
+                        decidedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        decidedAt: string | null;
+                        rejectReason: string | null;
+                        /** @enum {string|null} */
+                        settleVia: "direct" | "payroll" | null;
+                        /** @enum {string|null} */
+                        paidVia: "cash" | "bank_transfer" | "payroll" | null;
+                        paidBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        paidAt: string | null;
+                        paymentReference: string | null;
+                        version: number;
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        can: {
+                            attach: boolean;
+                            withdraw: boolean;
+                            decide: boolean;
+                            pay: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A category not in use, a date ahead, or a job not this person’s. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getExpenseClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The claim. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        claimant: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        category: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        /** Format: date */
+                        spentOn: string;
+                        amount: string;
+                        currency: string;
+                        description: string;
+                        /** @enum {string} */
+                        status: "submitted" | "approved" | "rejected" | "withdrawn" | "paid";
+                        /** Format: date-time */
+                        submittedAt: string;
+                        decidedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        decidedAt: string | null;
+                        rejectReason: string | null;
+                        /** @enum {string|null} */
+                        settleVia: "direct" | "payroll" | null;
+                        /** @enum {string|null} */
+                        paidVia: "cash" | "bank_transfer" | "payroll" | null;
+                        paidBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        paidAt: string | null;
+                        paymentReference: string | null;
+                        version: number;
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        can: {
+                            attach: boolean;
+                            withdraw: boolean;
+                            decide: boolean;
+                            pay: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such claim, or not one this person may read. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    withdrawExpenseClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The claim. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        claimant: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        category: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        /** Format: date */
+                        spentOn: string;
+                        amount: string;
+                        currency: string;
+                        description: string;
+                        /** @enum {string} */
+                        status: "submitted" | "approved" | "rejected" | "withdrawn" | "paid";
+                        /** Format: date-time */
+                        submittedAt: string;
+                        decidedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        decidedAt: string | null;
+                        rejectReason: string | null;
+                        /** @enum {string|null} */
+                        settleVia: "direct" | "payroll" | null;
+                        /** @enum {string|null} */
+                        paidVia: "cash" | "bank_transfer" | "payroll" | null;
+                        paidBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        paidAt: string | null;
+                        paymentReference: string | null;
+                        version: number;
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        can: {
+                            attach: boolean;
+                            withdraw: boolean;
+                            decide: boolean;
+                            pay: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such claim. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not waiting, not one’s own, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    approveExpenseClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /**
+                     * @default direct
+                     * @enum {string}
+                     */
+                    settleVia?: "direct" | "payroll";
+                };
+            };
+        };
+        responses: {
+            /** @description The claim. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        claimant: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        category: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        /** Format: date */
+                        spentOn: string;
+                        amount: string;
+                        currency: string;
+                        description: string;
+                        /** @enum {string} */
+                        status: "submitted" | "approved" | "rejected" | "withdrawn" | "paid";
+                        /** Format: date-time */
+                        submittedAt: string;
+                        decidedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        decidedAt: string | null;
+                        rejectReason: string | null;
+                        /** @enum {string|null} */
+                        settleVia: "direct" | "payroll" | null;
+                        /** @enum {string|null} */
+                        paidVia: "cash" | "bank_transfer" | "payroll" | null;
+                        paidBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        paidAt: string | null;
+                        paymentReference: string | null;
+                        version: number;
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        can: {
+                            attach: boolean;
+                            withdraw: boolean;
+                            decide: boolean;
+                            pay: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such claim. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description One’s own, already decided, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payroll is not switched on. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    rejectExpenseClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The claim. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        claimant: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        category: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        /** Format: date */
+                        spentOn: string;
+                        amount: string;
+                        currency: string;
+                        description: string;
+                        /** @enum {string} */
+                        status: "submitted" | "approved" | "rejected" | "withdrawn" | "paid";
+                        /** Format: date-time */
+                        submittedAt: string;
+                        decidedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        decidedAt: string | null;
+                        rejectReason: string | null;
+                        /** @enum {string|null} */
+                        settleVia: "direct" | "payroll" | null;
+                        /** @enum {string|null} */
+                        paidVia: "cash" | "bank_transfer" | "payroll" | null;
+                        paidBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        paidAt: string | null;
+                        paymentReference: string | null;
+                        version: number;
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        can: {
+                            attach: boolean;
+                            withdraw: boolean;
+                            decide: boolean;
+                            pay: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such claim. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description One’s own, already decided, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    payExpenseClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** @enum {string} */
+                    via: "cash" | "bank_transfer";
+                    reference?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The claim. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        claimant: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        category: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        workOrder: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        /** Format: date */
+                        spentOn: string;
+                        amount: string;
+                        currency: string;
+                        description: string;
+                        /** @enum {string} */
+                        status: "submitted" | "approved" | "rejected" | "withdrawn" | "paid";
+                        /** Format: date-time */
+                        submittedAt: string;
+                        decidedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        decidedAt: string | null;
+                        rejectReason: string | null;
+                        /** @enum {string|null} */
+                        settleVia: "direct" | "payroll" | null;
+                        /** @enum {string|null} */
+                        paidVia: "cash" | "bank_transfer" | "payroll" | null;
+                        paidBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        paidAt: string | null;
+                        paymentReference: string | null;
+                        version: number;
+                        receipts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        can: {
+                            attach: boolean;
+                            withdraw: boolean;
+                            decide: boolean;
+                            pay: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such claim. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not approved, settled through payroll, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listPayrollRuleSets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rule sets. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                            rules: {
+                                personalExemption: string;
+                                bands: {
+                                    upTo: string | null;
+                                    rate: string;
+                                }[];
+                                tiers: {
+                                    above: string;
+                                    bands: {
+                                        upTo: string | null;
+                                        rate: string;
+                                    }[];
+                                }[];
+                                siEmployeeRate: string;
+                                siEmployerRate: string;
+                                siMinWage: string;
+                                siMaxWage: string;
+                                martyrsFundRate: string;
+                            };
+                            confirmed: {
+                                by: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                /** Format: date-time */
+                                at: string;
+                                note: string;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            version: number;
+                            can: {
+                                edit: boolean;
+                                confirm: boolean;
+                                remove: boolean;
+                            };
+                        }[];
+                        seed: {
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                            rules: {
+                                personalExemption: string;
+                                bands: {
+                                    upTo: string | null;
+                                    rate: string;
+                                }[];
+                                tiers: {
+                                    above: string;
+                                    bands: {
+                                        upTo: string | null;
+                                        rate: string;
+                                    }[];
+                                }[];
+                                siEmployeeRate: string;
+                                siEmployerRate: string;
+                                siMinWage: string;
+                                siMaxWage: string;
+                                martyrsFundRate: string;
+                            };
+                        };
+                        disclaimer: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createPayrollRuleSet: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** Format: date */
+                    effectiveFrom: string;
+                    rules?: {
+                        personalExemption: string;
+                        bands: {
+                            upTo: string | null;
+                            rate: string;
+                        }[];
+                        tiers: {
+                            above: string;
+                            bands: {
+                                upTo: string | null;
+                                rate: string;
+                            }[];
+                        }[];
+                        siEmployeeRate: string;
+                        siEmployerRate: string;
+                        siMinWage: string;
+                        siMaxWage: string;
+                        martyrsFundRate: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The rule set. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** Format: date */
+                        effectiveFrom: string;
+                        rules: {
+                            personalExemption: string;
+                            bands: {
+                                upTo: string | null;
+                                rate: string;
+                            }[];
+                            tiers: {
+                                above: string;
+                                bands: {
+                                    upTo: string | null;
+                                    rate: string;
+                                }[];
+                            }[];
+                            siEmployeeRate: string;
+                            siEmployerRate: string;
+                            siMinWage: string;
+                            siMaxWage: string;
+                            martyrsFundRate: string;
+                        };
+                        confirmed: {
+                            by: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            at: string;
+                            note: string;
+                        } | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        version: number;
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            remove: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A set already starts that month. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    removePayrollRuleSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleSetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such rule set. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Confirmed: it stays. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updatePayrollRuleSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleSetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    name?: string;
+                    /** Format: date */
+                    effectiveFrom?: string;
+                    rules?: {
+                        personalExemption: string;
+                        bands: {
+                            upTo: string | null;
+                            rate: string;
+                        }[];
+                        tiers: {
+                            above: string;
+                            bands: {
+                                upTo: string | null;
+                                rate: string;
+                            }[];
+                        }[];
+                        siEmployeeRate: string;
+                        siEmployerRate: string;
+                        siMinWage: string;
+                        siMaxWage: string;
+                        martyrsFundRate: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The rule set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** Format: date */
+                        effectiveFrom: string;
+                        rules: {
+                            personalExemption: string;
+                            bands: {
+                                upTo: string | null;
+                                rate: string;
+                            }[];
+                            tiers: {
+                                above: string;
+                                bands: {
+                                    upTo: string | null;
+                                    rate: string;
+                                }[];
+                            }[];
+                            siEmployeeRate: string;
+                            siEmployerRate: string;
+                            siMinWage: string;
+                            siMaxWage: string;
+                            martyrsFundRate: string;
+                        };
+                        confirmed: {
+                            by: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            at: string;
+                            note: string;
+                        } | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        version: number;
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            remove: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such rule set. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Confirmed already, the month is taken, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    confirmPayrollRuleSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleSetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    note: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The rule set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** Format: date */
+                        effectiveFrom: string;
+                        rules: {
+                            personalExemption: string;
+                            bands: {
+                                upTo: string | null;
+                                rate: string;
+                            }[];
+                            tiers: {
+                                above: string;
+                                bands: {
+                                    upTo: string | null;
+                                    rate: string;
+                                }[];
+                            }[];
+                            siEmployeeRate: string;
+                            siEmployerRate: string;
+                            siMinWage: string;
+                            siMaxWage: string;
+                            martyrsFundRate: string;
+                        };
+                        confirmed: {
+                            by: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            at: string;
+                            note: string;
+                        } | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        version: number;
+                        can: {
+                            edit: boolean;
+                            confirm: boolean;
+                            remove: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Only the owner confirms. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such rule set. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Confirmed already, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listPayTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The terms. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            employeeId: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                            basic: string;
+                            allowances: string;
+                            insured: boolean;
+                            insurableWage: string | null;
+                            standardHours: string;
+                            overtimeRate: string | null;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            version: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such employee. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    addPayTerms: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    effectiveFrom: string;
+                    basic: string;
+                    /** @default 0 */
+                    allowances?: string;
+                    /** @default true */
+                    insured?: boolean;
+                    /** @default null */
+                    insurableWage?: string | null;
+                    /** @default 208 */
+                    standardHours?: string;
+                    /** @default null */
+                    overtimeRate?: string | null;
+                    /**
+                     * @default bank_transfer
+                     * @enum {string}
+                     */
+                    payMethod?: "bank_transfer" | "cash";
+                };
+            };
+        };
+        responses: {
+            /** @description The terms. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        employeeId: string;
+                        /** Format: date */
+                        effectiveFrom: string;
+                        basic: string;
+                        allowances: string;
+                        insured: boolean;
+                        insurableWage: string | null;
+                        standardHours: string;
+                        overtimeRate: string | null;
+                        /** @enum {string} */
+                        payMethod: "bank_transfer" | "cash";
+                        version: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such employee. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Terms already start that day. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    removePayTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                termsId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such terms. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updatePayTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                termsId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    effectiveFrom: string;
+                    basic: string;
+                    /** @default 0 */
+                    allowances?: string;
+                    /** @default true */
+                    insured?: boolean;
+                    /** @default null */
+                    insurableWage?: string | null;
+                    /** @default 208 */
+                    standardHours?: string;
+                    /** @default null */
+                    overtimeRate?: string | null;
+                    /**
+                     * @default bank_transfer
+                     * @enum {string}
+                     */
+                    payMethod?: "bank_transfer" | "cash";
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The terms. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        employeeId: string;
+                        /** Format: date */
+                        effectiveFrom: string;
+                        basic: string;
+                        allowances: string;
+                        insured: boolean;
+                        insurableWage: string | null;
+                        standardHours: string;
+                        overtimeRate: string | null;
+                        /** @enum {string} */
+                        payMethod: "bank_transfer" | "cash";
+                        version: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such terms. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Terms already start that day, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listPayRuns: {
+        parameters: {
+            query?: {
+                before?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            /** Format: date */
+                            periodStart: string;
+                            /** Format: date */
+                            periodEnd: string;
+                            currency: string;
+                            /** @enum {string} */
+                            status: "draft" | "approved";
+                            /** Format: date */
+                            payDate: string | null;
+                            note: string | null;
+                            preparedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            preparedAt: string;
+                            approvedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            totals: {
+                                employees: number;
+                                gross: string;
+                                socialInsuranceEmployee: string;
+                                socialInsuranceEmployer: string;
+                                incomeTax: string;
+                                martyrsFund: string;
+                                reimbursements: string;
+                                net: string;
+                            };
+                            version: number;
+                        }[];
+                        /** Format: date */
+                        next: string | null;
+                        disclaimer: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createPayRun: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    month: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** Format: date */
+                        periodStart: string;
+                        /** Format: date */
+                        periodEnd: string;
+                        currency: string;
+                        /** @enum {string} */
+                        status: "draft" | "approved";
+                        /** Format: date */
+                        payDate: string | null;
+                        note: string | null;
+                        preparedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        preparedAt: string;
+                        approvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        approvedAt: string | null;
+                        totals: {
+                            employees: number;
+                            gross: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            reimbursements: string;
+                            net: string;
+                        };
+                        version: number;
+                        ruleSet: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            basic: string;
+                            allowances: string;
+                            clockedHours: string;
+                            overtimeHours: string;
+                            overtimeRate: string;
+                            bonus: string;
+                            deduction: string;
+                            unpaidDays: string;
+                            reimbursements: string;
+                            declaredInsurableWage: string | null;
+                            insured: boolean;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            note: string | null;
+                            overtimePay: string;
+                            unpaidLeave: string;
+                            gross: string;
+                            insurableWage: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            taxable: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            net: string;
+                            version: number;
+                        }[];
+                        withoutTerms: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        disclaimer: string;
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            discard: boolean;
+                            exportBankFile: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The month has a run. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No confirmed rule set in force, or too far ahead. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPayRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** Format: date */
+                        periodStart: string;
+                        /** Format: date */
+                        periodEnd: string;
+                        currency: string;
+                        /** @enum {string} */
+                        status: "draft" | "approved";
+                        /** Format: date */
+                        payDate: string | null;
+                        note: string | null;
+                        preparedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        preparedAt: string;
+                        approvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        approvedAt: string | null;
+                        totals: {
+                            employees: number;
+                            gross: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            reimbursements: string;
+                            net: string;
+                        };
+                        version: number;
+                        ruleSet: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            basic: string;
+                            allowances: string;
+                            clockedHours: string;
+                            overtimeHours: string;
+                            overtimeRate: string;
+                            bonus: string;
+                            deduction: string;
+                            unpaidDays: string;
+                            reimbursements: string;
+                            declaredInsurableWage: string | null;
+                            insured: boolean;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            note: string | null;
+                            overtimePay: string;
+                            unpaidLeave: string;
+                            gross: string;
+                            insurableWage: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            taxable: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            net: string;
+                            version: number;
+                        }[];
+                        withoutTerms: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        disclaimer: string;
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            discard: boolean;
+                            exportBankFile: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    discardPayRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Discarded. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Approved: it stays. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updatePayRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** Format: date */
+                    payDate?: string | null;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** Format: date */
+                        periodStart: string;
+                        /** Format: date */
+                        periodEnd: string;
+                        currency: string;
+                        /** @enum {string} */
+                        status: "draft" | "approved";
+                        /** Format: date */
+                        payDate: string | null;
+                        note: string | null;
+                        preparedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        preparedAt: string;
+                        approvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        approvedAt: string | null;
+                        totals: {
+                            employees: number;
+                            gross: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            reimbursements: string;
+                            net: string;
+                        };
+                        version: number;
+                        ruleSet: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            basic: string;
+                            allowances: string;
+                            clockedHours: string;
+                            overtimeHours: string;
+                            overtimeRate: string;
+                            bonus: string;
+                            deduction: string;
+                            unpaidDays: string;
+                            reimbursements: string;
+                            declaredInsurableWage: string | null;
+                            insured: boolean;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            note: string | null;
+                            overtimePay: string;
+                            unpaidLeave: string;
+                            gross: string;
+                            insurableWage: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            taxable: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            net: string;
+                            version: number;
+                        }[];
+                        withoutTerms: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        disclaimer: string;
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            discard: boolean;
+                            exportBankFile: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Approved, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    recalculatePayRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** Format: date */
+                        periodStart: string;
+                        /** Format: date */
+                        periodEnd: string;
+                        currency: string;
+                        /** @enum {string} */
+                        status: "draft" | "approved";
+                        /** Format: date */
+                        payDate: string | null;
+                        note: string | null;
+                        preparedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        preparedAt: string;
+                        approvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        approvedAt: string | null;
+                        totals: {
+                            employees: number;
+                            gross: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            reimbursements: string;
+                            net: string;
+                        };
+                        version: number;
+                        ruleSet: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            basic: string;
+                            allowances: string;
+                            clockedHours: string;
+                            overtimeHours: string;
+                            overtimeRate: string;
+                            bonus: string;
+                            deduction: string;
+                            unpaidDays: string;
+                            reimbursements: string;
+                            declaredInsurableWage: string | null;
+                            insured: boolean;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            note: string | null;
+                            overtimePay: string;
+                            unpaidLeave: string;
+                            gross: string;
+                            insurableWage: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            taxable: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            net: string;
+                            version: number;
+                        }[];
+                        withoutTerms: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        disclaimer: string;
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            discard: boolean;
+                            exportBankFile: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Approved, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updatePayLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedRunVersion: number;
+                    expectedVersion: number;
+                    overtimeHours?: string;
+                    bonus?: string;
+                    deduction?: string;
+                    unpaidDays?: string;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** Format: date */
+                        periodStart: string;
+                        /** Format: date */
+                        periodEnd: string;
+                        currency: string;
+                        /** @enum {string} */
+                        status: "draft" | "approved";
+                        /** Format: date */
+                        payDate: string | null;
+                        note: string | null;
+                        preparedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        preparedAt: string;
+                        approvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        approvedAt: string | null;
+                        totals: {
+                            employees: number;
+                            gross: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            reimbursements: string;
+                            net: string;
+                        };
+                        version: number;
+                        ruleSet: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            basic: string;
+                            allowances: string;
+                            clockedHours: string;
+                            overtimeHours: string;
+                            overtimeRate: string;
+                            bonus: string;
+                            deduction: string;
+                            unpaidDays: string;
+                            reimbursements: string;
+                            declaredInsurableWage: string | null;
+                            insured: boolean;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            note: string | null;
+                            overtimePay: string;
+                            unpaidLeave: string;
+                            gross: string;
+                            insurableWage: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            taxable: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            net: string;
+                            version: number;
+                        }[];
+                        withoutTerms: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        disclaimer: string;
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            discard: boolean;
+                            exportBankFile: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run or line. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Approved, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    approvePayRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** Format: date */
+                        periodStart: string;
+                        /** Format: date */
+                        periodEnd: string;
+                        currency: string;
+                        /** @enum {string} */
+                        status: "draft" | "approved";
+                        /** Format: date */
+                        payDate: string | null;
+                        note: string | null;
+                        preparedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        preparedAt: string;
+                        approvedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        approvedAt: string | null;
+                        totals: {
+                            employees: number;
+                            gross: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            reimbursements: string;
+                            net: string;
+                        };
+                        version: number;
+                        ruleSet: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** Format: date */
+                            effectiveFrom: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            id: string;
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            basic: string;
+                            allowances: string;
+                            clockedHours: string;
+                            overtimeHours: string;
+                            overtimeRate: string;
+                            bonus: string;
+                            deduction: string;
+                            unpaidDays: string;
+                            reimbursements: string;
+                            declaredInsurableWage: string | null;
+                            insured: boolean;
+                            /** @enum {string} */
+                            payMethod: "bank_transfer" | "cash";
+                            note: string | null;
+                            overtimePay: string;
+                            unpaidLeave: string;
+                            gross: string;
+                            insurableWage: string;
+                            socialInsuranceEmployee: string;
+                            socialInsuranceEmployer: string;
+                            taxable: string;
+                            incomeTax: string;
+                            martyrsFund: string;
+                            net: string;
+                            version: number;
+                        }[];
+                        withoutTerms: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                        disclaimer: string;
+                        can: {
+                            edit: boolean;
+                            approve: boolean;
+                            discard: boolean;
+                            exportBankFile: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not approvable now. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPayRunPayslips: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The payslips. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            run: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                /** Format: date */
+                                periodStart: string;
+                                /** Format: date */
+                                periodEnd: string;
+                                /** Format: date */
+                                payDate: string | null;
+                                currency: string;
+                            };
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                employeeNumber: string | null;
+                                jobTitle: string | null;
+                                department: string | null;
+                                /** Format: date */
+                                hireDate: string;
+                            };
+                            line: {
+                                /** Format: uuid */
+                                id: string;
+                                employee: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                basic: string;
+                                allowances: string;
+                                clockedHours: string;
+                                overtimeHours: string;
+                                overtimeRate: string;
+                                bonus: string;
+                                deduction: string;
+                                unpaidDays: string;
+                                reimbursements: string;
+                                declaredInsurableWage: string | null;
+                                insured: boolean;
+                                /** @enum {string} */
+                                payMethod: "bank_transfer" | "cash";
+                                note: string | null;
+                                overtimePay: string;
+                                unpaidLeave: string;
+                                gross: string;
+                                insurableWage: string;
+                                socialInsuranceEmployee: string;
+                                socialInsuranceEmployer: string;
+                                taxable: string;
+                                incomeTax: string;
+                                martyrsFund: string;
+                                net: string;
+                                version: number;
+                            };
+                            disclaimer: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Still a draft. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listMyPayslips: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The payslips. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            run: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                /** Format: date */
+                                periodStart: string;
+                                /** Format: date */
+                                periodEnd: string;
+                                /** Format: date */
+                                payDate: string | null;
+                                currency: string;
+                            };
+                            employee: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                employeeNumber: string | null;
+                                jobTitle: string | null;
+                                department: string | null;
+                                /** Format: date */
+                                hireDate: string;
+                            };
+                            line: {
+                                /** Format: uuid */
+                                id: string;
+                                employee: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                basic: string;
+                                allowances: string;
+                                clockedHours: string;
+                                overtimeHours: string;
+                                overtimeRate: string;
+                                bonus: string;
+                                deduction: string;
+                                unpaidDays: string;
+                                reimbursements: string;
+                                declaredInsurableWage: string | null;
+                                insured: boolean;
+                                /** @enum {string} */
+                                payMethod: "bank_transfer" | "cash";
+                                note: string | null;
+                                overtimePay: string;
+                                unpaidLeave: string;
+                                gross: string;
+                                insurableWage: string;
+                                socialInsuranceEmployee: string;
+                                socialInsuranceEmployer: string;
+                                taxable: string;
+                                incomeTax: string;
+                                martyrsFund: string;
+                                net: string;
+                                version: number;
+                            };
+                            disclaimer: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPayRunInsuranceReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPayRunBankFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `payroll` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such run. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Still a draft. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listBoms: {
+        parameters: {
+            query?: {
+                q?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page, by item name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                            };
+                            version: number;
+                            components: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                        }[];
+                        total: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getItemBom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The bill in use (null when the item is not built) and every version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        current: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            version: number;
+                            labourCost: string | null;
+                            overheadCost: string | null;
+                            note: string | null;
+                            components: {
+                                item: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    sku: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    kind: "stock_item" | "non_stock_item" | "service";
+                                    /** @enum {string} */
+                                    unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                };
+                                quantity: string;
+                                unitCost: string | null;
+                            }[];
+                            unitCost: string | null;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            superseded: boolean;
+                        } | null;
+                        versions: {
+                            /** Format: uuid */
+                            id: string;
+                            version: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            superseded: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveItemBom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default 0 */
+                    labourCost?: string;
+                    /** @default 0 */
+                    overheadCost?: string;
+                    note?: string | null;
+                    components: {
+                        /** Format: uuid */
+                        itemId: string;
+                        quantity: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        item: {
+                            /** Format: uuid */
+                            id: string;
+                            sku: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "stock_item" | "non_stock_item" | "service";
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        };
+                        version: number;
+                        labourCost: string | null;
+                        overheadCost: string | null;
+                        note: string | null;
+                        components: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            quantity: string;
+                            unitCost: string | null;
+                        }[];
+                        unitCost: string | null;
+                        createdBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        superseded: boolean;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A component that cannot be one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    retireItemBom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Retired. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No bill in use. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listAssemblyOrders: {
+        parameters: {
+            query?: {
+                status?: ("draft" | "completed" | "cancelled") | ("draft" | "completed" | "cancelled")[];
+                itemId?: string;
+                q?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            /** @enum {string} */
+                            direction: "assemble" | "disassemble";
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            bom: {
+                                /** Format: uuid */
+                                id: string;
+                                version: number;
+                                current: boolean;
+                            };
+                            location: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "warehouse" | "van" | "site";
+                            };
+                            quantity: string;
+                            /** @enum {string} */
+                            status: "draft" | "completed" | "cancelled";
+                            /** Format: date */
+                            plannedFor: string | null;
+                            /** Format: uuid */
+                            planId: string | null;
+                            note: string | null;
+                            unitCost: string | null;
+                            labourCost: string | null;
+                            overheadCost: string | null;
+                            createdBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            createdAt: string;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            completedAt: string | null;
+                            cancelledBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            cancelledAt: string | null;
+                            version: number;
+                        }[];
+                        nextCursor: string | null;
+                        statuses: ("draft" | "completed" | "cancelled")[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createAssemblyOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @default assemble
+                     * @enum {string}
+                     */
+                    direction?: "assemble" | "disassemble";
+                    /** Format: uuid */
+                    itemId: string;
+                    /** Format: uuid */
+                    locationId: string;
+                    quantity: string;
+                    note?: string | null;
+                    /** Format: date */
+                    plannedFor?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** @enum {string} */
+                        direction: "assemble" | "disassemble";
+                        item: {
+                            /** Format: uuid */
+                            id: string;
+                            sku: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "stock_item" | "non_stock_item" | "service";
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        };
+                        bom: {
+                            /** Format: uuid */
+                            id: string;
+                            version: number;
+                            current: boolean;
+                        };
+                        location: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "warehouse" | "van" | "site";
+                        };
+                        quantity: string;
+                        /** @enum {string} */
+                        status: "draft" | "completed" | "cancelled";
+                        /** Format: date */
+                        plannedFor: string | null;
+                        /** Format: uuid */
+                        planId: string | null;
+                        note: string | null;
+                        unitCost: string | null;
+                        labourCost: string | null;
+                        overheadCost: string | null;
+                        createdBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        completedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        completedAt: string | null;
+                        cancelledBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        cancelledAt: string | null;
+                        version: number;
+                        needs: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            quantity: string;
+                            onHand: string;
+                            reserved: string;
+                            available: string;
+                            short: string;
+                        }[];
+                        outputs: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            quantity: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            complete: boolean;
+                            cancel: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No bill, or not a stock item. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getAssemblyOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** @enum {string} */
+                        direction: "assemble" | "disassemble";
+                        item: {
+                            /** Format: uuid */
+                            id: string;
+                            sku: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "stock_item" | "non_stock_item" | "service";
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        };
+                        bom: {
+                            /** Format: uuid */
+                            id: string;
+                            version: number;
+                            current: boolean;
+                        };
+                        location: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "warehouse" | "van" | "site";
+                        };
+                        quantity: string;
+                        /** @enum {string} */
+                        status: "draft" | "completed" | "cancelled";
+                        /** Format: date */
+                        plannedFor: string | null;
+                        /** Format: uuid */
+                        planId: string | null;
+                        note: string | null;
+                        unitCost: string | null;
+                        labourCost: string | null;
+                        overheadCost: string | null;
+                        createdBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        completedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        completedAt: string | null;
+                        cancelledBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        cancelledAt: string | null;
+                        version: number;
+                        needs: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            quantity: string;
+                            onHand: string;
+                            reserved: string;
+                            available: string;
+                            short: string;
+                        }[];
+                        outputs: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            quantity: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            complete: boolean;
+                            cancel: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateAssemblyOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** Format: uuid */
+                    locationId?: string;
+                    quantity?: string;
+                    note?: string | null;
+                    /** Format: date */
+                    plannedFor?: string | null;
+                    useCurrentBill?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** @enum {string} */
+                        direction: "assemble" | "disassemble";
+                        item: {
+                            /** Format: uuid */
+                            id: string;
+                            sku: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "stock_item" | "non_stock_item" | "service";
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        };
+                        bom: {
+                            /** Format: uuid */
+                            id: string;
+                            version: number;
+                            current: boolean;
+                        };
+                        location: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "warehouse" | "van" | "site";
+                        };
+                        quantity: string;
+                        /** @enum {string} */
+                        status: "draft" | "completed" | "cancelled";
+                        /** Format: date */
+                        plannedFor: string | null;
+                        /** Format: uuid */
+                        planId: string | null;
+                        note: string | null;
+                        unitCost: string | null;
+                        labourCost: string | null;
+                        overheadCost: string | null;
+                        createdBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        completedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        completedAt: string | null;
+                        cancelledBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        cancelledAt: string | null;
+                        version: number;
+                        needs: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            quantity: string;
+                            onHand: string;
+                            reserved: string;
+                            available: string;
+                            short: string;
+                        }[];
+                        outputs: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            quantity: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            complete: boolean;
+                            cancel: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Done already, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    completeAssemblyOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** @enum {string} */
+                        direction: "assemble" | "disassemble";
+                        item: {
+                            /** Format: uuid */
+                            id: string;
+                            sku: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "stock_item" | "non_stock_item" | "service";
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        };
+                        bom: {
+                            /** Format: uuid */
+                            id: string;
+                            version: number;
+                            current: boolean;
+                        };
+                        location: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "warehouse" | "van" | "site";
+                        };
+                        quantity: string;
+                        /** @enum {string} */
+                        status: "draft" | "completed" | "cancelled";
+                        /** Format: date */
+                        plannedFor: string | null;
+                        /** Format: uuid */
+                        planId: string | null;
+                        note: string | null;
+                        unitCost: string | null;
+                        labourCost: string | null;
+                        overheadCost: string | null;
+                        createdBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        completedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        completedAt: string | null;
+                        cancelledBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        cancelledAt: string | null;
+                        version: number;
+                        needs: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            quantity: string;
+                            onHand: string;
+                            reserved: string;
+                            available: string;
+                            short: string;
+                        }[];
+                        outputs: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            quantity: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            complete: boolean;
+                            cancel: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Short of stock, cancelled, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelAssemblyOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        /** @enum {string} */
+                        direction: "assemble" | "disassemble";
+                        item: {
+                            /** Format: uuid */
+                            id: string;
+                            sku: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "stock_item" | "non_stock_item" | "service";
+                            /** @enum {string} */
+                            unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                        };
+                        bom: {
+                            /** Format: uuid */
+                            id: string;
+                            version: number;
+                            current: boolean;
+                        };
+                        location: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "warehouse" | "van" | "site";
+                        };
+                        quantity: string;
+                        /** @enum {string} */
+                        status: "draft" | "completed" | "cancelled";
+                        /** Format: date */
+                        plannedFor: string | null;
+                        /** Format: uuid */
+                        planId: string | null;
+                        note: string | null;
+                        unitCost: string | null;
+                        labourCost: string | null;
+                        overheadCost: string | null;
+                        createdBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        completedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        completedAt: string | null;
+                        cancelledBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** Format: date-time */
+                        cancelledAt: string | null;
+                        version: number;
+                        needs: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            quantity: string;
+                            onHand: string;
+                            reserved: string;
+                            available: string;
+                            short: string;
+                        }[];
+                        outputs: {
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            quantity: string;
+                        }[];
+                        can: {
+                            edit: boolean;
+                            complete: boolean;
+                            cancel: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Done already, or changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listMaterialPlans: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Latest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date */
+                            horizonEnd: string;
+                            runBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            runAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    runMaterialPlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default 30 */
+                    horizonDays?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The plan. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: date */
+                        horizonEnd: string;
+                        runBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        runAt: string;
+                        suggestions: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            /** @enum {string} */
+                            action: "build" | "buy";
+                            level: number;
+                            required: string;
+                            available: string;
+                            onOrder: string;
+                            reorderMinimum: string;
+                            quantity: string;
+                            /** Format: date */
+                            needBy: string;
+                            /** Format: date */
+                            orderBy: string;
+                            leadTimeDays: number;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: uuid */
+                            bomId: string | null;
+                            basis: {
+                                sales: string;
+                                assembly: string;
+                                parent: string;
+                                lateByDays: number;
+                            };
+                            drafted: {
+                                /** @enum {string} */
+                                kind: "assembly_order" | "purchase_order";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                            } | null;
+                        }[];
+                        can: {
+                            draftAssemblies: boolean;
+                            draftPurchases: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getMaterialPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The plan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: date */
+                        horizonEnd: string;
+                        runBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** Format: date-time */
+                        runAt: string;
+                        suggestions: {
+                            /** Format: uuid */
+                            id: string;
+                            item: {
+                                /** Format: uuid */
+                                id: string;
+                                sku: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "stock_item" | "non_stock_item" | "service";
+                                /** @enum {string} */
+                                unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                            };
+                            /** @enum {string} */
+                            action: "build" | "buy";
+                            level: number;
+                            required: string;
+                            available: string;
+                            onOrder: string;
+                            reorderMinimum: string;
+                            quantity: string;
+                            /** Format: date */
+                            needBy: string;
+                            /** Format: date */
+                            orderBy: string;
+                            leadTimeDays: number;
+                            supplier: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: uuid */
+                            bomId: string | null;
+                            basis: {
+                                sales: string;
+                                assembly: string;
+                                parent: string;
+                                lateByDays: number;
+                            };
+                            drafted: {
+                                /** @enum {string} */
+                                kind: "assembly_order" | "purchase_order";
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: date-time */
+                                at: string;
+                            } | null;
+                        }[];
+                        can: {
+                            draftAssemblies: boolean;
+                            draftPurchases: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such plan. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    draftFromMaterialPlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    suggestionIds: string[];
+                    /** Format: uuid */
+                    locationId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description What was drafted, and the plan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        assemblyOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        }[];
+                        purchaseOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        }[];
+                        plan: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date */
+                            horizonEnd: string;
+                            runBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            runAt: string;
+                            suggestions: {
+                                /** Format: uuid */
+                                id: string;
+                                item: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    sku: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    kind: "stock_item" | "non_stock_item" | "service";
+                                    /** @enum {string} */
+                                    unit: "each" | "pair" | "set" | "box" | "pack" | "roll" | "m" | "m2" | "m3" | "l" | "kg" | "g" | "hour";
+                                };
+                                /** @enum {string} */
+                                action: "build" | "buy";
+                                level: number;
+                                required: string;
+                                available: string;
+                                onOrder: string;
+                                reorderMinimum: string;
+                                quantity: string;
+                                /** Format: date */
+                                needBy: string;
+                                /** Format: date */
+                                orderBy: string;
+                                leadTimeDays: number;
+                                supplier: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                /** Format: uuid */
+                                bomId: string | null;
+                                basis: {
+                                    sales: string;
+                                    assembly: string;
+                                    parent: string;
+                                    lateByDays: number;
+                                };
+                                drafted: {
+                                    /** @enum {string} */
+                                    kind: "assembly_order" | "purchase_order";
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: date-time */
+                                    at: string;
+                                } | null;
+                            }[];
+                            can: {
+                                draftAssemblies: boolean;
+                                draftPurchases: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `manufacturing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such plan or suggestion. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description The request failed validation. */
             422: {
@@ -44592,7 +52793,7 @@ export interface operations {
                                 /** Format: uuid */
                                 id: string;
                                 title: string;
-                                fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                                fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                                 signatureRequired: boolean;
                                 requiredByJobTypeIds: string[];
                                 /** Format: uuid */
@@ -45415,6 +53616,41 @@ export interface operations {
                         payload: {
                             /** Format: uuid */
                             assetId: string;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "expense.submit";
+                        payload: {
+                            /** Format: uuid */
+                            categoryId: string;
+                            /** Format: date */
+                            spentOn: string;
+                            amount: string;
+                            description: string;
+                            /** Format: uuid */
+                            workOrderId?: string | null;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
+                        kind: "expense.receipt";
+                        payload: {
+                            /** Format: uuid */
+                            attachmentId: string;
+                            /** Format: uuid */
+                            mediaId: string;
+                            title: string;
                         };
                     })[];
                 };

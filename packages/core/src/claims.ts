@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { platformUserIdSchema, tenantIdSchema, userIdSchema } from './ids.js';
-import { roleSchema } from './roles.js';
+import { grantSchema, roleSchema } from './roles.js';
 
 /**
  * The shape of the tokens this system issues.
@@ -63,6 +63,12 @@ export const accessTokenClaimsSchema = z.object({
   /** The company this token acts for. Copied into the `app.tenant_id` GUC by P02's data layer. */
   tid: tenantIdSchema,
   role: roleSchema,
+  /**
+   * Capabilities given on top of the role (ADR-0010). Read when the token is
+   * minted, so a change takes effect within one token's lifetime, like a role
+   * change. Absent on tokens minted before grants existed: none.
+   */
+  grt: z.array(grantSchema).max(2).optional(),
   /** The `sessions.id` this token was minted from; revoking it invalidates the token. */
   sid: z.uuid(),
   imp: impersonationClaimSchema.optional(),
@@ -112,6 +118,8 @@ export interface Principal {
   userId: z.infer<typeof userIdSchema>;
   tenantId: z.infer<typeof tenantIdSchema>;
   role: z.infer<typeof roleSchema>;
+  /** Capabilities given on top of the role; empty for most members. */
+  grants: z.infer<typeof grantSchema>[];
   sessionId: string;
   tokenId: string;
   expiresAt: Date;
@@ -125,6 +133,7 @@ export function toPrincipal(claims: AccessTokenClaims): Principal {
     userId: claims.sub,
     tenantId: claims.tid,
     role: claims.role,
+    grants: claims.grt ?? [],
     sessionId: claims.sid,
     tokenId: claims.jti,
     expiresAt: new Date(claims.exp * 1000),

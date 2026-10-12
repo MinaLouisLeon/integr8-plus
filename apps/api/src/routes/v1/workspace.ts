@@ -6,6 +6,7 @@ import { defineRoute, noSchema } from '../../http/routes.js';
 import { assertSeatAvailable } from '../../billing/entitlements.js';
 import { deliverInvitation } from '../../email/deliver.js';
 import { planFor } from '../../http/suspension.js';
+import { assertMayAssign } from './member-rules.js';
 import {
   acceptedSchema,
   invitationSchema,
@@ -43,10 +44,11 @@ export const meRoute = defineRoute({
     404: { description: 'The membership behind this token no longer exists.' },
   },
   handler: async (_input, context) => {
-    const { member, features, settings } = await withTenant(
+    const { member, grants, features, settings } = await withTenant(
       context.principal.tenantId,
       async (tx) => ({
         member: await tx.tenantUsers.findByUserId(context.principal.userId),
+        grants: await tx.memberGrants.forUser(context.principal.userId),
         features: await tx.featureFlags.resolved(),
         settings: await tx.settings.get(),
       }),
@@ -79,10 +81,13 @@ export const meRoute = defineRoute({
         email: seat.email,
         displayName: seat.displayName,
         role: seat.role,
+        grants: member === undefined ? [] : grants,
         // What this seat may do now, not the role's ceiling: form and job-type
-        // management are held only while Integr8 staff sit in the seat.
+        // management are held only while Integr8 staff sit in the seat. Read
+        // from the membership and its grants, as the next token will carry.
         permissions: permissionsHeld({
           role: seat.role,
+          grants: member === undefined ? [] : grants,
           impersonatedBy: context.principal.impersonatedBy,
         }),
         company: await companyBrand(context.principal.tenantId, settings),
@@ -241,9 +246,13 @@ export const listMembersRoute = defineRoute({
   body: noSchema,
   responses: { 200: { description: 'Members.', schema: listSchema(memberSchema) } },
   handler: async ({ query }, context) => {
-    const members = await withTenant(context.principal.tenantId, (tx) =>
-      tx.tenantUsers.list({ limit: query.limit }),
-    );
+    const { members, grants } = await withTenant(context.principal.tenantId, async (tx) => {
+      const listed = await tx.tenantUsers.list({ limit: query.limit });
+      return {
+        members: listed,
+        grants: await tx.memberGrants.forUsers(listed.map((member) => member.userId)),
+      };
+    });
 
     return {
       status: 200,
@@ -253,6 +262,7 @@ export const listMembersRoute = defineRoute({
           email: member.email,
           displayName: member.displayName,
           role: member.role,
+          grants: grants.get(member.userId) ?? [],
           status: member.status,
           createdAt: iso(member.createdAt),
         })),
@@ -298,6 +308,8 @@ export const inviteMemberRoute = defineRoute({
     422: { description: 'Already a member, or a role above the inviter’s own.' },
   },
   handler: async ({ body }, context) => {
+    // Pay and ID numbers are the owner's to open to someone (ADR-0010).
+    assertMayAssign(context.principal, body.role);
     // Checked here as well as at acceptance (P17). Here so somebody is told
     // before they send an invitation that cannot be accepted; there because an
     // invitation sent last week may be accepted after the plan has changed.

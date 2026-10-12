@@ -85,6 +85,76 @@ describe('the ledger', () => {
   });
 });
 
+describe('HR', () => {
+  const HR: ShellRoute[] = [
+    { key: 'employees', href: NAV_PATHS.employees },
+    { key: 'myProfile', href: NAV_PATHS.myProfile },
+  ];
+
+  it('keeps an employee, a new one and an edit under employees, and one’s own profile apart', () => {
+    expect(routeForPathname(HR, '/hr/employees')).toEqual({ route: HR[0], nested: false });
+    expect(routeForPathname(HR, '/hr/employees/e1')).toEqual({ route: HR[0], nested: true });
+    expect(routeForPathname(HR, '/hr/employees/new')?.route.key).toBe('employees');
+    expect(routeForPathname(HR, '/hr/employees/e1/edit')?.route.key).toBe('employees');
+    expect(routeForPathname(HR, '/hr/me')).toEqual({ route: HR[1], nested: false });
+    expect(routeForPathname(HR, '/hr')).toBeNull();
+  });
+});
+
+describe('expense claims', () => {
+  const EXPENSES: ShellRoute[] = [
+    { key: 'expenseClaims', href: NAV_PATHS.expenseClaims },
+    { key: 'myExpenses', href: NAV_PATHS.myExpenses },
+  ];
+
+  it('keeps a claim and a new one under one’s own, and the categories under everybody’s', () => {
+    expect(routeForPathname(EXPENSES, '/hr/expenses')).toEqual({
+      route: EXPENSES[1],
+      nested: false,
+    });
+    expect(routeForPathname(EXPENSES, '/hr/expenses/new')).toEqual({
+      route: EXPENSES[1],
+      nested: true,
+    });
+    expect(routeForPathname(EXPENSES, '/hr/expenses/c1')?.route.key).toBe('myExpenses');
+    expect(routeForPathname(EXPENSES, '/hr/claims')).toEqual({
+      route: EXPENSES[0],
+      nested: false,
+    });
+    expect(routeForPathname(EXPENSES, '/hr/claims/categories')).toEqual({
+      route: EXPENSES[0],
+      nested: true,
+    });
+  });
+});
+
+describe('payroll', () => {
+  const PAYROLL: ShellRoute[] = [
+    { key: 'payRuns', href: NAV_PATHS.payRuns },
+    { key: 'payrollRules', href: NAV_PATHS.payrollRules },
+    { key: 'myPayslips', href: NAV_PATHS.myPayslips },
+  ];
+
+  it('keeps a run under the runs, and the rules and one’s payslips apart', () => {
+    expect(routeForPathname(PAYROLL, '/hr/pay-runs')).toEqual({
+      route: PAYROLL[0],
+      nested: false,
+    });
+    expect(routeForPathname(PAYROLL, '/hr/pay-runs/r1')).toEqual({
+      route: PAYROLL[0],
+      nested: true,
+    });
+    expect(routeForPathname(PAYROLL, '/hr/payroll-rules')).toEqual({
+      route: PAYROLL[1],
+      nested: false,
+    });
+    expect(routeForPathname(PAYROLL, '/hr/payslips')).toEqual({
+      route: PAYROLL[2],
+      nested: false,
+    });
+  });
+});
+
 describe('the current item', () => {
   it('is current on its own page and below it', () => {
     expect(isCurrentRoute(ROUTES[1]!, '/work-orders')).toBe(true);

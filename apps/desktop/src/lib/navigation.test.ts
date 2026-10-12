@@ -62,6 +62,71 @@ describe('finding the section a route is in', () => {
     expect(routeChrome('/ledger/settings').back).toEqual({ to: '/ledger', section: 'ledger' });
   });
 
+  it('finds HR’s employees and one’s own profile apart', () => {
+    expect(sectionPathFor('/hr/employees')).toBe('employees');
+    expect(sectionPathFor('/hr/employees/new')).toBe('employees');
+    expect(sectionPathFor('/hr/employees/e1/edit')).toBe('employees');
+    expect(sectionPathFor('/hr/me')).toBe('myProfile');
+    expect(routeChrome('/hr/employees/e1')).toEqual({
+      section: 'employees',
+      back: { to: '/hr/employees', section: 'employees' },
+    });
+    expect(routeChrome('/hr/me')).toEqual({ section: 'myProfile', back: undefined });
+    expect(
+      desktopNavigation(['hr.read'], { hr: true })
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.to),
+    ).toEqual(['/hr/employees', '/hr/me']);
+  });
+
+  it('finds one’s own expense claims and everybody’s apart', () => {
+    expect(sectionPathFor('/hr/expenses')).toBe('myExpenses');
+    expect(sectionPathFor('/hr/expenses/new')).toBe('myExpenses');
+    expect(sectionPathFor('/hr/claims')).toBe('expenseClaims');
+    expect(routeChrome('/hr/expenses/c1')).toEqual({
+      section: 'myExpenses',
+      back: { to: '/hr/expenses', section: 'myExpenses' },
+    });
+    expect(routeChrome('/hr/claims/categories')).toEqual({
+      section: 'expenseClaims',
+      back: { to: '/hr/claims', section: 'expenseClaims' },
+    });
+    expect(
+      desktopNavigation(['expense.submit', 'expense.approve'], { hr: true })
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.to),
+    ).toEqual(['/hr/claims', '/hr/me', '/hr/expenses']);
+    expect(
+      desktopNavigation(['expense.submit'], { hr: false }).find((group) => group.group === 'hr'),
+    ).toBeUndefined();
+  });
+
+  it('finds pay runs, payroll rules and one’s own payslips in HR', () => {
+    expect(sectionPathFor('/hr/pay-runs')).toBe('payRuns');
+    expect(sectionPathFor('/hr/payroll-rules')).toBe('payrollRules');
+    expect(sectionPathFor('/hr/payslips')).toBe('myPayslips');
+    expect(routeChrome('/hr/pay-runs/r1')).toEqual({
+      section: 'payRuns',
+      back: { to: '/hr/pay-runs', section: 'payRuns' },
+    });
+    expect(
+      desktopNavigation(['payroll.run', 'payroll.approve'], { hr: true, payroll: true })
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.to),
+    ).toEqual(['/hr/pay-runs', '/hr/payroll-rules', '/hr/me', '/hr/payslips']);
+    // Payslips for everybody, once the company runs payroll.
+    expect(
+      desktopNavigation([], { hr: true, payroll: true })
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.to),
+    ).toEqual(['/hr/me', '/hr/payslips']);
+    expect(
+      desktopNavigation(['payroll.run'], { hr: true })
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.to),
+    ).toEqual(['/hr/me']);
+  });
+
   it('reads a site as part of its customers', () => {
     expect(sectionPathFor('/sites/s1')).toBe('customers');
   });

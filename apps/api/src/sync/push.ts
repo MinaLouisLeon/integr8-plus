@@ -14,6 +14,7 @@ import { fingerprintRequest } from '../http/idempotency.js';
 import { freshTagCode, readableAsset } from '../routes/v1/assets.js';
 import { crmAudit as assetAudit } from '../routes/v1/crm-shared.js';
 import { recordUse } from '../routes/v1/materials.js';
+import { mayAttachReceipt, submitClaim, submitClaimBody } from '../routes/v1/expenses.js';
 import { deliverOnCompletion } from '../routes/v1/sales-fulfilment.js';
 import type { RequestContext } from '../http/routes.js';
 import { updateAccessNotes } from '../routes/v1/customers.js';
@@ -238,6 +239,25 @@ export const mutationSchema = z.discriminatedUnion('kind', [
     /** The job `entityId` is for this asset too. */
     kind: z.literal('asset.link'),
     payload: z.object({ assetId: z.uuid() }),
+  }),
+  z.object({
+    ...common,
+    /**
+     * An expense claimed from the phone (ADR-0010). `entityId` is the phone's
+     * id for the claim, so a resend lands once and its receipts can name it.
+     */
+    kind: z.literal('expense.submit'),
+    payload: submitClaimBody.omit({ clientActionId: true }),
+  }),
+  z.object({
+    ...common,
+    /** A receipt photo for the claim the phone submitted as `entityId`. */
+    kind: z.literal('expense.receipt'),
+    payload: z.object({
+      attachmentId: z.uuid(),
+      mediaId: z.uuid(),
+      title: z.string().trim().min(1).max(200),
+    }),
   }),
 ]);
 
@@ -583,6 +603,10 @@ async function apply(
       return assetCondition(tx, mutation, push);
     case 'asset.link':
       return linkAsset(tx, mutation, push);
+    case 'expense.submit':
+      return submitExpense(tx, mutation, push);
+    case 'expense.receipt':
+      return expenseReceipt(tx, mutation, push);
   }
 }
 
@@ -1459,4 +1483,96 @@ async function submit(
     message: 'Changed while applying.',
     retryAfterSeconds: 1,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Expense claims (ADR-0010)
+// ---------------------------------------------------------------------------
+
+async function expensesAllowed(principal: Principal): Promise<Outcome | undefined> {
+  if (!(await isFeatureEnabled(principal.tenantId, 'hr'))) {
+    return rejected('feature_disabled', 'Expense claims are not switched on for your company.');
+  }
+  if (!holds(principal, 'expense.submit')) {
+    return rejected('forbidden', 'You may not claim expenses.');
+  }
+  return undefined;
+}
+
+async function submitExpense(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'expense.submit' }>,
+  push: PushContext,
+): Promise<Outcome> {
+  const { principal } = push.context;
+  const refused = await expensesAllowed(principal);
+  if (refused !== undefined) {
+    return refused;
+  }
+  try {
+    const { claim, created } = await submitClaim(tx, principal, {
+      ...mutation.payload,
+      clientActionId: mutation.entityId,
+    });
+    if (created) {
+      await assetAudit(tx, push.context, 'expense.submitted', 'expense_claim', claim.id, {
+        amount: claim.amount,
+        via: 'phone',
+      });
+    }
+    return applied(null, !created);
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 422)) {
+      return rejected(error.code, error.message, error.details);
+    }
+    throw error;
+  }
+}
+
+async function expenseReceipt(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'expense.receipt' }>,
+  push: PushContext,
+): Promise<Outcome> {
+  const { principal } = push.context;
+  const refused = await expensesAllowed(principal);
+  if (refused !== undefined) {
+    return refused;
+  }
+  const { attachmentId, mediaId, title } = mutation.payload;
+  const claim = await tx.hrExpenses.findByClientAction(mutation.entityId);
+  const existing = await tx.attachments.findAny(attachmentId);
+  if (existing !== undefined) {
+    return claim !== undefined &&
+      'expenseClaimId' in existing.owner &&
+      existing.owner.expenseClaimId === claim.id &&
+      existing.fileId === mediaId
+      ? applied(null, true)
+      : rejected('attachment_id_taken', 'This receipt id belongs to another file.');
+  }
+  if (claim === undefined) {
+    // The claim is behind it in the queue, or was refused.
+    return {
+      outcome: 'retry',
+      code: 'claim_not_ready',
+      message: 'The claim this receipt belongs to has not arrived yet.',
+      retryAfterSeconds: 30,
+    };
+  }
+  if (claim.claimantId !== principal.userId || !mayAttachReceipt(principal, claim)) {
+    return rejected('claim_closed', 'This claim has been decided; the receipt was not added.');
+  }
+  const file = await tx.files.find(mediaId);
+  if (file === undefined) {
+    return mediaNotReady();
+  }
+  if (file.deletedAt !== null) {
+    return rejected('media_unusable', 'This receipt was deleted.');
+  }
+  await tx.attachments.add(
+    { expenseClaimId: claim.id },
+    { id: attachmentId, fileId: mediaId, title, kind: 'photo' },
+    principal.userId,
+  );
+  return applied(null);
 }

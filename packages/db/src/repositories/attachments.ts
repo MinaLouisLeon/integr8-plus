@@ -8,7 +8,9 @@ export type AttachmentOwner =
   | { siteId: string }
   | { workOrderId: string }
   /** A machine on the asset register (0031). */
-  | { assetId: string };
+  | { assetId: string }
+  /** A receipt for a staff expense claim (0037). */
+  | { expenseClaimId: string };
 
 export interface Attachment {
   id: string;
@@ -31,6 +33,9 @@ function ownerColumn(owner: AttachmentOwner) {
   }
   if ('assetId' in owner) {
     return { column: 'asset_id' as const, id: owner.assetId };
+  }
+  if ('expenseClaimId' in owner) {
+    return { column: 'expense_claim_id' as const, id: owner.expenseClaimId };
   }
   return { column: 'work_order_id' as const, id: owner.workOrderId };
 }
@@ -133,7 +138,9 @@ export function toAttachment(row: Selectable<AttachmentsTable>): Attachment {
         ? { siteId: row.site_id }
         : row.asset_id !== null
           ? { assetId: row.asset_id }
-          : { workOrderId: row.work_order_id! };
+          : row.expense_claim_id !== null
+            ? { expenseClaimId: row.expense_claim_id }
+            : { workOrderId: row.work_order_id! };
   return {
     id: row.id,
     fileId: row.file_id,

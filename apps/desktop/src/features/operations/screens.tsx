@@ -14,6 +14,12 @@ import {
   LocationScreen,
   OrderListScreen,
   OrderScreen,
+  BomListScreen,
+  BomScreen,
+  AssemblyOrderListScreen,
+  AssemblyOrderScreen,
+  MaterialPlanListScreen,
+  MaterialPlanScreen,
   QuoteListScreen,
   QuoteScreen,
   SalesOrderListScreen,
@@ -29,6 +35,19 @@ import {
   LedgerPeriodsScreen,
   LedgerReportsScreen,
   LedgerSettingsScreen,
+  EmployeeListScreen,
+  EmployeeScreen,
+  EmployeeEditorScreen,
+  MyProfileScreen,
+  MyExpenseClaimsScreen,
+  NewExpenseClaimScreen,
+  ExpenseClaimScreen,
+  ExpenseClaimsScreen,
+  ExpenseCategoriesScreen,
+  PayRunsScreen,
+  PayRunScreen,
+  PayrollRulesScreen,
+  MyPayslipsScreen,
   AssetListScreen,
   WarrantyAlertsPanel,
   AssetScreen,
@@ -103,6 +122,12 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         supplier: (id) => `/purchasing/suppliers/${id}`,
         purchaseOrders: '/purchasing/orders',
         purchaseOrder: (id) => `/purchasing/orders/${id}`,
+        boms: '/manufacturing/boms',
+        bom: (itemId) => `/manufacturing/boms/${itemId}`,
+        assemblyOrders: '/manufacturing/orders',
+        assemblyOrder: (id) => `/manufacturing/orders/${id}`,
+        materialPlans: '/manufacturing/plans',
+        materialPlan: (id) => `/manufacturing/plans/${id}`,
         quotes: '/sales/quotes',
         quote: (id) => `/sales/quotes/${id}`,
         salesOrders: '/sales/orders',
@@ -126,6 +151,20 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         ledgerPeriods: '/ledger/periods',
         ledgerReports: '/ledger/reports',
         ledgerSettings: '/ledger/settings',
+        employees: '/hr/employees',
+        employee: (id) => `/hr/employees/${id}`,
+        newEmployee: '/hr/employees/new',
+        editEmployee: (id) => `/hr/employees/${id}/edit`,
+        myProfile: '/hr/me',
+        myExpenseClaims: '/hr/expenses',
+        newExpenseClaim: '/hr/expenses/new',
+        expenseClaims: '/hr/claims',
+        expenseClaim: (id) => `/hr/expenses/${id}`,
+        expenseCategories: '/hr/claims/categories',
+        payRuns: '/hr/pay-runs',
+        payRun: (id) => `/hr/pay-runs/${id}`,
+        payrollRules: '/hr/payroll-rules',
+        myPayslips: '/hr/payslips',
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
@@ -382,6 +421,57 @@ export function PurchaseOrderRoute() {
   );
 }
 
+export function BomsRoute() {
+  return (
+    <OperationsScreens>
+      <BomListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function BomRoute() {
+  const { itemId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <BomScreen key={itemId} itemId={itemId} />
+    </OperationsScreens>
+  );
+}
+
+export function AssemblyOrdersRoute() {
+  return (
+    <OperationsScreens>
+      <AssemblyOrderListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function AssemblyOrderRoute() {
+  const { orderId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <AssemblyOrderScreen key={orderId} orderId={orderId} />
+    </OperationsScreens>
+  );
+}
+
+export function MaterialPlansRoute() {
+  return (
+    <OperationsScreens>
+      <MaterialPlanListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function MaterialPlanRoute() {
+  const { planId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <MaterialPlanScreen key={planId} planId={planId} />
+    </OperationsScreens>
+  );
+}
+
 export function QuotesRoute() {
   return (
     <OperationsScreens>
@@ -579,6 +669,125 @@ export function LedgerSettingsRoute() {
   return (
     <OperationsScreens>
       <LedgerSettingsScreen />
+    </OperationsScreens>
+  );
+}
+
+/** HR: employee profiles (seventh round; ADR-0010). */
+export function EmployeesRoute() {
+  return (
+    <OperationsScreens>
+      <EmployeeListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function NewEmployeeRoute() {
+  return (
+    <OperationsScreens>
+      <EmployeeEditorScreen />
+    </OperationsScreens>
+  );
+}
+
+export function EmployeeRoute() {
+  const { employeeId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <EmployeeScreen key={employeeId} employeeId={employeeId} />
+    </OperationsScreens>
+  );
+}
+
+export function EditEmployeeRoute() {
+  const { employeeId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <EmployeeEditorScreen key={employeeId} employeeId={employeeId} />
+    </OperationsScreens>
+  );
+}
+
+export function MyProfileRoute() {
+  return (
+    <OperationsScreens>
+      <MyProfileScreen />
+    </OperationsScreens>
+  );
+}
+
+/** HR: staff expense claims (seventh round; ADR-0010). */
+export function MyExpenseClaimsRoute() {
+  return (
+    <OperationsScreens>
+      <MyExpenseClaimsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function NewExpenseClaimRoute() {
+  return (
+    <OperationsScreens>
+      <NewExpenseClaimScreen />
+    </OperationsScreens>
+  );
+}
+
+export function ExpenseClaimRoute() {
+  const { claimId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <ExpenseClaimScreen key={claimId} claimId={claimId} />
+    </OperationsScreens>
+  );
+}
+
+export function ExpenseClaimsRoute() {
+  return (
+    <OperationsScreens>
+      <ExpenseClaimsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function ExpenseCategoriesRoute() {
+  return (
+    <OperationsScreens>
+      <ExpenseCategoriesScreen />
+    </OperationsScreens>
+  );
+}
+
+/** HR: Egyptian payroll (seventh round; ADR-0010). */
+export function PayRunsRoute() {
+  return (
+    <OperationsScreens>
+      <PayRunsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function PayRunRoute() {
+  const { runId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <PayRunScreen key={runId} runId={runId} />
+    </OperationsScreens>
+  );
+}
+
+export function PayrollRulesRoute() {
+  return (
+    <OperationsScreens>
+      <PayrollRulesScreen />
+    </OperationsScreens>
+  );
+}
+
+export function MyPayslipsRoute() {
+  return (
+    <OperationsScreens>
+      <MyPayslipsScreen />
     </OperationsScreens>
   );
 }

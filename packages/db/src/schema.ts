@@ -22,6 +22,15 @@ import {
   type OpportunityEventKind,
   type OpportunityStatus,
   type Role,
+  type Grant,
+  type ExpenseClaimStatus,
+  type ExpenseSettlement,
+  type ExpensePaidVia,
+  type PayrollRules,
+  type PayRunStatus,
+  type PayMethod,
+  type AssemblyDirection,
+  type AssemblyOrderStatus,
   ROLES,
   type StageOutcome,
   type WorkOrderPriority,
@@ -1078,6 +1087,8 @@ export interface ErpItemsTable {
   average_unit_cost: Generated<string>;
   preferred_supplier_id: string | null;
   supplier_part_number: string | null;
+  /** Days to build or to arrive (0039). */
+  lead_time_days: number | null;
   version: Generated<number>;
   created_by: string;
   created_at: CreatedAt;
@@ -1615,6 +1626,8 @@ export interface ErpLedgerSettingsTable {
   fiscal_start_month: Generated<number>;
   auto_post_sales: Generated<boolean>;
   auto_post_stock: Generated<boolean>;
+  auto_post_expenses: Generated<boolean>;
+  auto_post_payroll: Generated<boolean>;
   allow_self_approval: Generated<boolean>;
   receivables_account_id: string;
   revenue_services_account_id: string;
@@ -1629,6 +1642,15 @@ export interface ErpLedgerSettingsTable {
   stock_adjustments_account_id: string;
   opening_balances_account_id: string;
   retained_earnings_account_id: string;
+  staff_claims_payable_account_id: string;
+  staff_expenses_account_id: string;
+  salaries_expense_account_id: string;
+  employer_insurance_expense_account_id: string;
+  salaries_payable_account_id: string;
+  payroll_tax_payable_account_id: string;
+  social_insurance_payable_account_id: string;
+  martyrs_fund_payable_account_id: string;
+  assembly_absorbed_account_id: string;
   version: Generated<number>;
   created_by: string;
   created_at: CreatedAt;
@@ -1747,6 +1769,264 @@ export interface ErpLedgerYearClosesTable {
   reopened_at: Date | null;
   reopen_reason: string | null;
   reopening_journal_id: string | null;
+}
+
+/** Capabilities on top of a member's role (0036; ADR-0010). */
+export interface MemberGrantsTable {
+  tenant_id: string;
+  user_id: string;
+  capability: Grant;
+  granted_by: string;
+  granted_at: Generated<Date>;
+}
+
+/** Employee profiles (0036; ADR-0010). Sealed columns hold API-written ciphertext. */
+export interface HrEmployeesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  user_id: string | null;
+  employee_number: string | null;
+  full_name: string;
+  job_title: string | null;
+  department: string | null;
+  phone: string | null;
+  hire_date: string | Date;
+  end_date: string | Date | null;
+  end_reason: string | null;
+  national_id_sealed: string | null;
+  national_id_last4: string | null;
+  insurance_number_sealed: string | null;
+  insurance_number_last4: string | null;
+  bank_name: string | null;
+  bank_account_sealed: string | null;
+  bank_account_last4: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+/** Expense categories (0037; ADR-0010). */
+export interface HrExpenseCategoriesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  account_id: string | null;
+  archived_at: Date | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface ExpenseReferenceCountersTable {
+  tenant_id: string;
+  last_reference: number;
+}
+
+/** Staff expense claims (0037; ADR-0010). */
+export interface HrExpenseClaimsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  reference: Generated<number>;
+  claimant_id: string;
+  category_id: string;
+  work_order_id: string | null;
+  spent_on: string | Date;
+  amount: string;
+  currency: string;
+  description: string;
+  status: Generated<ExpenseClaimStatus>;
+  client_action_id: string | null;
+  submitted_at: Generated<Date>;
+  decided_by: string | null;
+  decided_at: Date | null;
+  reject_reason: string | null;
+  settle_via: ExpenseSettlement | null;
+  paid_via: ExpensePaidVia | null;
+  paid_by: string | null;
+  paid_at: Date | null;
+  payment_reference: string | null;
+  payroll_run_id: string | null;
+  version: Generated<number>;
+  updated_at: Generated<Date>;
+}
+
+/** Payroll figures from a month on (0038; ADR-0010); frozen once confirmed. */
+export interface HrPayrollRuleSetsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  effective_from: string | Date;
+  rules: Jsonb<PayrollRules>;
+  confirmed_by: string | null;
+  confirmed_at: Date | null;
+  confirmation_note: string | null;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  version: Generated<number>;
+}
+
+/** An employee's pay from a date on (0038). */
+export interface HrPayTermsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  employee_id: string;
+  effective_from: string | Date;
+  basic: string;
+  allowances: Generated<string>;
+  insured: Generated<boolean>;
+  insurable_wage: string | null;
+  standard_hours: Generated<string>;
+  overtime_rate: string | null;
+  pay_method: Generated<PayMethod>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  version: Generated<number>;
+}
+
+/** A month's pay run (0038). */
+export interface HrPayrollRunsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  period_start: string | Date;
+  period_end: string | Date;
+  rule_set_id: string;
+  currency: string;
+  status: Generated<PayRunStatus>;
+  pay_date: string | Date | null;
+  note: string | null;
+  prepared_by: string;
+  prepared_at: Generated<Date>;
+  approved_by: string | null;
+  approved_at: Date | null;
+  version: Generated<number>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+/** One employee's pay in a run: what went in, and what came out (0038). */
+export interface HrPayrollLinesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  run_id: string;
+  employee_id: string;
+  basic: string;
+  allowances: string;
+  clocked_hours: Generated<string>;
+  overtime_hours: Generated<string>;
+  overtime_rate: Generated<string>;
+  bonus: Generated<string>;
+  deduction: Generated<string>;
+  unpaid_days: Generated<string>;
+  reimbursements: Generated<string>;
+  declared_insurable_wage: string | null;
+  insured: boolean;
+  pay_method: PayMethod;
+  note: string | null;
+  overtime_pay: string;
+  unpaid_leave: string;
+  gross: string;
+  insurable_wage: string;
+  si_employee: string;
+  si_employer: string;
+  taxable: string;
+  income_tax: string;
+  martyrs_fund: string;
+  net: string;
+  version: Generated<number>;
+  updated_at: UpdatedAt;
+}
+
+/** A bill of materials version (0039; ADR-0011). */
+export interface ErpBomsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  item_id: string;
+  version: number;
+  labour_cost: Generated<string>;
+  overhead_cost: Generated<string>;
+  note: string | null;
+  created_by: string;
+  created_at: CreatedAt;
+  superseded_at: Date | null;
+  superseded_by: string | null;
+}
+
+export interface ErpBomComponentsTable {
+  tenant_id: string;
+  bom_id: string;
+  line_no: number;
+  item_id: string;
+  quantity: string;
+}
+
+export interface AssemblyReferenceCountersTable {
+  tenant_id: string;
+  last_reference: number;
+}
+
+/** An assembly or disassembly order (0039). */
+export interface ErpAssemblyOrdersTable {
+  id: Generated<string>;
+  tenant_id: string;
+  reference: Generated<number>;
+  direction: Generated<AssemblyDirection>;
+  item_id: string;
+  bom_id: string;
+  location_id: string;
+  quantity: string;
+  status: Generated<AssemblyOrderStatus>;
+  planned_for: string | Date | null;
+  plan_id: string | null;
+  note: string | null;
+  unit_cost: string | null;
+  labour_cost: string | null;
+  overhead_cost: string | null;
+  created_by: string;
+  created_at: CreatedAt;
+  completed_by: string | null;
+  completed_at: Date | null;
+  cancelled_by: string | null;
+  cancelled_at: Date | null;
+  version: Generated<number>;
+  updated_at: UpdatedAt;
+}
+
+/** A planning run (0039). */
+export interface ErpMrpPlansTable {
+  id: Generated<string>;
+  tenant_id: string;
+  horizon_end: string | Date;
+  run_by: string;
+  run_at: Generated<Date>;
+}
+
+export interface ErpMrpSuggestionsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  plan_id: string;
+  item_id: string;
+  action: 'build' | 'buy';
+  level: number;
+  required: string;
+  available: string;
+  on_order: string;
+  reorder_minimum: string;
+  quantity: string;
+  need_by: string | Date;
+  order_by: string | Date;
+  lead_time_days: number;
+  supplier_id: string | null;
+  bom_id: string | null;
+  basis: string;
+  drafted_kind: 'assembly_order' | 'purchase_order' | null;
+  drafted_id: string | null;
+  drafted_at: Date | null;
 }
 
 export interface CustomerContactsTable {
@@ -1947,6 +2227,8 @@ export interface AttachmentsTable {
   work_order_id: string | null;
   /** The asset it belongs to (0031). */
   asset_id: Generated<string | null>;
+  /** The expense claim it is a receipt for (0037). */
+  expense_claim_id: Generated<string | null>;
   title: string;
   kind: Generated<AttachmentKind>;
   /** For a job photo: taken before or after the work (0013). */
@@ -2289,6 +2571,21 @@ export interface Database {
   erp_journal_lines: ErpJournalLinesTable;
   erp_ledger_year_closes: ErpLedgerYearClosesTable;
   erp_ledger_postings: ErpLedgerPostingsTable;
+  member_grants: MemberGrantsTable;
+  hr_employees: HrEmployeesTable;
+  hr_expense_categories: HrExpenseCategoriesTable;
+  expense_reference_counters: ExpenseReferenceCountersTable;
+  hr_expense_claims: HrExpenseClaimsTable;
+  hr_payroll_rule_sets: HrPayrollRuleSetsTable;
+  hr_pay_terms: HrPayTermsTable;
+  hr_payroll_runs: HrPayrollRunsTable;
+  hr_payroll_lines: HrPayrollLinesTable;
+  erp_boms: ErpBomsTable;
+  erp_bom_components: ErpBomComponentsTable;
+  assembly_reference_counters: AssemblyReferenceCountersTable;
+  erp_assembly_orders: ErpAssemblyOrdersTable;
+  erp_mrp_plans: ErpMrpPlansTable;
+  erp_mrp_suggestions: ErpMrpSuggestionsTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -2438,6 +2735,9 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'erp_ledger_capture',
   'erp_ledger_try_post',
   'erp_ledger_backfill',
+  'assign_expense_reference',
+  'assign_assembly_reference',
+  'erp_ledger_backfill_more',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -2538,6 +2838,21 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_journal_lines: true,
   erp_ledger_year_closes: true,
   erp_ledger_postings: true,
+  member_grants: true,
+  hr_employees: true,
+  hr_expense_categories: true,
+  expense_reference_counters: true,
+  hr_expense_claims: true,
+  hr_payroll_rule_sets: true,
+  hr_pay_terms: true,
+  hr_payroll_runs: true,
+  hr_payroll_lines: true,
+  erp_boms: true,
+  erp_bom_components: true,
+  assembly_reference_counters: true,
+  erp_assembly_orders: true,
+  erp_mrp_plans: true,
+  erp_mrp_suggestions: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

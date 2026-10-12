@@ -66,6 +66,32 @@ describe('the dashboard map', () => {
     expect(keysFor('engineer', { crm: true })).not.toContain('crm');
   });
 
+  it('shows manufacturing under inventory, only with inventory on as well', () => {
+    const inventory = (
+      seat: Parameters<typeof permissionsHeld>[0],
+      features?: Record<string, boolean>,
+    ) =>
+      visibleNavigation('desktop', permissionsHeld(seat), features)
+        .find((group) => group.group === 'inventory')
+        ?.sections.map((section) => section.key);
+    const making = ['boms', 'assemblyOrders', 'materialPlans'];
+    const both = { inventory: true, manufacturing: true };
+
+    expect(inventory({ role: 'owner' }, both)).toEqual(expect.arrayContaining(making));
+    expect(inventory({ role: 'viewer' }, both)).toEqual(expect.arrayContaining(making));
+    expect(inventory({ role: 'dispatcher', grants: ['inventory_manager'] }, both)).toEqual(
+      expect.arrayContaining(making),
+    );
+    expect(inventory({ role: 'engineer' }, both)).not.toContain('boms');
+    // The module needs inventory: without it, nothing of manufacturing shows.
+    expect(
+      visibleNavigation('web', permissionsHeld({ role: 'owner' }), { manufacturing: true })
+        .flatMap((group) => group.sections)
+        .map((section) => section.key),
+    ).not.toContain('boms');
+    expect(inventory({ role: 'owner' }, { inventory: true })).not.toContain('assemblyOrders');
+  });
+
   it('shows the ledger under accounting to owners, admins and viewers of a company that has it', () => {
     const groupsFor = (role: 'owner' | 'admin' | 'dispatcher' | 'engineer' | 'viewer') =>
       visibleNavigation('web', permissionsFor(role), { ledger: true });
@@ -85,5 +111,70 @@ describe('the dashboard map', () => {
     ).not.toContain('accounting');
     // Right after finance, in the menu's order.
     expect(NAV_GROUPS.indexOf('accounting')).toBe(NAV_GROUPS.indexOf('finance') + 1);
+  });
+
+  it('shows HR after accounting: the lists to those who may use them, a profile and claims to everybody', () => {
+    const hr = (seat: Parameters<typeof permissionsHeld>[0], features?: Record<string, boolean>) =>
+      visibleNavigation('web', permissionsHeld(seat), features)
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.key);
+    const everything = ['employees', 'expenseClaims', 'myProfile', 'myExpenses'];
+
+    expect(hr({ role: 'owner' }, { hr: true })).toEqual(everything);
+    expect(hr({ role: 'admin' }, { hr: true })).toEqual(everything);
+    expect(hr({ role: 'hr_manager' }, { hr: true })).toEqual(everything);
+    // Every member claims expenses back; only approvers see everybody's claims.
+    expect(hr({ role: 'engineer' }, { hr: true })).toEqual(['myProfile', 'myExpenses']);
+    expect(hr({ role: 'viewer' }, { hr: true })).toEqual(['myProfile', 'myExpenses']);
+    // A grant on top of a role brings the lists with it.
+    expect(hr({ role: 'dispatcher', grants: ['hr_manager'] }, { hr: true })).toEqual(everything);
+    // Without the module, no HR heading at all, for anybody.
+    expect(hr({ role: 'owner' })).toBeUndefined();
+    expect(hr({ role: 'owner' }, { hr: false })).toBeUndefined();
+    expect(NAV_GROUPS.indexOf('hr')).toBe(NAV_GROUPS.indexOf('accounting') + 1);
+    // Payroll's sections need its module on top of HR's.
+    expect(hr({ role: 'owner' }, { hr: true, payroll: false })).toEqual(everything);
+    expect(hr({ role: 'owner' }, { hr: false, payroll: true })).toBeUndefined();
+    // The same in the desktop app, which has every one of these screens.
+    expect(
+      visibleNavigation('desktop', permissionsHeld({ role: 'viewer' }), { hr: true })
+        .flatMap((group) => group.sections)
+        .map((section) => section.key),
+    ).toEqual(expect.arrayContaining(['myProfile', 'myExpenses']));
+  });
+
+  it('shows payroll inside HR: runs and rules to those who keep payroll, payslips to everybody', () => {
+    const hr = (seat: Parameters<typeof permissionsHeld>[0], features?: Record<string, boolean>) =>
+      visibleNavigation('web', permissionsHeld(seat), features)
+        .find((group) => group.group === 'hr')
+        ?.sections.map((section) => section.key);
+    const on = { hr: true, payroll: true };
+
+    expect(hr({ role: 'owner' }, on)).toEqual([
+      'employees',
+      'expenseClaims',
+      'payRuns',
+      'payrollRules',
+      'myProfile',
+      'myExpenses',
+      'myPayslips',
+    ]);
+    expect(hr({ role: 'hr_manager' }, on)).toEqual(hr({ role: 'owner' }, on));
+    // An admin approves claims but does not keep payroll.
+    expect(hr({ role: 'admin' }, on)).toEqual([
+      'employees',
+      'expenseClaims',
+      'myProfile',
+      'myExpenses',
+      'myPayslips',
+    ]);
+    expect(hr({ role: 'engineer' }, on)).toEqual(['myProfile', 'myExpenses', 'myPayslips']);
+    // The HR grant brings payroll with it.
+    expect(hr({ role: 'dispatcher', grants: ['hr_manager'] }, on)).toEqual(
+      expect.arrayContaining(['payRuns', 'payrollRules', 'myPayslips']),
+    );
+    // Payroll without HR counts as off; HR without payroll shows no payroll.
+    expect(hr({ role: 'owner' }, { hr: false, payroll: true })).toBeUndefined();
+    expect(hr({ role: 'owner' }, { hr: true })).not.toContain('myPayslips');
   });
 });

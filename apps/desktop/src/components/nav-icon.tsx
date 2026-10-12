@@ -90,6 +90,13 @@ const NAV_GLYPHS: Record<NavIcon, Glyph> = {
     'M3 9h18M9 21V9',
   ],
   package: ['M21 8l-9-5-9 5v8l9 5 9-5z', 'M3 8l9 5 9-5', 'M12 13v8'],
+  layers: ['M12 3l9 5-9 5-9-5z', 'M3 13l9 5 9-5', 'M3 17l9 5 9-5'],
+  factory: ['M3 21V10l5 3V10l5 3V10l5 3V4h3v17z', 'M7 17h2M11 17h2M15 17h2'],
+  'calendar-check': [
+    'M4 6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z',
+    'M4 10h16M8 3v4M16 3v4',
+    'M9 15l2 2 4-4',
+  ],
   truck: [
     'M3 6h11v10H3z',
     'M14 9h4l3 3v4h-7',
@@ -116,6 +123,34 @@ const NAV_GLYPHS: Record<NavIcon, Glyph> = {
     'M9 11h6',
   ],
   'bar-chart': ['M4 20h16', 'M7 20v-6', 'M12 20V6', 'M17 20v-9'],
+  'id-card': [
+    'M3 6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z',
+    'M11 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0z',
+    'M6 16a3 3 0 0 1 6 0',
+    'M14 9h4M14 13h4',
+  ],
+  banknote: [
+    'M3 7a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z',
+    'M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
+    'M6 12h.01M18 12h.01',
+  ],
+  'clipboard-check': [
+    'M9 4h6v3H9z',
+    'M9 5H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-3',
+    'M9 14l2 2 4-4',
+  ],
+  calculator: [
+    'M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z',
+    'M8 7h8v3H8z',
+    'M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01',
+  ],
+  scale: [
+    'M12 4v16',
+    'M8 20h8',
+    'M5 7h14',
+    'M5 7l-3 6a3 3 0 0 0 6 0z',
+    'M19 7l-3 6a3 3 0 0 0 6 0z',
+  ],
 };
 
 export type ChromeIcon =

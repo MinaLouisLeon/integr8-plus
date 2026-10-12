@@ -1237,6 +1237,7 @@ describe('parts used on the job', { timeout: 20_000 }, () => {
               averageUnitCost: null,
               preferredSupplierId: null,
               supplierPartNumber: null,
+              leadTimeDays: null,
               version: 1,
               createdAt: '2026-10-01T09:00:00.000Z',
               updatedAt: '2026-10-01T09:00:00.000Z',

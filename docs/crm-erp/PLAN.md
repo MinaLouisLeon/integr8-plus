@@ -260,9 +260,13 @@ Scope only after chart of accounts, country/fiscal rules and accounting policy a
 
 ### ERP-09 HR, expense management and payroll — P2/deferred
 
+**Status:** authorized by the product owner on 2026-10-12, with full Egyptian payroll as configurable rule sets each company confirms before use — phase H1, ADR-0010.
+
 Your existing `tenant_users`, shifts, and timesheets provide identities and operational time. Do not create duplicate login/employee accounts. An optional HR profile references `tenant_users`; staff expense claims may be future scope. **Do not ship payroll** before legal/tax/benefit rules are reviewed for a selected country.
 
 ### ERP-10 Manufacturing and complex supply chain — deferred
+
+**Status:** authorized by the product owner on 2026-10-12 for bills of materials, assembly and disassembly, and material planning (MRP); routing, work centres and landed costs stay deferred — phase M1, ADR-0011.
 
 BOM, MRP, production routing, landed costs, supplier AP automation, multicompany consolidation and advanced BI only after demand justifies their ongoing maintenance burden.
 
@@ -726,6 +730,24 @@ The report says development/tests run with recording/local adapters, **but produ
 - [x] Design and test double-entry journals, posting source references, period locks, reversals.
 - [x] Trial balance, account activity, AR reconciliation and manual journals with segregation of duties.
 - **Done when:** formal balancing/reversal tests and policy review approve use; avoid prematurely calling accounting legally compliant.
+
+### Phase H1 — HR, staff expenses and Egyptian payroll (authorized 2026-10-12)
+
+**Status:** `DONE` — built in the seventh round (migrations 0036–0038); see the [phase tracker](./README.md#phase-tracker) and ADR-0010. The "done when" check — a test company's month matching its accountant's hand calculation — is a manual check before relying on it (09).
+
+- [x] New roles `hr_manager` and `inventory_manager`, and the same capabilities as grants on top of any role (H1a).
+- [x] Employee profiles linked to members or standalone, with national ID, insurance number and bank account encrypted at rest (H1a).
+- [x] Staff expense claims from web, desktop and the phone offline, approved by someone else, paid back or through payroll, posted to the ledger (H1b).
+- [x] Dated payroll rule sets confirmed by the owner; monthly pay runs with overtime from timesheets, approved by a second person; payslips, the insurance report, the bank transfer list and the ledger journal (H1c).
+- **Done when:** a test company's month is paid in the app and matches a payroll its accountant computes by hand; nothing is claimed as legally reviewed.
+
+### Phase M1 — Bills of materials, assembly and planning (authorized 2026-10-12)
+
+**Status:** `DONE` — built in the seventh round (migration 0039); see the [phase tracker](./README.md#phase-tracker) and ADR-0011.
+
+- [x] Versioned bills of materials; assembly and disassembly orders posting components out and the item in at rolled-up cost; shortages refused; ledger posting (M1a).
+- [x] On-demand planning from sales orders, assemblies, reorder levels and stock, drafting assembly and purchase orders on request (M1b).
+- **Done when:** a kit is built from stock, its cost follows its parts, and planning's suggestions for a sales order can be drafted into orders without retyping.
 
 ### Phase L — Pilot release
 

@@ -50,6 +50,14 @@ export interface OperationsConfig {
     supplier: (id: string) => string;
     purchaseOrders: string;
     purchaseOrder: (id: string) => string;
+    /** Manufacturing (seventh round; ADR-0011): bills, assembly orders and planning. */
+    boms: string;
+    /** An item's bill of materials, by the item. */
+    bom: (itemId: string) => string;
+    assemblyOrders: string;
+    assemblyOrder: (id: string) => string;
+    materialPlans: string;
+    materialPlan: (id: string) => string;
     /** Sales (CRM/ERP plan, phase S1). */
     quotes: string;
     quote: (id: string) => string;
@@ -77,6 +85,26 @@ export interface OperationsConfig {
     ledgerPeriods: string;
     ledgerReports: string;
     ledgerSettings: string;
+    /** HR: employee profiles (seventh round; ADR-0010). */
+    employees: string;
+    employee: (id: string) => string;
+    newEmployee: string;
+    editEmployee: (id: string) => string;
+    /** The signed-in person's own employee profile. */
+    myProfile: string;
+    /** Staff expense claims (seventh round; ADR-0010): one's own, and a new one. */
+    myExpenseClaims: string;
+    newExpenseClaim: string;
+    /** Everybody's claims, for those who approve them. */
+    expenseClaims: string;
+    expenseClaim: (id: string) => string;
+    /** What expenses may be claimed for, kept by those who approve claims. */
+    expenseCategories: string;
+    /** Egyptian payroll (seventh round; ADR-0010): the runs, one run, the rules, one's payslips. */
+    payRuns: string;
+    payRun: (id: string) => string;
+    payrollRules: string;
+    myPayslips: string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -115,13 +143,17 @@ export interface RowTarget {
     | 'stockLocation'
     | 'supplier'
     | 'purchaseOrder'
+    | 'bom'
+    | 'assemblyOrder'
     | 'quote'
     | 'salesOrder'
     | 'invoice'
     | 'payment'
     | 'asset'
     | 'journal'
-    | 'posting';
+    | 'posting'
+    | 'employee'
+    | 'expenseClaim';
   id: string;
   label: string;
 }
@@ -221,6 +253,17 @@ export type PurchaseOrderStatus = PurchaseOrderRow['status'];
 export type PurchaseOrderDetail = Json<'/v1/purchasing/orders/{orderId}', 'get', 200>;
 export type PurchaseOrderLine = PurchaseOrderDetail['lines'][number];
 export type GoodsReceipt = PurchaseOrderDetail['receipts'][number];
+export type BomRow = Json<'/v1/manufacturing/boms', 'get', 200>['items'][number];
+export type ItemBom = Json<'/v1/manufacturing/boms/items/{itemId}', 'get', 200>;
+export type Bom = NonNullable<ItemBom['current']>;
+export type AssemblyOrderRow = Json<'/v1/manufacturing/orders', 'get', 200>['items'][number];
+export type AssemblyOrderStatus = AssemblyOrderRow['status'];
+export type AssemblyDirection = AssemblyOrderRow['direction'];
+export type AssemblyOrderDetail = Json<'/v1/manufacturing/orders/{orderId}', 'get', 200>;
+export type MaterialPlanRow = Json<'/v1/manufacturing/plans', 'get', 200>['items'][number];
+export type MaterialPlan = Json<'/v1/manufacturing/plans/{planId}', 'get', 200>;
+export type PlanSuggestion = MaterialPlan['suggestions'][number];
+export type PlanDrafted = Json<'/v1/manufacturing/plans/{planId}/draft', 'post', 200>;
 export type QuoteRow = Json<'/v1/sales/quotes', 'get', 200>['items'][number];
 export type QuoteStatus = QuoteRow['status'];
 export type QuoteDetail = Json<'/v1/sales/quotes/{quoteId}', 'get', 200>;
@@ -276,6 +319,30 @@ export type AccountActivity = Json<'/v1/ledger/reports/account-activity', 'get',
 export type ReceivablesReport = Json<'/v1/ledger/reports/receivables', 'get', 200>;
 export type ProfitAndLoss = Json<'/v1/ledger/reports/profit-and-loss', 'get', 200>;
 export type BalanceSheet = Json<'/v1/ledger/reports/balance-sheet', 'get', 200>;
+export type EmployeePage = Json<'/v1/hr/employees', 'get', 200>;
+export type Employee = Json<'/v1/hr/employees/{employeeId}', 'get', 200>;
+export type EmployeeStatus = Employee['status'];
+export type EmployeeCreateBody = NonNullable<
+  paths['/v1/hr/employees']['post']['requestBody']
+>['content']['application/json'];
+export type EmployeeUpdateBody = NonNullable<
+  paths['/v1/hr/employees/{employeeId}']['patch']['requestBody']
+>['content']['application/json'];
+export type SealedFieldName = Json<'/v1/hr/employees/{employeeId}/reveal', 'post', 200>['field'];
+export type ExpenseClaimPage = Json<'/v1/expenses', 'get', 200>;
+export type ExpenseClaimRow = ExpenseClaimPage['items'][number];
+export type ExpenseClaimStatus = ExpenseClaimRow['status'];
+export type ExpenseClaimDetail = Json<'/v1/expenses/{claimId}', 'get', 200>;
+export type ExpenseReceipt = ExpenseClaimDetail['receipts'][number];
+export type ExpenseCategory = Json<'/v1/expenses/categories', 'get', 200>['items'][number];
+export type PayrollRuleSetList = Json<'/v1/payroll/rule-sets', 'get', 200>;
+export type PayrollRuleSet = PayrollRuleSetList['items'][number];
+export type PayTerms = Json<'/v1/hr/employees/{employeeId}/pay-terms', 'get', 200>['items'][number];
+export type PayRunPage = Json<'/v1/payroll/runs', 'get', 200>;
+export type PayRunSummary = PayRunPage['items'][number];
+export type PayRunDetail = Json<'/v1/payroll/runs/{runId}', 'get', 200>;
+export type PayLine = PayRunDetail['lines'][number];
+export type Payslip = Json<'/v1/hr/me/payslips', 'get', 200>['items'][number];
 
 export const keys = {
   me: ['me'] as const,
@@ -302,6 +369,12 @@ export const keys = {
   supplier: (id: string) => ['purchasing', 'supplier', id] as const,
   purchaseOrders: (query: object) => ['purchasing', 'orders', query] as const,
   purchaseOrder: (id: string) => ['purchasing', 'order', id] as const,
+  boms: (query: object) => ['manufacturing', 'boms', query] as const,
+  bom: (itemId: string) => ['manufacturing', 'bom', itemId] as const,
+  assemblyOrders: (query: object) => ['manufacturing', 'orders', query] as const,
+  assemblyOrder: (id: string) => ['manufacturing', 'order', id] as const,
+  materialPlans: ['manufacturing', 'plans'] as const,
+  materialPlan: (id: string) => ['manufacturing', 'plan', id] as const,
   quotes: (query: object) => ['sales', 'quotes', query] as const,
   quote: (id: string) => ['sales', 'quote', id] as const,
   salesOrders: (query: object) => ['sales', 'orders', query] as const,
@@ -329,6 +402,23 @@ export const keys = {
   postings: (query: object) => ['ledger', 'postings', query] as const,
   posting: (id: string) => ['ledger', 'posting', id] as const,
   ledgerReport: (report: string, query: object) => ['ledger', 'report', report, query] as const,
+  // HR. A revealed ID or bank number is never put under any key: it lives in
+  // the screen that asked for it and goes when the screen does.
+  employees: (query: object) => ['hr', 'employees', query] as const,
+  employee: (id: string) => ['hr', 'employee', id] as const,
+  myProfile: ['hr', 'me'] as const,
+  expenseClaims: (query: object) => ['expenses', 'claims', query] as const,
+  expenseClaim: (id: string) => ['expenses', 'claim', id] as const,
+  expenseCategories: (archived: boolean) => ['expenses', 'categories', archived] as const,
+  // Payroll. Payslips are kept under their own keys, apart from the runs.
+  payRuns: ['payroll', 'runs'] as const,
+  payRun: (id: string) => ['payroll', 'run', id] as const,
+  payrollRuleSets: ['payroll', 'rule-sets'] as const,
+  payTerms: (employeeId: string) => ['payroll', 'terms', employeeId] as const,
+  runPayslips: (id: string) => ['payroll', 'payslips', id] as const,
+  myPayslips: ['payroll', 'mine'] as const,
+  /** The seat's own recent jobs, for saying which job an expense was for. */
+  myRecentJobs: ['work-orders', 'mine-recent'] as const,
   forms: ['forms'] as const,
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,

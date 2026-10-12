@@ -482,3 +482,108 @@ One row per document captured for the ledger (`source_kind`, `source_id`, unique
 ### Company data export
 
 The ledger tables (accounts, settings, periods and their events, journals and lines, year closes, the unposted list) are in `EXPORTED_TABLES`; the journal counter is not. Grants: `select, insert, update` on accounts, settings, periods and year closes; `select, insert` on period events; `select, insert, update, delete` on journals and lines (the guards decide what may change); `select, update` on the unposted list; `select` on the counter.
+
+## 0036–0038 — HR, staff expenses and payroll (phase H1; ADR-0010)
+
+Adds the `hr` and `payroll` feature flags (payroll needs hr) and the
+`manufacturing` flag (needs inventory), all off unless Integr8 switches them
+on.
+
+### Roles and grants (0036)
+
+`tenant_users.role`, `invitations.role` and `forms.fill_roles` accept
+`hr_manager` and `inventory_manager`. `member_grants` (`tenant_id`, `user_id`,
+`capability` — `hr_manager` or `inventory_manager`, `granted_by`,
+`granted_at`; primary key on the three, cascade with the member) holds what a
+member has on top of their role. It is read when an access token is minted.
+
+### `hr_employees` (0036)
+
+A profile linked to a member (`user_id`, unique per company) or standing
+alone. Employee number (unique per company ignoring case), name, title,
+department, phone, hire and end date with reason (`end_date ≥ hire_date`,
+date and reason together), bank name, emergency contact, `version`. The
+national ID, social insurance number and bank account are kept as
+`*_sealed` ciphertext (`hr1.<nonce>.<ciphertext>`, `hr_employees_sealed_shape`)
+with their last four characters in `*_last4`, both or neither
+(`hr_employees_sealed_pairing`). Ended, never deleted (the runtime role has
+no delete).
+
+### Expense claims (0037)
+
+- `hr_expense_categories`: name (unique among live ones, ignoring case), an
+  optional ledger `account_id`, archived rather than deleted.
+- `hr_expense_claims`: `reference` (per company from 1 by
+  `assign_expense_reference()`, security definer; shown `EX-000123`),
+  claimant (a member), category, optional work order, `spent_on`, `amount > 0`,
+  `currency`, description, `status` (`submitted`, `approved`, `rejected`,
+  `withdrawn`, `paid`), `client_action_id` (unique: the phone's id, so a resent
+  claim lands once), the decision (`decided_by/at`, `reject_reason`,
+  `settle_via` `direct` or `payroll`), the payment (`paid_via` `cash`,
+  `bank_transfer` or `payroll`, `paid_by/at`, `payment_reference`) and, from
+  0038, `payroll_run_id`. Checks pair each with its status;
+  `hr_expense_claims_not_self_approved` refuses a decision by the claimant.
+  `hr_expense_claims_guard` freezes what a claim says once submitted, allows
+  only submitted → approved / rejected / withdrawn and approved → paid, and
+  refuses deletes outside a purge.
+- `attachments.expense_claim_id`: receipts are attachments; `attachments_one_owner`
+  counts it as a fifth owner.
+- The ledger settings gain `auto_post_expenses`, `auto_post_payroll` and nine
+  posting accounts (staff claims payable 2410, staff expenses 6900, salaries
+  6100, employer insurance 6110, salaries payable 2400, salary tax payable
+  2310, social insurance payable 2320, Martyrs' Fund payable 2330, assembly
+  absorbed 5300), filled for every chart already set up. Journals and the
+  unposted list accept the source kinds `expense_claim`, `expense_payment`,
+  `payroll_run` and `assembly`.
+
+### Payroll (0038)
+
+| Table                  | What it holds                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hr_payroll_rule_sets` | `name`, `effective_from` (the first of a month, unique per company), `rules` (jsonb, `PayrollRules` in `@integr8/core`), `confirmed_by/at` and `confirmation_note` together. `hr_payroll_rule_sets_guard`: confirmed after insert, then never changed, unconfirmed or deleted                                                                                                                                                                                  |
+| `hr_pay_terms`         | Per employee from a date (unique per day): `basic`, `allowances`, `insured`, `insurable_wage` (null: basic and allowances), `standard_hours` (208), `overtime_rate` (null: 135% of the hourly basic), `pay_method` (`bank_transfer`, `cash`). Freely corrected: runs keep their own copy                                                                                                                                                                       |
+| `hr_payroll_runs`      | One per month (`period_start`, `period_end` its last day), the rule set (confirmed and in force: `hr_payroll_runs_rule_set_usable`), `currency`, `status` `draft` or `approved`, `pay_date`, `note`, `prepared_by/at` (the last to change it), `approved_by/at` — never the preparer. Frozen once approved                                                                                                                                                     |
+| `hr_payroll_lines`     | Per employee in a run: the inputs (basic, allowances, clocked and overtime hours, rate, bonus, deduction, unpaid days 0–30, reimbursements, declared insurable wage, insured, pay method, note) and the results (overtime pay, unpaid leave, gross, insurable wage, both insurance shares, taxable, income tax, Martyrs' Fund, net). `hr_payroll_lines_balance`: `net = gross − si_employee − income_tax − martyrs_fund + reimbursements`. Frozen with the run |
+
+An approved run is captured as `payroll_run`, dated on its last day.
+
+### Repositories
+
+`MemberGrantsRepository` (`tx.memberGrants`: `forUser`, `forUsers`, `give`,
+`remove`); `HrEmployeesRepository` (`tx.hrEmployees`: `find`, `findMany`,
+`findByUser`, `lock`, `list`, `departments`, `create` with an optional id,
+`update`); `HrExpensesRepository` (`tx.hrExpenses`: categories, `submit`
+idempotent by client action, `list`, `withdraw`, `approve`, `reject`, `pay`,
+`paidThroughPayroll`, `awaitingPayroll`, `waitingCount`);
+`HrPayrollRepository` (`tx.hrPayroll`: rule sets, pay terms, `candidates`
+for a month, `clockedHours`, runs, `totals`, lines, `replaceLines`,
+`updateLine`, `payslipsOf`).
+
+## 0039 — bills of materials, assembly and planning (phase M1; ADR-0011)
+
+| Table / change             | What it holds                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `erp_items.lead_time_days` | Days to build or to arrive (0–3650); null uses the preferred supplier's                                                                                                                                                                                                                                                                                                                             |
+| `erp_stock_movements.kind` | Adds `assembly_consumption` (negative) and `assembly_output` (positive)                                                                                                                                                                                                                                                                                                                             |
+| `erp_boms`                 | A version of a stock item's bill (`version` per item, one in use: `superseded_at` null), `labour_cost` and `overhead_cost` per unit, note. Never changed except to be superseded once, never deleted (`erp_boms_frozen`, `erp_boms_stock_item`)                                                                                                                                                     |
+| `erp_bom_components`       | `line_no`, a stock or non-stock item once per version (`erp_bom_components_item_kind`), never the bill's own item (`erp_bom_components_not_itself`), `quantity > 0` per unit. Insert only                                                                                                                                                                                                           |
+| `erp_assembly_orders`      | `reference` (`assign_assembly_reference()`, shown `AO-000123`), `direction` `assemble` or `disassemble`, item, the bill version (of that item: `erp_assembly_orders_bom_item`), location, quantity, `status` `draft` / `completed` / `cancelled`, `planned_for`, `plan_id`, and at completion the unit cost (and for an assembly the labour and overhead per unit). Frozen once done, never deleted |
+| `erp_mrp_plans`            | A planning run: `horizon_end`, who and when                                                                                                                                                                                                                                                                                                                                                         |
+| `erp_mrp_suggestions`      | Per item: `action` `build` (with its bill) or `buy`, `level`, required, available, on order, reorder level, quantity, need-by and order-by dates (`order_by ≤ need_by`), lead time, supplier, `basis` (JSON: sales, assembly and parent demand, days late), and what was drafted from it, once (`erp_mrp_suggestions_frozen`)                                                                       |
+
+Completing an order writes its movements with the order's id as their
+posting; `erp_stock_movements_ledger_capture` captures them as one `assembly`
+document instead of `stock`, and `erp_ledger_backfill` leaves them out of
+stock.
+
+`ManufacturingRepository` (`tx.manufacturing`): bills (`bom`, `activeBom`,
+`bomVersions`, `activeBoms`, `listBoms`, `saveBom`, `retireBom`), orders
+(`order`, `lockOrder`, `draftOrders`, `listOrders`, `createOrder`,
+`updateDraft`, `complete`, `cancel`), plans (`planningData`, `savePlan`,
+`plan`, `plans`, `suggestions`, `lockSuggestions`, `markDrafted`).
+
+### Company data export
+
+`member_grants`, `hr_employees` (sealed values as stored), the expense,
+payroll and manufacturing tables are in `EXPORTED_TABLES`; the reference
+counters are not.

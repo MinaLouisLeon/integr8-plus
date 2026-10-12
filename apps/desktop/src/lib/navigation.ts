@@ -41,6 +41,9 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   stockLocations: '/inventory/locations',
   suppliers: '/purchasing/suppliers',
   purchaseOrders: '/purchasing/orders',
+  boms: '/manufacturing/boms',
+  assemblyOrders: '/manufacturing/orders',
+  materialPlans: '/manufacturing/plans',
   quotes: '/sales/quotes',
   salesOrders: '/sales/orders',
   invoices: '/finance/invoices',
@@ -48,6 +51,13 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   ledger: '/ledger',
   journals: '/ledger/journals',
   ledgerReports: '/ledger/reports',
+  employees: '/hr/employees',
+  myProfile: '/hr/me',
+  myExpenses: '/hr/expenses',
+  expenseClaims: '/hr/claims',
+  payRuns: '/hr/pay-runs',
+  payrollRules: '/hr/payroll-rules',
+  myPayslips: '/hr/payslips',
   assets: '/assets',
 };
 

@@ -11,6 +11,7 @@ export type * from './api-types.js';
 export * from './database.js';
 export * from './eviction.js';
 export * from './execution.js';
+export * from './expenses.js';
 export * from './forms.js';
 export * from './migrations.js';
 export * from './queries.js';

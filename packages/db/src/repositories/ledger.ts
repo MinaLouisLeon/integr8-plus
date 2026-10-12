@@ -52,6 +52,8 @@ export interface LedgerSettings {
   fiscalStartMonth: number;
   autoPostSales: boolean;
   autoPostStock: boolean;
+  autoPostExpenses: boolean;
+  autoPostPayroll: boolean;
   allowSelfApproval: boolean;
   accounts: PostingAccounts;
   version: number;
@@ -189,6 +191,15 @@ const ROLE_COLUMNS: Record<PostingRole, keyof ErpLedgerSettingsTable & `${string
   stockAdjustments: 'stock_adjustments_account_id',
   openingBalances: 'opening_balances_account_id',
   retainedEarnings: 'retained_earnings_account_id',
+  staffClaimsPayable: 'staff_claims_payable_account_id',
+  staffExpenses: 'staff_expenses_account_id',
+  salariesExpense: 'salaries_expense_account_id',
+  employerInsuranceExpense: 'employer_insurance_expense_account_id',
+  salariesPayable: 'salaries_payable_account_id',
+  payrollTaxPayable: 'payroll_tax_payable_account_id',
+  socialInsurancePayable: 'social_insurance_payable_account_id',
+  martyrsFundPayable: 'martyrs_fund_payable_account_id',
+  assemblyAbsorbed: 'assembly_absorbed_account_id',
 };
 
 function toAccount(row: Selectable<ErpLedgerAccountsTable>): LedgerAccount {
@@ -214,6 +225,8 @@ function toSettings(row: Selectable<ErpLedgerSettingsTable>): LedgerSettings {
     fiscalStartMonth: row.fiscal_start_month,
     autoPostSales: row.auto_post_sales,
     autoPostStock: row.auto_post_stock,
+    autoPostExpenses: row.auto_post_expenses,
+    autoPostPayroll: row.auto_post_payroll,
     allowSelfApproval: row.allow_self_approval,
     accounts,
     version: row.version,
@@ -339,6 +352,8 @@ export class LedgerRepository extends TenantScopedRepository {
       fiscalStartMonth?: number | undefined;
       autoPostSales?: boolean | undefined;
       autoPostStock?: boolean | undefined;
+      autoPostExpenses?: boolean | undefined;
+      autoPostPayroll?: boolean | undefined;
       allowSelfApproval?: boolean | undefined;
       accounts?: Partial<PostingAccounts> | undefined;
     },
@@ -357,6 +372,12 @@ export class LedgerRepository extends TenantScopedRepository {
           : { fiscal_start_month: changes.fiscalStartMonth }),
         ...(changes.autoPostSales === undefined ? {} : { auto_post_sales: changes.autoPostSales }),
         ...(changes.autoPostStock === undefined ? {} : { auto_post_stock: changes.autoPostStock }),
+        ...(changes.autoPostExpenses === undefined
+          ? {}
+          : { auto_post_expenses: changes.autoPostExpenses }),
+        ...(changes.autoPostPayroll === undefined
+          ? {}
+          : { auto_post_payroll: changes.autoPostPayroll }),
         ...(changes.allowSelfApproval === undefined
           ? {}
           : { allow_self_approval: changes.allowSelfApproval }),

@@ -1,6 +1,7 @@
 import { useTranslation } from '@integr8/i18n';
 import {
   assetsEnabled,
+  expensesEnabled,
   identity,
   openJobs,
   recentlyClosedJobs,
@@ -64,6 +65,7 @@ function Jobs() {
   );
 
   const assets = useLocalQuery('assets-enabled', ['meta'], assetsEnabled);
+  const expenses = useLocalQuery('expenses-enabled', ['meta'], expensesEnabled);
 
   const person = me.status === 'ready' ? me.data : undefined;
   const sections = sectionJobs(open.status === 'ready' ? open.data : [], new Date());
@@ -100,6 +102,14 @@ function Jobs() {
           label={t('mobile.assets.scan')}
           variant="secondary"
           onPress={() => router.push('/assets/scan')}
+        />
+      ) : null}
+
+      {expenses.status === 'ready' && expenses.data ? (
+        <Button
+          label={t('mobile.expenses.title')}
+          variant="secondary"
+          onPress={() => router.push('/expenses')}
         />
       ) : null}
 

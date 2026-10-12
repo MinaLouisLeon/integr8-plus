@@ -267,3 +267,58 @@ never blocks an invoice, payment or stock movement.
 
 It is a management ledger. Reports say so; Integr8 makes no tax, statutory
 accounts or compliance claim for it.
+
+## HR, staff expenses, payroll and manufacturing (phases H1 and M1; ADR-0010, ADR-0011)
+
+Two roles join the five: **HR manager** (the people, their pay and their
+claims, nothing of the operation) and **inventory manager** (the store,
+purchasing and manufacturing). Either can also be **granted on top of any
+role** (`member_grants`): the member keeps their role and gains the
+capability's permissions. Only the owner makes someone an HR manager — by
+role, invitation or grant — or changes an HR manager's role; an owner or
+admin gives the inventory grant. A grant travels in the access token (`grt`)
+and taking it back ends the member's sessions.
+
+| Permission             | Owner | Admin | HR manager | Inventory manager | Dispatcher | Engineer | Viewer |
+| ---------------------- | :---: | :---: | :--------: | :---------------: | :--------: | :------: | :----: |
+| `hr.read`              |   ✓   |   ✓   |     ✓      |         —         |     —      |    —     |   —    |
+| `hr.sensitive`         |   ✓   |   —   |     ✓      |         —         |     —      |    —     |   —    |
+| `hr.manage`            |   ✓   |   —   |     ✓      |         —         |     —      |    —     |   —    |
+| `expense.submit`       |   ✓   |   ✓   |     ✓      |         ✓         |     ✓      |    ✓     |   ✓    |
+| `expense.approve`      |   ✓   |   ✓   |     ✓      |         —         |     —      |    —     |   —    |
+| `payroll.run`          |   ✓   |   —   |     ✓      |         —         |     —      |    —     |   —    |
+| `payroll.approve`      |   ✓   |   —   |     ✓      |         —         |     —      |    —     |   —    |
+| `manufacturing.read`   |   ✓   |   ✓   |     —      |         ✓         |     —      |    —     |   ✓    |
+| `manufacturing.manage` |   ✓   |   ✓   |     —      |         ✓         |     —      |    —     |   —    |
+
+The inventory manager also holds `tenant.read`, `member.read`, `form.read`,
+`customer.read`, `inventory.*`, `purchasing.read`, `purchasing.manage` and
+`sales.read`; the HR manager `tenant.read`, `member.read` and `form.read`.
+Every route also needs the company's module: `hr`, `payroll` (which needs
+`hr`) or `manufacturing` (which needs `inventory`).
+
+- **Every member sees their own** profile (with their own numbers), claims
+  and payslips, whatever their role.
+- **Sensitive numbers.** National ID, social insurance number and bank
+  account are encrypted by the API with AES-256-GCM under `HR_DATA_KEY`
+  (32 bytes, base64), bound to the company, the employee and the field; the
+  database never sees them in clear and the company export carries the
+  ciphertext. Lists show the last four. A full value is shown only on an
+  explicit, audited reveal (`no-store`), to `hr.sensitive` or the person; the
+  insurance report and bank file are audited and `no-store` too. Without the
+  key those numbers cannot be stored, shown or exported (503
+  `hr_key_missing`); losing the key loses them, so it is kept with the
+  backups and rotated only with a re-encryption plan.
+- **Separation of duties.** Nobody decides their own expense claim (API and
+  `hr_expense_claims_not_self_approved`); a pay run is approved by somebody
+  other than whoever last prepared it (API and
+  `hr_payroll_runs_not_self_approved`); only the owner confirms the figures
+  payroll uses, with a note on who checked them.
+- **Receipts** reuse the attachment and media routes, which now accept
+  `expense.submit` beside their earlier permissions (`anyPermission`); an
+  attachment on a claim is allowed only to its claimant while it can take
+  receipts, or to an approver, and attaching to customers' records is
+  unchanged.
+- **Costs** in manufacturing are hidden from seats without `inventory.move`,
+  as in inventory. Drafting purchase orders from a plan needs
+  `purchasing.manage` as well; they are approved as usual.

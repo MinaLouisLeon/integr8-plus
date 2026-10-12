@@ -502,6 +502,48 @@ export {
   type OpenInvoice,
   type YearClose,
 } from './repositories/ledger-reports.js';
+export { MemberGrantsRepository } from './repositories/member-grants.js';
+export {
+  HrEmployeesRepository,
+  type Employee,
+  type EmployeeInput,
+  type EmployeeQuery,
+  type EmployeeRefusal,
+  type SealedField,
+} from './repositories/hr-employees.js';
+export {
+  HrExpensesRepository,
+  type ExpenseCategory,
+  type ExpenseClaim,
+  type ExpenseClaimInput,
+  type ExpenseClaimQuery,
+} from './repositories/hr-expenses.js';
+export {
+  HrPayrollRepository,
+  emptyTotals as emptyPayRunTotals,
+  type PayrollRuleSet,
+  type PayTerms,
+  type PayTermsInput,
+  type PayRun,
+  type PayRunTotals,
+  type PayLine,
+  type PayLineInputs,
+  type PayLineResults,
+  type PayrollCandidate,
+} from './repositories/hr-payroll.js';
+export {
+  ManufacturingRepository,
+  type Bom,
+  type BomInput,
+  type BomSummary,
+  type AssemblyOrder,
+  type AssemblyOrderInput,
+  type AssemblyOrderQuery,
+  type MrpPlan,
+  type MrpSuggestion,
+  type MrpSuggestionInput,
+  type PlanningData,
+} from './repositories/manufacturing.js';
 
 export {
   addressLine,

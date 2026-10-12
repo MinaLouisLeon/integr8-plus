@@ -1,11 +1,19 @@
 'use client';
 
 import { ApiRequestError } from '@integr8/api-client';
-import { useTranslation } from '@integr8/i18n';
+import type { Grant, Role } from '@integr8/core';
+import { type TFunction, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Button, ErrorState, Field, LoadingState } from '~/components/ui';
 import { messageForError } from '~/lib/errors';
+import {
+  invitableRoles,
+  manageableGrants,
+  mayChangeRole,
+  mayGiveGrant,
+  roleOptions,
+} from '~/lib/people';
 import { apiClient } from '~/lib/session';
 
 /**
@@ -21,11 +29,12 @@ import { apiClient } from '~/lib/session';
  *   stops them signing in at once, but a session already open can last a
  *   quarter of an hour longer. Somebody dismissing an employee needs to know
  *   that, and the place to tell them is here, not in a document.
+ *
+ * Since ADR-0010 it also shows and changes grants: HR or inventory work given
+ * on top of a role. Only the owner makes somebody an HR manager, by role,
+ * invitation or grant, so nobody else is offered it.
  */
 
-const ROLES = ['admin', 'dispatcher', 'engineer', 'viewer'] as const;
-
-type Role = 'owner' | 'admin' | 'dispatcher' | 'engineer' | 'viewer';
 type Status = 'invited' | 'active' | 'suspended';
 
 interface Member {
@@ -33,7 +42,38 @@ interface Member {
   email: string;
   displayName: string;
   role: Role;
+  grants: Grant[];
   status: Status;
+}
+
+/** Who is looking at the screen: their role and what they may do. */
+interface Viewer {
+  role: Role | undefined;
+  permissions: readonly string[];
+}
+
+/**
+ * A refusal from the member routes in words. The API's refusals each have a
+ * code; a 403 that touches the HR manager role or grant is the owner-only rule.
+ */
+function peopleError(failure: unknown, t: TFunction, touchesHr: boolean): string {
+  if (failure instanceof ApiRequestError) {
+    switch (failure.code) {
+      case 'last_owner':
+        return t('workspace.members.lastOwner');
+      case 'role_above_own':
+        return t('workspace.members.roleAboveOwn');
+      case 'role_holds_grant':
+        return t('workspace.members.roleHoldsGrant');
+      case 'member_not_active':
+        return t('workspace.members.memberNotActive');
+      default:
+        if (failure.status === 403 && touchesHr) {
+          return t('workspace.members.hrOwnerOnly');
+        }
+    }
+  }
+  return messageForError(failure, t);
 }
 
 interface Invitation {
@@ -48,6 +88,15 @@ export default function PeoplePage() {
   const { t } = useTranslation();
   const queries = useQueryClient();
   const [notice, setNotice] = useState<string | null>(null);
+
+  const me = useQuery({
+    queryKey: ['me'],
+    queryFn: async () => {
+      const { data } = await apiClient().GET('/v1/me');
+      return data;
+    },
+  });
+  const viewer: Viewer = { role: me.data?.role, permissions: me.data?.permissions ?? [] };
 
   const members = useQuery({
     queryKey: ['members'],
@@ -96,6 +145,7 @@ export default function PeoplePage() {
       )}
 
       <InviteForm
+        viewer={viewer}
         onDone={(message) => {
           setNotice(message);
           refresh();
@@ -108,7 +158,8 @@ export default function PeoplePage() {
           {members.data.items.map((member) => (
             <MemberRow
               key={member.userId}
-              member={member as Member}
+              member={member}
+              viewer={viewer}
               onDone={(message) => {
                 setNotice(message);
                 refresh();
@@ -121,6 +172,7 @@ export default function PeoplePage() {
           removing a dismissed employee deserves to know it is not instant.
         */}
         <p className="text-xs text-content-muted">{t('workspace.members.accessNote')}</p>
+        <p className="text-xs text-content-muted">{t('workspace.members.grantsNote')}</p>
       </section>
 
       {invitations.data === undefined || invitations.data.items.length === 0 ? null : (
@@ -144,10 +196,11 @@ export default function PeoplePage() {
   );
 }
 
-function InviteForm({ onDone }: { onDone: (message: string) => void }) {
+function InviteForm({ viewer, onDone }: { viewer: Viewer; onDone: (message: string) => void }) {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<(typeof ROLES)[number]>('engineer');
+  const [role, setRole] = useState<Role>('engineer');
+  const roles = invitableRoles(viewer.role);
   const [error, setError] = useState<string | undefined>(undefined);
 
   const invite = useMutation({
@@ -168,7 +221,7 @@ function InviteForm({ onDone }: { onDone: (message: string) => void }) {
       );
     },
     onError: (failure) => {
-      setError(messageForError(failure, t));
+      setError(peopleError(failure, t, role === 'hr_manager'));
     },
   });
 
@@ -194,10 +247,10 @@ function InviteForm({ onDone }: { onDone: (message: string) => void }) {
         <span className="font-medium text-content">{t('workspace.members.inviteRole')}</span>
         <select
           value={role}
-          onChange={(event) => setRole(event.target.value as (typeof ROLES)[number])}
+          onChange={(event) => setRole(event.target.value as Role)}
           className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-content"
         >
-          {ROLES.map((option) => (
+          {roles.map((option) => (
             <option key={option} value={option}>
               {t(`workspace.role.${option}`)}
             </option>
@@ -211,17 +264,35 @@ function InviteForm({ onDone }: { onDone: (message: string) => void }) {
   );
 }
 
-function MemberRow({ member, onDone }: { member: Member; onDone: (message: string) => void }) {
+type MemberAction =
+  | { kind: 'role'; role: Role }
+  | { kind: 'grant'; grant: Grant; give: boolean }
+  | { kind: 'status'; status: 'active' | 'suspended' }
+  | { kind: 'remove' };
+
+function MemberRow({
+  member,
+  viewer,
+  onDone,
+}: {
+  member: Member;
+  viewer: Viewer;
+  onDone: (message: string) => void;
+}) {
   const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
+  const grants = manageableGrants(viewer.role, viewer.permissions);
+  const roleLocked = !mayChangeRole(viewer.role, member.role);
 
   const act = useMutation({
-    mutationFn: async (
-      action:
-        | { kind: 'role'; role: Role }
-        | { kind: 'status'; status: 'active' | 'suspended' }
-        | { kind: 'remove' },
-    ) => {
+    mutationFn: async (action: MemberAction) => {
+      if (action.kind === 'grant') {
+        const params = { path: { userId: member.userId, capability: action.grant } };
+        await (action.give
+          ? apiClient().PUT('/v1/members/{userId}/grants/{capability}', { params })
+          : apiClient().DELETE('/v1/members/{userId}/grants/{capability}', { params }));
+        return;
+      }
       if (action.kind === 'role') {
         await apiClient().PATCH('/v1/members/{userId}/role', {
           params: { path: { userId: member.userId } },
@@ -240,17 +311,25 @@ function MemberRow({ member, onDone }: { member: Member; onDone: (message: strin
         params: { path: { userId: member.userId } },
       });
     },
-    onSuccess: () => {
+    onSuccess: (_result, action) => {
       setError(null);
+      if (action.kind === 'grant') {
+        const words = { name: member.displayName, grant: t(`workspace.grant.${action.grant}`) };
+        onDone(
+          action.give
+            ? t('workspace.members.grantGiven', words)
+            : t('workspace.members.grantRemoved', words),
+        );
+        return;
+      }
       onDone('');
     },
-    onError: (failure) => {
-      // The one refusal worth its own words: a company must keep an owner.
-      setError(
-        failure instanceof ApiRequestError && failure.code === 'last_owner'
-          ? t('workspace.members.lastOwner')
-          : messageForError(failure, t),
-      );
+    onError: (failure, action) => {
+      const touchesHr =
+        (action.kind === 'role' &&
+          (action.role === 'hr_manager' || member.role === 'hr_manager')) ||
+        (action.kind === 'grant' && action.grant === 'hr_manager');
+      setError(peopleError(failure, t, touchesHr));
     },
   });
 
@@ -263,11 +342,12 @@ function MemberRow({ member, onDone }: { member: Member; onDone: (message: strin
         <select
           value={member.role}
           onChange={(event) => act.mutate({ kind: 'role', role: event.target.value as Role })}
-          disabled={act.isPending}
+          disabled={act.isPending || roleLocked}
           className="rounded-md border border-border-subtle bg-surface px-2 py-1 text-content"
           aria-label={t('workspace.members.changeRole')}
+          {...(roleLocked ? { title: t('workspace.members.hrOwnerOnly') } : {})}
         >
-          {(['owner', ...ROLES] as Role[]).map((option) => (
+          {roleOptions(viewer.role, member.role).map((option) => (
             <option key={option} value={option}>
               {t(`workspace.role.${option}`)}
             </option>
@@ -277,6 +357,20 @@ function MemberRow({ member, onDone }: { member: Member; onDone: (message: strin
         <span className="text-xs text-content-muted">
           {t(`workspace.members.status.${member.status}`)}
         </span>
+
+        {member.grants.length === 0 ? null : (
+          <span className="flex flex-wrap items-center gap-1 text-xs text-content-muted">
+            <span>{t('workspace.members.grants')}</span>
+            {member.grants.map((grant) => (
+              <span
+                key={grant}
+                className="rounded-full border border-accent px-2 py-0.5 font-medium text-content"
+              >
+                {t(`workspace.grant.${grant}`)}
+              </span>
+            ))}
+          </span>
+        )}
 
         <div className="ms-auto flex gap-2">
           {member.status === 'suspended' ? (
@@ -313,6 +407,35 @@ function MemberRow({ member, onDone }: { member: Member; onDone: (message: strin
           </Button>
         </div>
       </div>
+      {grants.length === 0 ? null : (
+        <div className="flex flex-wrap gap-2">
+          {grants.map((grant) => {
+            const name = t(`workspace.grant.${grant}`);
+            if (member.grants.includes(grant)) {
+              return (
+                <Button
+                  key={grant}
+                  variant="ghost"
+                  busy={act.isPending}
+                  onClick={() => act.mutate({ kind: 'grant', grant, give: false })}
+                >
+                  {t('workspace.members.grantRemove', { grant: name })}
+                </Button>
+              );
+            }
+            return mayGiveGrant(member, grant) ? (
+              <Button
+                key={grant}
+                variant="ghost"
+                busy={act.isPending}
+                onClick={() => act.mutate({ kind: 'grant', grant, give: true })}
+              >
+                {t('workspace.members.grantGive', { grant: name })}
+              </Button>
+            ) : null;
+          })}
+        </div>
+      )}
       {error === null ? null : (
         <p role="alert" className="text-sm text-danger">
           {error}

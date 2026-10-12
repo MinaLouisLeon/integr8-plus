@@ -15,9 +15,14 @@ describe('who may use inventory and purchasing (product decision, 2026-10-11)', 
   const holders = (permission: Parameters<typeof can>[1]) =>
     ROLES.filter((role) => can(role, permission));
 
-  it('lets owners, admins and dispatchers run stock and draft purchases', () => {
+  it('lets owners, admins, inventory managers and dispatchers run stock and draft purchases', () => {
     for (const permission of ['inventory.manage', 'inventory.move', 'purchasing.manage'] as const) {
-      expect(holders(permission), permission).toEqual(['owner', 'admin', 'dispatcher']);
+      expect(holders(permission), permission).toEqual([
+        'owner',
+        'admin',
+        'inventory_manager',
+        'dispatcher',
+      ]);
     }
   });
 
@@ -29,12 +34,25 @@ describe('who may use inventory and purchasing (product decision, 2026-10-11)', 
     expect(holders('inventory.read')).toEqual([
       'owner',
       'admin',
+      'inventory_manager',
       'dispatcher',
       'engineer',
       'viewer',
     ]);
-    expect(holders('inventory.consume')).toEqual(['owner', 'admin', 'dispatcher', 'engineer']);
-    expect(holders('purchasing.read')).toEqual(['owner', 'admin', 'dispatcher', 'viewer']);
+    expect(holders('inventory.consume')).toEqual([
+      'owner',
+      'admin',
+      'inventory_manager',
+      'dispatcher',
+      'engineer',
+    ]);
+    expect(holders('purchasing.read')).toEqual([
+      'owner',
+      'admin',
+      'inventory_manager',
+      'dispatcher',
+      'viewer',
+    ]);
   });
 });
 
@@ -60,7 +78,7 @@ describe('quantities', () => {
 
 describe('the ledger', () => {
   it('gives every movement kind a sign', () => {
-    expect(MOVEMENT_KINDS).toHaveLength(9);
+    expect(MOVEMENT_KINDS).toHaveLength(11);
     expect(MOVEMENT_SIGNS.transfer_out + MOVEMENT_SIGNS.transfer_in).toBe(0);
     expect(MOVEMENT_SIGNS.consumption).toBe(-1);
   });

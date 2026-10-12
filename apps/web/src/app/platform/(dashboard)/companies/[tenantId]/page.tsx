@@ -1,6 +1,7 @@
 'use client';
 
 import { ApiRequestError } from '@integr8/api-client';
+import { type Role, ROLES } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
@@ -370,8 +371,8 @@ function InvitationRow({
     },
   });
 
-  const role = ['owner', 'admin', 'dispatcher', 'engineer', 'viewer'].includes(invitation.role)
-    ? t(`workspace.role.${invitation.role as 'owner'}`)
+  const role = (ROLES as readonly string[]).includes(invitation.role)
+    ? t(`workspace.role.${invitation.role as Role}`)
     : invitation.role;
 
   return (

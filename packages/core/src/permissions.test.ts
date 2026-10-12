@@ -9,6 +9,7 @@ import {
   permissionSchema,
   permissionsFor,
   permissionsHeld,
+  GRANT_PERMISSIONS,
   STAFF_ONLY_PERMISSIONS,
 } from './permissions.js';
 import { ROLES } from './roles.js';
@@ -64,12 +65,17 @@ describe('who can do what', () => {
     const withheld = PERMISSIONS.filter((permission) => !can('admin', permission));
     // An admin may read the billing state — "why did uploads stop" reaches
     // them first — but may not start or end a recurring charge (P17).
-    // Reopening the books is the owner's (ADR-0009).
+    // Reopening the books is the owner's (ADR-0009); pay and ID numbers are
+    // the owner's and HR managers' (ADR-0010).
     expect(withheld).toEqual([
       'tenant.update',
       'branding.manage',
       'billing.manage',
       'ledger.unlock',
+      'hr.sensitive',
+      'hr.manage',
+      'payroll.run',
+      'payroll.approve',
     ]);
   });
 
@@ -198,7 +204,7 @@ describe('what Integr8 does for a company', () => {
 
   it('withholds those from the company\u2019s own owner, and nothing else', () => {
     const withheld = PERMISSIONS.filter((permission) => !holds(owner, permission));
-    expect(withheld).toEqual(['branding.manage', 'form.manage', 'job_type.manage']);
+    expect(withheld.sort()).toEqual(['branding.manage', 'form.manage', 'job_type.manage']);
     expect(permissionsHeld(owner)).toEqual(
       permissionsFor('owner').filter((permission) => !STAFF_ONLY_PERMISSIONS.has(permission)),
     );
@@ -234,5 +240,90 @@ describe('what Integr8 does for a company', () => {
     expect(() => {
       assertHolds(staffAsOwner, 'form.manage');
     }).not.toThrow();
+  });
+});
+
+describe('HR, payroll and the store (ADR-0010, ADR-0011)', () => {
+  const holders = (permission: Parameters<typeof can>[1]) =>
+    ROLES.filter((role) => can(role, permission));
+
+  it('ranks the two new roles between admin and dispatcher', () => {
+    expect(ROLES).toEqual([
+      'owner',
+      'admin',
+      'hr_manager',
+      'inventory_manager',
+      'dispatcher',
+      'engineer',
+      'viewer',
+    ]);
+  });
+
+  it('keeps pay and ID numbers to owners and HR managers, and lets every member claim expenses', () => {
+    expect(holders('hr.sensitive')).toEqual(['owner', 'hr_manager']);
+    expect(holders('hr.manage')).toEqual(['owner', 'hr_manager']);
+    expect(holders('payroll.run')).toEqual(['owner', 'hr_manager']);
+    expect(holders('payroll.approve')).toEqual(['owner', 'hr_manager']);
+    expect(holders('hr.read')).toEqual(['owner', 'admin', 'hr_manager']);
+    expect(holders('expense.approve')).toEqual(['owner', 'admin', 'hr_manager']);
+    expect(holders('expense.submit')).toEqual([...ROLES]);
+  });
+
+  it('gives manufacturing to owners, admins and inventory managers, read by viewers', () => {
+    expect(holders('manufacturing.manage')).toEqual(['owner', 'admin', 'inventory_manager']);
+    expect(holders('manufacturing.read')).toEqual([
+      'owner',
+      'admin',
+      'inventory_manager',
+      'viewer',
+    ]);
+  });
+
+  it('leaves each new role nothing outside its area', () => {
+    for (const role of ['hr_manager', 'inventory_manager'] as const) {
+      for (const permission of [
+        'member.invite',
+        'member.update_role',
+        'work_order.manage',
+        'finance.read',
+        'ledger.read',
+        'crm.read',
+        'purchasing.approve',
+      ] as const) {
+        expect(can(role, permission), `${role} ${permission}`).toBe(false);
+      }
+    }
+    expect(can('hr_manager', 'inventory.read')).toBe(false);
+    expect(can('inventory_manager', 'hr.read')).toBe(false);
+  });
+
+  it('adds a grant\u2019s area on top of a role, and nothing else', () => {
+    const storekeeper = { role: 'dispatcher', grants: ['inventory_manager'] } as const;
+    expect(holds(storekeeper, 'manufacturing.manage')).toBe(true);
+    expect(holds({ role: 'dispatcher' }, 'manufacturing.manage')).toBe(false);
+    expect(permissionsHeld(storekeeper)).toEqual([
+      ...permissionsFor('dispatcher'),
+      'manufacturing.read',
+      'manufacturing.manage',
+    ]);
+    const payroller = { role: 'admin', grants: ['hr_manager'] } as const;
+    expect(holds(payroller, 'payroll.run')).toBe(true);
+    expect(() => {
+      assertHolds(payroller, 'hr.sensitive');
+    }).not.toThrow();
+    expect(() => {
+      assertHolds({ role: 'admin' }, 'hr.sensitive');
+    }).toThrow(PermissionDeniedError);
+  });
+
+  it('never lets a grant hand out roles, grants or anything staff-only', () => {
+    for (const permissions of Object.values(GRANT_PERMISSIONS)) {
+      for (const permission of permissions) {
+        expect(permission.startsWith('member.') || permission.startsWith('invitation.')).toBe(
+          false,
+        );
+      }
+    }
+    expect(holds({ role: 'viewer', grants: ['hr_manager'] }, 'form.manage')).toBe(false);
   });
 });

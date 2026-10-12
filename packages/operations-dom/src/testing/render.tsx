@@ -139,6 +139,12 @@ export function renderScreen(
       supplier: (id) => `/purchasing/suppliers/${id}`,
       purchaseOrders: '/purchasing/orders',
       purchaseOrder: (id) => `/purchasing/orders/${id}`,
+      boms: '/manufacturing/boms',
+      bom: (itemId) => `/manufacturing/boms/${itemId}`,
+      assemblyOrders: '/manufacturing/orders',
+      assemblyOrder: (id) => `/manufacturing/orders/${id}`,
+      materialPlans: '/manufacturing/plans',
+      materialPlan: (id) => `/manufacturing/plans/${id}`,
       quotes: '/sales/quotes',
       quote: (id) => `/sales/quotes/${id}`,
       salesOrders: '/sales/orders',
@@ -162,12 +168,26 @@ export function renderScreen(
       ledgerPeriods: '/ledger/periods',
       ledgerReports: '/ledger/reports',
       ledgerSettings: '/ledger/settings',
+      employees: '/hr/employees',
+      employee: (id) => `/hr/employees/${id}`,
+      newEmployee: '/hr/employees/new',
+      editEmployee: (id) => `/hr/employees/${id}/edit`,
+      myProfile: '/hr/me',
+      myExpenseClaims: '/hr/expenses',
+      newExpenseClaim: '/hr/expenses/new',
+      expenseClaims: '/hr/claims',
+      expenseClaim: (id) => `/hr/expenses/${id}`,
+      expenseCategories: '/hr/claims/categories',
+      payRuns: '/hr/pay-runs',
+      payRun: (id) => `/hr/pay-runs/${id}`,
+      payrollRules: '/hr/payroll-rules',
+      myPayslips: '/hr/payslips',
       ...pathOverrides,
     },
     ...rest,
   };
   const result = render(
-    <I18nextProvider i18n={createI18n({ locale: 'en' })}>
+    <I18nextProvider i18n={createI18n({ locale: config.locale === 'ar' ? 'ar' : 'en' })}>
       <QueryClientProvider client={queryClient}>
         <OperationsContext.Provider value={config}>{element}</OperationsContext.Provider>
       </QueryClientProvider>

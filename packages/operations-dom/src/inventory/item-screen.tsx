@@ -1,4 +1,5 @@
 import { ApiRequestError } from '@integr8/api-client';
+import { hasFeature } from '@integr8/core';
 import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
@@ -31,6 +32,7 @@ function draftOf(item: InventoryItem): ItemDraft {
     defaultUnitCost: item.defaultUnitCost ?? '',
     salePrice: item.salePrice ?? '',
     description: item.description ?? '',
+    leadTimeDays: item.leadTimeDays === null ? '' : String(item.leadTimeDays),
   };
 }
 
@@ -48,6 +50,8 @@ function changes(before: ItemDraft, after: ItemDraft) {
     body.defaultUnitCost = orNull(after.defaultUnitCost);
   if (after.salePrice.trim() !== before.salePrice) body.salePrice = orNull(after.salePrice);
   if (after.description.trim() !== before.description) body.description = orNull(after.description);
+  if (after.leadTimeDays.trim() !== before.leadTimeDays)
+    body.leadTimeDays = after.leadTimeDays.trim() === '' ? null : Number(after.leadTimeDays.trim());
   return body;
 }
 
@@ -140,6 +144,10 @@ export function ItemScreen({ itemId }: { itemId: string }) {
 
   const { item, stock, onHand, reserved, available, can } = detail.data;
   const seesCosts = me.data?.permissions.includes('inventory.move') ?? false;
+  const manufacturing =
+    me.data !== undefined &&
+    hasFeature(me.data.features, 'manufacturing') &&
+    me.data.permissions.includes('manufacturing.read');
   const conflict = save.error instanceof ApiRequestError && save.error.code === 'version_conflict';
   const category = categories.data?.find((row) => row.id === item.categoryId);
   const held = new Map(stock.map((row) => [row.location.id, row]));
@@ -155,6 +163,18 @@ export function ItemScreen({ itemId }: { itemId: string }) {
             <span dir="ltr">{item.sku}</span>
             <KindBadge kind={item.kind} />
             {item.archivedAt === null ? null : <span>{t('inventory.items.archived')}</span>}
+            {manufacturing && item.kind === 'stock_item' ? (
+              <a
+                href={paths.bom(item.id)}
+                className="text-accent underline-offset-4 hover:underline"
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigate(paths.bom(item.id));
+                }}
+              >
+                {t('inventory.items.billOfMaterials')}
+              </a>
+            ) : null}
           </div>
         </div>
         {editing === null ? (
@@ -293,6 +313,11 @@ export function ItemScreen({ itemId }: { itemId: string }) {
             <Detail label={t('inventory.items.fields.salePrice')}>
               {item.salePrice === null ? null : formatAmount(item.salePrice, currency, locale)}
             </Detail>
+            {item.leadTimeDays === null ? null : (
+              <Detail label={t('inventory.items.fields.leadTimeDays')}>
+                {t('inventory.items.leadTimeValue', { count: item.leadTimeDays })}
+              </Detail>
+            )}
             <Detail label={t('inventory.items.fields.description')} wide>
               {item.description === null ? null : (
                 <span className="whitespace-pre-wrap">{item.description}</span>

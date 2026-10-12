@@ -1,11 +1,22 @@
 import { mintInvitationToken } from '@integr8/auth';
-import { type Principal, type Role, roleRank, roleSchema, toUserId } from '@integr8/core';
+import {
+  type Grant,
+  grantSchema,
+  type Principal,
+  type Role,
+  can,
+  GRANT_PERMISSIONS,
+  roleRank,
+  roleSchema,
+  toUserId,
+} from '@integr8/core';
 import { withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { deliverInvitation } from '../../email/deliver.js';
 import { conflict, forbidden, notFound, unprocessable } from '../../http/errors.js';
-import { defineRoute, noSchema } from '../../http/routes.js';
+import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { invitationSchema, iso, memberSchema } from './schemas.js';
+import { assertMayAssign } from './member-rules.js';
 import { inviterName } from './workspace.js';
 
 /**
@@ -41,19 +52,23 @@ const TAGS = ['workspace'];
 /** Matches the invitation lifetime elsewhere: long enough to survive a holiday. */
 const INVITATION_TTL_SECONDS = 7 * 24 * 60 * 60;
 
-function memberBody(member: {
-  userId: string;
-  email: string;
-  displayName: string;
-  role: string;
-  status: string;
-  createdAt: Date;
-}) {
+function memberBody(
+  member: {
+    userId: string;
+    email: string;
+    displayName: string;
+    role: string;
+    status: string;
+    createdAt: Date;
+  },
+  grants: readonly Grant[],
+) {
   return {
     userId: member.userId,
     email: member.email,
     displayName: member.displayName,
     role: member.role as z.infer<typeof roleSchema>,
+    grants: [...grants],
     status: member.status as 'invited' | 'active' | 'suspended',
     createdAt: iso(member.createdAt),
   };
@@ -206,6 +221,10 @@ export const changeMemberRoleRoute = defineRoute({
     const target = await memberOr404(tenantId, params.userId);
     assertOutranks(context.principal, target, 'change the role of');
 
+    // Making or unmaking an HR manager is the owner's alone.
+    assertMayAssign(context.principal, body.role);
+    assertMayAssign(context.principal, target.role);
+
     if (roleRank(body.role) > roleRank(context.principal.role)) {
       throw unprocessable('role_above_own', 'You cannot give somebody a role above your own.', [
         { field: 'body.role', code: 'role_above_own', message: 'Above your own role.' },
@@ -243,7 +262,8 @@ export const changeMemberRoleRoute = defineRoute({
       'revoked_by_admin',
     );
 
-    return { status: 200, body: memberBody(updated) };
+    const grants = await withTenant(tenantId, (tx) => tx.memberGrants.forUser(updated.userId));
+    return { status: 200, body: memberBody(updated, grants) };
   },
 });
 
@@ -303,7 +323,8 @@ export const setMemberStatusRoute = defineRoute({
       );
     }
 
-    return { status: 200, body: memberBody(updated) };
+    const grants = await withTenant(tenantId, (tx) => tx.memberGrants.forUser(updated.userId));
+    return { status: 200, body: memberBody(updated, grants) };
   },
 });
 
@@ -358,9 +379,103 @@ export const removeMemberRoute = defineRoute({
   },
 });
 
+const grantParams = z.object({ userId: z.uuid(), capability: grantSchema });
+
+/** The member, and their grants after the change, for both grant routes. */
+async function grantChange(
+  context: RequestContext,
+  params: z.infer<typeof grantParams>,
+  give: boolean,
+) {
+  const { principal } = context;
+  const tenantId = principal.tenantId;
+  const target = await memberOr404(tenantId, params.userId);
+  assertOutranks(principal, target, give ? 'give a grant to' : 'take a grant from');
+  assertMayAssign(principal, params.capability);
+  // Nothing to add when the role already holds all of it.
+  if (give && GRANT_PERMISSIONS[params.capability].every((p) => can(target.role, p))) {
+    throw conflict('role_holds_grant', 'Their role already includes all of this.');
+  }
+  if (give && target.status !== 'active') {
+    throw conflict('member_not_active', 'Only an active member is given a grant.');
+  }
+  const grants = await withTenant(tenantId, async (tx) => {
+    const changed = give
+      ? await tx.memberGrants.give(target.userId, params.capability, principal.userId)
+      : await tx.memberGrants.remove(target.userId, params.capability);
+    if (changed) {
+      await tx.auditLog.append({
+        actorKind: 'tenant_user',
+        actorId: principal.userId,
+        actorLabel: principal.userId,
+        action: give ? 'member.grant_given' : 'member.grant_removed',
+        resourceType: 'tenant_user',
+        resourceId: target.userId,
+        metadata: { capability: params.capability },
+      });
+    }
+    return { changed, now: await tx.memberGrants.forUser(target.userId) };
+  });
+  // Taking a grant away ends their sessions, as a role change does, so the
+  // next token they get no longer carries it.
+  if (!give && grants.changed) {
+    await context.services.sessions.revokeAllForUser(
+      tenantId,
+      toUserId(target.userId),
+      'revoked_by_admin',
+    );
+  }
+  return { status: 200 as const, body: memberBody(target, grants.now) };
+}
+
+export const giveGrantRoute = defineRoute({
+  method: 'put',
+  path: '/v1/members/:userId/grants/:capability',
+  operationId: 'giveMemberGrant',
+  summary: 'Give somebody a capability on top of their role',
+  description:
+    'An HR manager or inventory manager grant (ADR-0010) on top of whatever role the person has. Only the owner gives the HR one; the owner or an admin gives the inventory one. Takes effect at their next token, within fifteen minutes. 409 `role_holds_grant` when their role already includes it.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'member.update_role',
+  params: grantParams,
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: { description: 'The person, with their grants.', schema: memberSchema },
+    403: { description: 'The HR grant is the owner’s to give.' },
+    404: { description: 'No such person in this company.' },
+    409: { description: 'Their role already includes it, or they are not active.' },
+  },
+  handler: async ({ params }, context) => grantChange(context, params, true),
+});
+
+export const removeGrantRoute = defineRoute({
+  method: 'delete',
+  path: '/v1/members/:userId/grants/:capability',
+  operationId: 'removeMemberGrant',
+  summary: 'Take a capability back',
+  description:
+    'Only the owner takes the HR grant back; the owner or an admin the inventory one. Their sessions end, so the next token they get no longer carries it.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'member.update_role',
+  params: grantParams,
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: { description: 'The person, with their grants.', schema: memberSchema },
+    403: { description: 'The HR grant is the owner’s to take back.' },
+    404: { description: 'No such person in this company.' },
+  },
+  handler: async ({ params }, context) => grantChange(context, params, false),
+});
+
 export const memberRoutes = [
   resendInvitationRoute,
   changeMemberRoleRoute,
   setMemberStatusRoute,
   removeMemberRoute,
+  giveGrantRoute,
+  removeGrantRoute,
 ];

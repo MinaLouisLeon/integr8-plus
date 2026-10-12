@@ -35,6 +35,15 @@ export { OrderListScreen } from './purchasing/order-list.js';
 export { OrderScreen } from './purchasing/order-screen.js';
 export { SupplierListScreen } from './purchasing/supplier-list.js';
 export { SupplierScreen } from './purchasing/supplier-screen.js';
+export { BomListScreen } from './manufacturing/bom-list.js';
+export { BomScreen } from './manufacturing/bom-screen.js';
+export {
+  AssemblyOrderListScreen,
+  NewAssemblyOrderDialog,
+} from './manufacturing/assembly-order-list.js';
+export { AssemblyOrderScreen } from './manufacturing/assembly-order-screen.js';
+export { MaterialPlanListScreen } from './manufacturing/plan-list.js';
+export { MaterialPlanScreen } from './manufacturing/plan-screen.js';
 export { NewQuoteDialog, QuoteListScreen } from './sales/quote-list.js';
 export { QuoteScreen } from './sales/quote-screen.js';
 export { QuoteDocument, type QuoteDocumentData } from './sales/quote-document.js';
@@ -61,3 +70,17 @@ export { UnpostedScreen } from './ledger/unposted-screen.js';
 export { LedgerPeriodsScreen } from './ledger/ledger-periods.js';
 export { LEDGER_REPORTS, type LedgerReport, LedgerReportsScreen } from './ledger/ledger-reports.js';
 export { LedgerSettingsScreen } from './ledger/ledger-settings.js';
+export { EmployeeListScreen } from './hr/employee-list.js';
+export { EmployeeScreen } from './hr/employee-screen.js';
+export { EmployeeEditorScreen } from './hr/employee-editor.js';
+export { MyProfileScreen } from './hr/my-profile.js';
+export { ExpenseClaimsScreen, MyExpenseClaimsScreen } from './expenses/claim-list.js';
+export { NewExpenseClaimScreen } from './expenses/claim-form.js';
+export { ExpenseClaimScreen } from './expenses/claim-screen.js';
+export { ExpenseCategoriesScreen } from './expenses/expense-categories.js';
+export { PayRunsScreen } from './payroll/pay-run-list.js';
+export { PayRunScreen } from './payroll/pay-run-screen.js';
+export { PayrollRulesScreen } from './payroll/rule-sets.js';
+export { MyPayslipsScreen } from './payroll/my-payslips.js';
+export { PayslipDocument } from './payroll/payslip.js';
+export { PayTermsSection } from './payroll/pay-terms.js';

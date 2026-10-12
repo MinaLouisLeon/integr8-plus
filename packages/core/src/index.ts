@@ -10,7 +10,16 @@ export {
   type PlatformUserId,
 } from './ids.js';
 
-export { ROLES, roleSchema, roleRank, hasAtLeastRole, type Role } from './roles.js';
+export {
+  ROLES,
+  roleSchema,
+  roleRank,
+  hasAtLeastRole,
+  type Role,
+  GRANTS,
+  grantSchema,
+  type Grant,
+} from './roles.js';
 
 export {
   PERMISSIONS,
@@ -19,6 +28,7 @@ export {
   assertCan,
   permissionsFor,
   permissionsHeld,
+  GRANT_PERMISSIONS,
   holds,
   assertHolds,
   isStaffSeat,
@@ -118,6 +128,7 @@ export {
 } from './job-execution.js';
 export {
   MODULE_FEATURES,
+  MODULE_REQUIRES,
   moduleFeatureSchema,
   type ModuleFeature,
   hasFeature,
@@ -311,3 +322,63 @@ export {
   fiscalYearOf,
   monthsBetween,
 } from './ledger.js';
+export {
+  EXPENSE_CLAIM_STATUSES,
+  expenseClaimStatusSchema,
+  type ExpenseClaimStatus,
+  EXPENSE_SETTLEMENTS,
+  expenseSettlementSchema,
+  type ExpenseSettlement,
+  EXPENSE_PAID_VIA,
+  expensePaidViaSchema,
+  type ExpensePaidVia,
+  formatExpenseReference,
+  parseExpenseReference,
+} from './hr.js';
+export {
+  type TaxBand,
+  type TaxTier,
+  type PayrollRules,
+  payrollRulesSchema,
+  EGYPT_2026_RULES,
+  annualIncomeTax,
+  type PayInput,
+  type PayResult,
+  DAYS_IN_PAY_MONTH,
+  calculatePay,
+  PAY_RUN_STATUSES,
+  type PayRunStatus,
+  formatPayRunReference,
+  PAY_METHODS,
+  payMethodSchema,
+  type PayMethod,
+  OVERTIME_PREMIUM_PERCENT,
+  defaultOvertimeRate,
+  proposedOvertimeHours,
+  daysOutsideEmployment,
+  payMonth,
+} from './payroll.js';
+export {
+  ASSEMBLY_ORDER_STATUSES,
+  assemblyOrderStatusSchema,
+  type AssemblyOrderStatus,
+  ASSEMBLY_DIRECTIONS,
+  assemblyDirectionSchema,
+  type AssemblyDirection,
+  formatAssemblyReference,
+  parseAssemblyReference,
+  multiplyDecimal,
+  type BomComponent,
+  componentNeeds,
+  rolledUpUnitCost,
+  disassemblyUnitCosts,
+  wouldContainItself,
+  type PlanItem,
+  type DemandSource,
+  type PlanDemand,
+  type PlanSupply,
+  type PlanInput,
+  type PlanBasis,
+  type PlanSuggestion,
+  planMaterials,
+} from './manufacturing.js';

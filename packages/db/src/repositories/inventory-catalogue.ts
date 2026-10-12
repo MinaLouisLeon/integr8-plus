@@ -41,6 +41,8 @@ export interface Item {
   averageUnitCost: string;
   preferredSupplierId: string | null;
   supplierPartNumber: string | null;
+  /** Days to build or to arrive; the preferred supplier's when null (0039). */
+  leadTimeDays: number | null;
   version: number;
   createdBy: UserId;
   createdAt: Date;
@@ -65,6 +67,7 @@ export interface ItemInput {
   salePrice?: string | null;
   preferredSupplierId?: string | null;
   supplierPartNumber?: string | null;
+  leadTimeDays?: number | null;
 }
 
 export interface ItemQuery {
@@ -298,6 +301,7 @@ function itemColumns(input: Partial<ItemInput>) {
     ...(input.supplierPartNumber === undefined
       ? {}
       : { supplier_part_number: blankToNull(input.supplierPartNumber) }),
+    ...(input.leadTimeDays === undefined ? {} : { lead_time_days: input.leadTimeDays }),
   };
 }
 
@@ -321,6 +325,7 @@ export function toItem(row: Omit<Selectable<ErpItemsTable>, 'search'>): Item {
     averageUnitCost: trimDecimal(row.average_unit_cost),
     preferredSupplierId: row.preferred_supplier_id,
     supplierPartNumber: row.supplier_part_number,
+    leadTimeDays: row.lead_time_days,
     version: row.version,
     createdBy: toUserId(row.created_by),
     createdAt: row.created_at,

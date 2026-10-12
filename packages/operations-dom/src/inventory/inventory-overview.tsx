@@ -29,6 +29,10 @@ export function InventoryOverviewScreen() {
     me.data !== undefined &&
     hasFeature(me.data.features, 'purchasing') &&
     permissions.includes('purchasing.read');
+  const manufacturing =
+    me.data !== undefined &&
+    hasFeature(me.data.features, 'manufacturing') &&
+    permissions.includes('manufacturing.read');
   const sales =
     me.data !== undefined &&
     hasFeature(me.data.features, 'sales') &&
@@ -114,6 +118,25 @@ export function InventoryOverviewScreen() {
                   to={paths.purchaseOrders}
                   title={t('purchasing.orders.title')}
                   note={t('nav.hint.purchaseOrders')}
+                />
+              </>
+            ) : null}
+            {manufacturing ? (
+              <>
+                <Card
+                  to={paths.boms}
+                  title={t('manufacturing.boms.title')}
+                  note={t('nav.hint.boms')}
+                />
+                <Card
+                  to={paths.assemblyOrders}
+                  title={t('manufacturing.orders.title')}
+                  note={t('nav.hint.assemblyOrders')}
+                />
+                <Card
+                  to={paths.materialPlans}
+                  title={t('manufacturing.plans.title')}
+                  note={t('nav.hint.materialPlans')}
                 />
               </>
             ) : null}

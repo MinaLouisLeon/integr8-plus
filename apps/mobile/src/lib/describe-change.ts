@@ -63,6 +63,12 @@ export function describeChange(t: TFunction, change: DescribedChange): string {
       });
     case 'asset.link':
       return t('mobile.change.assetLinked', { job });
+    case 'expense.submit':
+      return t('mobile.change.expenseClaimed', {
+        amount: typeof change.payload.amount === 'string' ? change.payload.amount : '',
+      });
+    case 'expense.receipt':
+      return t('mobile.change.expenseReceipt');
   }
 }
 

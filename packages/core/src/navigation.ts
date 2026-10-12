@@ -38,13 +38,21 @@ export type NavIcon =
   | 'megaphone'
   | 'layout'
   | 'package'
+  | 'layers'
+  | 'factory'
+  | 'calendar-check'
   | 'file-text'
   | 'receipt'
   | 'wallet'
   | 'qr-code'
   | 'heart'
   | 'book'
-  | 'bar-chart';
+  | 'bar-chart'
+  | 'id-card'
+  | 'banknote'
+  | 'clipboard-check'
+  | 'calculator'
+  | 'scale';
 
 export type NavGroup =
   | 'overview'
@@ -53,6 +61,7 @@ export type NavGroup =
   | 'sales'
   | 'finance'
   | 'accounting'
+  | 'hr'
   | 'inventory'
   | 'operations'
   | 'setup'
@@ -105,6 +114,9 @@ export type NavPath =
   | 'stockLocations'
   | 'suppliers'
   | 'purchaseOrders'
+  | 'boms'
+  | 'assemblyOrders'
+  | 'materialPlans'
   | 'quotes'
   | 'salesOrders'
   | 'invoices'
@@ -112,6 +124,13 @@ export type NavPath =
   | 'ledger'
   | 'journals'
   | 'ledgerReports'
+  | 'employees'
+  | 'myProfile'
+  | 'myExpenses'
+  | 'expenseClaims'
+  | 'payRuns'
+  | 'payrollRules'
+  | 'myPayslips'
   | 'assets';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
@@ -121,6 +140,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   'sales',
   'finance',
   'accounting',
+  'hr',
   'inventory',
   'operations',
   'setup',
@@ -250,6 +270,56 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     feature: 'ledger',
   },
 
+  // HR (seventh round; ADR-0010): the company's `hr` module. Everybody has
+  // their own profile and claims their own expenses; the list of employees is
+  // for those who read everybody's, and everybody's claims for those who
+  // approve them.
+  {
+    key: 'employees',
+    group: 'hr',
+    path: 'employees',
+    icon: 'users',
+    permission: 'hr.read',
+    feature: 'hr',
+  },
+  {
+    key: 'expenseClaims',
+    group: 'hr',
+    path: 'expenseClaims',
+    icon: 'clipboard-check',
+    permission: 'expense.approve',
+    feature: 'hr',
+  },
+  // Payroll (ADR-0010): the company's `payroll` module, on top of HR. Those
+  // who keep payroll prepare runs and keep the rules; everybody reads their
+  // own payslips.
+  {
+    key: 'payRuns',
+    group: 'hr',
+    path: 'payRuns',
+    icon: 'calculator',
+    permission: 'payroll.run',
+    feature: 'payroll',
+  },
+  {
+    key: 'payrollRules',
+    group: 'hr',
+    path: 'payrollRules',
+    icon: 'scale',
+    permission: 'payroll.run',
+    feature: 'payroll',
+  },
+  { key: 'myProfile', group: 'hr', path: 'myProfile', icon: 'id-card', feature: 'hr' },
+  {
+    key: 'myExpenses',
+    group: 'hr',
+    path: 'myExpenses',
+    icon: 'banknote',
+    permission: 'expense.submit',
+    feature: 'hr',
+  },
+  { key: 'myPayslips', group: 'hr', path: 'myPayslips', icon: 'file-text', feature: 'payroll' },
+
   // Inventory (CRM/ERP plan, phase E1): the company's `inventory` module.
   {
     key: 'inventory',
@@ -291,6 +361,32 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     icon: 'clipboard',
     permission: 'purchasing.read',
     feature: 'purchasing',
+  },
+  // Manufacturing (seventh round; ADR-0011): the company's `manufacturing`
+  // module, which works only with `inventory` on.
+  {
+    key: 'boms',
+    group: 'inventory',
+    path: 'boms',
+    icon: 'layers',
+    permission: 'manufacturing.read',
+    feature: 'manufacturing',
+  },
+  {
+    key: 'assemblyOrders',
+    group: 'inventory',
+    path: 'assemblyOrders',
+    icon: 'factory',
+    permission: 'manufacturing.read',
+    feature: 'manufacturing',
+  },
+  {
+    key: 'materialPlans',
+    group: 'inventory',
+    path: 'materialPlans',
+    icon: 'calendar-check',
+    permission: 'manufacturing.read',
+    feature: 'manufacturing',
   },
 
   {

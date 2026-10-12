@@ -10,6 +10,7 @@ import {
   type PlatformUserId,
   type Principal,
   toPlatformPrincipal,
+  type Grant,
   type Role,
   type TenantId,
   toPrincipal,
@@ -51,6 +52,8 @@ export interface MintAccessTokenInput {
   userId: UserId;
   tenantId: TenantId;
   role: Role;
+  /** Capabilities on top of the role (ADR-0010); left out of the token when none. */
+  grants?: readonly Grant[] | undefined;
   sessionId: string;
   impersonation?: ImpersonationClaim | undefined;
 }
@@ -103,6 +106,9 @@ export class TokenService {
       typ: 'access',
       tid: input.tenantId,
       role: input.role,
+      ...(input.grants === undefined || input.grants.length === 0
+        ? {}
+        : { grt: [...input.grants] }),
       sid: input.sessionId,
       ...(input.impersonation === undefined ? {} : { imp: input.impersonation }),
     });

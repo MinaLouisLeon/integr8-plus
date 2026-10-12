@@ -89,7 +89,8 @@ export const createMediaRoute = defineRoute({
     'Returns where to send the bytes, with the headers to send. The link is signed for exactly this type and size and expires in fifteen minutes. Honours `Idempotency-Key`.',
   tags: TAGS,
   security: 'authenticated',
-  permission: 'submission.fill',
+  // Forms, and receipts for an expense claim (ADR-0010).
+  anyPermission: ['submission.fill', 'expense.submit'],
   idempotent: true,
   params: noSchema,
   query: noSchema,
@@ -196,7 +197,8 @@ export const completeMediaRoute = defineRoute({
     'Reads the object back from storage. If it is exactly the type and size declared, the file is recorded with the size and ETag storage reports, and can be named in a submission. If something else arrived, it is deleted and nothing is recorded. Confirming twice returns the same file.',
   tags: TAGS,
   security: 'authenticated',
-  permission: 'submission.fill',
+  // Forms, and receipts for an expense claim (ADR-0010).
+  anyPermission: ['submission.fill', 'expense.submit'],
   params: mediaParams,
   query: noSchema,
   body: noSchema,
@@ -359,7 +361,8 @@ export const deleteMediaRoute = defineRoute({
     'Deletes a file no submission names. It can be restored until `purgeAfter`; after that its bytes are removed from storage. A file a submission or its history names cannot be deleted.',
   tags: TAGS,
   security: 'authenticated',
-  permission: 'submission.fill',
+  // Forms, and receipts for an expense claim (ADR-0010).
+  anyPermission: ['submission.fill', 'expense.submit'],
   params: mediaParams,
   query: noSchema,
   body: noSchema,
@@ -407,7 +410,8 @@ export const restoreMediaRoute = defineRoute({
   description: 'Undoes a deletion, until the file’s `purgeAfter`.',
   tags: TAGS,
   security: 'authenticated',
-  permission: 'submission.fill',
+  // Forms, and receipts for an expense claim (ADR-0010).
+  anyPermission: ['submission.fill', 'expense.submit'],
   params: mediaParams,
   query: noSchema,
   body: noSchema,
@@ -601,7 +605,8 @@ export const prepareMediaRoute = defineRoute({
     'For a phone that names a file in its answers before it has signal (P12). The first call records the upload; every later call with the same id and the same type and size answers again — with a fresh link, or `stored` once it has been confirmed — so it can be repeated after any interruption. Files larger than 8 MiB arrive in parts (`multipart`), which can be sent over several connections and resumed. An unconfirmed upload is kept for seven days.',
   tags: TAGS,
   security: 'authenticated',
-  permission: 'submission.fill',
+  // Forms, and receipts for an expense claim (ADR-0010).
+  anyPermission: ['submission.fill', 'expense.submit'],
   params: mediaParams,
   query: noSchema,
   body: z.object({
@@ -789,7 +794,8 @@ export const createMediaPartLinksRoute = defineRoute({
     'Each link is signed for its part’s exact size and lasts fifteen minutes. Ask again for any part whose link expired.',
   tags: TAGS,
   security: 'authenticated',
-  permission: 'submission.fill',
+  // Forms, and receipts for an expense claim (ADR-0010).
+  anyPermission: ['submission.fill', 'expense.submit'],
   params: mediaParams,
   query: noSchema,
   body: z.object({ partNumbers: z.array(z.number().int().min(1)).min(1).max(100) }),
@@ -860,7 +866,8 @@ export const listMediaPartsRoute = defineRoute({
     'For resuming: after an interruption, a phone asks which parts storage already holds and sends only the rest.',
   tags: TAGS,
   security: 'authenticated',
-  permission: 'submission.fill',
+  // Forms, and receipts for an expense claim (ADR-0010).
+  anyPermission: ['submission.fill', 'expense.submit'],
   params: mediaParams,
   query: noSchema,
   body: noSchema,

@@ -18,9 +18,15 @@ for review.** Nothing after C3 starts without a new instruction.
 round (E1, E2) in PR #74, and the sales round (S1) in PR #75. The fourth
 round, B1 (company invoices, payments and job profitability), in PR #76. The
 fifth round, E3 (assets, tags and service history), in PR #77. The sixth
-round, A1 (the general ledger, authorized by the product owner on
-2026-10-12), is done on `feat/general-ledger` and waits for review; L waits
-for a new instruction.**
+round, A1 (the general ledger), in PR #78. The seventh round, H1 (HR, staff
+expenses and Egyptian payroll) and M1 (bills of materials, assembly and
+planning), authorized by the product owner on 2026-10-12, is built on
+`feat/hr-payroll-manufacturing` and goes to `main` in one pull request; L
+waits for a new instruction.**
+
+Seventh round — branch `feat/hr-payroll-manufacturing`, from `main` at
+`64f9025`. Agreed scope: **H1 then M1, one pull request, then stop for
+review.**
 
 Sixth round — branch `feat/general-ledger`, from `main` at `ba59995`.
 Agreed scope: **A1 only, then stop for review.**
@@ -51,6 +57,8 @@ instruction.
 | B1    | Company invoices, payments, credit notes, job costing (not Integr8's own billing)                                                       | `DONE`        | 0030       | fourth round: decisions (B0); invoices and credit notes (B1a); payments, the customer's account, job cost (B1b); screens and printable invoice (B1c)                       |
 | E3    | Assets and service history (aligns P24)                                                                                                 | `DONE`        | 0031, 0032 | fifth round: decisions (E0b); register and timeline (E3a); tags, scanning and assets on the phone (E3b); warranty alerts, carry-over from the last visit, CSV import (E3c) |
 | A1    | General ledger: chart, periods and locks, balanced immutable journals, automatic postings from sales and stock, reports, year-end close | `DONE`        | 0033–0035  | sixth round: decisions (A0); chart, months and journals (A1a); automatic postings and the unposted list (A1b); reports, year-end close and the screens (A1c)               |
+| H1    | HR profiles and roles, staff expense claims, Egyptian payroll (ERP-09)                                                                  | `DONE`        | 0036–0038  | seventh round: roles, grants and profiles (H1a); expense claims, phone included (H1b); payroll rule sets, pay runs, payslips and files (H1c)                               |
+| M1    | Bills of materials, assembly and disassembly, material planning (ERP-10)                                                                | `DONE`        | 0039       | seventh round: bills, assembly and disassembly (M1a); planning drafting orders (M1b)                                                                                       |
 | L     | Pilot release                                                                                                                           | `NOT STARTED` | —          | —                                                                                                                                                                          |
 
 ### Specification coverage
@@ -73,8 +81,8 @@ Every numbered item in PLAN.md §4–§5, so none is forgotten.
 | ERP-06 Work-order materials and costing    | E2, B1     | `DONE`          | Parts and their cost on the job (E2); labour at the company's hourly cost, invoiced net and profit per job (B1); parts only, and said so, when no labour cost is set                                                                                         |
 | ERP-07 Asset register                      | E3         | `DONE`          | All eight P24 features; the P24 exit check on real equipment and label stock is a manual check before the pilot (09)                                                                                                                                         |
 | ERP-08 General ledger                      | A1         | `DONE`          | Management ledger in the company currency: chart, months locked by hand, immutable journals with a second approver, sales and stock posted automatically or from the unposted list, reports, year-end close; no tax or statutory compliance claim (ADR-0009) |
-| ERP-09 HR, expenses, payroll               | —          | `DEFERRED`      | No payroll without a country's legal review                                                                                                                                                                                                                  |
-| ERP-10 Manufacturing                       | —          | `DEFERRED`      |                                                                                                                                                                                                                                                              |
+| ERP-09 HR, expenses, payroll               | H1         | `DONE`          | Authorized 2026-10-12 with Egyptian payroll as rule sets each company confirms; no legal review by Integr8 (ADR-0010)                                                                                                                                        |
+| ERP-10 Manufacturing                       | M1         | `DONE`          | Bills of materials, assembly, planning (ADR-0011); routing and work centres deferred                                                                                                                                                                         |
 
 ### Follow-ups that must not be lost
 
@@ -198,20 +206,38 @@ or a decision before the pilot (phase L).
 | Reports and closing     | Trial balance, account activity, receivables reconciliation with aging, a profit and loss and a balance sheet (management reports, not statutory accounts), year-end close into retained earnings; printable and CSV                                                                                                            |
 | Delivery                | Same as before: one branch `feat/general-ledger`, push after each slice (A1a chart, periods, journals; A1b automatic postings and the unposted list; A1c reports, close and screens), one pull request against `main` at the end                                                                                                |
 
+### Seventh round: HR, payroll and manufacturing (2026-10-12)
+
+| Question             | Decision                                                                                                                                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Scope                | ERP-09 (H1) then ERP-10 (M1), one pull request, then stop                                                                                                                                                                      |
+| Payroll              | Full Egyptian payroll, figures as dated rule sets seeded with the 2026 values and confirmed by the owner before use; no legal review by Integr8, said on every payslip                                                         |
+| HR profile           | Job details, dates, national ID, insurance number, bank account, emergency contact, pay terms; pay and ID data for the owner and HR managers only; each person sees their own                                                  |
+| Who is an employee   | Members, plus employees without a login who take no seat                                                                                                                                                                       |
+| Sensitive fields     | National ID, insurance number and bank account encrypted at rest with a new `HR_DATA_KEY`; last four in clear; reveals audited                                                                                                 |
+| Expense claims       | Any member, from the phone offline too, with receipts; approved by someone else (owner, admin, HR manager); paid back or through payroll; posted to the ledger                                                                 |
+| Pay run              | Monthly: salary, allowances, overtime from approved timesheets, bonuses and deductions, unpaid leave, claims; tax, insurance, Martyrs' Fund; approved by a second person; payslips, insurance report, bank CSV, ledger journal |
+| Roles and grants     | New roles `hr_manager` and `inventory_manager`, and the same as grants on top of any role; HR given only by the owner, inventory by the owner or an admin                                                                      |
+| Modules              | Three switches, off by default: `hr`, `payroll` (needs `hr`), `manufacturing` (needs `inventory`)                                                                                                                              |
+| Ledger               | Claims, payments, pay runs and assemblies post automatically with a switch per area, or wait in the unposted list; new posting accounts added to existing charts                                                               |
+| Manufacturing        | Versioned bills of materials, assembly and disassembly at rolled-up cost, and on-demand planning (MRP) that drafts assembly and purchase orders for the usual approval; no routing or work centres                             |
+| Manufacturing access | Owners, admins and inventory managers; viewers read                                                                                                                                                                            |
+| Delivery             | Branch `feat/hr-payroll-manufacturing`, slices pushed as done (H1a, H1b, H1c, M1a, M1b), one pull request against `main`, then stop                                                                                            |
+
 ## Documents
 
-| File                                                                               | Status                 |
-| ---------------------------------------------------------------------------------- | ---------------------- |
-| [PLAN.md](./PLAN.md) — the master plan                                             | Received               |
-| [00-repository-assessment.md](./00-repository-assessment.md)                       | F0                     |
-| [01-architecture.md](./01-architecture.md)                                         | F0                     |
-| [02-feature-matrix.md](./02-feature-matrix.md)                                     | F0                     |
-| [dependencies.md](./dependencies.md)                                               | F0                     |
-| [decisions/](./decisions/) — ADR-0001 to ADR-0009                                  | F0, E2, S1, B1, E3, A1 |
-| [03-data-model.md](./03-data-model.md)                                             | F1, updated each phase |
-| [04-api-contracts.md](./04-api-contracts.md)                                       | C1, updated each phase |
-| [05-permissions-and-security.md](./05-permissions-and-security.md)                 | F1, updated each phase |
-| [06-navigation-i18n-ux.md](./06-navigation-i18n-ux.md)                             | F1, updated each phase |
-| [07-finance-and-inventory-invariants.md](./07-finance-and-inventory-invariants.md) | E1, updated each phase |
-| 08-operations-selfhosting.md                                                       | Before L               |
-| [09-testing-and-qa.md](./09-testing-and-qa.md)                                     | C1, updated each phase |
+| File                                                                               | Status                         |
+| ---------------------------------------------------------------------------------- | ------------------------------ |
+| [PLAN.md](./PLAN.md) — the master plan                                             | Received                       |
+| [00-repository-assessment.md](./00-repository-assessment.md)                       | F0                             |
+| [01-architecture.md](./01-architecture.md)                                         | F0                             |
+| [02-feature-matrix.md](./02-feature-matrix.md)                                     | F0                             |
+| [dependencies.md](./dependencies.md)                                               | F0                             |
+| [decisions/](./decisions/) — ADR-0001 to ADR-0011                                  | F0, E2, S1, B1, E3, A1, H1, M1 |
+| [03-data-model.md](./03-data-model.md)                                             | F1, updated each phase         |
+| [04-api-contracts.md](./04-api-contracts.md)                                       | C1, updated each phase         |
+| [05-permissions-and-security.md](./05-permissions-and-security.md)                 | F1, updated each phase         |
+| [06-navigation-i18n-ux.md](./06-navigation-i18n-ux.md)                             | F1, updated each phase         |
+| [07-finance-and-inventory-invariants.md](./07-finance-and-inventory-invariants.md) | E1, updated each phase         |
+| 08-operations-selfhosting.md                                                       | Before L                       |
+| [09-testing-and-qa.md](./09-testing-and-qa.md)                                     | C1, updated each phase         |

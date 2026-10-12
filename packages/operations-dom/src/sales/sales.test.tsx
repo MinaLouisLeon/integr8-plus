@@ -75,6 +75,7 @@ const items = () => ({
         averageUnitCost: null,
         preferredSupplierId: null,
         supplierPartNumber: null,
+        leadTimeDays: null,
         reorderPoint: null,
         reorderQuantity: null,
         onHand: '0',

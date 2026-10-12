@@ -37,3 +37,20 @@ export function formatDuration(ms: number, locale: string): string {
     ? `${new Intl.NumberFormat(locale).format(hours)} h ${number.format(minutes)} min`
     : `${number.format(minutes)} min`;
 }
+
+/**
+ * An amount, as the server sends it — a decimal string — in the reader's
+ * language, with its currency when known. The string goes to `Intl` as a
+ * string, so no digit is lost to a JavaScript number on the way.
+ */
+export function formatMoney(amount: string, currency: string | null, locale: string): string {
+  const format = (options: Intl.NumberFormatOptions) =>
+    new Intl.NumberFormat(locale, options).format(amount as unknown as number);
+  try {
+    return currency === null
+      ? format({ maximumFractionDigits: 4 })
+      : format({ style: 'currency', currency, maximumFractionDigits: 4 });
+  } catch {
+    return currency === null ? amount : `${amount} ${currency}`;
+  }
+}

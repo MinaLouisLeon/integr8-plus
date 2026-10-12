@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Role } from './roles.js';
+import type { Grant, Role } from './roles.js';
 
 /**
  * What each role may do, as one table.
@@ -234,6 +234,35 @@ export const PERMISSIONS = [
    * the person who owns them.
    */
   'ledger.unlock',
+
+  // HR, staff expenses and payroll (seventh round; ADR-0010). Each also needs
+  // the company's `hr` module, and payroll its `payroll` module.
+
+  /** See employee profiles' job details: title, department, dates. Not pay or ID numbers. */
+  'hr.read',
+  /**
+   * See and change ID numbers, bank details and pay. Owners and HR managers
+   * only (product decision, 2026-10-12); every reveal is audited.
+   */
+  'hr.sensitive',
+  /** Add and change employee profiles, link them to members, end employment. */
+  'hr.manage',
+  /** Claim expenses back. Every member (product decision, 2026-10-12). */
+  'expense.submit',
+  /** Approve, reject and pay back other people's expense claims, and keep the categories. */
+  'expense.approve',
+  /** Keep pay terms and the payroll rule sets, and prepare pay runs. */
+  'payroll.run',
+  /** Approve a pay run someone else prepared, and confirm a rule set before use. */
+  'payroll.approve',
+
+  // Bills of materials, assembly and planning (seventh round; ADR-0011). Each
+  // also needs the company's `manufacturing` module.
+
+  /** See bills of materials, assembly orders and plans. */
+  'manufacturing.read',
+  /** Keep bills of materials, assemble and take apart, and run planning. */
+  'manufacturing.manage',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -303,6 +332,15 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'ledger.post',
     'ledger.manage',
     'ledger.unlock',
+    'hr.read',
+    'hr.sensitive',
+    'hr.manage',
+    'expense.submit',
+    'expense.approve',
+    'payroll.run',
+    'payroll.approve',
+    'manufacturing.read',
+    'manufacturing.manage',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -361,6 +399,46 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'ledger.read',
     'ledger.post',
     'ledger.manage',
+    'hr.read',
+    'expense.submit',
+    'expense.approve',
+    'manufacturing.read',
+    'manufacturing.manage',
+  ],
+
+  // Keeps HR and payroll (ADR-0010): the people, their pay and their claims,
+  // and nothing of the operation. Reads members to link profiles to them.
+  hr_manager: [
+    'tenant.read',
+    'member.read',
+    'form.read',
+    'hr.read',
+    'hr.sensitive',
+    'hr.manage',
+    'expense.submit',
+    'expense.approve',
+    'payroll.run',
+    'payroll.approve',
+  ],
+
+  // Keeps the store (ADR-0010, ADR-0011): the catalogue, stock, vans,
+  // suppliers and purchase orders, bills of materials and assembly. Approving
+  // spending stays with owners and admins (2026-10-11).
+  inventory_manager: [
+    'tenant.read',
+    'member.read',
+    'form.read',
+    'customer.read',
+    'inventory.read',
+    'inventory.manage',
+    'inventory.move',
+    'inventory.consume',
+    'purchasing.read',
+    'purchasing.manage',
+    'sales.read',
+    'expense.submit',
+    'manufacturing.read',
+    'manufacturing.manage',
   ],
 
   // Runs the day: needs to see who is available, not to change who they are.
@@ -405,6 +483,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'asset.read',
     'asset.record',
     'asset.manage',
+    'expense.submit',
   ],
 
   // Does the work. Sees colleagues so a job can be handed over, their own
@@ -423,6 +502,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'inventory.consume',
     'asset.read',
     'asset.record',
+    'expense.submit',
   ],
 
   // Reads, and only reads: every submission and every job, and nothing to fill.
@@ -441,6 +521,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'finance.read',
     'asset.read',
     'ledger.read',
+    'expense.submit',
+    'manufacturing.read',
   ],
 });
 
@@ -448,6 +530,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
 const BY_ROLE: Readonly<Record<Role, ReadonlySet<Permission>>> = Object.freeze({
   owner: new Set(MATRIX.owner),
   admin: new Set(MATRIX.admin),
+  hr_manager: new Set(MATRIX.hr_manager),
+  inventory_manager: new Set(MATRIX.inventory_manager),
   dispatcher: new Set(MATRIX.dispatcher),
   engineer: new Set(MATRIX.engineer),
   viewer: new Set(MATRIX.viewer),
@@ -527,8 +611,44 @@ export const STAFF_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<Permissio
  */
 export interface Seat {
   readonly role: Role;
+  /** Capabilities given on top of the role (ADR-0010); none when absent. */
+  readonly grants?: readonly Grant[] | undefined;
   /** Present when a super admin is acting through this seat. */
   readonly impersonatedBy?: object | undefined;
+}
+
+/**
+ * What each grant adds on top of a role: the area of the role of the same
+ * name, without its basics. Never a member-management permission, so a grant
+ * can never be used to give out grants.
+ */
+export const GRANT_PERMISSIONS: Readonly<Record<Grant, readonly Permission[]>> = Object.freeze({
+  hr_manager: [
+    'hr.read',
+    'hr.sensitive',
+    'hr.manage',
+    'expense.approve',
+    'payroll.run',
+    'payroll.approve',
+  ],
+  inventory_manager: [
+    'inventory.read',
+    'inventory.manage',
+    'inventory.move',
+    'inventory.consume',
+    'purchasing.read',
+    'purchasing.manage',
+    'manufacturing.read',
+    'manufacturing.manage',
+  ],
+});
+
+/** True when the seat's role, or one of its grants, holds the permission. */
+function seatCan(seat: Seat, permission: Permission): boolean {
+  return (
+    can(seat.role, permission) ||
+    (seat.grants ?? []).some((grant) => GRANT_PERMISSIONS[grant].includes(permission))
+  );
 }
 
 /** True when Integr8 staff hold the seat. */
@@ -546,18 +666,21 @@ export function isStaffSeat(seat: Seat): boolean {
  */
 export function holds(seat: Seat, permission: Permission): boolean {
   return (
-    can(seat.role, permission) && (!STAFF_ONLY_PERMISSIONS.has(permission) || isStaffSeat(seat))
+    seatCan(seat, permission) && (!STAFF_ONLY_PERMISSIONS.has(permission) || isStaffSeat(seat))
   );
 }
 
 /** Every permission a seat holds right now, for `/v1/me` and the screens built on it. */
 export function permissionsHeld(seat: Seat): Permission[] {
-  return permissionsFor(seat.role).filter((permission) => holds(seat, permission));
+  const granted = (seat.grants ?? []).flatMap((grant) => GRANT_PERMISSIONS[grant]);
+  return [...new Set([...permissionsFor(seat.role), ...granted])].filter((permission) =>
+    holds(seat, permission),
+  );
 }
 
 /** {@link holds}, but throwing, with the reason for the denial attached. */
 export function assertHolds(seat: Seat, permission: Permission): void {
-  if (!can(seat.role, permission)) {
+  if (!seatCan(seat, permission)) {
     throw new PermissionDeniedError(seat.role, permission);
   }
   if (!holds(seat, permission)) {
