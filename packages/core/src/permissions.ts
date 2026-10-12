@@ -715,8 +715,8 @@ export function holds(seat: Seat, permission: Permission): boolean {
 export function permissionsHeld(seat: Seat): Permission[] {
   const granted = (seat.grants ?? []).flatMap((grant) => GRANT_PERMISSIONS[grant]);
   const added = seat.customRole?.added ?? [];
-  return [...new Set([...permissionsFor(seat.role), ...added, ...granted])].filter(
-    (permission) => holds(seat, permission),
+  return [...new Set([...permissionsFor(seat.role), ...added, ...granted])].filter((permission) =>
+    holds(seat, permission),
   );
 }
 

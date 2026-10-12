@@ -117,9 +117,7 @@ describe('company roles', () => {
       }),
     );
     expect(
-      code(
-        await call(admin, 'PATCH', `/v1/members/${other.userId}/role`, { customRoleId: hr.id }),
-      ),
+      code(await call(admin, 'PATCH', `/v1/members/${other.userId}/role`, { customRoleId: hr.id })),
     ).toBe('role_beyond_own');
     expect(
       (await call(owner, 'PATCH', `/v1/members/${other.userId}/role`, { customRoleId: hr.id }))
