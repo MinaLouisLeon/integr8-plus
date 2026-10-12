@@ -565,6 +565,12 @@ export {
   type MovementRow,
 } from './repositories/analytics.js';
 export {
+  TenantRolesRepository,
+  type CompanyRole,
+  type TenantRoleInput,
+  type TenantRoleRefusal,
+} from './repositories/tenant-roles.js';
+export {
   SupplierPricesRepository,
   type SupplierPrice,
   type SupplierPriceInput,

@@ -12,6 +12,7 @@ import { opportunityRoutes } from './v1/crm-opportunities.js';
 import { pipelineEditRoutes } from './v1/crm-pipelines.js';
 import { customerTimelineRoute } from './v1/customer-timeline.js';
 import { analyticsRoutes } from './v1/analytics.js';
+import { roleRoutes } from './v1/roles.js';
 import { itemMediaRoutes } from './v1/item-media.js';
 import { priceListRoutes } from './v1/price-lists.js';
 import { salesDeliveryRoutes } from './v1/sales-deliveries.js';
@@ -75,6 +76,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...pipelineEditRoutes,
     customerTimelineRoute,
     ...analyticsRoutes,
+    ...roleRoutes,
     ...itemMediaRoutes,
     ...priceListRoutes,
     ...salesDeliveryRoutes,

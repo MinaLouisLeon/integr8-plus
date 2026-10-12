@@ -256,6 +256,8 @@ export const apiErrorsEn = {
   payroll_off: 'Payroll is not switched on. Pay this claim back directly.',
   period_locked: 'That month is locked. Date it in an open month.',
   period_too_long: 'Choose a period of at most two years.',
+  permission_not_addable:
+    'A company role cannot hold that permission: it is the owner’s, or Integr8’s.',
   photos_missing: 'Photos the job needs are still missing.',
   pipeline_has_open:
     'This pipeline still has open opportunities. Close or move them before archiving it.',
@@ -289,7 +291,9 @@ export const apiErrorsEn = {
   reversal_before_original: 'Date the reversal on or after the journal it reverses.',
   reversal_of_reversal: 'A reversal is not reversed; post the journal again instead.',
   role_above_own: 'You cannot give somebody a role above your own.',
+  role_beyond_own: 'This role can do things you cannot, so only the owner gives it.',
   role_holds_grant: 'Their role already includes this.',
+  role_in_use: 'Somebody holds this role. Give them another role first.',
   rules_not_confirmed:
     'The rule set for this month is waiting for the owner to confirm it. Payroll uses it once they do.',
   run_approved: 'An approved pay run does not change. Correct it next month.',

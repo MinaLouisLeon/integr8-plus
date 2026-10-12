@@ -340,12 +340,17 @@ export class SessionService {
     // token within one access-token lifetime, as a role change does. A
     // company seat held by staff has no member row and so no grants.
     const grants = await tx.memberGrants.forUser(session.userId);
+    // The company's own role (ADR-0013), read the same way. The owner never
+    // holds one; staff in a company seat have no member row.
+    const customRole =
+      role === 'owner' ? undefined : await tx.tenantRoles.overlayFor(session.userId);
 
     const access = await this.#tokens.mintAccessToken({
       userId: session.userId,
       tenantId: session.tenantId,
       role,
       grants,
+      customRole,
       sessionId: session.id,
       impersonation,
     });

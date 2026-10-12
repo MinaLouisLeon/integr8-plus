@@ -17,6 +17,8 @@ export interface TenantUser {
   email: string;
   displayName: string;
   role: Role;
+  /** The company's own role on top of `role`, its base (ADR-0013); null for a built-in role. */
+  customRoleId: string | null;
   status: MembershipStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -112,10 +114,18 @@ export class TenantUsersRepository extends TenantScopedRepository {
     return toDomain(row);
   }
 
-  async updateRole(userId: UserId | string, role: Role): Promise<TenantUser | undefined> {
+  /**
+   * Gives a member a built-in role, or — with `customRoleId` — the company's
+   * own role, whose base `role` must be (the database checks).
+   */
+  async updateRole(
+    userId: UserId | string,
+    role: Role,
+    customRoleId: string | null = null,
+  ): Promise<TenantUser | undefined> {
     const row = await this.db
       .updateTable('tenant_users')
-      .set({ role: roleSchema.parse(role) })
+      .set({ role: roleSchema.parse(role), custom_role_id: customRoleId })
       .where('tenant_id', '=', this.tenantId)
       .where('user_id', '=', toUserId(userId))
       .where('deleted_at', 'is', null)
@@ -182,6 +192,7 @@ function toDomain(row: Selectable<TenantUsersTable>): TenantUser {
     email: row.email,
     displayName: row.display_name,
     role: roleSchema.parse(row.role),
+    customRoleId: row.custom_role_id,
     status: membershipStatusSchema.parse(row.status),
     createdAt: row.created_at,
     updatedAt: row.updated_at,

@@ -44,6 +44,7 @@ import { HrPayrollRepository } from './repositories/hr-payroll.js';
 import { ManufacturingRepository } from './repositories/manufacturing.js';
 import { CustomerTimelineRepository } from './repositories/customer-timeline.js';
 import { AnalyticsRepository } from './repositories/analytics.js';
+import { TenantRolesRepository } from './repositories/tenant-roles.js';
 import { SupplierPricesRepository } from './repositories/supplier-prices.js';
 import { InventoryReplenishmentRepository } from './repositories/inventory-replenishment.js';
 import { SalesDeliveriesRepository } from './repositories/sales-deliveries.js';
@@ -156,6 +157,7 @@ export interface TenantTransaction {
   readonly manufacturing: ManufacturingRepository;
   readonly customerTimeline: CustomerTimelineRepository;
   readonly analytics: AnalyticsRepository;
+  readonly tenantRoles: TenantRolesRepository;
   readonly supplierPrices: SupplierPricesRepository;
   readonly inventoryReplenishment: InventoryReplenishmentRepository;
   readonly salesDeliveries: SalesDeliveriesRepository;
@@ -426,6 +428,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     manufacturing: new ManufacturingRepository(scope),
     customerTimeline: new CustomerTimelineRepository(scope),
     analytics: new AnalyticsRepository(scope),
+    tenantRoles: new TenantRolesRepository(scope),
     supplierPrices: new SupplierPricesRepository(scope),
     inventoryReplenishment: new InventoryReplenishmentRepository(scope),
     salesDeliveries: new SalesDeliveriesRepository(scope),

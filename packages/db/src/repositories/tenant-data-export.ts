@@ -31,6 +31,7 @@ import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
  * system's working state and mean nothing outside it.
  */
 export const EXPORTED_TABLES = [
+  'tenant_roles',
   'tenant_users',
   'customers',
   'customer_contacts',

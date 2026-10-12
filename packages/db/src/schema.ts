@@ -197,10 +197,28 @@ export interface TenantUsersTable {
   email: string;
   display_name: string;
   role: TenantRole;
+  /** The company's own role on top of `role` (0041). */
+  custom_role_id: Generated<string | null>;
   status: Generated<MembershipStatus>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
   deleted_at: Date | null;
+}
+
+/** A company's own role (0041; ADR-0013): a built-in base and what it adds or takes away. */
+export interface TenantRolesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  description: string | null;
+  base_role: TenantRole;
+  added: Generated<string[]>;
+  removed: Generated<string[]>;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  archived_at: Date | null;
 }
 
 export interface AuditLogTable {
@@ -2666,6 +2684,7 @@ export interface Database {
   erp_ledger_year_closes: ErpLedgerYearClosesTable;
   erp_ledger_postings: ErpLedgerPostingsTable;
   member_grants: MemberGrantsTable;
+  tenant_roles: TenantRolesTable;
   hr_employees: HrEmployeesTable;
   hr_expense_categories: HrExpenseCategoriesTable;
   expense_reference_counters: ExpenseReferenceCountersTable;
@@ -2939,6 +2958,7 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_ledger_year_closes: true,
   erp_ledger_postings: true,
   member_grants: true,
+  tenant_roles: true,
   hr_employees: true,
   hr_expense_categories: true,
   expense_reference_counters: true,

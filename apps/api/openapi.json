@@ -1878,7 +1878,7 @@
       "patch": {
         "operationId": "changeMemberRole",
         "summary": "Change what somebody may do",
-        "description": "Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself. Their sessions are ended, so the next token they get carries the new role — but an access token already issued keeps its old role until it lapses, within fifteen minutes.",
+        "description": "A built-in `role`, or one of the company’s own roles by `customRoleId` (ADR-0013), which ranks as its base. Nobody may grant a role above their own, for the same reason nobody may invite at one: without that rule, changing a role is a way of promoting yourself; below the owner, nobody gives a company role holding something they do not (422 `role_beyond_own`). Their sessions are ended, so the next token they get carries the new role — but an access token already issued keeps its old role until it lapses, within fifteen minutes.",
         "tags": [
           "workspace"
         ],
@@ -1912,11 +1912,13 @@
                       "engineer",
                       "viewer"
                     ]
+                  },
+                  "customRoleId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   }
-                },
-                "required": [
-                  "role"
-                ]
+                }
               }
             }
           }
@@ -1961,6 +1963,25 @@
                           "inventory_manager"
                         ]
                       }
+                    },
+                    "customRole": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
                     },
                     "status": {
                       "type": "string",
@@ -2011,13 +2032,13 @@
             }
           },
           "404": {
-            "description": "No such person in this company."
+            "description": "No such person or company role in this company."
           },
           "409": {
             "description": "This is the company’s only owner (`last_owner`)."
           },
           "422": {
-            "description": "A role above the caller’s own (`role_above_own`)."
+            "description": "A role above the caller’s own (`role_above_own`), or a company role holding what the caller does not (`role_beyond_own`)."
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -2139,6 +2160,25 @@
                           "inventory_manager"
                         ]
                       }
+                    },
+                    "customRole": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
                     },
                     "status": {
                       "type": "string",
@@ -2429,6 +2469,25 @@
                         ]
                       }
                     },
+                    "customRole": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -2594,6 +2653,25 @@
                           "inventory_manager"
                         ]
                       }
+                    },
+                    "customRole": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
                     },
                     "status": {
                       "type": "string",
@@ -4432,6 +4510,25 @@
                         ]
                       }
                     },
+                    "customRole": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
                     "permissions": {
                       "type": "array",
                       "items": {
@@ -4466,6 +4563,7 @@
                           "import.run",
                           "billing.read",
                           "billing.manage",
+                          "role.manage",
                           "crm.read",
                           "crm.lead.manage",
                           "crm.lead.convert",
@@ -5083,6 +5181,25 @@
                                 "inventory_manager"
                               ]
                             }
+                          },
+                          "customRole": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
                           },
                           "status": {
                             "type": "string",
@@ -26543,6 +26660,2198 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/roles/catalogue": {
+      "get": {
+        "operationId": "getRoleCatalogue",
+        "summary": "What a company role can be built from",
+        "description": "Each built-in role a company role may start from, with what it holds, and every permission a company role may add (never the owner’s own or Integr8’s).",
+        "tags": [
+          "workspace"
+        ],
+        "responses": {
+          "200": {
+            "description": "The catalogue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bases": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "admin",
+                              "hr_manager",
+                              "inventory_manager",
+                              "dispatcher",
+                              "engineer",
+                              "viewer"
+                            ]
+                          },
+                          "permissions": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "tenant.read",
+                                "tenant.update",
+                                "branding.manage",
+                                "member.read",
+                                "member.invite",
+                                "member.update_role",
+                                "member.suspend",
+                                "member.remove",
+                                "invitation.read",
+                                "invitation.revoke",
+                                "session.read",
+                                "session.revoke",
+                                "audit.read",
+                                "form.read",
+                                "form.manage",
+                                "submission.fill",
+                                "submission.read_all",
+                                "submission.amend",
+                                "storage.read",
+                                "customer.read",
+                                "customer.manage",
+                                "job_type.manage",
+                                "work_order.read_all",
+                                "work_order.manage",
+                                "work_order.progress",
+                                "work_order.review",
+                                "import.run",
+                                "billing.read",
+                                "billing.manage",
+                                "role.manage",
+                                "crm.read",
+                                "crm.lead.manage",
+                                "crm.lead.convert",
+                                "crm.opportunity.manage",
+                                "crm.activity.manage",
+                                "crm.pipeline.manage",
+                                "inventory.read",
+                                "inventory.manage",
+                                "inventory.move",
+                                "inventory.consume",
+                                "purchasing.read",
+                                "purchasing.manage",
+                                "purchasing.approve",
+                                "sales.read",
+                                "sales.manage",
+                                "sales.issue",
+                                "finance.read",
+                                "finance.manage",
+                                "finance.issue",
+                                "asset.read",
+                                "asset.record",
+                                "asset.manage",
+                                "ledger.read",
+                                "ledger.post",
+                                "ledger.manage",
+                                "ledger.unlock",
+                                "hr.read",
+                                "hr.sensitive",
+                                "hr.manage",
+                                "expense.submit",
+                                "expense.approve",
+                                "payroll.run",
+                                "payroll.approve",
+                                "manufacturing.read",
+                                "manufacturing.manage"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "role",
+                          "permissions"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "addable": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "tenant.read",
+                          "tenant.update",
+                          "branding.manage",
+                          "member.read",
+                          "member.invite",
+                          "member.update_role",
+                          "member.suspend",
+                          "member.remove",
+                          "invitation.read",
+                          "invitation.revoke",
+                          "session.read",
+                          "session.revoke",
+                          "audit.read",
+                          "form.read",
+                          "form.manage",
+                          "submission.fill",
+                          "submission.read_all",
+                          "submission.amend",
+                          "storage.read",
+                          "customer.read",
+                          "customer.manage",
+                          "job_type.manage",
+                          "work_order.read_all",
+                          "work_order.manage",
+                          "work_order.progress",
+                          "work_order.review",
+                          "import.run",
+                          "billing.read",
+                          "billing.manage",
+                          "role.manage",
+                          "crm.read",
+                          "crm.lead.manage",
+                          "crm.lead.convert",
+                          "crm.opportunity.manage",
+                          "crm.activity.manage",
+                          "crm.pipeline.manage",
+                          "inventory.read",
+                          "inventory.manage",
+                          "inventory.move",
+                          "inventory.consume",
+                          "purchasing.read",
+                          "purchasing.manage",
+                          "purchasing.approve",
+                          "sales.read",
+                          "sales.manage",
+                          "sales.issue",
+                          "finance.read",
+                          "finance.manage",
+                          "finance.issue",
+                          "asset.read",
+                          "asset.record",
+                          "asset.manage",
+                          "ledger.read",
+                          "ledger.post",
+                          "ledger.manage",
+                          "ledger.unlock",
+                          "hr.read",
+                          "hr.sensitive",
+                          "hr.manage",
+                          "expense.submit",
+                          "expense.approve",
+                          "payroll.run",
+                          "payroll.approve",
+                          "manufacturing.read",
+                          "manufacturing.manage"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "bases",
+                    "addable"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/roles": {
+      "get": {
+        "operationId": "listCompanyRoles",
+        "summary": "The company’s own roles",
+        "description": "By name, with how many people hold each. `archived=true` includes archived ones.",
+        "tags": [
+          "workspace"
+        ],
+        "parameters": [
+          {
+            "name": "archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The roles.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "baseRole": {
+                            "type": "string",
+                            "enum": [
+                              "admin",
+                              "hr_manager",
+                              "inventory_manager",
+                              "dispatcher",
+                              "engineer",
+                              "viewer"
+                            ]
+                          },
+                          "added": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "tenant.read",
+                                "tenant.update",
+                                "branding.manage",
+                                "member.read",
+                                "member.invite",
+                                "member.update_role",
+                                "member.suspend",
+                                "member.remove",
+                                "invitation.read",
+                                "invitation.revoke",
+                                "session.read",
+                                "session.revoke",
+                                "audit.read",
+                                "form.read",
+                                "form.manage",
+                                "submission.fill",
+                                "submission.read_all",
+                                "submission.amend",
+                                "storage.read",
+                                "customer.read",
+                                "customer.manage",
+                                "job_type.manage",
+                                "work_order.read_all",
+                                "work_order.manage",
+                                "work_order.progress",
+                                "work_order.review",
+                                "import.run",
+                                "billing.read",
+                                "billing.manage",
+                                "role.manage",
+                                "crm.read",
+                                "crm.lead.manage",
+                                "crm.lead.convert",
+                                "crm.opportunity.manage",
+                                "crm.activity.manage",
+                                "crm.pipeline.manage",
+                                "inventory.read",
+                                "inventory.manage",
+                                "inventory.move",
+                                "inventory.consume",
+                                "purchasing.read",
+                                "purchasing.manage",
+                                "purchasing.approve",
+                                "sales.read",
+                                "sales.manage",
+                                "sales.issue",
+                                "finance.read",
+                                "finance.manage",
+                                "finance.issue",
+                                "asset.read",
+                                "asset.record",
+                                "asset.manage",
+                                "ledger.read",
+                                "ledger.post",
+                                "ledger.manage",
+                                "ledger.unlock",
+                                "hr.read",
+                                "hr.sensitive",
+                                "hr.manage",
+                                "expense.submit",
+                                "expense.approve",
+                                "payroll.run",
+                                "payroll.approve",
+                                "manufacturing.read",
+                                "manufacturing.manage"
+                              ]
+                            }
+                          },
+                          "removed": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "tenant.read",
+                                "tenant.update",
+                                "branding.manage",
+                                "member.read",
+                                "member.invite",
+                                "member.update_role",
+                                "member.suspend",
+                                "member.remove",
+                                "invitation.read",
+                                "invitation.revoke",
+                                "session.read",
+                                "session.revoke",
+                                "audit.read",
+                                "form.read",
+                                "form.manage",
+                                "submission.fill",
+                                "submission.read_all",
+                                "submission.amend",
+                                "storage.read",
+                                "customer.read",
+                                "customer.manage",
+                                "job_type.manage",
+                                "work_order.read_all",
+                                "work_order.manage",
+                                "work_order.progress",
+                                "work_order.review",
+                                "import.run",
+                                "billing.read",
+                                "billing.manage",
+                                "role.manage",
+                                "crm.read",
+                                "crm.lead.manage",
+                                "crm.lead.convert",
+                                "crm.opportunity.manage",
+                                "crm.activity.manage",
+                                "crm.pipeline.manage",
+                                "inventory.read",
+                                "inventory.manage",
+                                "inventory.move",
+                                "inventory.consume",
+                                "purchasing.read",
+                                "purchasing.manage",
+                                "purchasing.approve",
+                                "sales.read",
+                                "sales.manage",
+                                "sales.issue",
+                                "finance.read",
+                                "finance.manage",
+                                "finance.issue",
+                                "asset.read",
+                                "asset.record",
+                                "asset.manage",
+                                "ledger.read",
+                                "ledger.post",
+                                "ledger.manage",
+                                "ledger.unlock",
+                                "hr.read",
+                                "hr.sensitive",
+                                "hr.manage",
+                                "expense.submit",
+                                "expense.approve",
+                                "payroll.run",
+                                "payroll.approve",
+                                "manufacturing.read",
+                                "manufacturing.manage"
+                              ]
+                            }
+                          },
+                          "permissions": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "tenant.read",
+                                "tenant.update",
+                                "branding.manage",
+                                "member.read",
+                                "member.invite",
+                                "member.update_role",
+                                "member.suspend",
+                                "member.remove",
+                                "invitation.read",
+                                "invitation.revoke",
+                                "session.read",
+                                "session.revoke",
+                                "audit.read",
+                                "form.read",
+                                "form.manage",
+                                "submission.fill",
+                                "submission.read_all",
+                                "submission.amend",
+                                "storage.read",
+                                "customer.read",
+                                "customer.manage",
+                                "job_type.manage",
+                                "work_order.read_all",
+                                "work_order.manage",
+                                "work_order.progress",
+                                "work_order.review",
+                                "import.run",
+                                "billing.read",
+                                "billing.manage",
+                                "role.manage",
+                                "crm.read",
+                                "crm.lead.manage",
+                                "crm.lead.convert",
+                                "crm.opportunity.manage",
+                                "crm.activity.manage",
+                                "crm.pipeline.manage",
+                                "inventory.read",
+                                "inventory.manage",
+                                "inventory.move",
+                                "inventory.consume",
+                                "purchasing.read",
+                                "purchasing.manage",
+                                "purchasing.approve",
+                                "sales.read",
+                                "sales.manage",
+                                "sales.issue",
+                                "finance.read",
+                                "finance.manage",
+                                "finance.issue",
+                                "asset.read",
+                                "asset.record",
+                                "asset.manage",
+                                "ledger.read",
+                                "ledger.post",
+                                "ledger.manage",
+                                "ledger.unlock",
+                                "hr.read",
+                                "hr.sensitive",
+                                "hr.manage",
+                                "expense.submit",
+                                "expense.approve",
+                                "payroll.run",
+                                "payroll.approve",
+                                "manufacturing.read",
+                                "manufacturing.manage"
+                              ]
+                            }
+                          },
+                          "holders": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "archivedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "description",
+                          "baseRole",
+                          "added",
+                          "removed",
+                          "permissions",
+                          "holders",
+                          "version",
+                          "createdAt",
+                          "archivedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "can": {
+                      "type": "object",
+                      "properties": {
+                        "manage": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "manage"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "can"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createCompanyRole",
+        "summary": "Define a company role",
+        "description": "Built on a built-in role (not the owner), adding or taking away permissions. Only the owner. 422 `permission_not_addable`; 409 `name_taken`. Honours `Idempotency-Key`.",
+        "tags": [
+          "workspace"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "description": "A client-generated key. Replaying a request with the same key returns the original response and repeats no effect."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "description": {
+                    "default": null,
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "added": {
+                    "default": [],
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "tenant.read",
+                        "tenant.update",
+                        "branding.manage",
+                        "member.read",
+                        "member.invite",
+                        "member.update_role",
+                        "member.suspend",
+                        "member.remove",
+                        "invitation.read",
+                        "invitation.revoke",
+                        "session.read",
+                        "session.revoke",
+                        "audit.read",
+                        "form.read",
+                        "form.manage",
+                        "submission.fill",
+                        "submission.read_all",
+                        "submission.amend",
+                        "storage.read",
+                        "customer.read",
+                        "customer.manage",
+                        "job_type.manage",
+                        "work_order.read_all",
+                        "work_order.manage",
+                        "work_order.progress",
+                        "work_order.review",
+                        "import.run",
+                        "billing.read",
+                        "billing.manage",
+                        "role.manage",
+                        "crm.read",
+                        "crm.lead.manage",
+                        "crm.lead.convert",
+                        "crm.opportunity.manage",
+                        "crm.activity.manage",
+                        "crm.pipeline.manage",
+                        "inventory.read",
+                        "inventory.manage",
+                        "inventory.move",
+                        "inventory.consume",
+                        "purchasing.read",
+                        "purchasing.manage",
+                        "purchasing.approve",
+                        "sales.read",
+                        "sales.manage",
+                        "sales.issue",
+                        "finance.read",
+                        "finance.manage",
+                        "finance.issue",
+                        "asset.read",
+                        "asset.record",
+                        "asset.manage",
+                        "ledger.read",
+                        "ledger.post",
+                        "ledger.manage",
+                        "ledger.unlock",
+                        "hr.read",
+                        "hr.sensitive",
+                        "hr.manage",
+                        "expense.submit",
+                        "expense.approve",
+                        "payroll.run",
+                        "payroll.approve",
+                        "manufacturing.read",
+                        "manufacturing.manage"
+                      ]
+                    }
+                  },
+                  "removed": {
+                    "default": [],
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "tenant.read",
+                        "tenant.update",
+                        "branding.manage",
+                        "member.read",
+                        "member.invite",
+                        "member.update_role",
+                        "member.suspend",
+                        "member.remove",
+                        "invitation.read",
+                        "invitation.revoke",
+                        "session.read",
+                        "session.revoke",
+                        "audit.read",
+                        "form.read",
+                        "form.manage",
+                        "submission.fill",
+                        "submission.read_all",
+                        "submission.amend",
+                        "storage.read",
+                        "customer.read",
+                        "customer.manage",
+                        "job_type.manage",
+                        "work_order.read_all",
+                        "work_order.manage",
+                        "work_order.progress",
+                        "work_order.review",
+                        "import.run",
+                        "billing.read",
+                        "billing.manage",
+                        "role.manage",
+                        "crm.read",
+                        "crm.lead.manage",
+                        "crm.lead.convert",
+                        "crm.opportunity.manage",
+                        "crm.activity.manage",
+                        "crm.pipeline.manage",
+                        "inventory.read",
+                        "inventory.manage",
+                        "inventory.move",
+                        "inventory.consume",
+                        "purchasing.read",
+                        "purchasing.manage",
+                        "purchasing.approve",
+                        "sales.read",
+                        "sales.manage",
+                        "sales.issue",
+                        "finance.read",
+                        "finance.manage",
+                        "finance.issue",
+                        "asset.read",
+                        "asset.record",
+                        "asset.manage",
+                        "ledger.read",
+                        "ledger.post",
+                        "ledger.manage",
+                        "ledger.unlock",
+                        "hr.read",
+                        "hr.sensitive",
+                        "hr.manage",
+                        "expense.submit",
+                        "expense.approve",
+                        "payroll.run",
+                        "payroll.approve",
+                        "manufacturing.read",
+                        "manufacturing.manage"
+                      ]
+                    }
+                  },
+                  "baseRole": {
+                    "type": "string",
+                    "enum": [
+                      "admin",
+                      "hr_manager",
+                      "inventory_manager",
+                      "dispatcher",
+                      "engineer",
+                      "viewer"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "baseRole"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "baseRole": {
+                      "type": "string",
+                      "enum": [
+                        "admin",
+                        "hr_manager",
+                        "inventory_manager",
+                        "dispatcher",
+                        "engineer",
+                        "viewer"
+                      ]
+                    },
+                    "added": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "tenant.read",
+                          "tenant.update",
+                          "branding.manage",
+                          "member.read",
+                          "member.invite",
+                          "member.update_role",
+                          "member.suspend",
+                          "member.remove",
+                          "invitation.read",
+                          "invitation.revoke",
+                          "session.read",
+                          "session.revoke",
+                          "audit.read",
+                          "form.read",
+                          "form.manage",
+                          "submission.fill",
+                          "submission.read_all",
+                          "submission.amend",
+                          "storage.read",
+                          "customer.read",
+                          "customer.manage",
+                          "job_type.manage",
+                          "work_order.read_all",
+                          "work_order.manage",
+                          "work_order.progress",
+                          "work_order.review",
+                          "import.run",
+                          "billing.read",
+                          "billing.manage",
+                          "role.manage",
+                          "crm.read",
+                          "crm.lead.manage",
+                          "crm.lead.convert",
+                          "crm.opportunity.manage",
+                          "crm.activity.manage",
+                          "crm.pipeline.manage",
+                          "inventory.read",
+                          "inventory.manage",
+                          "inventory.move",
+                          "inventory.consume",
+                          "purchasing.read",
+                          "purchasing.manage",
+                          "purchasing.approve",
+                          "sales.read",
+                          "sales.manage",
+                          "sales.issue",
+                          "finance.read",
+                          "finance.manage",
+                          "finance.issue",
+                          "asset.read",
+                          "asset.record",
+                          "asset.manage",
+                          "ledger.read",
+                          "ledger.post",
+                          "ledger.manage",
+                          "ledger.unlock",
+                          "hr.read",
+                          "hr.sensitive",
+                          "hr.manage",
+                          "expense.submit",
+                          "expense.approve",
+                          "payroll.run",
+                          "payroll.approve",
+                          "manufacturing.read",
+                          "manufacturing.manage"
+                        ]
+                      }
+                    },
+                    "removed": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "tenant.read",
+                          "tenant.update",
+                          "branding.manage",
+                          "member.read",
+                          "member.invite",
+                          "member.update_role",
+                          "member.suspend",
+                          "member.remove",
+                          "invitation.read",
+                          "invitation.revoke",
+                          "session.read",
+                          "session.revoke",
+                          "audit.read",
+                          "form.read",
+                          "form.manage",
+                          "submission.fill",
+                          "submission.read_all",
+                          "submission.amend",
+                          "storage.read",
+                          "customer.read",
+                          "customer.manage",
+                          "job_type.manage",
+                          "work_order.read_all",
+                          "work_order.manage",
+                          "work_order.progress",
+                          "work_order.review",
+                          "import.run",
+                          "billing.read",
+                          "billing.manage",
+                          "role.manage",
+                          "crm.read",
+                          "crm.lead.manage",
+                          "crm.lead.convert",
+                          "crm.opportunity.manage",
+                          "crm.activity.manage",
+                          "crm.pipeline.manage",
+                          "inventory.read",
+                          "inventory.manage",
+                          "inventory.move",
+                          "inventory.consume",
+                          "purchasing.read",
+                          "purchasing.manage",
+                          "purchasing.approve",
+                          "sales.read",
+                          "sales.manage",
+                          "sales.issue",
+                          "finance.read",
+                          "finance.manage",
+                          "finance.issue",
+                          "asset.read",
+                          "asset.record",
+                          "asset.manage",
+                          "ledger.read",
+                          "ledger.post",
+                          "ledger.manage",
+                          "ledger.unlock",
+                          "hr.read",
+                          "hr.sensitive",
+                          "hr.manage",
+                          "expense.submit",
+                          "expense.approve",
+                          "payroll.run",
+                          "payroll.approve",
+                          "manufacturing.read",
+                          "manufacturing.manage"
+                        ]
+                      }
+                    },
+                    "permissions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "tenant.read",
+                          "tenant.update",
+                          "branding.manage",
+                          "member.read",
+                          "member.invite",
+                          "member.update_role",
+                          "member.suspend",
+                          "member.remove",
+                          "invitation.read",
+                          "invitation.revoke",
+                          "session.read",
+                          "session.revoke",
+                          "audit.read",
+                          "form.read",
+                          "form.manage",
+                          "submission.fill",
+                          "submission.read_all",
+                          "submission.amend",
+                          "storage.read",
+                          "customer.read",
+                          "customer.manage",
+                          "job_type.manage",
+                          "work_order.read_all",
+                          "work_order.manage",
+                          "work_order.progress",
+                          "work_order.review",
+                          "import.run",
+                          "billing.read",
+                          "billing.manage",
+                          "role.manage",
+                          "crm.read",
+                          "crm.lead.manage",
+                          "crm.lead.convert",
+                          "crm.opportunity.manage",
+                          "crm.activity.manage",
+                          "crm.pipeline.manage",
+                          "inventory.read",
+                          "inventory.manage",
+                          "inventory.move",
+                          "inventory.consume",
+                          "purchasing.read",
+                          "purchasing.manage",
+                          "purchasing.approve",
+                          "sales.read",
+                          "sales.manage",
+                          "sales.issue",
+                          "finance.read",
+                          "finance.manage",
+                          "finance.issue",
+                          "asset.read",
+                          "asset.record",
+                          "asset.manage",
+                          "ledger.read",
+                          "ledger.post",
+                          "ledger.manage",
+                          "ledger.unlock",
+                          "hr.read",
+                          "hr.sensitive",
+                          "hr.manage",
+                          "expense.submit",
+                          "expense.approve",
+                          "payroll.run",
+                          "payroll.approve",
+                          "manufacturing.read",
+                          "manufacturing.manage"
+                        ]
+                      }
+                    },
+                    "holders": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "archivedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "baseRole",
+                    "added",
+                    "removed",
+                    "permissions",
+                    "holders",
+                    "version",
+                    "createdAt",
+                    "archivedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Another role has this name (`name_taken`)."
+          },
+          "422": {
+            "description": "A permission a company role cannot hold (`permission_not_addable`)."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/roles/{roleId}": {
+      "put": {
+        "operationId": "updateCompanyRole",
+        "summary": "Change a company role",
+        "description": "Its name, description, and what it adds and takes away; its base never changes. When what it holds changes, everybody holding it is signed out, so their next token carries the change. Only the owner.",
+        "tags": [
+          "workspace"
+        ],
+        "parameters": [
+          {
+            "name": "roleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "description": {
+                    "default": null,
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "added": {
+                    "default": [],
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "tenant.read",
+                        "tenant.update",
+                        "branding.manage",
+                        "member.read",
+                        "member.invite",
+                        "member.update_role",
+                        "member.suspend",
+                        "member.remove",
+                        "invitation.read",
+                        "invitation.revoke",
+                        "session.read",
+                        "session.revoke",
+                        "audit.read",
+                        "form.read",
+                        "form.manage",
+                        "submission.fill",
+                        "submission.read_all",
+                        "submission.amend",
+                        "storage.read",
+                        "customer.read",
+                        "customer.manage",
+                        "job_type.manage",
+                        "work_order.read_all",
+                        "work_order.manage",
+                        "work_order.progress",
+                        "work_order.review",
+                        "import.run",
+                        "billing.read",
+                        "billing.manage",
+                        "role.manage",
+                        "crm.read",
+                        "crm.lead.manage",
+                        "crm.lead.convert",
+                        "crm.opportunity.manage",
+                        "crm.activity.manage",
+                        "crm.pipeline.manage",
+                        "inventory.read",
+                        "inventory.manage",
+                        "inventory.move",
+                        "inventory.consume",
+                        "purchasing.read",
+                        "purchasing.manage",
+                        "purchasing.approve",
+                        "sales.read",
+                        "sales.manage",
+                        "sales.issue",
+                        "finance.read",
+                        "finance.manage",
+                        "finance.issue",
+                        "asset.read",
+                        "asset.record",
+                        "asset.manage",
+                        "ledger.read",
+                        "ledger.post",
+                        "ledger.manage",
+                        "ledger.unlock",
+                        "hr.read",
+                        "hr.sensitive",
+                        "hr.manage",
+                        "expense.submit",
+                        "expense.approve",
+                        "payroll.run",
+                        "payroll.approve",
+                        "manufacturing.read",
+                        "manufacturing.manage"
+                      ]
+                    }
+                  },
+                  "removed": {
+                    "default": [],
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "tenant.read",
+                        "tenant.update",
+                        "branding.manage",
+                        "member.read",
+                        "member.invite",
+                        "member.update_role",
+                        "member.suspend",
+                        "member.remove",
+                        "invitation.read",
+                        "invitation.revoke",
+                        "session.read",
+                        "session.revoke",
+                        "audit.read",
+                        "form.read",
+                        "form.manage",
+                        "submission.fill",
+                        "submission.read_all",
+                        "submission.amend",
+                        "storage.read",
+                        "customer.read",
+                        "customer.manage",
+                        "job_type.manage",
+                        "work_order.read_all",
+                        "work_order.manage",
+                        "work_order.progress",
+                        "work_order.review",
+                        "import.run",
+                        "billing.read",
+                        "billing.manage",
+                        "role.manage",
+                        "crm.read",
+                        "crm.lead.manage",
+                        "crm.lead.convert",
+                        "crm.opportunity.manage",
+                        "crm.activity.manage",
+                        "crm.pipeline.manage",
+                        "inventory.read",
+                        "inventory.manage",
+                        "inventory.move",
+                        "inventory.consume",
+                        "purchasing.read",
+                        "purchasing.manage",
+                        "purchasing.approve",
+                        "sales.read",
+                        "sales.manage",
+                        "sales.issue",
+                        "finance.read",
+                        "finance.manage",
+                        "finance.issue",
+                        "asset.read",
+                        "asset.record",
+                        "asset.manage",
+                        "ledger.read",
+                        "ledger.post",
+                        "ledger.manage",
+                        "ledger.unlock",
+                        "hr.read",
+                        "hr.sensitive",
+                        "hr.manage",
+                        "expense.submit",
+                        "expense.approve",
+                        "payroll.run",
+                        "payroll.approve",
+                        "manufacturing.read",
+                        "manufacturing.manage"
+                      ]
+                    }
+                  },
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "name",
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "baseRole": {
+                      "type": "string",
+                      "enum": [
+                        "admin",
+                        "hr_manager",
+                        "inventory_manager",
+                        "dispatcher",
+                        "engineer",
+                        "viewer"
+                      ]
+                    },
+                    "added": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "tenant.read",
+                          "tenant.update",
+                          "branding.manage",
+                          "member.read",
+                          "member.invite",
+                          "member.update_role",
+                          "member.suspend",
+                          "member.remove",
+                          "invitation.read",
+                          "invitation.revoke",
+                          "session.read",
+                          "session.revoke",
+                          "audit.read",
+                          "form.read",
+                          "form.manage",
+                          "submission.fill",
+                          "submission.read_all",
+                          "submission.amend",
+                          "storage.read",
+                          "customer.read",
+                          "customer.manage",
+                          "job_type.manage",
+                          "work_order.read_all",
+                          "work_order.manage",
+                          "work_order.progress",
+                          "work_order.review",
+                          "import.run",
+                          "billing.read",
+                          "billing.manage",
+                          "role.manage",
+                          "crm.read",
+                          "crm.lead.manage",
+                          "crm.lead.convert",
+                          "crm.opportunity.manage",
+                          "crm.activity.manage",
+                          "crm.pipeline.manage",
+                          "inventory.read",
+                          "inventory.manage",
+                          "inventory.move",
+                          "inventory.consume",
+                          "purchasing.read",
+                          "purchasing.manage",
+                          "purchasing.approve",
+                          "sales.read",
+                          "sales.manage",
+                          "sales.issue",
+                          "finance.read",
+                          "finance.manage",
+                          "finance.issue",
+                          "asset.read",
+                          "asset.record",
+                          "asset.manage",
+                          "ledger.read",
+                          "ledger.post",
+                          "ledger.manage",
+                          "ledger.unlock",
+                          "hr.read",
+                          "hr.sensitive",
+                          "hr.manage",
+                          "expense.submit",
+                          "expense.approve",
+                          "payroll.run",
+                          "payroll.approve",
+                          "manufacturing.read",
+                          "manufacturing.manage"
+                        ]
+                      }
+                    },
+                    "removed": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "tenant.read",
+                          "tenant.update",
+                          "branding.manage",
+                          "member.read",
+                          "member.invite",
+                          "member.update_role",
+                          "member.suspend",
+                          "member.remove",
+                          "invitation.read",
+                          "invitation.revoke",
+                          "session.read",
+                          "session.revoke",
+                          "audit.read",
+                          "form.read",
+                          "form.manage",
+                          "submission.fill",
+                          "submission.read_all",
+                          "submission.amend",
+                          "storage.read",
+                          "customer.read",
+                          "customer.manage",
+                          "job_type.manage",
+                          "work_order.read_all",
+                          "work_order.manage",
+                          "work_order.progress",
+                          "work_order.review",
+                          "import.run",
+                          "billing.read",
+                          "billing.manage",
+                          "role.manage",
+                          "crm.read",
+                          "crm.lead.manage",
+                          "crm.lead.convert",
+                          "crm.opportunity.manage",
+                          "crm.activity.manage",
+                          "crm.pipeline.manage",
+                          "inventory.read",
+                          "inventory.manage",
+                          "inventory.move",
+                          "inventory.consume",
+                          "purchasing.read",
+                          "purchasing.manage",
+                          "purchasing.approve",
+                          "sales.read",
+                          "sales.manage",
+                          "sales.issue",
+                          "finance.read",
+                          "finance.manage",
+                          "finance.issue",
+                          "asset.read",
+                          "asset.record",
+                          "asset.manage",
+                          "ledger.read",
+                          "ledger.post",
+                          "ledger.manage",
+                          "ledger.unlock",
+                          "hr.read",
+                          "hr.sensitive",
+                          "hr.manage",
+                          "expense.submit",
+                          "expense.approve",
+                          "payroll.run",
+                          "payroll.approve",
+                          "manufacturing.read",
+                          "manufacturing.manage"
+                        ]
+                      }
+                    },
+                    "permissions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "tenant.read",
+                          "tenant.update",
+                          "branding.manage",
+                          "member.read",
+                          "member.invite",
+                          "member.update_role",
+                          "member.suspend",
+                          "member.remove",
+                          "invitation.read",
+                          "invitation.revoke",
+                          "session.read",
+                          "session.revoke",
+                          "audit.read",
+                          "form.read",
+                          "form.manage",
+                          "submission.fill",
+                          "submission.read_all",
+                          "submission.amend",
+                          "storage.read",
+                          "customer.read",
+                          "customer.manage",
+                          "job_type.manage",
+                          "work_order.read_all",
+                          "work_order.manage",
+                          "work_order.progress",
+                          "work_order.review",
+                          "import.run",
+                          "billing.read",
+                          "billing.manage",
+                          "role.manage",
+                          "crm.read",
+                          "crm.lead.manage",
+                          "crm.lead.convert",
+                          "crm.opportunity.manage",
+                          "crm.activity.manage",
+                          "crm.pipeline.manage",
+                          "inventory.read",
+                          "inventory.manage",
+                          "inventory.move",
+                          "inventory.consume",
+                          "purchasing.read",
+                          "purchasing.manage",
+                          "purchasing.approve",
+                          "sales.read",
+                          "sales.manage",
+                          "sales.issue",
+                          "finance.read",
+                          "finance.manage",
+                          "finance.issue",
+                          "asset.read",
+                          "asset.record",
+                          "asset.manage",
+                          "ledger.read",
+                          "ledger.post",
+                          "ledger.manage",
+                          "ledger.unlock",
+                          "hr.read",
+                          "hr.sensitive",
+                          "hr.manage",
+                          "expense.submit",
+                          "expense.approve",
+                          "payroll.run",
+                          "payroll.approve",
+                          "manufacturing.read",
+                          "manufacturing.manage"
+                        ]
+                      }
+                    },
+                    "holders": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "archivedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "baseRole",
+                    "added",
+                    "removed",
+                    "permissions",
+                    "holders",
+                    "version",
+                    "createdAt",
+                    "archivedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such role."
+          },
+          "409": {
+            "description": "Changed elsewhere (`version_conflict`) or another role has this name (`name_taken`)."
+          },
+          "422": {
+            "description": "A permission a company role cannot hold (`permission_not_addable`)."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/roles/{roleId}/archive": {
+      "post": {
+        "operationId": "archiveCompanyRole",
+        "summary": "Retire a company role nobody holds",
+        "description": "Only the owner. 409 `role_in_use` while somebody holds it.",
+        "tags": [
+          "workspace"
+        ],
+        "parameters": [
+          {
+            "name": "roleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The role, archived.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "baseRole": {
+                      "type": "string",
+                      "enum": [
+                        "admin",
+                        "hr_manager",
+                        "inventory_manager",
+                        "dispatcher",
+                        "engineer",
+                        "viewer"
+                      ]
+                    },
+                    "added": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "tenant.read",
+                          "tenant.update",
+                          "branding.manage",
+                          "member.read",
+                          "member.invite",
+                          "member.update_role",
+                          "member.suspend",
+                          "member.remove",
+                          "invitation.read",
+                          "invitation.revoke",
+                          "session.read",
+                          "session.revoke",
+                          "audit.read",
+                          "form.read",
+                          "form.manage",
+                          "submission.fill",
+                          "submission.read_all",
+                          "submission.amend",
+                          "storage.read",
+                          "customer.read",
+                          "customer.manage",
+                          "job_type.manage",
+                          "work_order.read_all",
+                          "work_order.manage",
+                          "work_order.progress",
+                          "work_order.review",
+                          "import.run",
+                          "billing.read",
+                          "billing.manage",
+                          "role.manage",
+                          "crm.read",
+                          "crm.lead.manage",
+                          "crm.lead.convert",
+                          "crm.opportunity.manage",
+                          "crm.activity.manage",
+                          "crm.pipeline.manage",
+                          "inventory.read",
+                          "inventory.manage",
+                          "inventory.move",
+                          "inventory.consume",
+                          "purchasing.read",
+                          "purchasing.manage",
+                          "purchasing.approve",
+                          "sales.read",
+                          "sales.manage",
+                          "sales.issue",
+                          "finance.read",
+                          "finance.manage",
+                          "finance.issue",
+                          "asset.read",
+                          "asset.record",
+                          "asset.manage",
+                          "ledger.read",
+                          "ledger.post",
+                          "ledger.manage",
+                          "ledger.unlock",
+                          "hr.read",
+                          "hr.sensitive",
+                          "hr.manage",
+                          "expense.submit",
+                          "expense.approve",
+                          "payroll.run",
+                          "payroll.approve",
+                          "manufacturing.read",
+                          "manufacturing.manage"
+                        ]
+                      }
+                    },
+                    "removed": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "tenant.read",
+                          "tenant.update",
+                          "branding.manage",
+                          "member.read",
+                          "member.invite",
+                          "member.update_role",
+                          "member.suspend",
+                          "member.remove",
+                          "invitation.read",
+                          "invitation.revoke",
+                          "session.read",
+                          "session.revoke",
+                          "audit.read",
+                          "form.read",
+                          "form.manage",
+                          "submission.fill",
+                          "submission.read_all",
+                          "submission.amend",
+                          "storage.read",
+                          "customer.read",
+                          "customer.manage",
+                          "job_type.manage",
+                          "work_order.read_all",
+                          "work_order.manage",
+                          "work_order.progress",
+                          "work_order.review",
+                          "import.run",
+                          "billing.read",
+                          "billing.manage",
+                          "role.manage",
+                          "crm.read",
+                          "crm.lead.manage",
+                          "crm.lead.convert",
+                          "crm.opportunity.manage",
+                          "crm.activity.manage",
+                          "crm.pipeline.manage",
+                          "inventory.read",
+                          "inventory.manage",
+                          "inventory.move",
+                          "inventory.consume",
+                          "purchasing.read",
+                          "purchasing.manage",
+                          "purchasing.approve",
+                          "sales.read",
+                          "sales.manage",
+                          "sales.issue",
+                          "finance.read",
+                          "finance.manage",
+                          "finance.issue",
+                          "asset.read",
+                          "asset.record",
+                          "asset.manage",
+                          "ledger.read",
+                          "ledger.post",
+                          "ledger.manage",
+                          "ledger.unlock",
+                          "hr.read",
+                          "hr.sensitive",
+                          "hr.manage",
+                          "expense.submit",
+                          "expense.approve",
+                          "payroll.run",
+                          "payroll.approve",
+                          "manufacturing.read",
+                          "manufacturing.manage"
+                        ]
+                      }
+                    },
+                    "permissions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "tenant.read",
+                          "tenant.update",
+                          "branding.manage",
+                          "member.read",
+                          "member.invite",
+                          "member.update_role",
+                          "member.suspend",
+                          "member.remove",
+                          "invitation.read",
+                          "invitation.revoke",
+                          "session.read",
+                          "session.revoke",
+                          "audit.read",
+                          "form.read",
+                          "form.manage",
+                          "submission.fill",
+                          "submission.read_all",
+                          "submission.amend",
+                          "storage.read",
+                          "customer.read",
+                          "customer.manage",
+                          "job_type.manage",
+                          "work_order.read_all",
+                          "work_order.manage",
+                          "work_order.progress",
+                          "work_order.review",
+                          "import.run",
+                          "billing.read",
+                          "billing.manage",
+                          "role.manage",
+                          "crm.read",
+                          "crm.lead.manage",
+                          "crm.lead.convert",
+                          "crm.opportunity.manage",
+                          "crm.activity.manage",
+                          "crm.pipeline.manage",
+                          "inventory.read",
+                          "inventory.manage",
+                          "inventory.move",
+                          "inventory.consume",
+                          "purchasing.read",
+                          "purchasing.manage",
+                          "purchasing.approve",
+                          "sales.read",
+                          "sales.manage",
+                          "sales.issue",
+                          "finance.read",
+                          "finance.manage",
+                          "finance.issue",
+                          "asset.read",
+                          "asset.record",
+                          "asset.manage",
+                          "ledger.read",
+                          "ledger.post",
+                          "ledger.manage",
+                          "ledger.unlock",
+                          "hr.read",
+                          "hr.sensitive",
+                          "hr.manage",
+                          "expense.submit",
+                          "expense.approve",
+                          "payroll.run",
+                          "payroll.approve",
+                          "manufacturing.read",
+                          "manufacturing.manage"
+                        ]
+                      }
+                    },
+                    "holders": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "archivedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "baseRole",
+                    "added",
+                    "removed",
+                    "permissions",
+                    "holders",
+                    "version",
+                    "createdAt",
+                    "archivedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such role."
+          },
+          "409": {
+            "description": "Somebody holds it (`role_in_use`), or it changed (`version_conflict`)."
           },
           "422": {
             "description": "The request failed validation.",

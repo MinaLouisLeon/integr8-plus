@@ -18,6 +18,7 @@ import {
   revokedSchema,
   sessionSchema,
 } from './schemas.js';
+import { customRoleBody, customRoleNames, customRoleOf } from './roles.js';
 
 /**
  * Who I am, my devices, and the people in this company.
@@ -44,11 +45,12 @@ export const meRoute = defineRoute({
     404: { description: 'The membership behind this token no longer exists.' },
   },
   handler: async (_input, context) => {
-    const { member, grants, features, settings } = await withTenant(
+    const { member, grants, customRole, features, settings } = await withTenant(
       context.principal.tenantId,
       async (tx) => ({
         member: await tx.tenantUsers.findByUserId(context.principal.userId),
         grants: await tx.memberGrants.forUser(context.principal.userId),
+        customRole: await customRoleOf(tx, context.principal.userId),
         features: await tx.featureFlags.resolved(),
         settings: await tx.settings.get(),
       }),
@@ -82,12 +84,17 @@ export const meRoute = defineRoute({
         displayName: seat.displayName,
         role: seat.role,
         grants: member === undefined ? [] : grants,
+        customRole:
+          member === undefined || customRole === undefined
+            ? null
+            : { id: customRole.id, name: customRole.name },
         // What this seat may do now, not the role's ceiling: form and job-type
         // management are held only while Integr8 staff sit in the seat. Read
         // from the membership and its grants, as the next token will carry.
         permissions: permissionsHeld({
           role: seat.role,
           grants: member === undefined ? [] : grants,
+          customRole: member === undefined ? undefined : customRole,
           impersonatedBy: context.principal.impersonatedBy,
         }),
         company: await companyBrand(context.principal.tenantId, settings),
@@ -246,13 +253,17 @@ export const listMembersRoute = defineRoute({
   body: noSchema,
   responses: { 200: { description: 'Members.', schema: listSchema(memberSchema) } },
   handler: async ({ query }, context) => {
-    const { members, grants } = await withTenant(context.principal.tenantId, async (tx) => {
-      const listed = await tx.tenantUsers.list({ limit: query.limit });
-      return {
-        members: listed,
-        grants: await tx.memberGrants.forUsers(listed.map((member) => member.userId)),
-      };
-    });
+    const { members, grants, roleNames } = await withTenant(
+      context.principal.tenantId,
+      async (tx) => {
+        const listed = await tx.tenantUsers.list({ limit: query.limit });
+        return {
+          members: listed,
+          grants: await tx.memberGrants.forUsers(listed.map((member) => member.userId)),
+          roleNames: await customRoleNames(tx),
+        };
+      },
+    );
 
     return {
       status: 200,
@@ -263,6 +274,7 @@ export const listMembersRoute = defineRoute({
           displayName: member.displayName,
           role: member.role,
           grants: grants.get(member.userId) ?? [],
+          customRole: customRoleBody(member.customRoleId, roleNames),
           status: member.status,
           createdAt: iso(member.createdAt),
         })),
