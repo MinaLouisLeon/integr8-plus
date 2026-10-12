@@ -91,10 +91,19 @@ describe('toPrincipal', () => {
       userId: USER,
       tenantId: TENANT,
       role: 'engineer',
+      grants: [],
       sessionId: SESSION,
       tokenId: TOKEN_ID,
       expiresAt: new Date(access.exp * 1000),
     });
+  });
+
+  it('carries the grants a token names, and none when it names none', () => {
+    const granted = toPrincipal(
+      accessTokenClaimsSchema.parse({ ...access, grt: ['inventory_manager'] }),
+    );
+    expect(granted.grants).toEqual(['inventory_manager']);
+    expect(() => accessTokenClaimsSchema.parse({ ...access, grt: ['owner'] })).toThrow();
   });
 
   it('carries impersonation through, and omits the key entirely when absent', () => {

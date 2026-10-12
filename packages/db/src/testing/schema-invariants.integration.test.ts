@@ -29,6 +29,7 @@ import {
   OPPORTUNITY_STATUSES,
   STAGE_OUTCOMES,
   ROLES,
+  GRANTS,
   WORK_ORDER_PRIORITIES,
   WORK_ORDER_STATES,
 } from '@integr8/core';
@@ -535,6 +536,9 @@ describe('vocabularies shared with the application', () => {
       ['erp_ledger_postings_source_kind_known', JOURNAL_SOURCE_KINDS],
       ['erp_ledger_postings_status_known', LEDGER_POSTING_STATUSES],
       ['erp_ledger_postings_reason_known', LEDGER_POSTING_REASONS],
+      // Roles and grants (0036).
+      ['invitations_role_known', ROLES],
+      ['member_grants_capability_known', GRANTS],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,

@@ -22,6 +22,7 @@ import {
   type OpportunityEventKind,
   type OpportunityStatus,
   type Role,
+  type Grant,
   ROLES,
   type StageOutcome,
   type WorkOrderPriority,
@@ -1749,6 +1750,43 @@ export interface ErpLedgerYearClosesTable {
   reopening_journal_id: string | null;
 }
 
+/** Capabilities on top of a member's role (0036; ADR-0010). */
+export interface MemberGrantsTable {
+  tenant_id: string;
+  user_id: string;
+  capability: Grant;
+  granted_by: string;
+  granted_at: Generated<Date>;
+}
+
+/** Employee profiles (0036; ADR-0010). Sealed columns hold API-written ciphertext. */
+export interface HrEmployeesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  user_id: string | null;
+  employee_number: string | null;
+  full_name: string;
+  job_title: string | null;
+  department: string | null;
+  phone: string | null;
+  hire_date: string | Date;
+  end_date: string | Date | null;
+  end_reason: string | null;
+  national_id_sealed: string | null;
+  national_id_last4: string | null;
+  insurance_number_sealed: string | null;
+  insurance_number_last4: string | null;
+  bank_name: string | null;
+  bank_account_sealed: string | null;
+  bank_account_last4: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
 export interface CustomerContactsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -2289,6 +2327,8 @@ export interface Database {
   erp_journal_lines: ErpJournalLinesTable;
   erp_ledger_year_closes: ErpLedgerYearClosesTable;
   erp_ledger_postings: ErpLedgerPostingsTable;
+  member_grants: MemberGrantsTable;
+  hr_employees: HrEmployeesTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -2538,6 +2578,8 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_journal_lines: true,
   erp_ledger_year_closes: true,
   erp_ledger_postings: true,
+  member_grants: true,
+  hr_employees: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

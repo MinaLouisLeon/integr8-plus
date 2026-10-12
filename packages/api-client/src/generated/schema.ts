@@ -298,6 +298,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/members/{userId}/grants/{capability}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Give somebody a capability on top of their role
+         * @description An HR manager or inventory manager grant (ADR-0010) on top of whatever role the person has. Only the owner gives the HR one; the owner or an admin gives the inventory one. Takes effect at their next token, within fifteen minutes. 409 `role_holds_grant` when their role already includes it.
+         */
+        put: operations["giveMemberGrant"];
+        post?: never;
+        /**
+         * Take a capability back
+         * @description Only the owner takes the HR grant back; the owner or an admin the inventory one. Their sessions end, so the next token they get no longer carries it.
+         */
+        delete: operations["removeMemberGrant"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/signup": {
         parameters: {
             query?: never;
@@ -3718,6 +3742,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/hr/employees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Employees, by name
+         * @description `q` matches the name, employee number, title or department. Active ones unless `status=ended` or `status=all`. ID and bank numbers appear only as their last four, and only to owners and HR managers.
+         */
+        get: operations["listEmployees"];
+        put?: never;
+        /**
+         * Add an employee
+         * @description Linked to a member (`userId`; the name defaults to theirs, 409 `member_taken` when they have a profile) or standing alone with a `fullName`. ID, insurance and bank numbers are sealed before they are stored and need `hr.sensitive` and the server’s HR_DATA_KEY (503 `hr_key_missing`). Honours `Idempotency-Key`.
+         */
+        post: operations["createEmployee"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/hr/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My own employee profile
+         * @description Every member reads their own profile, ID and bank details included. 404 when there is none.
+         */
+        get: operations["getMyEmployeeProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/hr/employees/{employeeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An employee profile
+         * @description For `hr.read`, or the person themselves.
+         */
+        get: operations["getEmployee"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change an employee profile, or end their employment
+         * @description With `expectedVersion` (409 `version_conflict`). `endDate` with `endReason` ends the employment; both `null` brings them back. A sensitive number is replaced by sending it, cleared by `null`. The audit names the fields changed, never their values.
+         */
+        patch: operations["updateEmployee"];
+        trace?: never;
+    };
+    "/v1/hr/employees/{employeeId}/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Show one sensitive number in full
+         * @description For owners and HR managers, or the person themselves. Every reveal is audited with who, when and which field.
+         */
+        post: operations["revealEmployeeField"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/job-types": {
         parameters: {
             query?: never;
@@ -5068,7 +5180,7 @@ export interface operations {
                             /** Format: uuid */
                             tenantId: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                         }[];
@@ -5246,7 +5358,7 @@ export interface operations {
                             /** Format: uuid */
                             tenantId: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                         }[];
@@ -5430,7 +5542,7 @@ export interface operations {
                             /** Format: uuid */
                             tenantId: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                         }[];
@@ -6040,7 +6152,7 @@ export interface operations {
                         id: string;
                         email: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -6126,7 +6238,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                    role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                 };
             };
         };
@@ -6143,7 +6255,8 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        grants: ("hr_manager" | "inventory_manager")[];
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
                         /** Format: date-time */
@@ -6249,7 +6362,8 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        grants: ("hr_manager" | "inventory_manager")[];
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
                         /** Format: date-time */
@@ -6376,6 +6490,201 @@ export interface operations {
             };
             /** @description This is the company’s only owner (`last_owner`). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    giveMemberGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                capability: "hr_manager" | "inventory_manager";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The person, with their grants. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        userId: string;
+                        email: string;
+                        displayName: string;
+                        /** @enum {string} */
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        grants: ("hr_manager" | "inventory_manager")[];
+                        /** @enum {string} */
+                        status: "invited" | "active" | "suspended";
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The HR grant is the owner’s to give. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such person in this company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Their role already includes it, or they are not active. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    removeMemberGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                capability: "hr_manager" | "inventory_manager";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The person, with their grants. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        userId: string;
+                        email: string;
+                        displayName: string;
+                        /** @enum {string} */
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        grants: ("hr_manager" | "inventory_manager")[];
+                        /** @enum {string} */
+                        status: "invited" | "active" | "suspended";
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The HR grant is the owner’s to take back. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such person in this company. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7522,8 +7831,9 @@ export interface operations {
                         email: string;
                         displayName: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
-                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock")[];
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        grants: ("hr_manager" | "inventory_manager")[];
+                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -7825,7 +8135,8 @@ export interface operations {
                             email: string;
                             displayName: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            grants: ("hr_manager" | "inventory_manager")[];
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
                             /** Format: date-time */
@@ -7911,7 +8222,7 @@ export interface operations {
                             id: string;
                             email: string;
                             /** @enum {string} */
-                            role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -7993,7 +8304,7 @@ export interface operations {
                 "application/json": {
                     email: string;
                     /** @enum {string} */
-                    role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                    role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                 };
             };
         };
@@ -8009,7 +8320,7 @@ export interface operations {
                         id: string;
                         email: string;
                         /** @enum {string} */
-                        role: "owner" | "admin" | "dispatcher" | "engineer" | "viewer";
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -8338,7 +8649,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -8441,7 +8752,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -8584,7 +8895,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -8716,7 +9027,7 @@ export interface operations {
             content: {
                 "application/json": {
                     title?: string;
-                    fillRoles?: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                    fillRoles?: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                     signatureRequired?: boolean;
                     requiredByJobTypeIds?: string[];
                 };
@@ -8733,7 +9044,7 @@ export interface operations {
                         /** Format: uuid */
                         id: string;
                         title: string;
-                        fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                        fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                         signatureRequired: boolean;
                         requiredByJobTypeIds: string[];
                         /** Format: uuid */
@@ -8838,7 +9149,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -9843,7 +10154,7 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             title: string;
-                            fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                            fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                             signatureRequired: boolean;
                             requiredByJobTypeIds: string[];
                             /** Format: uuid */
@@ -37887,6 +38198,791 @@ export interface operations {
             };
         };
     };
+    listEmployees: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: "active" | "ended" | "all";
+                department?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            employeeNumber: string | null;
+                            fullName: string;
+                            jobTitle: string | null;
+                            department: string | null;
+                            phone: string | null;
+                            /** Format: date */
+                            hireDate: string;
+                            /** Format: date */
+                            endDate: string | null;
+                            endReason: string | null;
+                            /** @enum {string} */
+                            status: "active" | "ended";
+                            member: {
+                                /** Format: uuid */
+                                userId: string;
+                                displayName: string;
+                                /** @enum {string} */
+                                role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                            } | null;
+                            sensitive: {
+                                nationalId: {
+                                    last4: string;
+                                } | null;
+                                insuranceNumber: {
+                                    last4: string;
+                                } | null;
+                                bankName: string | null;
+                                bankAccount: {
+                                    last4: string;
+                                } | null;
+                            } | null;
+                            emergencyContact: {
+                                name: string | null;
+                                phone: string | null;
+                            };
+                            version: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            can: {
+                                edit: boolean;
+                                reveal: boolean;
+                            };
+                        }[];
+                        nextCursor: string | null;
+                        departments: string[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createEmployee: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    userId?: string | null;
+                    employeeNumber?: string | null;
+                    fullName?: string;
+                    jobTitle?: string | null;
+                    department?: string | null;
+                    phone?: string | null;
+                    /** Format: date */
+                    hireDate: string;
+                    nationalId?: string | null;
+                    insuranceNumber?: string | null;
+                    bankName?: string | null;
+                    bankAccount?: string | null;
+                    emergencyContactName?: string | null;
+                    emergencyContactPhone?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The profile. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        employeeNumber: string | null;
+                        fullName: string;
+                        jobTitle: string | null;
+                        department: string | null;
+                        phone: string | null;
+                        /** Format: date */
+                        hireDate: string;
+                        /** Format: date */
+                        endDate: string | null;
+                        endReason: string | null;
+                        /** @enum {string} */
+                        status: "active" | "ended";
+                        member: {
+                            /** Format: uuid */
+                            userId: string;
+                            displayName: string;
+                            /** @enum {string} */
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        } | null;
+                        sensitive: {
+                            nationalId: {
+                                last4: string;
+                            } | null;
+                            insuranceNumber: {
+                                last4: string;
+                            } | null;
+                            bankName: string | null;
+                            bankAccount: {
+                                last4: string;
+                            } | null;
+                        } | null;
+                        emergencyContact: {
+                            name: string | null;
+                            phone: string | null;
+                        };
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        can: {
+                            edit: boolean;
+                            reveal: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The number or the member is already taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No name, or no such member. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description HR_DATA_KEY is not set. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMyEmployeeProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        employeeNumber: string | null;
+                        fullName: string;
+                        jobTitle: string | null;
+                        department: string | null;
+                        phone: string | null;
+                        /** Format: date */
+                        hireDate: string;
+                        /** Format: date */
+                        endDate: string | null;
+                        endReason: string | null;
+                        /** @enum {string} */
+                        status: "active" | "ended";
+                        member: {
+                            /** Format: uuid */
+                            userId: string;
+                            displayName: string;
+                            /** @enum {string} */
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        } | null;
+                        sensitive: {
+                            nationalId: {
+                                last4: string;
+                            } | null;
+                            insuranceNumber: {
+                                last4: string;
+                            } | null;
+                            bankName: string | null;
+                            bankAccount: {
+                                last4: string;
+                            } | null;
+                        } | null;
+                        emergencyContact: {
+                            name: string | null;
+                            phone: string | null;
+                        };
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        can: {
+                            edit: boolean;
+                            reveal: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No profile for this member. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getEmployee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        employeeNumber: string | null;
+                        fullName: string;
+                        jobTitle: string | null;
+                        department: string | null;
+                        phone: string | null;
+                        /** Format: date */
+                        hireDate: string;
+                        /** Format: date */
+                        endDate: string | null;
+                        endReason: string | null;
+                        /** @enum {string} */
+                        status: "active" | "ended";
+                        member: {
+                            /** Format: uuid */
+                            userId: string;
+                            displayName: string;
+                            /** @enum {string} */
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        } | null;
+                        sensitive: {
+                            nationalId: {
+                                last4: string;
+                            } | null;
+                            insuranceNumber: {
+                                last4: string;
+                            } | null;
+                            bankName: string | null;
+                            bankAccount: {
+                                last4: string;
+                            } | null;
+                        } | null;
+                        emergencyContact: {
+                            name: string | null;
+                            phone: string | null;
+                        };
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        can: {
+                            edit: boolean;
+                            reveal: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such employee. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateEmployee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    userId?: string | null;
+                    employeeNumber?: string | null;
+                    fullName?: string;
+                    jobTitle?: string | null;
+                    department?: string | null;
+                    phone?: string | null;
+                    /** Format: date */
+                    hireDate?: string;
+                    nationalId?: string | null;
+                    insuranceNumber?: string | null;
+                    bankName?: string | null;
+                    bankAccount?: string | null;
+                    emergencyContactName?: string | null;
+                    emergencyContactPhone?: string | null;
+                    expectedVersion: number;
+                    /** Format: date */
+                    endDate?: string | null;
+                    endReason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        employeeNumber: string | null;
+                        fullName: string;
+                        jobTitle: string | null;
+                        department: string | null;
+                        phone: string | null;
+                        /** Format: date */
+                        hireDate: string;
+                        /** Format: date */
+                        endDate: string | null;
+                        endReason: string | null;
+                        /** @enum {string} */
+                        status: "active" | "ended";
+                        member: {
+                            /** Format: uuid */
+                            userId: string;
+                            displayName: string;
+                            /** @enum {string} */
+                            role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        } | null;
+                        sensitive: {
+                            nationalId: {
+                                last4: string;
+                            } | null;
+                            insuranceNumber: {
+                                last4: string;
+                            } | null;
+                            bankName: string | null;
+                            bankAccount: {
+                                last4: string;
+                            } | null;
+                        } | null;
+                        emergencyContact: {
+                            name: string | null;
+                            phone: string | null;
+                        };
+                        version: number;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        can: {
+                            edit: boolean;
+                            reveal: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such employee. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere, or the number or member is taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An end before the hire date, or no such member. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description HR_DATA_KEY is not set. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revealEmployeeField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    field: "nationalId" | "insuranceNumber" | "bankAccount";
+                };
+            };
+        };
+        responses: {
+            /** @description The value. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        field: "nationalId" | "insuranceNumber" | "bankAccount";
+                        value: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such employee. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description HR_DATA_KEY is not set. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listJobTypes: {
         parameters: {
             query?: {
@@ -44592,7 +45688,7 @@ export interface operations {
                                 /** Format: uuid */
                                 id: string;
                                 title: string;
-                                fillRoles: ("owner" | "admin" | "dispatcher" | "engineer" | "viewer")[];
+                                fillRoles: ("owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer")[];
                                 signatureRequired: boolean;
                                 requiredByJobTypeIds: string[];
                                 /** Format: uuid */

@@ -1,5 +1,5 @@
 import { companyThemeSchema } from '@integr8/db';
-import { PERMISSIONS, ROLES } from '@integr8/core';
+import { GRANTS, PERMISSIONS, ROLES } from '@integr8/core';
 import { z } from 'zod';
 
 /**
@@ -62,6 +62,8 @@ export const meSchema = z.object({
   email: z.string(),
   displayName: z.string(),
   role: roleSchema,
+  /** Capabilities given on top of the role (ADR-0010). */
+  grants: z.array(z.enum(GRANTS)),
   /**
    * What this role may do, resolved server-side.
    *
@@ -146,6 +148,8 @@ export const memberSchema = z.object({
   email: z.string(),
   displayName: z.string(),
   role: roleSchema,
+  /** Capabilities given on top of the role (ADR-0010). */
+  grants: z.array(z.enum(GRANTS)),
   status: z.enum(['invited', 'active', 'suspended']),
   createdAt: timestamp,
 });

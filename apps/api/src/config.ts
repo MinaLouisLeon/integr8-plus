@@ -225,6 +225,20 @@ export const apiConfigSchema = z.object({
   BUILD_TOKEN: z.string().min(32).optional(),
 
   /**
+   * Encrypts employees' national ID, social insurance and bank account
+   * numbers at rest (ADR-0010): 32 bytes, base64. Unset means those fields
+   * cannot be written or revealed (503 `hr_key_missing`); everything else in
+   * HR works. Losing it loses those fields: keep it with the backups.
+   */
+  HR_DATA_KEY: z
+    .string()
+    .refine(
+      (value) => Buffer.from(value, 'base64').length === 32,
+      'HR_DATA_KEY must be 32 bytes, base64',
+    )
+    .optional(),
+
+  /**
    * Sentry. Optional: unset means errors are logged and not reported, which is
    * the right default for a developer's machine and the wrong one for
    * production — `assertProductionReady` says so at startup.

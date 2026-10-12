@@ -82,7 +82,12 @@ describe('who works jobs', () => {
 
   it('shows an engineer only their own jobs, and every role the customer details a job needs', () => {
     expect(can('engineer', 'work_order.read_all')).toBe(false);
-    expect(ROLES.every((role) => can(role, 'customer.read'))).toBe(true);
+    // Everyone who works a job reads its customer; an HR manager works none.
+    expect(
+      ROLES.filter((role) => can(role, 'work_order.progress')).every((role) =>
+        can(role, 'customer.read'),
+      ),
+    ).toBe(true);
   });
 
   it('keeps job type configuration and imports to owners and admins', () => {

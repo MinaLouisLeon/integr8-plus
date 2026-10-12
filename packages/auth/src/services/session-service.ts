@@ -336,10 +336,16 @@ export class SessionService {
         ? undefined
         : await this.#impersonationClaim(tx, impersonationGrantId);
 
+    // Grants are read at every mint, so giving or taking one reaches the
+    // token within one access-token lifetime, as a role change does. A
+    // company seat held by staff has no member row and so no grants.
+    const grants = await tx.memberGrants.forUser(session.userId);
+
     const access = await this.#tokens.mintAccessToken({
       userId: session.userId,
       tenantId: session.tenantId,
       role,
+      grants,
       sessionId: session.id,
       impersonation,
     });

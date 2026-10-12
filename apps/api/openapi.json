@@ -211,6 +211,8 @@
                             "enum": [
                               "owner",
                               "admin",
+                              "hr_manager",
+                              "inventory_manager",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -501,6 +503,8 @@
                             "enum": [
                               "owner",
                               "admin",
+                              "hr_manager",
+                              "inventory_manager",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -808,6 +812,8 @@
                             "enum": [
                               "owner",
                               "admin",
+                              "hr_manager",
+                              "inventory_manager",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -1761,6 +1767,8 @@
                       "enum": [
                         "owner",
                         "admin",
+                        "hr_manager",
+                        "inventory_manager",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -1898,6 +1906,8 @@
                     "enum": [
                       "owner",
                       "admin",
+                      "hr_manager",
+                      "inventory_manager",
                       "dispatcher",
                       "engineer",
                       "viewer"
@@ -1935,10 +1945,22 @@
                       "enum": [
                         "owner",
                         "admin",
+                        "hr_manager",
+                        "inventory_manager",
                         "dispatcher",
                         "engineer",
                         "viewer"
                       ]
+                    },
+                    "grants": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "hr_manager",
+                          "inventory_manager"
+                        ]
+                      }
                     },
                     "status": {
                       "type": "string",
@@ -1959,6 +1981,7 @@
                     "email",
                     "displayName",
                     "role",
+                    "grants",
                     "status",
                     "createdAt"
                   ],
@@ -2100,10 +2123,22 @@
                       "enum": [
                         "owner",
                         "admin",
+                        "hr_manager",
+                        "inventory_manager",
                         "dispatcher",
                         "engineer",
                         "viewer"
                       ]
+                    },
+                    "grants": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "hr_manager",
+                          "inventory_manager"
+                        ]
+                      }
                     },
                     "status": {
                       "type": "string",
@@ -2124,6 +2159,7 @@
                     "email",
                     "displayName",
                     "role",
+                    "grants",
                     "status",
                     "createdAt"
                   ],
@@ -2271,6 +2307,337 @@
           },
           "409": {
             "description": "This is the company’s only owner (`last_owner`)."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/members/{userId}/grants/{capability}": {
+      "put": {
+        "operationId": "giveMemberGrant",
+        "summary": "Give somebody a capability on top of their role",
+        "description": "An HR manager or inventory manager grant (ADR-0010) on top of whatever role the person has. Only the owner gives the HR one; the owner or an admin gives the inventory one. Takes effect at their next token, within fifteen minutes. 409 `role_holds_grant` when their role already includes it.",
+        "tags": [
+          "workspace"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "capability",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "hr_manager",
+                "inventory_manager"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The person, with their grants.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "hr_manager",
+                        "inventory_manager",
+                        "dispatcher",
+                        "engineer",
+                        "viewer"
+                      ]
+                    },
+                    "grants": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "hr_manager",
+                          "inventory_manager"
+                        ]
+                      }
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "invited",
+                        "active",
+                        "suspended"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "userId",
+                    "email",
+                    "displayName",
+                    "role",
+                    "grants",
+                    "status",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The HR grant is the owner’s to give."
+          },
+          "404": {
+            "description": "No such person in this company."
+          },
+          "409": {
+            "description": "Their role already includes it, or they are not active."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "removeMemberGrant",
+        "summary": "Take a capability back",
+        "description": "Only the owner takes the HR grant back; the owner or an admin the inventory one. Their sessions end, so the next token they get no longer carries it.",
+        "tags": [
+          "workspace"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "capability",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "hr_manager",
+                "inventory_manager"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The person, with their grants.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "hr_manager",
+                        "inventory_manager",
+                        "dispatcher",
+                        "engineer",
+                        "viewer"
+                      ]
+                    },
+                    "grants": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "hr_manager",
+                          "inventory_manager"
+                        ]
+                      }
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "invited",
+                        "active",
+                        "suspended"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "userId",
+                    "email",
+                    "displayName",
+                    "role",
+                    "grants",
+                    "status",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The HR grant is the owner’s to take back."
+          },
+          "404": {
+            "description": "No such person in this company."
           },
           "422": {
             "description": "The request failed validation.",
@@ -4048,10 +4415,22 @@
                       "enum": [
                         "owner",
                         "admin",
+                        "hr_manager",
+                        "inventory_manager",
                         "dispatcher",
                         "engineer",
                         "viewer"
                       ]
+                    },
+                    "grants": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "hr_manager",
+                          "inventory_manager"
+                        ]
+                      }
                     },
                     "permissions": {
                       "type": "array",
@@ -4111,7 +4490,16 @@
                           "ledger.read",
                           "ledger.post",
                           "ledger.manage",
-                          "ledger.unlock"
+                          "ledger.unlock",
+                          "hr.read",
+                          "hr.sensitive",
+                          "hr.manage",
+                          "expense.submit",
+                          "expense.approve",
+                          "payroll.run",
+                          "payroll.approve",
+                          "manufacturing.read",
+                          "manufacturing.manage"
                         ]
                       }
                     },
@@ -4253,6 +4641,7 @@
                     "email",
                     "displayName",
                     "role",
+                    "grants",
                     "permissions",
                     "company",
                     "features",
@@ -4677,10 +5066,22 @@
                             "enum": [
                               "owner",
                               "admin",
+                              "hr_manager",
+                              "inventory_manager",
                               "dispatcher",
                               "engineer",
                               "viewer"
                             ]
+                          },
+                          "grants": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "hr_manager",
+                                "inventory_manager"
+                              ]
+                            }
                           },
                           "status": {
                             "type": "string",
@@ -4701,6 +5102,7 @@
                           "email",
                           "displayName",
                           "role",
+                          "grants",
                           "status",
                           "createdAt"
                         ],
@@ -4821,6 +5223,8 @@
                     "enum": [
                       "owner",
                       "admin",
+                      "hr_manager",
+                      "inventory_manager",
                       "dispatcher",
                       "engineer",
                       "viewer"
@@ -4856,6 +5260,8 @@
                       "enum": [
                         "owner",
                         "admin",
+                        "hr_manager",
+                        "inventory_manager",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -4985,6 +5391,8 @@
                             "enum": [
                               "owner",
                               "admin",
+                              "hr_manager",
+                              "inventory_manager",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -5472,6 +5880,8 @@
                               "enum": [
                                 "owner",
                                 "admin",
+                                "hr_manager",
+                                "inventory_manager",
                                 "dispatcher",
                                 "engineer",
                                 "viewer"
@@ -5686,6 +6096,8 @@
                             "enum": [
                               "owner",
                               "admin",
+                              "hr_manager",
+                              "inventory_manager",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -6024,6 +6436,8 @@
                             "enum": [
                               "owner",
                               "admin",
+                              "hr_manager",
+                              "inventory_manager",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -6341,13 +6755,15 @@
                   },
                   "fillRoles": {
                     "minItems": 1,
-                    "maxItems": 5,
+                    "maxItems": 7,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "enum": [
                         "owner",
                         "admin",
+                        "hr_manager",
+                        "inventory_manager",
                         "dispatcher",
                         "engineer",
                         "viewer"
@@ -6394,6 +6810,8 @@
                         "enum": [
                           "owner",
                           "admin",
+                          "hr_manager",
+                          "inventory_manager",
                           "dispatcher",
                           "engineer",
                           "viewer"
@@ -6591,6 +7009,8 @@
                             "enum": [
                               "owner",
                               "admin",
+                              "hr_manager",
+                              "inventory_manager",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -8438,6 +8858,8 @@
                             "enum": [
                               "owner",
                               "admin",
+                              "hr_manager",
+                              "inventory_manager",
                               "dispatcher",
                               "engineer",
                               "viewer"
@@ -82850,6 +83272,1905 @@
         ]
       }
     },
+    "/v1/hr/employees": {
+      "get": {
+        "operationId": "listEmployees",
+        "summary": "Employees, by name",
+        "description": "`q` matches the name, employee number, title or department. Active ones unless `status=ended` or `status=all`. ID and bank numbers appear only as their last four, and only to owners and HR managers.",
+        "tags": [
+          "hr"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "active",
+              "type": "string",
+              "enum": [
+                "active",
+                "ended",
+                "all"
+              ]
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 400
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "employeeNumber": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "fullName": {
+                            "type": "string"
+                          },
+                          "jobTitle": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "department": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "phone": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "hireDate": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "endDate": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "endReason": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "ended"
+                            ]
+                          },
+                          "member": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "userId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "displayName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "owner",
+                                  "admin",
+                                  "hr_manager",
+                                  "inventory_manager",
+                                  "dispatcher",
+                                  "engineer",
+                                  "viewer"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "displayName",
+                              "role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "sensitive": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "nationalId": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "last4": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "last4"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "insuranceNumber": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "last4": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "last4"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "bankName": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "bankAccount": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "last4": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "last4"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "nationalId",
+                              "insuranceNumber",
+                              "bankName",
+                              "bankAccount"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "emergencyContact": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "phone": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "phone"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "can": {
+                            "type": "object",
+                            "properties": {
+                              "edit": {
+                                "type": "boolean"
+                              },
+                              "reveal": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "edit",
+                              "reveal"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "employeeNumber",
+                          "fullName",
+                          "jobTitle",
+                          "department",
+                          "phone",
+                          "hireDate",
+                          "endDate",
+                          "endReason",
+                          "status",
+                          "member",
+                          "sensitive",
+                          "emergencyContact",
+                          "version",
+                          "createdAt",
+                          "updatedAt",
+                          "can"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "nextCursor": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "departments": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor",
+                    "departments"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createEmployee",
+        "summary": "Add an employee",
+        "description": "Linked to a member (`userId`; the name defaults to theirs, 409 `member_taken` when they have a profile) or standing alone with a `fullName`. ID, insurance and bank numbers are sealed before they are stored and need `hr.sensitive` and the server’s HR_DATA_KEY (503 `hr_key_missing`). Honours `Idempotency-Key`.",
+        "tags": [
+          "hr"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "description": "A client-generated key. Replaying a request with the same key returns the original response and repeats no effect."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "employeeNumber": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "fullName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "jobTitle": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "department": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "phone": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "hireDate": {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  },
+                  "nationalId": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 40,
+                    "pattern": "^[0-9A-Za-z][0-9A-Za-z -]*$"
+                  },
+                  "insuranceNumber": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 40,
+                    "pattern": "^[0-9A-Za-z][0-9A-Za-z -]*$"
+                  },
+                  "bankName": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "bankAccount": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 40,
+                    "pattern": "^[0-9A-Za-z][0-9A-Za-z -]*$"
+                  },
+                  "emergencyContactName": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "emergencyContactPhone": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "hireDate"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "employeeNumber": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "fullName": {
+                      "type": "string"
+                    },
+                    "jobTitle": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "department": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "phone": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "hireDate": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    "endDate": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    "endReason": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "ended"
+                      ]
+                    },
+                    "member": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "hr_manager",
+                            "inventory_manager",
+                            "dispatcher",
+                            "engineer",
+                            "viewer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "displayName",
+                        "role"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "sensitive": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "nationalId": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "last4": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "last4"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "insuranceNumber": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "last4": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "last4"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "bankName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "bankAccount": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "last4": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "last4"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "nationalId",
+                        "insuranceNumber",
+                        "bankName",
+                        "bankAccount"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "emergencyContact": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "phone"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "can": {
+                      "type": "object",
+                      "properties": {
+                        "edit": {
+                          "type": "boolean"
+                        },
+                        "reveal": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "edit",
+                        "reveal"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "employeeNumber",
+                    "fullName",
+                    "jobTitle",
+                    "department",
+                    "phone",
+                    "hireDate",
+                    "endDate",
+                    "endReason",
+                    "status",
+                    "member",
+                    "sensitive",
+                    "emergencyContact",
+                    "version",
+                    "createdAt",
+                    "updatedAt",
+                    "can"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The number or the member is already taken."
+          },
+          "422": {
+            "description": "No name, or no such member."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "HR_DATA_KEY is not set."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/hr/me": {
+      "get": {
+        "operationId": "getMyEmployeeProfile",
+        "summary": "My own employee profile",
+        "description": "Every member reads their own profile, ID and bank details included. 404 when there is none.",
+        "tags": [
+          "hr"
+        ],
+        "responses": {
+          "200": {
+            "description": "The profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "employeeNumber": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "fullName": {
+                      "type": "string"
+                    },
+                    "jobTitle": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "department": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "phone": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "hireDate": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    "endDate": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    "endReason": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "ended"
+                      ]
+                    },
+                    "member": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "hr_manager",
+                            "inventory_manager",
+                            "dispatcher",
+                            "engineer",
+                            "viewer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "displayName",
+                        "role"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "sensitive": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "nationalId": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "last4": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "last4"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "insuranceNumber": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "last4": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "last4"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "bankName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "bankAccount": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "last4": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "last4"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "nationalId",
+                        "insuranceNumber",
+                        "bankName",
+                        "bankAccount"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "emergencyContact": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "phone"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "can": {
+                      "type": "object",
+                      "properties": {
+                        "edit": {
+                          "type": "boolean"
+                        },
+                        "reveal": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "edit",
+                        "reveal"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "employeeNumber",
+                    "fullName",
+                    "jobTitle",
+                    "department",
+                    "phone",
+                    "hireDate",
+                    "endDate",
+                    "endReason",
+                    "status",
+                    "member",
+                    "sensitive",
+                    "emergencyContact",
+                    "version",
+                    "createdAt",
+                    "updatedAt",
+                    "can"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No profile for this member."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/hr/employees/{employeeId}": {
+      "get": {
+        "operationId": "getEmployee",
+        "summary": "An employee profile",
+        "description": "For `hr.read`, or the person themselves.",
+        "tags": [
+          "hr"
+        ],
+        "parameters": [
+          {
+            "name": "employeeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "employeeNumber": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "fullName": {
+                      "type": "string"
+                    },
+                    "jobTitle": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "department": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "phone": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "hireDate": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    "endDate": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    "endReason": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "ended"
+                      ]
+                    },
+                    "member": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "hr_manager",
+                            "inventory_manager",
+                            "dispatcher",
+                            "engineer",
+                            "viewer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "displayName",
+                        "role"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "sensitive": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "nationalId": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "last4": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "last4"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "insuranceNumber": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "last4": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "last4"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "bankName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "bankAccount": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "last4": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "last4"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "nationalId",
+                        "insuranceNumber",
+                        "bankName",
+                        "bankAccount"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "emergencyContact": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "phone"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "can": {
+                      "type": "object",
+                      "properties": {
+                        "edit": {
+                          "type": "boolean"
+                        },
+                        "reveal": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "edit",
+                        "reveal"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "employeeNumber",
+                    "fullName",
+                    "jobTitle",
+                    "department",
+                    "phone",
+                    "hireDate",
+                    "endDate",
+                    "endReason",
+                    "status",
+                    "member",
+                    "sensitive",
+                    "emergencyContact",
+                    "version",
+                    "createdAt",
+                    "updatedAt",
+                    "can"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such employee."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "updateEmployee",
+        "summary": "Change an employee profile, or end their employment",
+        "description": "With `expectedVersion` (409 `version_conflict`). `endDate` with `endReason` ends the employment; both `null` brings them back. A sensitive number is replaced by sending it, cleared by `null`. The audit names the fields changed, never their values.",
+        "tags": [
+          "hr"
+        ],
+        "parameters": [
+          {
+            "name": "employeeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "employeeNumber": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "fullName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "jobTitle": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "department": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "phone": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "hireDate": {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  },
+                  "nationalId": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 40,
+                    "pattern": "^[0-9A-Za-z][0-9A-Za-z -]*$"
+                  },
+                  "insuranceNumber": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 40,
+                    "pattern": "^[0-9A-Za-z][0-9A-Za-z -]*$"
+                  },
+                  "bankName": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "bankAccount": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 40,
+                    "pattern": "^[0-9A-Za-z][0-9A-Za-z -]*$"
+                  },
+                  "emergencyContactName": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "emergencyContactPhone": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "endDate": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  },
+                  "endReason": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "employeeNumber": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "fullName": {
+                      "type": "string"
+                    },
+                    "jobTitle": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "department": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "phone": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "hireDate": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    "endDate": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    "endReason": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "ended"
+                      ]
+                    },
+                    "member": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "hr_manager",
+                            "inventory_manager",
+                            "dispatcher",
+                            "engineer",
+                            "viewer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "displayName",
+                        "role"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "sensitive": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "nationalId": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "last4": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "last4"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "insuranceNumber": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "last4": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "last4"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "bankName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "bankAccount": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "last4": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "last4"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "nationalId",
+                        "insuranceNumber",
+                        "bankName",
+                        "bankAccount"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "emergencyContact": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "phone"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "can": {
+                      "type": "object",
+                      "properties": {
+                        "edit": {
+                          "type": "boolean"
+                        },
+                        "reveal": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "edit",
+                        "reveal"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "employeeNumber",
+                    "fullName",
+                    "jobTitle",
+                    "department",
+                    "phone",
+                    "hireDate",
+                    "endDate",
+                    "endReason",
+                    "status",
+                    "member",
+                    "sensitive",
+                    "emergencyContact",
+                    "version",
+                    "createdAt",
+                    "updatedAt",
+                    "can"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such employee."
+          },
+          "409": {
+            "description": "Changed elsewhere, or the number or member is taken."
+          },
+          "422": {
+            "description": "An end before the hire date, or no such member."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "HR_DATA_KEY is not set."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/hr/employees/{employeeId}/reveal": {
+      "post": {
+        "operationId": "revealEmployeeField",
+        "summary": "Show one sensitive number in full",
+        "description": "For owners and HR managers, or the person themselves. Every reveal is audited with who, when and which field.",
+        "tags": [
+          "hr"
+        ],
+        "parameters": [
+          {
+            "name": "employeeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "enum": [
+                      "nationalId",
+                      "insuranceNumber",
+                      "bankAccount"
+                    ]
+                  }
+                },
+                "required": [
+                  "field"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The value.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "nationalId",
+                        "insuranceNumber",
+                        "bankAccount"
+                      ]
+                    },
+                    "value": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `hr` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such employee."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "HR_DATA_KEY is not set."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/v1/job-types": {
       "get": {
         "operationId": "listJobTypes",
@@ -105972,6 +108293,8 @@
                                   "enum": [
                                     "owner",
                                     "admin",
+                                    "hr_manager",
+                                    "inventory_manager",
                                     "dispatcher",
                                     "engineer",
                                     "viewer"

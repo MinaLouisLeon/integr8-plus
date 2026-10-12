@@ -253,6 +253,8 @@ export const en = {
     role: {
       owner: 'Owner',
       admin: 'Admin',
+      hr_manager: 'HR manager',
+      inventory_manager: 'Inventory manager',
       dispatcher: 'Dispatcher',
       engineer: 'Engineer',
       viewer: 'Viewer',

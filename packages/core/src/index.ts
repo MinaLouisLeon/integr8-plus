@@ -10,7 +10,16 @@ export {
   type PlatformUserId,
 } from './ids.js';
 
-export { ROLES, roleSchema, roleRank, hasAtLeastRole, type Role } from './roles.js';
+export {
+  ROLES,
+  roleSchema,
+  roleRank,
+  hasAtLeastRole,
+  type Role,
+  GRANTS,
+  grantSchema,
+  type Grant,
+} from './roles.js';
 
 export {
   PERMISSIONS,
@@ -19,6 +28,7 @@ export {
   assertCan,
   permissionsFor,
   permissionsHeld,
+  GRANT_PERMISSIONS,
   holds,
   assertHolds,
   isStaffSeat,
@@ -118,6 +128,7 @@ export {
 } from './job-execution.js';
 export {
   MODULE_FEATURES,
+  MODULE_REQUIRES,
   moduleFeatureSchema,
   type ModuleFeature,
   hasFeature,

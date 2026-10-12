@@ -502,6 +502,15 @@ export {
   type OpenInvoice,
   type YearClose,
 } from './repositories/ledger-reports.js';
+export { MemberGrantsRepository } from './repositories/member-grants.js';
+export {
+  HrEmployeesRepository,
+  type Employee,
+  type EmployeeInput,
+  type EmployeeQuery,
+  type EmployeeRefusal,
+  type SealedField,
+} from './repositories/hr-employees.js';
 
 export {
   addressLine,

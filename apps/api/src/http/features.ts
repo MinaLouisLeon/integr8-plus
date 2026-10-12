@@ -1,4 +1,4 @@
-import type { ModuleFeature } from '@integr8/core';
+import { hasFeature, type ModuleFeature } from '@integr8/core';
 import { withTenant } from '@integr8/db';
 import { ApiError } from './errors.js';
 
@@ -57,7 +57,7 @@ export async function isFeatureEnabled(
   const cached = cache.get(tenantId);
   const fresh =
     cached !== undefined && now - cached.readAt < CACHE_TTL_MS ? cached : await read(tenantId, now);
-  return fresh.features[feature] === true;
+  return hasFeature(fresh.features, feature);
 }
 
 /** Forgets what is cached about one company's modules, or every company's. */

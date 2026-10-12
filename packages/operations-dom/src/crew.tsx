@@ -37,8 +37,11 @@ export function CrewPicker({
     return <Failure error={members.error} onRetry={() => void members.refetch()} />;
   }
 
+  // People who work jobs: not viewers, and not an HR manager, whose role
+  // holds nothing of the operation (ADR-0010).
   const candidates = members.data.filter(
-    (member) => member.status === 'active' && member.role !== 'viewer',
+    (member) =>
+      member.status === 'active' && member.role !== 'viewer' && member.role !== 'hr_manager',
   );
   const on = new Map(value.map((member) => [member.userId, member.lead]));
 

@@ -1,4 +1,4 @@
-import { holds, roleSchema } from '@integr8/core';
+import { holds, ROLES, roleSchema } from '@integr8/core';
 import {
   type Form,
   type FormVersion,
@@ -415,7 +415,7 @@ export const updateFormRoute = defineRoute({
   body: z
     .object({
       title: z.string().trim().min(1).max(200).optional(),
-      fillRoles: z.array(roleSchema).min(1).max(5).optional(),
+      fillRoles: z.array(roleSchema).min(1).max(ROLES.length).optional(),
       signatureRequired: z.boolean().optional(),
       requiredByJobTypeIds: z.array(z.uuid()).max(100).optional(),
     })

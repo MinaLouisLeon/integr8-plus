@@ -30,6 +30,7 @@ export function me(overrides: Partial<Me> = {}): Me {
     email: 'ed@northwind.example',
     displayName: 'Ed Engineer',
     role: 'engineer',
+    grants: [],
     permissions: [],
     company: {
       name: 'Northwind Facilities',

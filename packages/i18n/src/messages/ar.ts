@@ -240,6 +240,8 @@ export const ar: Catalogue<Messages> = {
     role: {
       owner: 'مالك',
       admin: 'مسؤول',
+      hr_manager: 'مدير الموارد البشرية',
+      inventory_manager: 'مدير المخزون',
       dispatcher: 'منسّق',
       engineer: 'مهندس',
       viewer: 'مشاهد',

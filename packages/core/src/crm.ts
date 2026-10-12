@@ -27,16 +27,34 @@ export const MODULE_FEATURES = [
   'finance',
   'assets',
   'ledger',
+  // Seventh round (ADR-0010, ADR-0011).
+  'hr',
+  'payroll',
+  'manufacturing',
 ] as const;
 export const moduleFeatureSchema = z.enum(MODULE_FEATURES);
 export type ModuleFeature = z.infer<typeof moduleFeatureSchema>;
 
-/** True when a company's resolved flags (as `/v1/me` returns them) include this module. */
+/**
+ * Modules that only work on top of another: payroll pays the people HR
+ * keeps, and manufacturing builds from the stock inventory holds. A module
+ * whose base is off counts as off, wherever it is asked.
+ */
+export const MODULE_REQUIRES: Readonly<Partial<Record<ModuleFeature, readonly ModuleFeature[]>>> =
+  Object.freeze({
+    payroll: ['hr'],
+    manufacturing: ['inventory'],
+  });
+
+/** True when a company's resolved flags (as `/v1/me` returns them) include this module and what it needs. */
 export function hasFeature(
   features: Readonly<Record<string, boolean>> | undefined,
   feature: ModuleFeature,
 ): boolean {
-  return features?.[feature] === true;
+  return (
+    features?.[feature] === true &&
+    (MODULE_REQUIRES[feature] ?? []).every((required) => features[required] === true)
+  );
 }
 
 // ---------------------------------------------------------------------------
