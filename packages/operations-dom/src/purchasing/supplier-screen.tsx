@@ -5,6 +5,7 @@ import { keys, useOperations } from '../api.js';
 import { formatAmount } from '../crm/lead-parts.js';
 import { addressText, BackLink, buttonClass, cardClass, Failure, Loading } from '../ui.js';
 import { NewOrderDialog } from './order-list.js';
+import { SupplierPriceList } from './price-list.js';
 import { OrderStatusBadge, SupplierStatusBadge } from './purchasing-parts.js';
 import {
   type SupplierDraft,
@@ -179,6 +180,8 @@ export function SupplierScreen({ supplierId }: { supplierId: string }) {
           </form>
         )}
       </section>
+
+      <SupplierPriceList supplierId={supplier.id} canManage={can.manage} />
 
       <section aria-labelledby="purchasing-supplier-orders" className={cardClass}>
         <h2 id="purchasing-supplier-orders" className="text-base font-semibold text-content">

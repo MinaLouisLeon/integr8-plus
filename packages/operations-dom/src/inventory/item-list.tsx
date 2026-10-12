@@ -1,7 +1,9 @@
+import { hasFeature } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState, type FormEvent } from 'react';
 import { type ItemKind, keys, type Unit, useOperations } from '../api.js';
+import { SupplierPicker } from '../purchasing/purchasing-parts.js';
 import {
   BackLink,
   buttonClass,
@@ -42,6 +44,8 @@ interface Draft {
   description: string;
   /** Whole days, as typed; empty to use the supplier's. */
   leadTimeDays: string;
+  /** The supplier reorders go to, by id; empty for none. Chosen from a picker, never typed. */
+  preferredSupplierId: string;
 }
 
 const emptyDraft: Draft = {
@@ -55,6 +59,7 @@ const emptyDraft: Draft = {
   salePrice: '',
   description: '',
   leadTimeDays: '',
+  preferredSupplierId: '',
 };
 
 const orNull = (value: string) => (value.trim() === '' ? null : value.trim());
@@ -77,6 +82,10 @@ export function ItemListScreen() {
   const permissions = me.data?.permissions ?? [];
   const canManage = permissions.includes('inventory.manage');
   const seesCosts = permissions.includes('inventory.move');
+  const choosesSupplier =
+    me.data !== undefined &&
+    hasFeature(me.data.features, 'purchasing') &&
+    permissions.includes('purchasing.read');
 
   const query = {
     ...(applied.q === '' ? {} : { q: applied.q }),
@@ -113,6 +122,7 @@ export function ItemListScreen() {
     salePrice: orNull(draft.salePrice),
     description: orNull(draft.description),
     ...(draft.leadTimeDays.trim() === '' ? {} : { leadTimeDays: Number(draft.leadTimeDays) }),
+    ...(draft.preferredSupplierId === '' ? {} : { preferredSupplierId: draft.preferredSupplierId }),
   };
   const bodyText = JSON.stringify(body);
   const idempotencyKey = useMemo(() => (bodyText === '' ? '' : crypto.randomUUID()), [bodyText]);
@@ -346,6 +356,7 @@ export function ItemListScreen() {
               onChange={setDraft}
               categories={categories.data ?? []}
               seesCosts={seesCosts}
+              choosesSupplier={choosesSupplier}
             />
             {create.isError ? (
               <div className="sm:col-span-2">
@@ -369,6 +380,7 @@ export function ItemFields({
   categories,
   seesCosts,
   kindLocked = false,
+  choosesSupplier = false,
 }: {
   draft: Draft;
   onChange: (draft: Draft) => void;
@@ -376,6 +388,8 @@ export function ItemFields({
   seesCosts: boolean;
   /** An item that holds stock stays a stock item. */
   kindLocked?: boolean;
+  /** Whether the seat sees suppliers, and so chooses the item's preferred one. */
+  choosesSupplier?: boolean;
 }) {
   const { t } = useTranslation();
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
@@ -521,6 +535,22 @@ export function ItemFields({
           />
         )}
       </Field>
+      {choosesSupplier ? (
+        <Field
+          label={t('inventory.preferredSupplier.label')}
+          hint={t('inventory.preferredSupplier.hint')}
+        >
+          {(id, describedBy) => (
+            <SupplierPicker
+              id={id}
+              describedBy={describedBy}
+              value={draft.preferredSupplierId}
+              noneLabel={t('inventory.preferredSupplier.none')}
+              onChange={(supplierId) => set('preferredSupplierId', supplierId)}
+            />
+          )}
+        </Field>
+      ) : null}
       <Field label={t('inventory.items.fields.description')} className="sm:col-span-2">
         {(id) => (
           <textarea

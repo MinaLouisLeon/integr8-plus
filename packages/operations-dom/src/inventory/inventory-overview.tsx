@@ -107,6 +107,13 @@ export function InventoryOverviewScreen() {
               title={t('inventory.locations.title')}
               note={t('nav.hint.stockLocations')}
             />
+            {canMove ? (
+              <Card
+                to={paths.vanRequests}
+                title={t('inventory.vanRequests.title')}
+                note={t('inventory.vanRequests.hint')}
+              />
+            ) : null}
             {purchasing ? (
               <>
                 <Card

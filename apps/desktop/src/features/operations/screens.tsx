@@ -24,6 +24,9 @@ import {
   QuoteScreen,
   SalesOrderListScreen,
   SalesOrderScreen,
+  DeliveryNoteScreen,
+  ReorderScreen,
+  VanRequestsScreen,
   FinanceSettingsScreen,
   LedgerHomeScreen,
   LedgerAccountsScreen,
@@ -118,6 +121,8 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         stockLocations: '/inventory/locations',
         stockLocation: (id) => `/inventory/locations/${id}`,
         stockCount: (id) => `/inventory/counts/${id}`,
+        reorder: (locationId) => `/inventory/locations/${locationId}/reorder`,
+        vanRequests: '/inventory/van-requests',
         suppliers: '/purchasing/suppliers',
         supplier: (id) => `/purchasing/suppliers/${id}`,
         purchaseOrders: '/purchasing/orders',
@@ -132,6 +137,7 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         quote: (id) => `/sales/quotes/${id}`,
         salesOrders: '/sales/orders',
         salesOrder: (id) => `/sales/orders/${id}`,
+        deliveryNote: (orderId, deliveryId) => `/sales/orders/${orderId}/deliveries/${deliveryId}`,
         invoices: '/finance/invoices',
         invoice: (id) => `/finance/invoices/${id}`,
         payments: '/finance/payments',
@@ -279,6 +285,25 @@ export function StockLocationRoute() {
   return (
     <OperationsScreens>
       <LocationScreen key={locationId} locationId={locationId} />
+    </OperationsScreens>
+  );
+}
+
+/** A location's reorder list, to draft purchase orders from (eighth round; ADR-0012). */
+export function ReorderRoute() {
+  const { locationId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <ReorderScreen key={locationId} locationId={locationId} />
+    </OperationsScreens>
+  );
+}
+
+/** The store's queue of van refills (eighth round; ADR-0012). */
+export function VanRequestsRoute() {
+  return (
+    <OperationsScreens>
+      <VanRequestsScreen />
     </OperationsScreens>
   );
 }
@@ -502,6 +527,16 @@ export function SalesOrderRoute() {
   return (
     <OperationsScreens>
       <SalesOrderScreen key={orderId} orderId={orderId} />
+    </OperationsScreens>
+  );
+}
+
+/** A delivery note, to print (eighth round; ADR-0012). */
+export function DeliveryNoteRoute() {
+  const { orderId = '', deliveryId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <DeliveryNoteScreen key={deliveryId} orderId={orderId} deliveryId={deliveryId} />
     </OperationsScreens>
   );
 }
