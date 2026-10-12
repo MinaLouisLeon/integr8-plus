@@ -12,6 +12,7 @@ import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js
 import { GEOCODE_QUEUE } from '../../geo/geocode-site.js';
 import { assertFeatureEnabled } from '../../http/features.js';
 import { readableAsset } from './assets.js';
+import { mayAttachReceipt, readableClaim } from './expenses.js';
 import {
   accessInputSchema,
   addressInputSchema,
@@ -722,6 +723,8 @@ const ownerSchema = z.union([
   z.object({ workOrderId: z.uuid() }).strict(),
   /** A machine on the asset register (CRM/ERP plan, phase E3); needs the `assets` module. */
   z.object({ assetId: z.uuid() }).strict(),
+  /** A receipt for a staff expense claim (ADR-0010); needs the `hr` module. */
+  z.object({ expenseClaimId: z.uuid() }).strict(),
 ]);
 
 /** Whether this person may add to or remove from what `owner` names. */
@@ -731,6 +734,20 @@ async function requireAttachable(
   owner: AttachmentOwner,
 ) {
   const { principal } = context;
+  if ('expenseClaimId' in owner) {
+    await assertFeatureEnabled(principal.tenantId, 'hr');
+    const claim = await readableClaim(tx, principal, owner.expenseClaimId);
+    if (!mayAttachReceipt(principal, claim)) {
+      throw forbidden(
+        'Receipts are added by the claimant while the claim waits, or by an approver.',
+      );
+    }
+    return;
+  }
+  // Everything else is the customer record's, as it always was.
+  if (!holds(principal, 'customer.read')) {
+    throw forbidden('This action requires the "customer.read" permission.');
+  }
   if ('workOrderId' in owner) {
     const job = await readableWorkOrder(tx, principal, owner.workOrderId);
     await requireWork(tx, principal, job);
@@ -765,7 +782,8 @@ export const addAttachmentRoute = defineRoute({
     'The file must already be uploaded and confirmed (`/v1/media`). While attached, it cannot be deleted. Honours `Idempotency-Key`.',
   tags: TAGS,
   security: 'authenticated',
-  permission: 'customer.read',
+  // Customer records, and receipts on expense claims (ADR-0010).
+  anyPermission: ['customer.read', 'expense.submit'],
   idempotent: true,
   params: noSchema,
   query: noSchema,
@@ -833,7 +851,8 @@ export const removeAttachmentRoute = defineRoute({
   description: 'The file itself stays in storage until it is deleted through `/v1/media`.',
   tags: TAGS,
   security: 'authenticated',
-  permission: 'customer.read',
+  // Customer records, and receipts on expense claims (ADR-0010).
+  anyPermission: ['customer.read', 'expense.submit'],
   params: z.object({ attachmentId: z.uuid() }),
   query: noSchema,
   body: noSchema,

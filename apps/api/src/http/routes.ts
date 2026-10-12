@@ -107,6 +107,13 @@ interface RouteShape {
   permission?: Permission;
 
   /**
+   * Instead of `permission`: any one of these will do. For a door two kinds
+   * of work share — uploading a file for a form, or a receipt for an expense
+   * claim (ADR-0010).
+   */
+  anyPermission?: readonly Permission[];
+
+  /**
    * A module the company must have switched on (the CRM). Checked after the
    * permission; a company without it is refused with 403 `feature_disabled`
    * whatever the seat's role. See `http/features.ts`.

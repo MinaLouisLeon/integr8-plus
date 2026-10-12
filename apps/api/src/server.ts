@@ -1,5 +1,6 @@
 import {
   assertHolds,
+  holds,
   PermissionDeniedError,
   type PlatformPrincipal,
   type Principal,
@@ -314,6 +315,14 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
           }
 
           // 6. Permission.
+          if (
+            route.anyPermission !== undefined &&
+            !route.anyPermission.some((permission) => holds(principal, permission))
+          ) {
+            throw forbidden(
+              `This action requires one of ${route.anyPermission.map((p) => `"${p}"`).join(', ')}.`,
+            );
+          }
           if (route.permission !== undefined) {
             try {
               assertHolds(principal, route.permission);

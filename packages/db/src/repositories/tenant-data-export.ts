@@ -106,6 +106,8 @@ export const EXPORTED_TABLES = [
   'erp_ledger_postings',
   'member_grants',
   'hr_employees',
+  'hr_expense_categories',
+  'hr_expense_claims',
   'audit_log',
 ] as const;
 

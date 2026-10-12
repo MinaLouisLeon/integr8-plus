@@ -23,6 +23,9 @@ import {
   type OpportunityStatus,
   type Role,
   type Grant,
+  type ExpenseClaimStatus,
+  type ExpenseSettlement,
+  type ExpensePaidVia,
   ROLES,
   type StageOutcome,
   type WorkOrderPriority,
@@ -1616,6 +1619,8 @@ export interface ErpLedgerSettingsTable {
   fiscal_start_month: Generated<number>;
   auto_post_sales: Generated<boolean>;
   auto_post_stock: Generated<boolean>;
+  auto_post_expenses: Generated<boolean>;
+  auto_post_payroll: Generated<boolean>;
   allow_self_approval: Generated<boolean>;
   receivables_account_id: string;
   revenue_services_account_id: string;
@@ -1630,6 +1635,15 @@ export interface ErpLedgerSettingsTable {
   stock_adjustments_account_id: string;
   opening_balances_account_id: string;
   retained_earnings_account_id: string;
+  staff_claims_payable_account_id: string;
+  staff_expenses_account_id: string;
+  salaries_expense_account_id: string;
+  employer_insurance_expense_account_id: string;
+  salaries_payable_account_id: string;
+  payroll_tax_payable_account_id: string;
+  social_insurance_payable_account_id: string;
+  martyrs_fund_payable_account_id: string;
+  assembly_absorbed_account_id: string;
   version: Generated<number>;
   created_by: string;
   created_at: CreatedAt;
@@ -1784,6 +1798,51 @@ export interface HrEmployeesTable {
   version: Generated<number>;
   created_by: string;
   created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+/** Expense categories (0037; ADR-0010). */
+export interface HrExpenseCategoriesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  account_id: string | null;
+  archived_at: Date | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface ExpenseReferenceCountersTable {
+  tenant_id: string;
+  last_reference: number;
+}
+
+/** Staff expense claims (0037; ADR-0010). */
+export interface HrExpenseClaimsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  reference: Generated<number>;
+  claimant_id: string;
+  category_id: string;
+  work_order_id: string | null;
+  spent_on: string | Date;
+  amount: string;
+  currency: string;
+  description: string;
+  status: Generated<ExpenseClaimStatus>;
+  client_action_id: string | null;
+  submitted_at: Generated<Date>;
+  decided_by: string | null;
+  decided_at: Date | null;
+  reject_reason: string | null;
+  settle_via: ExpenseSettlement | null;
+  paid_via: ExpensePaidVia | null;
+  paid_by: string | null;
+  paid_at: Date | null;
+  payment_reference: string | null;
+  version: Generated<number>;
   updated_at: Generated<Date>;
 }
 
@@ -1985,6 +2044,8 @@ export interface AttachmentsTable {
   work_order_id: string | null;
   /** The asset it belongs to (0031). */
   asset_id: Generated<string | null>;
+  /** The expense claim it is a receipt for (0037). */
+  expense_claim_id: Generated<string | null>;
   title: string;
   kind: Generated<AttachmentKind>;
   /** For a job photo: taken before or after the work (0013). */
@@ -2329,6 +2390,9 @@ export interface Database {
   erp_ledger_postings: ErpLedgerPostingsTable;
   member_grants: MemberGrantsTable;
   hr_employees: HrEmployeesTable;
+  hr_expense_categories: HrExpenseCategoriesTable;
+  expense_reference_counters: ExpenseReferenceCountersTable;
+  hr_expense_claims: HrExpenseClaimsTable;
   customer_contacts: CustomerContactsTable;
   sites: SitesTable;
   job_types: JobTypesTable;
@@ -2478,6 +2542,8 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'erp_ledger_capture',
   'erp_ledger_try_post',
   'erp_ledger_backfill',
+  'assign_expense_reference',
+  'erp_ledger_backfill_more',
 ] as const;
 export type SecurityDefinerFunction = (typeof SECURITY_DEFINER_FUNCTIONS)[number];
 
@@ -2580,6 +2646,9 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_ledger_postings: true,
   member_grants: true,
   hr_employees: true,
+  hr_expense_categories: true,
+  expense_reference_counters: true,
+  hr_expense_claims: true,
   customer_contacts: true,
   sites: true,
   job_types: true,

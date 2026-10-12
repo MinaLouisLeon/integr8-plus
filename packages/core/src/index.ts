@@ -322,3 +322,16 @@ export {
   fiscalYearOf,
   monthsBetween,
 } from './ledger.js';
+export {
+  EXPENSE_CLAIM_STATUSES,
+  expenseClaimStatusSchema,
+  type ExpenseClaimStatus,
+  EXPENSE_SETTLEMENTS,
+  expenseSettlementSchema,
+  type ExpenseSettlement,
+  EXPENSE_PAID_VIA,
+  expensePaidViaSchema,
+  type ExpensePaidVia,
+  formatExpenseReference,
+  parseExpenseReference,
+} from './hr.js';

@@ -35,6 +35,11 @@ export const JOURNAL_SOURCE_KINDS = [
   'invoice_void',
   'payment',
   'stock',
+  // Seventh round (ADR-0010, ADR-0011).
+  'expense_claim',
+  'expense_payment',
+  'payroll_run',
+  'assembly',
 ] as const;
 export const journalSourceKindSchema = z.enum(JOURNAL_SOURCE_KINDS);
 export type JournalSourceKind = z.infer<typeof journalSourceKindSchema>;
@@ -57,6 +62,16 @@ export const POSTING_ROLES = [
   'stockAdjustments',
   'openingBalances',
   'retainedEarnings',
+  // Seventh round (ADR-0010, ADR-0011).
+  'staffClaimsPayable',
+  'staffExpenses',
+  'salariesExpense',
+  'employerInsuranceExpense',
+  'salariesPayable',
+  'payrollTaxPayable',
+  'socialInsurancePayable',
+  'martyrsFundPayable',
+  'assemblyAbsorbed',
 ] as const;
 export type PostingRole = (typeof POSTING_ROLES)[number];
 
@@ -148,7 +163,36 @@ export const DEFAULT_CHART: readonly DefaultAccount[] = [
     type: 'liability',
     name: { en: 'Withholding tax payable', ar: 'ضريبة الخصم والإضافة المستحقة' },
   },
-  { code: '2400', type: 'liability', name: { en: 'Salaries payable', ar: 'رواتب مستحقة' } },
+  {
+    code: '2310',
+    type: 'liability',
+    name: { en: 'Salary income tax payable', ar: 'ضريبة كسب العمل المستحقة' },
+    role: 'payrollTaxPayable',
+  },
+  {
+    code: '2320',
+    type: 'liability',
+    name: { en: 'Social insurance payable', ar: 'التأمينات الاجتماعية المستحقة' },
+    role: 'socialInsurancePayable',
+  },
+  {
+    code: '2330',
+    type: 'liability',
+    name: { en: 'Martyrs’ Fund payable', ar: 'صندوق الشهداء المستحق' },
+    role: 'martyrsFundPayable',
+  },
+  {
+    code: '2400',
+    type: 'liability',
+    name: { en: 'Salaries payable', ar: 'رواتب مستحقة' },
+    role: 'salariesPayable',
+  },
+  {
+    code: '2410',
+    type: 'liability',
+    name: { en: 'Staff expense claims payable', ar: 'مطالبات مصروفات العاملين المستحقة' },
+    role: 'staffClaimsPayable',
+  },
   { code: '3100', type: 'equity', name: { en: 'Owner’s capital', ar: 'رأس المال' } },
   {
     code: '3200',
@@ -187,12 +231,34 @@ export const DEFAULT_CHART: readonly DefaultAccount[] = [
     name: { en: 'Stock adjustments', ar: 'تسويات المخزون' },
     role: 'stockAdjustments',
   },
-  { code: '6100', type: 'expense', name: { en: 'Salaries and wages', ar: 'الرواتب والأجور' } },
+  {
+    code: '5300',
+    type: 'expense',
+    name: { en: 'Assembly labour and overhead absorbed', ar: 'عمالة وتكاليف تجميع محمّلة' },
+    role: 'assemblyAbsorbed',
+  },
+  {
+    code: '6100',
+    type: 'expense',
+    name: { en: 'Salaries and wages', ar: 'الرواتب والأجور' },
+    role: 'salariesExpense',
+  },
+  {
+    code: '6110',
+    type: 'expense',
+    name: { en: 'Employer social insurance', ar: 'حصة صاحب العمل في التأمينات' },
+    role: 'employerInsuranceExpense',
+  },
   { code: '6200', type: 'expense', name: { en: 'Vehicles and fuel', ar: 'السيارات والوقود' } },
   { code: '6300', type: 'expense', name: { en: 'Rent', ar: 'الإيجار' } },
   { code: '6400', type: 'expense', name: { en: 'Utilities and phone', ar: 'المرافق والاتصالات' } },
   { code: '6500', type: 'expense', name: { en: 'Bank charges', ar: 'مصروفات بنكية' } },
-  { code: '6900', type: 'expense', name: { en: 'Other expenses', ar: 'مصروفات أخرى' } },
+  {
+    code: '6900',
+    type: 'expense',
+    name: { en: 'Other expenses', ar: 'مصروفات أخرى' },
+    role: 'staffExpenses',
+  },
 ];
 
 // ---------------------------------------------------------------------------

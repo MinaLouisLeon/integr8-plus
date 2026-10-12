@@ -511,6 +511,13 @@ export {
   type EmployeeRefusal,
   type SealedField,
 } from './repositories/hr-employees.js';
+export {
+  HrExpensesRepository,
+  type ExpenseCategory,
+  type ExpenseClaim,
+  type ExpenseClaimInput,
+  type ExpenseClaimQuery,
+} from './repositories/hr-expenses.js';
 
 export {
   addressLine,
