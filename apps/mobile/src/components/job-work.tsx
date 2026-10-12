@@ -5,7 +5,6 @@ import {
   currentShift,
   localCompletion,
   localMedia,
-  LocalChangeError,
   recordChecklist,
   timesOnJob,
   type WorkOrderDetail,
@@ -29,6 +28,7 @@ import { localData } from '~/local/local-data';
 import { useLocalQuery } from '~/local/react';
 import { useNow } from '~/lib/use-now';
 import { Body, Button, Detail, LocalReadError, Row, Section, useTheme } from './ui';
+import { refusalMessage } from '~/lib/refusals';
 
 /**
  * The parts of a job the engineer works through on the phone (P14): the next
@@ -67,10 +67,7 @@ export function useJobStep() {
     try {
       await moveJob(detail.workOrder.id, to);
     } catch (error) {
-      Alert.alert(
-        t('mobile.work.failedTitle'),
-        error instanceof LocalChangeError ? error.message : t('mobile.work.failed'),
-      );
+      Alert.alert(t('mobile.work.failedTitle'), refusalMessage(t, error, t('mobile.work.failed')));
     } finally {
       setBusy(undefined);
     }

@@ -1,5 +1,5 @@
 import { useTranslation } from '@integr8/i18n';
-import { deviceToday, expenseCategories, LocalChangeError, openJobs } from '@integr8/offline';
+import { deviceToday, expenseCategories, openJobs } from '@integr8/offline';
 import { radii, spacing } from '@integr8/tokens';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -20,6 +20,7 @@ import {
 import { type CapturedFile, choosePhotos, discardCaptured, takePhoto } from '~/forms/capture';
 import { claimExpense } from '~/local/expense-actions';
 import { useLocalQuery } from '~/local/react';
+import { refusalMessage } from '~/lib/refusals';
 
 const AMOUNT = /^\d{1,16}(\.\d{1,4})?$/u;
 
@@ -81,7 +82,7 @@ function NewExpense() {
     spentOn: !/^\d{4}-\d{2}-\d{2}$/u.test(spentOn)
       ? t('mobile.expenses.dateFormat')
       : spentOn > today
-        ? t('expenses.errors.spent_in_future')
+        ? t('apiErrors.spent_in_future')
         : undefined,
     amount:
       AMOUNT.test(amount.trim()) && /[1-9]/u.test(amount)
@@ -119,10 +120,7 @@ function NewExpense() {
     })
       .then(() => router.replace('/expenses'))
       .catch((error: unknown) =>
-        Alert.alert(
-          t('mobile.expenses.failed'),
-          error instanceof LocalChangeError || error instanceof Error ? error.message : '',
-        ),
+        Alert.alert(t('mobile.expenses.failed'), refusalMessage(t, error, '')),
       )
       .finally(() => setBusy(false));
   };

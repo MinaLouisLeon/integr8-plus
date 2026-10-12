@@ -44,9 +44,44 @@ export interface ChangeContext {
   random: RandomBytes;
 }
 
+/**
+ * Every reason the phone refuses a change before queuing it. A screen says
+ * each one in the engineer's language by this code (ADR-0012), never by the
+ * English message, so the list is the contract: a code thrown that is not on
+ * it does not compile, and a test in the mobile app fails when one has no
+ * words.
+ */
+export const LOCAL_CHANGE_ERROR_CODES = [
+  'amount_invalid',
+  'asset_not_at_site',
+  'asset_not_on_phone',
+  'asset_retired',
+  'category_unknown',
+  'change_done',
+  'change_unknown',
+  'checklist_item_unknown',
+  'claim_not_on_phone',
+  'date_invalid',
+  'description_required',
+  'form_not_on_phone',
+  'form_submitted',
+  'item_not_in_van',
+  'name_required',
+  'not_an_access_conflict',
+  'not_an_answers_conflict',
+  'quantity_invalid',
+  'shift_not_open',
+  'shift_open',
+  'site_not_on_phone',
+  'spent_in_future',
+  'transition_not_allowed',
+  'work_order_not_on_phone',
+] as const;
+export type LocalChangeErrorCode = (typeof LOCAL_CHANGE_ERROR_CODES)[number];
+
 export class LocalChangeError extends Error {
   constructor(
-    readonly code: string,
+    readonly code: LocalChangeErrorCode,
     message: string,
   ) {
     super(message);

@@ -1,5 +1,5 @@
 import { ApiRequestError } from '@integr8/api-client';
-import type { TFunction } from '@integr8/i18n';
+import { apiErrorMessage, type TFunction } from '@integr8/i18n';
 
 /**
  * Maps an API failure to a message this app has written.
@@ -9,30 +9,13 @@ import type { TFunction } from '@integr8/i18n';
  * the same sentence whatever actually went wrong — correct for the server, and
  * useless for a person looking at a form.
  *
- * The `code` is the contract; the words are ours.
+ * The `code` is the contract; the words are the catalogue's (ADR-0012): every
+ * code the API can return has a message in English and Arabic, and a code
+ * this build does not know yet gets the generic words for its status.
  */
 export function messageForError(failure: unknown, t: TFunction): string {
   if (!(failure instanceof ApiRequestError)) {
     return t('errors.unexpected');
   }
-
-  switch (failure.code) {
-    case 'auth.invalid_credentials':
-      return t('auth.invalidCredentials');
-    case 'auth.account_locked':
-      return t('auth.accountLocked');
-    case 'auth.rate_limited':
-    case 'rate_limited':
-      return t('auth.rateLimited');
-    case 'client_too_old':
-      return t('errors.clientTooOld');
-    case 'forbidden':
-      return t('errors.forbidden');
-    case 'feature_disabled':
-      return t('errors.featureDisabled');
-    case 'not_found':
-      return t('errors.notFound');
-    default:
-      return t('errors.unexpected');
-  }
+  return apiErrorMessage(failure, t);
 }

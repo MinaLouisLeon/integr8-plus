@@ -1,12 +1,6 @@
 import { shiftDurationMs } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
-import {
-  addressText,
-  currentShift,
-  job,
-  type JobListItem,
-  LocalChangeError,
-} from '@integr8/offline';
+import { addressText, currentShift, job, type JobListItem } from '@integr8/offline';
 import { radii, spacing } from '@integr8/tokens';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -18,6 +12,7 @@ import { clockIn, clockOut } from '~/local/job-actions';
 import { useLocalQuery } from '~/local/react';
 import { jobStatusLine, navigateTo, useJobStep } from './job-work';
 import { Body, Button, Heading, LocalReadError, useTheme } from './ui';
+import { refusalMessage } from '~/lib/refusals';
 
 /**
  * The top of the engineer's day (P14): clocked in or not and for how long, the
@@ -56,10 +51,7 @@ export function Today({ open }: { open: readonly JobListItem[] }) {
         await clockOut(clocked.id);
       }
     } catch (error) {
-      Alert.alert(
-        t('mobile.work.failedTitle'),
-        error instanceof LocalChangeError ? error.message : t('mobile.work.failed'),
-      );
+      Alert.alert(t('mobile.work.failedTitle'), refusalMessage(t, error, t('mobile.work.failed')));
     } finally {
       setClocking(false);
     }

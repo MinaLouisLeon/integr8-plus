@@ -241,7 +241,7 @@ describe('converting a lead', { timeout: 20_000 }, () => {
     await user.click(screen.getByRole('button', { name: 'Convert' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This lead has already been converted.',
+      'This lead has been converted. Its details now live on the customer; change them there.',
     );
     expect(navigate).not.toHaveBeenCalled();
   });

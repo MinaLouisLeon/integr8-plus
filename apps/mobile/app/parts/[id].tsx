@@ -1,5 +1,5 @@
 import { useTranslation } from '@integr8/i18n';
-import { job, LocalChangeError, vanStock, type VanStockRow } from '@integr8/offline';
+import { job, vanStock, type VanStockRow } from '@integr8/offline';
 import { radii, spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -19,6 +19,7 @@ import {
 import { formatWhen } from '~/lib/format';
 import { recordPart } from '~/local/job-actions';
 import { useLocalQuery } from '~/local/react';
+import { refusalMessage } from '~/lib/refusals';
 
 /**
  * Using a part on a job, from the phone (CRM/ERP plan, phase E2; ADR-0005).
@@ -94,16 +95,7 @@ function Parts() {
       });
       router.back();
     } catch (error) {
-      Alert.alert(
-        t('mobile.parts.use'),
-        error instanceof LocalChangeError
-          ? error.code === 'quantity_invalid'
-            ? t('mobile.parts.invalidQuantity')
-            : error.code === 'item_not_in_van'
-              ? t('mobile.parts.notInVan')
-              : error.message
-          : t('mobile.work.failed'),
-      );
+      Alert.alert(t('mobile.parts.use'), refusalMessage(t, error, t('mobile.work.failed')));
     } finally {
       setBusy(false);
     }

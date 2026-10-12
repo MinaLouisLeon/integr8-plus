@@ -1,4 +1,4 @@
-import { useTranslation } from '@integr8/i18n';
+import { apiErrorMessage, useTranslation } from '@integr8/i18n';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type FormEvent } from 'react';
 import { keys, type Priority, type SavedView, useOperations, type WorkOrderState } from '../api.js';
@@ -591,7 +591,7 @@ export function WorkOrderListScreen({
                 .map((result) => ({
                   id: result.workOrderId,
                   label: labels.get(result.workOrderId) ?? result.workOrderId,
-                  message: result.message ?? '',
+                  message: apiErrorMessage({ code: result.code ?? '' }, t),
                 })),
             });
             void queryClient.invalidateQueries({ queryKey: ['work-orders'] });

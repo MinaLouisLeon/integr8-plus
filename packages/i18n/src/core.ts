@@ -12,6 +12,7 @@
 
 export * from './locales.js';
 export * from './format.js';
+export * from './api-errors.js';
 export { en, type Messages } from './messages/en.js';
 export { ar, type Catalogue } from './messages/ar.js';
 

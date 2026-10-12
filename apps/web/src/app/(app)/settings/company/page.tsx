@@ -5,6 +5,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Button, ErrorState, Field, LoadingState } from '~/components/ui';
+import { messageForError } from '~/lib/errors';
 import { apiClient } from '~/lib/session';
 
 /**
@@ -132,11 +133,7 @@ function SettingsForm({ initial }: { initial: Settings }) {
     },
     onError: (failure) => {
       setSaved(false);
-      setError(
-        failure instanceof ApiRequestError && failure.code === 'unknown_timezone'
-          ? t('workspace.settings.unknownTimezone')
-          : t('errors.unexpected'),
-      );
+      setError(messageForError(failure, t));
     },
   });
 

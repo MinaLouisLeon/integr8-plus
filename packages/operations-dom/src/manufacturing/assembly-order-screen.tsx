@@ -158,15 +158,19 @@ function AssemblyOrder({ orderId }: { orderId: string }) {
   // from the needs as they are now, in this language.
   const shortages =
     error instanceof ApiRequestError && error.code === 'shortage'
-      ? error.details.map((detailRow) => {
+      ? error.details.flatMap((detailRow) => {
           const id = detailRow.field.replace(/^items\./u, '');
           const need = order.needs.find((candidate) => candidate.item.id === id);
+          // An item no longer short as the needs stand now has nothing to say
+          // in this language; the server's own line is English, so it is left out.
           return need === undefined || isZeroDecimal(need.short)
-            ? detailRow.message
-            : t('manufacturing.orders.shortageLine', {
-                item: need.item.name,
-                quantity: quantityOf(need.short, need.item.unit),
-              });
+            ? []
+            : [
+                t('manufacturing.orders.shortageLine', {
+                  item: need.item.name,
+                  quantity: quantityOf(need.short, need.item.unit),
+                }),
+              ];
         })
       : [];
 

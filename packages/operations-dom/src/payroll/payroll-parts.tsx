@@ -4,7 +4,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { keys, type PayRunSummary, useOperations } from '../api.js';
-import { buttonClass, Failure } from '../ui.js';
+import { Failure } from '../ui.js';
 
 /**
  * Pieces the payroll screens share (seventh round; ADR-0010): who may do
@@ -40,39 +40,15 @@ export function usePayrollAccess() {
   };
 }
 
-/** Every refusal the payroll API gives by code, said in this language. */
-const PAYROLL_ERRORS = [
-  'no_confirmed_rules',
-  'rules_not_confirmed',
-  'month_in_future',
-  'month_taken',
-  'confirmed',
-  'owner_only',
-  'date_taken',
-  'self_approval',
-  'empty_run',
-  'negative_net',
-  'run_out_of_date',
-  'run_approved',
-  'run_not_approved',
-  'hr_key_missing',
-  'version_conflict',
-] as const;
-export type PayrollErrorCode = (typeof PAYROLL_ERRORS)[number];
-
-const isPayrollError = (code: string): code is PayrollErrorCode =>
-  (PAYROLL_ERRORS as readonly string[]).includes(code);
-
 /** The code a request was refused with, when it was refused with one. */
 export function errorCode(error: unknown): string | undefined {
   return error instanceof ApiRequestError ? error.code : undefined;
 }
 
 /**
- * A request the payroll API refused, in words: the known refusals in this
- * language, the module being off or the seat not allowed said plainly, and
- * anything else as every screen shows it. `children` adds a way forward, such
- * as a link to the rule sets.
+ * A request the payroll API refused, in words (ADR-0012), with payroll's own
+ * wording where a code means more here. `children` adds a way forward, such as
+ * a link to the rule sets.
  */
 export function PayrollFailure({
   error,
@@ -84,33 +60,14 @@ export function PayrollFailure({
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
-  const retry = onRetry === undefined ? {} : { onRetry };
-  if (!(error instanceof ApiRequestError)) {
-    return <Failure error={error} {...retry} />;
-  }
-  let message: string;
-  if (isPayrollError(error.code)) {
-    message = t(`payroll.errors.${error.code}`);
-  } else if (error.code === 'feature_disabled') {
-    message = t('errors.featureDisabled');
-  } else if (error.status === 403) {
-    message = t('errors.forbidden');
-  } else {
-    return <Failure error={error} {...retry} />;
-  }
   return (
-    <div
-      role="alert"
-      className="flex flex-col items-start gap-2 rounded-lg border border-danger bg-danger-subtle p-4 text-start"
+    <Failure
+      error={error}
+      onRetry={onRetry}
+      overrides={{ self_approval: t('payroll.errors.self_approval') }}
     >
-      <p className="text-sm text-content">{message}</p>
       {children}
-      {onRetry === undefined ? null : (
-        <button type="button" className={buttonClass.secondary} onClick={onRetry}>
-          {t('common.retry')}
-        </button>
-      )}
-    </div>
+    </Failure>
   );
 }
 

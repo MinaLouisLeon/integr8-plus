@@ -17,6 +17,8 @@
  *   what `{{count}}` and `_other` are for.
  */
 
+import { apiErrorsEn } from './api-errors.en.js';
+
 export const en = {
   common: {
     appName: 'Integr8 Plus',
@@ -379,12 +381,10 @@ export const en = {
         'Remove {{name}}? Everything they filled in, signed and submitted stays, and the history still names them. What goes is their way in.',
       suspendConfirm:
         'Suspend {{name}}? They will be signed out and refused entry until you let them back in. Nothing they did is affected.',
-      lastOwner: 'This is the only owner of the company. Make somebody else an owner first.',
       // The fifteen minutes, said on the screen rather than only in the code.
       accessNote:
         'Suspending or removing somebody stops them signing in straight away. A session they already have open can last up to fifteen minutes longer.',
       status: { invited: 'Invited', active: 'Active', suspended: 'Suspended' },
-      roleAboveOwn: 'You cannot give somebody a role above your own.',
       hrOwnerOnly: 'Only the owner makes somebody an HR manager, or stops them being one.',
       grants: 'Also',
       grantsNote:
@@ -394,8 +394,6 @@ export const en = {
       grantGiven: '{{name}} is now also {{grant}}. It takes effect within fifteen minutes.',
       grantRemoved:
         '{{name}} is no longer {{grant}}. They have been signed out so the change takes effect.',
-      roleHoldsGrant: 'Their role already includes this.',
-      memberNotActive: 'Only an active member can be given this.',
     },
 
     // The desktop app's branding screen (0022). Staff only: the apps a
@@ -490,7 +488,6 @@ export const en = {
       closed: 'Closed — no working days selected.',
       save: 'Save settings',
       saved: 'Saved.',
-      unknownTimezone: 'That is not a timezone we recognise.',
       days: {
         mon: 'Mon',
         tue: 'Tue',
@@ -554,6 +551,10 @@ export const en = {
       'This part of Integr8 is not switched on for your company. Ask Integr8 to turn it on.',
     unexpected: 'An unexpected error occurred.',
   },
+
+  // One message per error code the API can return (ADR-0012), in their own
+  // file because there are so many. `API_ERROR_CODES` is the contract.
+  apiErrors: apiErrorsEn,
 
   states: {
     emptyTitle: 'Nothing here yet',
@@ -2338,22 +2339,9 @@ export const en = {
       disassemble: 'Disassemble',
     },
     errors: {
-      contains_itself: 'An item cannot be built from itself, or from anything built from it.',
-      component_kind: 'A component is a stock or non-stock item. Put labour in the labour cost.',
-      duplicate_component: 'Each component appears once. Put the whole quantity on one line.',
       item_archived: 'A component is archived. Restore it, or choose another.',
-      no_bill:
-        'This item has no bill of materials in use. Add one before building it or taking it apart.',
-      no_supplier:
-        'An item to buy has no preferred supplier. Give it one, or order it by hand from purchasing.',
-      already_drafted:
-        'An order was already drafted from one of these suggestions. Reload the plan to see it.',
-      order_closed: 'This order is completed or cancelled, and no longer changes.',
-      version_conflict:
-        'Somebody changed this while you were looking at it. Reload to see their change, then try again.',
       supplier_inactive:
         'The supplier of an item to buy is not active. Make it active, or order by hand.',
-      shortage: 'There is not enough stock at this location to complete it. Nothing was moved.',
       noPurchasing:
         'Drafting purchase orders needs purchasing rights. Leave the items to buy unchosen, or ask somebody who buys.',
     },
@@ -3343,43 +3331,9 @@ export const en = {
       onLine: 'Line {{line}}: {{problem}}',
       self_approval:
         'You drafted this journal. Someone else posts it, unless the owner allows self-approval and you confirm it.',
-      unbalanced: 'Debits and credits must be equal, on two lines or more.',
-      period_locked: 'That month is locked. Date it in an open month.',
-      before_start: 'That date is before the ledger starts. Date it on or after the start date.',
-      waits_for_invoice: 'Post or set aside the invoice it follows first.',
-      cost_unknown:
-        'Some of this stock has no cost recorded: write the lines out with the amounts.',
-      rate_required: 'This document is in another currency: enter the rate and where it came from.',
-      year_not_ready:
-        'Post or discard the draft journals, and post or set aside the waiting documents, dated in this year first.',
-      nothing_to_close: 'This year has no income or expense to close; lock its months instead.',
-      year_closed: 'This fiscal year is closed. Reopen it first.',
-      year_not_ended: 'This fiscal year has not ended yet.',
-      year_open: 'This fiscal year is not closed.',
-      opening_exists: 'The opening balances journal already exists.',
-      opening_date: 'Date the opening balances on the ledger’s start date.',
-      already_reversed: 'This journal has already been reversed.',
-      closing_journal: 'A year-end closing journal is reversed by reopening its year.',
-      reversal_of_reversal: 'A reversal is not reversed; post the journal again instead.',
-      reversal_before_original: 'Date the reversal on or after the journal it reverses.',
-      not_draft: 'Only a draft written by hand can be changed, posted or discarded.',
       not_posted: 'Only a posted journal is reversed; a draft is discarded.',
-      not_pending: 'This document no longer waits.',
-      settings_fixed: 'The start date and fiscal year are fixed once a journal is posted.',
       account_not_usable: 'A posting account must exist and be in use.',
-      account_archived: 'An account here is archived. Choose one in use.',
-      account_not_found: 'No such account.',
-      customer_not_found: 'No such customer.',
-      invalid_lines: 'Some lines name an account or customer that cannot be used.',
-      type_fixed: 'An account that has been posted to keeps its type.',
-      posting_account:
-        'An automatic posting uses this account. Choose another in the settings first.',
       code_taken: 'The chart already has an account with this code.',
-      version_conflict:
-        'Someone else changed this while you were working. Reload to see their changes, then make yours again.',
-      ledger_not_set_up: 'Set up the ledger first.',
-      already_set_up: 'The ledger is already set up.',
-      range_reversed: 'The end of the range is before its start.',
     },
     home: {
       title: 'General ledger',
@@ -3876,18 +3830,6 @@ export const en = {
       intro: 'What the company holds about you as an employee.',
       none: 'You have no employee profile yet. Ask HR to add one.',
     },
-    errors: {
-      hr_key_missing:
-        'ID, insurance and bank numbers cannot be stored or shown until the HR data key is set on the server. Ask Integr8 to set it.',
-      number_taken: 'Another employee has this employee number.',
-      member_taken: 'This member already has an employee profile.',
-      name_required: 'Give a name, or link the profile to a member.',
-      member_not_found: 'That member is no longer in the company.',
-      version_conflict:
-        'Somebody else changed this profile while you were editing. Reload it and make your change again.',
-      end_before_hire: 'Employment must end on or after the hire date.',
-      end_pairing: 'Give an end date with its reason, or neither.',
-    },
   },
 
   expenses: {
@@ -4084,19 +4026,8 @@ export const en = {
     },
     errors: {
       self_approval: 'Somebody other than the person who claimed decides a claim.',
-      not_waiting:
-        'This claim has already been decided or withdrawn. Reload it to see where it is.',
-      not_own_claim: 'Only the person who claimed can withdraw a claim.',
-      not_approved: 'Only an approved claim is paid back. Reload it to see where it is.',
-      payroll_off: 'Payroll is not switched on. Pay this claim back directly.',
-      settles_through_payroll: 'This claim is paid back with the next pay run, not from here.',
-      spent_in_future: 'An expense is claimed once it is spent: choose today or an earlier date.',
-      category_not_usable: 'This category is no longer in use. Choose another.',
       name_taken: 'Another category already has this name.',
       account_not_usable: 'Choose an expense account that is in use.',
-      version_conflict:
-        'Somebody else changed this while you were looking at it. Reload it and try again.',
-      attachment_removed: 'This receipt was already removed.',
     },
   },
 
@@ -4431,29 +4362,7 @@ export const en = {
       removing: 'Removing…',
     },
     errors: {
-      no_confirmed_rules:
-        'There is no confirmed rule set in force for this month. Add one in the payroll rules and ask the owner to confirm it.',
-      rules_not_confirmed:
-        'The rule set for this month is waiting for the owner to confirm it. Payroll uses it once they do.',
-      month_in_future:
-        'A run is prepared no earlier than the month before. Choose this month or next.',
-      month_taken: 'This month already has a pay run.',
-      confirmed:
-        'This rule set is confirmed and no longer changes. Add a new one from a later month.',
-      owner_only: 'Only the owner confirms the figures payroll uses.',
-      date_taken: 'Pay terms already start that day. Change those instead.',
       self_approval: 'Somebody other than whoever prepared the run approves it.',
-      empty_run: 'Nobody is paid in this run.',
-      negative_net:
-        'A line pays less than nothing. Reduce its deductions, or carry them to next month.',
-      run_out_of_date:
-        'Expense claims changed since this run was calculated. Recalculate it, check it, then approve.',
-      run_approved: 'An approved pay run does not change. Correct it next month.',
-      run_not_approved: 'Payslips and the bank file come from an approved run.',
-      hr_key_missing:
-        'Insurance numbers and bank accounts cannot be read until the HR data key is set on the server. Ask Integr8 to set it.',
-      version_conflict:
-        'Somebody else changed this while you were looking at it. Reload it and try again.',
     },
   },
 
@@ -4463,6 +4372,35 @@ export const en = {
       'This could not be read from the phone. Restart the app, and contact support if it happens again.',
     // A company's own phone app, before anybody has signed in: its website
     // behind a slim branded header, or a welcome when it has no website.
+    // Why a change was refused, when the phone itself refused it rather than
+    // the server (whose refusals are `apiErrors`). One per `LocalChangeError`
+    // code in @integr8/offline that is not also an API code; a test in the
+    // mobile app fails when one is missing.
+    localRefusal: {
+      work_order_not_on_phone: 'This job is not on this phone. Sync, then try again.',
+      name_required: 'Give the asset a name.',
+      asset_not_on_phone: 'This asset is not on this phone. Sync, then try again.',
+      amount_invalid: 'Enter an amount above zero, such as 250.50.',
+      date_invalid: 'Give the date the money was spent.',
+      description_required: 'Say what the expense was for.',
+      category_unknown: 'Choose one of the categories in use.',
+      claim_not_on_phone: 'This claim was not made on this phone.',
+      site_not_on_phone: 'This site is not on this phone. Sync, then try again.',
+      form_not_on_phone: 'This form is not on this phone. Sync, then try again.',
+      form_submitted: 'This form has been submitted, so it no longer changes here.',
+      shift_open: 'You are already clocked in.',
+      shift_not_open: 'You are not clocked in.',
+      change_unknown: 'This change is no longer on this phone.',
+      change_done: 'This change has already reached the office.',
+      not_an_access_conflict: 'This change is not a disagreement over access notes.',
+      not_an_answers_conflict: 'This change is not a disagreement over answers.',
+    },
+    // A change the phone stopped trying to send, in its own words.
+    syncRefusal: {
+      gaveUp: 'This change could not be sent after many tries. Try again, or discard it.',
+      unreadable: 'The office could not read this change. Discard it and make it again.',
+      other: 'Ask the office why, or discard the change.',
+    },
     welcome: {
       login: 'Login',
       title: 'Welcome to {{company}}',
@@ -4965,6 +4903,8 @@ export const en = {
       shiftStart: 'Clocked in',
       shiftEnd: 'Clocked out',
       partUsed: 'Used {{quantity}} of a part on {{job}}',
+      partBought: 'Bought “{{description}}” for {{job}}',
+      partBoughtReceipt: 'Added a receipt for a part bought for a job',
       assetRegistered: 'Registered {{name}} on {{job}}',
       assetCondition: 'Recorded an asset as {{condition}}',
       assetLinked: 'Linked an asset to {{job}}',
@@ -5314,10 +5254,6 @@ export const en = {
       removed: '{{name}} was removed.',
       cancel: 'Cancel',
       restoreHint: 'To bring a removed person back, add their address again.',
-      errorManagerOnly: 'Only an account made with the terminal command can do this.',
-      errorExists: 'Somebody already signs in with this address.',
-      errorTerminal:
-        'This account was made with the terminal command and can only be changed there.',
     },
     invitations: {
       title: 'Invitations',

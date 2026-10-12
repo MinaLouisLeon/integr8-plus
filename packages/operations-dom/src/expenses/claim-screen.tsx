@@ -405,20 +405,13 @@ function Receipts({ claim, onChanged }: { claim: ExpenseClaimDetail; onChanged: 
 function DialogFailure({ error, onReload }: { error: unknown; onReload: () => void }) {
   const { t } = useTranslation();
   const code = errorCode(error);
-  if (code === 'version_conflict' || code === 'not_waiting' || code === 'not_approved') {
-    return (
-      <div
-        role="alert"
-        className="flex flex-col items-start gap-2 rounded-lg border border-danger bg-danger-subtle p-4 text-sm text-content"
-      >
-        <p>{t(`expenses.errors.${code}`)}</p>
-        <button type="button" className={buttonClass.secondary} onClick={onReload}>
-          {t('expenses.claim.reload')}
-        </button>
-      </div>
-    );
-  }
-  return <ExpenseFailure error={error} />;
+  const reload =
+    code === 'version_conflict' || code === 'not_waiting' || code === 'not_approved' ? (
+      <button type="button" className={buttonClass.secondary} onClick={onReload}>
+        {t('expenses.claim.reload')}
+      </button>
+    ) : undefined;
+  return <ExpenseFailure error={error} actions={reload} />;
 }
 
 function useReload(claimId: string, onClose: () => void) {

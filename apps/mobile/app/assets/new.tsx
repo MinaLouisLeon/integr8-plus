@@ -1,6 +1,6 @@
 import { ASSET_CONDITIONS } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
-import { type ConditionValue, LocalChangeError } from '@integr8/offline';
+import type { ConditionValue } from '@integr8/offline';
 import { radii, spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -9,6 +9,7 @@ import { LocalGate } from '~/components/local-gate';
 import { Body, Button, Field, Heading, ScrollScreen, Section, useTheme } from '~/components/ui';
 import { BarcodeScanner } from '~/forms/widgets/barcode';
 import { registerAsset } from '~/local/job-actions';
+import { refusalMessage } from '~/lib/refusals';
 
 /**
  * Registering an asset found on site (CRM/ERP plan, phase E3; ADR-0008): at
@@ -50,10 +51,7 @@ function NewAsset() {
     })
       .then((id) => router.replace({ pathname: '/assets/[id]', params: { id, workOrderId } }))
       .catch((error: unknown) =>
-        Alert.alert(
-          t('mobile.assets.failed'),
-          error instanceof LocalChangeError || error instanceof Error ? error.message : '',
-        ),
+        Alert.alert(t('mobile.assets.failed'), refusalMessage(t, error, '')),
       )
       .finally(() => setBusy(false));
   };

@@ -775,11 +775,21 @@ describe('material planning', { timeout: 20_000 }, () => {
             suggestions: [
               {
                 ...buyMotor,
-                drafted: { kind: 'purchase_order', id: PO, at: '2026-10-12T09:00:00.000Z' },
+                drafted: {
+                  kind: 'purchase_order',
+                  id: PO,
+                  reference: 'PO-000003',
+                  at: '2026-10-12T09:00:00.000Z',
+                },
               },
               {
                 ...buildPump,
-                drafted: { kind: 'assembly_order', id: ORDER, at: '2026-10-12T09:00:00.000Z' },
+                drafted: {
+                  kind: 'assembly_order',
+                  id: ORDER,
+                  reference: 'AO-000007',
+                  at: '2026-10-12T09:00:00.000Z',
+                },
               },
               buyCasing,
             ],

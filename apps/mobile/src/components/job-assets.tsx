@@ -8,6 +8,7 @@ import { linkAsset } from '~/local/job-actions';
 import { useLocalQuery } from '~/local/react';
 import type { WorkOrderDetail } from '@integr8/offline';
 import { Badge, Body, Button, LocalReadError, Section, useTheme } from './ui';
+import { refusalMessage } from '~/lib/refusals';
 
 /**
  * The assets a job is for, on the phone (CRM/ERP plan, phase E3; ADR-0008):
@@ -84,10 +85,7 @@ export function JobAssets({ detail, closed }: { detail: WorkOrderDetail; closed:
                 linkAsset({ workOrderId: jobId, assetId: asset.data.asset.id })
                   .then(() => setChoosing(false))
                   .catch((error: unknown) =>
-                    Alert.alert(
-                      t('mobile.assets.linkFailed'),
-                      error instanceof Error ? error.message : '',
-                    ),
+                    Alert.alert(t('mobile.assets.linkFailed'), refusalMessage(t, error, '')),
                   );
               }}
             />

@@ -322,7 +322,9 @@ describe('invoices', { timeout: 20_000 }, () => {
     await user.type(within(dialog).getByLabelText('Why it is voided'), 'Raised in error');
     await user.click(within(dialog).getByRole('button', { name: 'Void' }));
     expect(
-      await within(dialog).findByText(/Something was paid or credited against this invoice/u),
+      await within(dialog).findByText(
+        'A payment or a credit note is against this invoice. Credit it instead.',
+      ),
     ).toBeInTheDocument();
   });
 });
@@ -431,7 +433,9 @@ describe('payments', { timeout: 20_000 }, () => {
     await user.clear(screen.getByLabelText('Amount'));
     await user.type(screen.getByLabelText('Amount'), '250');
     await user.click(screen.getByRole('button', { name: 'Put against invoice' }));
-    expect(await screen.findByText(/More than the invoice owes/u)).toBeInTheDocument();
+    expect(
+      await screen.findByText('That is more than the invoice still owes.'),
+    ).toBeInTheDocument();
   });
 });
 

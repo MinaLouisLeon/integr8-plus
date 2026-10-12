@@ -6,7 +6,6 @@ import {
   assetFilesIn,
   jobForms,
   localAsset,
-  LocalChangeError,
 } from '@integr8/offline';
 import { radii, spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -31,6 +30,7 @@ import { assetStart, startForm } from '~/forms/session';
 import { linkAsset, openAssetFile, recordCondition } from '~/local/job-actions';
 import { localData } from '~/local/local-data';
 import { useLocalQuery } from '~/local/react';
+import { refusalMessage } from '~/lib/refusals';
 
 /**
  * One asset on the phone (CRM/ERP plan, phase E3; ADR-0008): what it is,
@@ -86,10 +86,7 @@ function Asset() {
   const { data } = asset;
   const linkedHere = workOrderId === undefined || asset.workOrderIds.includes(workOrderId);
   const failed = (error: unknown) =>
-    Alert.alert(
-      t('mobile.assets.failed'),
-      error instanceof LocalChangeError || error instanceof Error ? error.message : '',
-    );
+    Alert.alert(t('mobile.assets.failed'), refusalMessage(t, error, ''));
 
   const save = () => {
     if (condition === null) {

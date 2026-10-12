@@ -15,6 +15,7 @@ import {
 } from '../capture';
 import { imageUri, useFormMedia } from '../media';
 import { ActionButton, Muted, Problem, styles as kit, type WidgetProps } from './kit';
+import { refusalMessage } from '~/lib/refusals';
 
 /**
  * Photos and files. A photo is taken with the camera or chosen from the phone,
@@ -78,7 +79,7 @@ export function FilesWidget(props: WidgetProps<'photo' | 'file'>) {
     } catch (error) {
       setProblems([
         t('mobile.fill.failed', {
-          message: error instanceof Error ? error.message : String(error),
+          message: refusalMessage(t, error, t('mobile.work.failed')),
         }),
       ]);
     } finally {

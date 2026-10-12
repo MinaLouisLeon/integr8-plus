@@ -329,7 +329,7 @@ export function LedgerSettingsScreen() {
               role="alert"
               className="flex flex-col items-start gap-2 rounded-lg border border-danger bg-danger-subtle p-4 text-sm text-content"
             >
-              <p>{t('ledger.errors.version_conflict')}</p>
+              <p>{t('apiErrors.version_conflict')}</p>
               <button
                 type="button"
                 className={buttonClass.secondary}

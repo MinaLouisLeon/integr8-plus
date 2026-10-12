@@ -1,5 +1,5 @@
 import { ApiRequestError } from '@integr8/api-client';
-import { useTranslation, type TFunction } from '@integr8/i18n';
+import { apiErrorMessage, type TFunction, useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
@@ -454,24 +454,13 @@ function messageFor(failure: unknown, t: TFunction, companyName = ''): string {
     case 'wrong_company':
     case 'auth.wrong_company':
       return t('auth.wrongCompany', { company: companyName });
-    case 'auth.invalid_credentials':
-      return t('auth.invalidCredentials');
-    case 'auth.account_locked':
-      return t('auth.accountLocked');
-    case 'auth.rate_limited':
-    case 'rate_limited':
-      return t('auth.rateLimited');
-    case 'client_too_old':
-      return t('errors.clientTooOld');
     default:
       // The platform sign-in answers a wrong email, password or code with a
       // plain 401, and says no more on purpose.
       if (failure.status === 401) {
         return t('auth.invalidCredentials');
       }
-      if (failure.status === 429) {
-        return t('auth.rateLimited');
-      }
-      return t('errors.unexpected');
+      // Everything else in the catalogue's words for its code (ADR-0012).
+      return apiErrorMessage(failure, t);
   }
 }

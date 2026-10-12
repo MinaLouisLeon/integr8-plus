@@ -1,6 +1,7 @@
 import type { CompletionMissing } from '@integr8/core';
 import type { TFunction } from '@integr8/i18n';
-import { type DescribedChange, UPLOAD_FAILED } from '@integr8/offline';
+import type { DescribedChange } from '@integr8/offline';
+import { syncRefusalMessage } from './refusals';
 
 /** A change as the engineer made it: "Ticked “Isolate supply” on WO-000042". */
 export function describeChange(t: TFunction, change: DescribedChange): string {
@@ -69,19 +70,24 @@ export function describeChange(t: TFunction, change: DescribedChange): string {
       });
     case 'expense.receipt':
       return t('mobile.change.expenseReceipt');
+    case 'work_order.purchase':
+      return t('mobile.change.partBought', {
+        job,
+        description:
+          typeof change.payload.description === 'string' ? change.payload.description : '',
+      });
+    case 'work_order.purchase_receipt':
+      return t('mobile.change.partBoughtReceipt');
   }
 }
 
 /**
- * Why a change is waiting on the engineer, in one line. The server's refusals
- * arrive in words already; one the phone itself failed — a file that will not
- * upload — is said in the engineer's language.
+ * Why a change is waiting on the engineer, in one line, in the engineer's
+ * language: the server's refusal by its code, or the phone's own reason (a
+ * file that will not upload). Never the server's English.
  */
 export function describeRefusal(t: TFunction, change: DescribedChange): string {
-  if (change.lastError?.code === UPLOAD_FAILED) {
-    return t('mobile.conflict.uploadFailedShort');
-  }
-  return change.lastError?.message ?? '';
+  return syncRefusalMessage(t, change.lastError);
 }
 
 /**

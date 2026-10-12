@@ -6,7 +6,7 @@ import {
   transition,
   viewForm,
 } from '@integr8/form-engine';
-import { formatDateTime, useTranslation } from '@integr8/i18n';
+import { apiErrorMessage, formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMemo, useState, type FormEvent as SubmitEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useContextMenu } from '~/components/context-menu';
@@ -191,13 +191,7 @@ export function FormsListRoute() {
           {templates.isPending ? <LoadingState /> : null}
           {templates.isError ? <ErrorState onRetry={() => void templates.refetch()} /> : null}
           {copyTemplate.isError ? (
-            <ErrorState
-              requestId={
-                copyTemplate.error instanceof ApiRequestError
-                  ? copyTemplate.error.requestId
-                  : undefined
-              }
-            />
+            <ErrorState message={apiErrorMessage(copyTemplate.error, t)} />
           ) : null}
           {templates.data === undefined ? null : (
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -288,11 +282,7 @@ function CreateDialog({
           maxLength={200}
           onChange={(event) => setTitle(event.target.value)}
         />
-        {create.isError ? (
-          <ErrorState
-            requestId={create.error instanceof ApiRequestError ? create.error.requestId : undefined}
-          />
-        ) : null}
+        {create.isError ? <ErrorState message={apiErrorMessage(create.error, t)} /> : null}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}
@@ -342,11 +332,7 @@ function CopyDialog({ form, onClose }: { form: FormListItem | undefined; onClose
           maxLength={200}
           onChange={(event) => setTitle(event.target.value)}
         />
-        {copy.isError ? (
-          <ErrorState
-            requestId={copy.error instanceof ApiRequestError ? copy.error.requestId : undefined}
-          />
-        ) : null}
+        {copy.isError ? <ErrorState message={apiErrorMessage(copy.error, t)} /> : null}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}

@@ -25,6 +25,7 @@ import { choosePhotos, takePhoto } from '~/forms/capture';
 import { addReceipt, fetchMyClaims } from '~/local/expense-actions';
 import { localData } from '~/local/local-data';
 import { useLocalQuery, useSyncActivity } from '~/local/react';
+import { refusalMessage, syncRefusalMessage } from '~/lib/refusals';
 
 type ServerClaim = Awaited<ReturnType<typeof fetchMyClaims>>[number];
 
@@ -107,7 +108,7 @@ function Expenses() {
           }
         })
         .catch((error: unknown) =>
-          Alert.alert(t('mobile.expenses.failed'), error instanceof Error ? error.message : ''),
+          Alert.alert(t('mobile.expenses.failed'), refusalMessage(t, error, '')),
         );
     Alert.alert(t('mobile.expenses.addReceipt'), '', [
       { text: t('mobile.expenses.takePhoto'), onPress: () => add('camera') },
@@ -153,7 +154,9 @@ function Expenses() {
                 claim.description,
                 t('mobile.expenses.spentOn', { date: date(claim.spentOn) }),
                 claim.state === 'failed'
-                  ? t('mobile.expenses.refused', { message: claim.lastError?.message ?? '' })
+                  ? t('mobile.expenses.refused', {
+                      message: syncRefusalMessage(t, claim.lastError),
+                    })
                   : t('mobile.expenses.tapToAdd'),
                 claim.receipts.total === 0
                   ? t('mobile.expenses.noReceipts')

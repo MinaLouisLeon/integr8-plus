@@ -110,13 +110,21 @@ const run = (overrides: Partial<PayRunDetail> = {}): PayRunDetail => ({
   preparedAt: '2026-10-10T09:00:00.000Z',
   approvedBy: null,
   approvedAt: null,
+  approveBlockedBy: null,
+  hrKeyConfigured: true,
   totals: TOTALS,
   version: 2,
   ruleSet: { id: RULES, name: 'Egypt 2026', effectiveFrom: '2026-01-01' },
   lines: [line()],
   withoutTerms: [],
   disclaimer: DISCLAIMER,
-  can: { edit: true, approve: true, discard: true, exportBankFile: false },
+  can: {
+    edit: true,
+    approve: true,
+    discard: true,
+    exportBankFile: false,
+    exportInsuranceReport: false,
+  },
   ...overrides,
 });
 
@@ -133,6 +141,7 @@ const summary = (overrides: Partial<PayRunSummary> = {}): PayRunSummary => {
 };
 
 const payslip = (overrides: Partial<Payslip['line']> = {}): Payslip => ({
+  company: { name: 'Nile Services', address: null, taxReference: null },
   run: {
     id: RUN,
     reference: 'PR-2026-10',
@@ -256,7 +265,11 @@ describe('the pay runs', { timeout: 20_000 }, () => {
     answer = apiError(409, 'month_taken', 'Taken');
     fireEvent.change(month, { target: { value: '2026-10' } });
     await user.click(screen.getByRole('button', { name: 'Prepare' }));
-    expect(await screen.findByText('This month already has a pay run.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'There is already one for this month. Change it, or choose another month.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open PR-2026-10' })).toHaveAttribute(
       'href',
       `/hr/pay-runs/${RUN}`,
@@ -321,7 +334,13 @@ describe('one pay run', { timeout: 20_000 }, () => {
         body: run({
           version: 3,
           preparedBy: { id: USER, name: 'Hala Nabil' },
-          can: { edit: true, approve: false, discard: true, exportBankFile: false },
+          can: {
+            edit: true,
+            approve: false,
+            discard: true,
+            exportBankFile: false,
+            exportInsuranceReport: false,
+          },
           lines: [
             line({
               bonus: '500',
@@ -379,7 +398,13 @@ describe('one pay run', { timeout: 20_000 }, () => {
       'GET /v1/payroll/runs/:id': () => ({
         body: run({
           preparedBy: { id: USER, name: 'Hala Nabil' },
-          can: { edit: true, approve: false, discard: true, exportBankFile: false },
+          can: {
+            edit: true,
+            approve: false,
+            discard: true,
+            exportBankFile: false,
+            exportInsuranceReport: false,
+          },
         }),
       }),
     });
@@ -428,7 +453,13 @@ describe('one pay run', { timeout: 20_000 }, () => {
         status: 'approved',
         approvedBy: { id: USER, name: 'Hala Nabil' },
         approvedAt: '2026-10-12T09:00:00.000Z',
-        can: { edit: false, approve: false, discard: false, exportBankFile: true },
+        can: {
+          edit: false,
+          approve: false,
+          discard: false,
+          exportBankFile: true,
+          exportInsuranceReport: false,
+        },
       }),
     };
     await user.click(screen.getByRole('button', { name: 'Approve' }));
@@ -452,7 +483,13 @@ describe('one pay run', { timeout: 20_000 }, () => {
           payDate: '2026-10-28',
           approvedBy: { id: USER, name: 'Hala Nabil' },
           approvedAt: '2026-10-12T09:00:00.000Z',
-          can: { edit: false, approve: false, discard: false, exportBankFile: true },
+          can: {
+            edit: false,
+            approve: false,
+            discard: false,
+            exportBankFile: true,
+            exportInsuranceReport: false,
+          },
         }),
       }),
       'GET /v1/payroll/runs/:id/insurance.csv': () => ({

@@ -206,7 +206,12 @@ describe('the job screen', { timeout: 20_000 }, () => {
 
     await user.click(within(actions).getByRole('button', { name: 'Complete job' }));
     const alert = await screen.findByRole('alert');
-    expect(within(alert).getByText(/^Before completing this job, submit/u)).toBeInTheDocument();
+    // The refusal in the catalogue's words, never the server's sentence.
+    expect(
+      within(alert).getByText(
+        'This job cannot be completed yet: something it needs is still missing.',
+      ),
+    ).toBeInTheDocument();
     expect(
       within(alert)
         .getAllByRole('listitem')
@@ -616,7 +621,7 @@ describe('the job list', () => {
 
     const status = await screen.findByText('1 job changed.');
     expect(status.parentElement).toHaveTextContent(
-      'WO-000002: A job that is complete cannot move to cancelled.',
+      'WO-000002: The job cannot move to that state from where it is now.',
     );
     expect(calls.find((call) => call.path === '/v1/work-orders/bulk')?.body).toEqual({
       action: 'cancel',
@@ -917,7 +922,7 @@ describe('the way back', () => {
       'GET /v1/customers/:id': () => apiError(404, 'not_found', 'This customer does not exist.'),
     });
     const { navigate } = renderScreen(<CustomerScreen customerId={CUSTOMER} />, client);
-    expect(await screen.findByRole('alert')).toHaveTextContent('This customer does not exist.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('We could not find that.');
     await user.click(screen.getByRole('link', { name: 'All customers' }));
     expect(navigate).toHaveBeenCalledWith('/customers');
   });
@@ -989,7 +994,7 @@ describe('a job’s forms', () => {
     await user.selectOptions(picker, OTHER_FORM);
     await user.click(within(forms).getByRole('button', { name: 'Add' }));
     expect(await within(forms).findByRole('alert')).toHaveTextContent(
-      'This job is closed, so its forms cannot change.',
+      'This job is closed. Reopen it before changing it.',
     );
     expect(calls.find((call) => call.method === 'POST')?.body).toEqual({
       formId: OTHER_FORM,

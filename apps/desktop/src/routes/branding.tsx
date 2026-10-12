@@ -1,5 +1,5 @@
 import { ApiRequestError } from '@integr8/api-client';
-import { useTranslation, type TFunction } from '@integr8/i18n';
+import { apiErrorCodeMessage, type TFunction, useTranslation } from '@integr8/i18n';
 import { brandAccent, brandShell, colours, parseHexColour, type Theme } from '@integr8/tokens';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
@@ -163,7 +163,8 @@ function fieldErrorsFrom(failure: ApiRequestError, t: TFunction): FieldErrors {
   for (const detail of failure.details) {
     const name = detail.field.split('.').pop() ?? '';
     if ((DRAFT_FIELDS as readonly string[]).includes(name)) {
-      errors[name as DraftField] = t('workspace.branding.invalid');
+      errors[name as DraftField] =
+        apiErrorCodeMessage(detail.code, t) ?? t('workspace.branding.invalid');
     }
   }
   return errors;

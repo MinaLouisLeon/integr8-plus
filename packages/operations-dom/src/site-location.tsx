@@ -1,4 +1,4 @@
-import { useTranslation } from '@integr8/i18n';
+import { apiErrorMessage, useTranslation } from '@integr8/i18n';
 import type * as Leaflet from 'leaflet';
 import { useEffect, useRef, useState } from 'react';
 import { useOperations } from './api.js';
@@ -61,7 +61,7 @@ export function SiteLocation({
     setSaving(true);
     setProblem(undefined);
     onSave(next)
-      .catch((error: unknown) => setProblem(error instanceof Error ? error.message : String(error)))
+      .catch((error: unknown) => setProblem(apiErrorMessage(error, t)))
       .finally(() => setSaving(false));
   };
 
