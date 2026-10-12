@@ -21,7 +21,14 @@ export interface Call {
   body: unknown;
 }
 
-type Handler = (call: Call, params: Record<string, string>) => { status?: number; body?: unknown };
+/**
+ * What a fake answers: a status and a JSON body, or with `text` a body as it
+ * is (a CSV), and with `headers` any headers of its own.
+ */
+type Handler = (
+  call: Call,
+  params: Record<string, string>,
+) => { status?: number; body?: unknown; text?: string; headers?: Record<string, string> };
 
 export function fakeApi(routes: Record<string, Handler>) {
   const calls: Call[] = [];
@@ -55,10 +62,16 @@ export function fakeApi(routes: Record<string, Handler>) {
         const params = Object.fromEntries(
           route.names.map((name, index) => [name, match[index + 1]!]),
         );
-        const { status = 200, body } = route.handler(call, params);
+        const { status = 200, body, text, headers = {} } = route.handler(call, params);
+        if (text !== undefined) {
+          return new Response(text, {
+            status,
+            headers: { 'content-type': 'text/csv; charset=utf-8', ...headers },
+          });
+        }
         return new Response(body === undefined ? null : JSON.stringify(body), {
           status,
-          headers: { 'content-type': 'application/json' },
+          headers: { 'content-type': 'application/json', ...headers },
         });
       }
     }
@@ -129,18 +142,25 @@ export function renderScreen(
       crmOpportunities: '/crm/opportunities',
       crmOpportunity: (id) => `/crm/opportunities/${id}`,
       crmActivities: '/crm/activities',
+      crmPipelines: '/crm/pipelines',
+      crmPipeline: (id) => `/crm/pipelines/${id}`,
+      crmReports: '/crm/reports',
       inventory: '/inventory',
+      partsUsage: '/inventory/parts-usage',
       items: '/inventory/items',
       item: (id) => `/inventory/items/${id}`,
       stockLocations: '/inventory/locations',
       stockLocation: (id) => `/inventory/locations/${id}`,
       stockCount: (id) => `/inventory/counts/${id}`,
+      reorder: (locationId) => `/inventory/locations/${locationId}/reorder`,
+      vanRequests: '/inventory/van-requests',
       suppliers: '/purchasing/suppliers',
       supplier: (id) => `/purchasing/suppliers/${id}`,
       purchaseOrders: '/purchasing/orders',
       purchaseOrder: (id) => `/purchasing/orders/${id}`,
       boms: '/manufacturing/boms',
       bom: (itemId) => `/manufacturing/boms/${itemId}`,
+      bomVersion: (bomId) => `/manufacturing/boms/versions/${bomId}`,
       assemblyOrders: '/manufacturing/orders',
       assemblyOrder: (id) => `/manufacturing/orders/${id}`,
       materialPlans: '/manufacturing/plans',
@@ -149,6 +169,7 @@ export function renderScreen(
       quote: (id) => `/sales/quotes/${id}`,
       salesOrders: '/sales/orders',
       salesOrder: (id) => `/sales/orders/${id}`,
+      deliveryNote: (orderId, deliveryId) => `/sales/orders/${orderId}/deliveries/${deliveryId}`,
       invoices: '/finance/invoices',
       invoice: (id) => `/finance/invoices/${id}`,
       payments: '/finance/payments',

@@ -17,7 +17,8 @@ export type LocalTable =
   | 'shifts'
   | 'van_stock'
   | 'assets'
-  | 'asset_links';
+  | 'asset_links'
+  | 'item_images';
 
 export class LocalDatabaseClosedError extends Error {
   constructor() {

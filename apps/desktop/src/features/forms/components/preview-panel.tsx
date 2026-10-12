@@ -1,4 +1,3 @@
-import { ApiRequestError } from '@integr8/api-client';
 import {
   type CompiledForm,
   createFormState,
@@ -10,7 +9,7 @@ import {
   viewForm,
 } from '@integr8/form-engine';
 import { SectionProblem } from '@integr8/form-renderer-dom';
-import { useTranslation } from '@integr8/i18n';
+import { apiErrorMessage, useTranslation } from '@integr8/i18n';
 import { useMemo, useState } from 'react';
 import { Button } from '~/components/ui';
 import { type TestSubmission, testSubmission } from '../api';
@@ -68,11 +67,7 @@ export function PreviewPanel({
       await flush();
       setResult(await testSubmission(formId, toSubmission(form, state, context), today));
     } catch (error) {
-      setFailure(
-        error instanceof ApiRequestError
-          ? t('errors.body', { requestId: error.requestId })
-          : t('errors.unexpected'),
-      );
+      setFailure(apiErrorMessage(error, t));
     } finally {
       setChecking(false);
     }

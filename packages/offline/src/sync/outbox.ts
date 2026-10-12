@@ -44,9 +44,47 @@ export interface ChangeContext {
   random: RandomBytes;
 }
 
+/**
+ * Every reason the phone refuses a change before queuing it. A screen says
+ * each one in the engineer's language by this code (ADR-0012), never by the
+ * English message, so the list is the contract: a code thrown that is not on
+ * it does not compile, and a test in the mobile app fails when one has no
+ * words.
+ */
+export const LOCAL_CHANGE_ERROR_CODES = [
+  'amount_invalid',
+  'asset_not_at_site',
+  'asset_not_on_phone',
+  'asset_retired',
+  'category_unknown',
+  'change_done',
+  'change_unknown',
+  'checklist_item_unknown',
+  'claim_not_on_phone',
+  'date_invalid',
+  'description_required',
+  'form_not_on_phone',
+  'form_submitted',
+  'item_not_in_van',
+  'name_required',
+  'not_an_access_conflict',
+  'not_an_answers_conflict',
+  'part_description_required',
+  'purchase_not_on_phone',
+  'quantity_invalid',
+  'shift_not_open',
+  'shift_open',
+  'site_not_on_phone',
+  'spent_in_future',
+  'transition_not_allowed',
+  'unit_price_invalid',
+  'work_order_not_on_phone',
+] as const;
+export type LocalChangeErrorCode = (typeof LOCAL_CHANGE_ERROR_CODES)[number];
+
 export class LocalChangeError extends Error {
   constructor(
-    readonly code: string,
+    readonly code: LocalChangeErrorCode,
     message: string,
   ) {
     super(message);
@@ -810,6 +848,199 @@ async function discardExpenseChange(sql: SqlConnection, row: OutboxRow, at: stri
     await sql.run(`update outbox set state = 'done', done_at = ?, last_error = ? where seq = ?`, [
       at,
       JSON.stringify({ code: 'discarded', message: 'Its claim was discarded.' }),
+      receipt.seq,
+    ]);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Parts bought from a merchant (eighth round; ADR-0012)
+// ---------------------------------------------------------------------------
+
+/** What the engineer bought for a job at a merchant; the receipts are photos already kept on the phone. */
+export interface PurchaseInput {
+  workOrderId: string;
+  description: string;
+  merchant?: string | undefined;
+  /** A decimal string above zero, up to four places. */
+  quantity: string;
+  /** Paid for one, in the company currency: a decimal string, up to four places. */
+  unitPrice: string;
+  note?: string | undefined;
+  receipts?: readonly { file: CapturedFileInput; title: string }[];
+}
+
+const QUANTITY = /^\d{1,16}(\.\d{1,4})?$/u;
+
+/** Queues one receipt photo for a purchase, after the purchase and after its own file. */
+async function queuePurchaseReceipt(
+  sql: SqlConnection,
+  context: ChangeContext,
+  input: {
+    purchaseId: string;
+    workOrderId: string;
+    file: CapturedFileInput;
+    title: string;
+    recordedBy: string | null;
+  },
+  now: Date,
+): Promise<{ attachmentId: string; mediaId: string }> {
+  const at = now.toISOString();
+  const mediaId = uuidv7(now.getTime(), context.random);
+  const attachmentId = uuidv7(now.getTime(), context.random);
+  // Filed under the job, so the photo stays on the phone while the job does.
+  await insertUpload(sql, { ...input.file, mediaId, workOrderId: input.workOrderId, at });
+  const title = input.title.trim() === '' ? 'Receipt' : input.title.trim().slice(0, 200);
+  await insertChange(sql, {
+    id: uuidv7(now.getTime(), context.random),
+    kind: 'work_order.purchase_receipt',
+    entityKey: `purchase:${input.purchaseId}`,
+    entityId: input.purchaseId,
+    workOrderId: input.workOrderId,
+    payload: { attachmentId, mediaId, title },
+    base: null,
+    // The purchase must reach the server first, and the photo with it. Should
+    // the server still not have it, it answers `retry` (`purchase_not_ready`).
+    waitsFor: {
+      media: [mediaId],
+      mutations: input.recordedBy === null ? [] : [input.recordedBy],
+    },
+    at,
+  });
+  return { attachmentId, mediaId };
+}
+
+/**
+ * A part bought from a merchant for a job, with the price paid and a photo of
+ * each receipt, signal or not (ADR-0012). Nothing enters stock: it is a
+ * non-stock part used on the job, and paying the engineer back stays an
+ * expense claim. The purchase goes with the job's other changes, under an id
+ * chosen here so a resend lands once and each receipt can name it; each
+ * receipt follows once the purchase has arrived and its photo has uploaded.
+ */
+export async function recordPurchase(
+  context: ChangeContext,
+  input: PurchaseInput,
+): Promise<{ purchaseId: string; mutationId: string }> {
+  const { db, clock, random } = context;
+  const quantity = input.quantity.trim();
+  if (!QUANTITY.test(quantity) || !/[1-9]/u.test(quantity)) {
+    throw new LocalChangeError('quantity_invalid', 'Enter a quantity above zero.');
+  }
+  const unitPrice = input.unitPrice.trim();
+  if (!AMOUNT.test(unitPrice)) {
+    throw new LocalChangeError(
+      'unit_price_invalid',
+      'Enter the price paid for one, such as 85.50.',
+    );
+  }
+  const description = input.description.trim();
+  if (description === '' || description.length > 300) {
+    throw new LocalChangeError('part_description_required', 'Say what was bought.');
+  }
+  const merchant = input.merchant?.trim().slice(0, 200) ?? '';
+  const note = input.note?.trim().slice(0, 1000) ?? '';
+  return db.write(OUTBOX_TABLES, async (sql) => {
+    await jobDetail(sql, input.workOrderId);
+    const now = clock.now();
+    const at = now.toISOString();
+    const purchaseId = uuidv7(now.getTime(), random);
+    const mutationId = uuidv7(now.getTime(), random);
+    await insertChange(sql, {
+      id: mutationId,
+      kind: 'work_order.purchase',
+      // With the job's other changes, in the order they were made.
+      entityKey: `work_order:${input.workOrderId}`,
+      entityId: input.workOrderId,
+      workOrderId: input.workOrderId,
+      payload: {
+        id: purchaseId,
+        description,
+        ...(merchant === '' ? {} : { merchant }),
+        quantity,
+        unitPrice,
+        ...(note === '' ? {} : { note }),
+      },
+      base: null,
+      at,
+    });
+    for (const receipt of input.receipts ?? []) {
+      await queuePurchaseReceipt(
+        sql,
+        context,
+        {
+          purchaseId,
+          workOrderId: input.workOrderId,
+          file: receipt.file,
+          title: receipt.title,
+          recordedBy: mutationId,
+        },
+        now,
+      );
+    }
+    return { purchaseId, mutationId };
+  });
+}
+
+/** Another receipt photo for a purchase recorded on this phone. */
+export async function recordPurchaseReceipt(
+  context: ChangeContext,
+  input: { purchaseId: string; file: CapturedFileInput; title: string },
+): Promise<{ attachmentId: string; mediaId: string }> {
+  return context.db.write(OUTBOX_TABLES, async (sql) => {
+    const recorded = await sql.get<{ id: string; state: OutboxState; work_order_id: string }>(
+      `select id, state, work_order_id from outbox
+       where kind = 'work_order.purchase' and json_extract(payload, '$.id') = ?
+       order by seq desc limit 1`,
+      [input.purchaseId],
+    );
+    if (recorded === undefined) {
+      throw new LocalChangeError(
+        'purchase_not_on_phone',
+        'This purchase was not recorded on this phone.',
+      );
+    }
+    return queuePurchaseReceipt(
+      sql,
+      context,
+      {
+        purchaseId: input.purchaseId,
+        workOrderId: recorded.work_order_id,
+        file: input.file,
+        title: input.title,
+        recordedBy: recorded.state === 'done' ? null : recorded.id,
+      },
+      context.clock.now(),
+    );
+  });
+}
+
+/**
+ * A purchase dropped before the server took it takes its receipts with it:
+ * they have nothing to belong to. Their uploads go too, when they have not started.
+ */
+async function discardPurchaseChange(
+  sql: SqlConnection,
+  row: OutboxRow,
+  at: string,
+): Promise<void> {
+  if (row.kind !== 'work_order.purchase' || typeof row.payload.id !== 'string') {
+    return;
+  }
+  const receipts = await sql.all<{ seq: number; payload: string }>(
+    `select seq, payload from outbox
+     where kind = 'work_order.purchase_receipt' and entity_key = ? and state <> 'done'`,
+    [`purchase:${row.payload.id}`],
+  );
+  for (const receipt of receipts) {
+    const { mediaId } = JSON.parse(receipt.payload) as { mediaId: string };
+    await sql.run(
+      `delete from uploads where media_id = ? and state <> 'confirmed' and bytes_sent = 0 and kind is null`,
+      [mediaId],
+    );
+    await sql.run(`update outbox set state = 'done', done_at = ?, last_error = ? where seq = ?`, [
+      at,
+      JSON.stringify({ code: 'discarded', message: 'Its purchase was discarded.' }),
       receipt.seq,
     ]);
   }
@@ -1889,6 +2120,7 @@ export async function discardChange(context: ChangeContext, mutationId: string):
     await requestRefresh(sql, row.workOrderId);
     await discardAssetChange(sql, row);
     await discardExpenseChange(sql, row, at);
+    await discardPurchaseChange(sql, row, at);
     await sql.run(`update outbox set state = 'done', done_at = ?, last_error = ? where seq = ?`, [
       at,
       JSON.stringify({

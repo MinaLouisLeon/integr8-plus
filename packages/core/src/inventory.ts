@@ -51,6 +51,15 @@ export const locationKindSchema = z.enum(LOCATION_KINDS);
 export type LocationKind = z.infer<typeof locationKindSchema>;
 
 /**
+ * Whose stock a location holds (ADR-0012): ours, counted and valued, or — at
+ * a customer's site only — the customer's, a record that is never valued,
+ * planned from or posted to the ledger.
+ */
+export const LOCATION_OWNERSHIPS = ['ours', 'customer'] as const;
+export const locationOwnershipSchema = z.enum(LOCATION_OWNERSHIPS);
+export type LocationOwnership = z.infer<typeof locationOwnershipSchema>;
+
+/**
  * Every kind of movement in the ledger, and the sign its quantity carries:
  * `+1` adds stock where it happens, `-1` takes it away, `0` either (a
  * correction can go both ways).

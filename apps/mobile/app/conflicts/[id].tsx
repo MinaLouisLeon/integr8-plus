@@ -29,6 +29,7 @@ import { describeChange, describeValue, missingLines } from '~/lib/describe-chan
 import { formatWhen } from '~/lib/format';
 import { localData } from '~/local/local-data';
 import { useLocalQuery } from '~/local/react';
+import { syncRefusalMessage } from '~/lib/refusals';
 
 /**
  * Deciding about one change that could not be sent as it was (P12).
@@ -120,7 +121,7 @@ function Conflict() {
           <Body>
             {change.lastError?.code === UPLOAD_FAILED
               ? t('mobile.conflict.uploadFailed')
-              : t('mobile.conflict.refused', { message: change.lastError?.message ?? '' })}
+              : t('mobile.conflict.refused', { message: syncRefusalMessage(t, change.lastError) })}
           </Body>
           <Button
             label={t('mobile.syncScreen.retry')}

@@ -749,6 +749,15 @@ The report says development/tests run with recording/local adapters, **but produ
 - [x] On-demand planning from sales orders, assemblies, reorder levels and stock, drafting assembly and purchase orders on request (M1b).
 - **Done when:** a kit is built from stock, its cost follows its parts, and planning's suggestions for a sales order can be drafted into orders without retyping.
 
+### Phase F2 — Follow-ups before the pilot (authorized 2026-10-12)
+
+**Status:** `DONE` — eighth round; see the [phase tracker](./README.md#phase-tracker) and ADR-0012.
+
+- [x] Every API error code in English and Arabic, a CI licence check, the self-hosting audit, and the seventh round's follow-ups (F2a).
+- [x] Pipeline and stage editing, Customer 360 documents and timeline, quote and pipeline analytics, parts usage, CSV exports (F2b).
+- [x] Site stock locations, item images and datasheets, supplier price lists and reorder drafts, hand deliveries, van refills, merchant parts, scan to receive, reserved stock on the phone (F2c).
+- **Done when:** the tracker's follow-ups list is closed or carries a decision, and the pilot can start.
+
 ### Phase L — Pilot release
 
 **Status:** `NOT STARTED` — see the [phase tracker](./README.md#phase-tracker).

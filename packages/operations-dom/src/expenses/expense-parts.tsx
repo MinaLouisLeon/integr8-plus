@@ -5,7 +5,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, type ReactNode } from 'react';
 import { type ExpenseClaimStatus, type ExpenseReceipt, keys, useOperations } from '../api.js';
-import { buttonClass, Failure } from '../ui.js';
+import { Failure } from '../ui.js';
 
 /**
  * Pieces the expense-claim screens share (seventh round; ADR-0010): who may
@@ -74,69 +74,38 @@ export function localToday(): string {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 }
 
-/** Every refusal the expenses API gives by code, said in this language. */
-const EXPENSE_ERRORS = [
-  'self_approval',
-  'not_waiting',
-  'not_own_claim',
-  'not_approved',
-  'payroll_off',
-  'settles_through_payroll',
-  'spent_in_future',
-  'category_not_usable',
-  'name_taken',
-  'account_not_usable',
-  'version_conflict',
-  'attachment_removed',
-] as const;
-type ExpenseErrorCode = (typeof EXPENSE_ERRORS)[number];
-
-const isExpenseError = (code: string): code is ExpenseErrorCode =>
-  (EXPENSE_ERRORS as readonly string[]).includes(code);
-
 /** The code a request was refused with, when it was refused with one. */
 export function errorCode(error: unknown): string | undefined {
   return error instanceof ApiRequestError ? error.code : undefined;
 }
 
 /**
- * A request the expenses API refused, in words: the known refusals in this
- * language, the module being off or the seat not allowed said plainly, and
- * anything else as every screen shows it.
+ * A request the expenses API refused, in words (ADR-0012), with this area's
+ * own wording where a code means more here: who decides a claim, a category's
+ * name, the expense account. A field the server names with a known reason,
+ * such as a date ahead, is a line under the message.
  */
-export function ExpenseFailure({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+export function ExpenseFailure({
+  error,
+  onRetry,
+  actions,
+}: {
+  error: unknown;
+  onRetry?: () => void;
+  actions?: ReactNode;
+}) {
   const { t } = useTranslation();
-  const retry = onRetry === undefined ? {} : { onRetry };
-  if (!(error instanceof ApiRequestError)) {
-    return <Failure error={error} {...retry} />;
-  }
-  let message: string;
-  if (error.code === 'feature_disabled') {
-    message = t('errors.featureDisabled');
-  } else if (error.status === 403) {
-    message = t('errors.forbidden');
-  } else if (isExpenseError(error.code)) {
-    message = t(`expenses.errors.${error.code}`);
-  } else {
-    // A field the server named with a known reason, such as a date ahead.
-    const known = error.details.find((detail) => isExpenseError(detail.code));
-    if (known === undefined) {
-      return <Failure error={error} {...retry} />;
-    }
-    message = t(`expenses.errors.${known.code as ExpenseErrorCode}`);
-  }
   return (
-    <div
-      role="alert"
-      className="flex flex-col items-start gap-2 rounded-lg border border-danger bg-danger-subtle p-4 text-start"
-    >
-      <p className="text-sm text-content">{message}</p>
-      {onRetry === undefined ? null : (
-        <button type="button" className={buttonClass.secondary} onClick={onRetry}>
-          {t('common.retry')}
-        </button>
-      )}
-    </div>
+    <Failure
+      error={error}
+      onRetry={onRetry}
+      actions={actions}
+      overrides={{
+        self_approval: t('expenses.errors.self_approval'),
+        name_taken: t('expenses.errors.name_taken'),
+        account_not_usable: t('expenses.errors.account_not_usable'),
+      }}
+    />
   );
 }
 

@@ -1,3 +1,4 @@
+import { ApiRequestError } from '@integr8/api-client';
 import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -200,8 +201,16 @@ function PrepareRun({ runs }: { runs: readonly PayRunSummary[] }) {
     },
   });
   const code = errorCode(prepare.error);
+  // The refusal names the month's run; the list may not have it yet.
+  const takenBy =
+    code === 'month_taken' && prepare.error instanceof ApiRequestError
+      ? prepare.error.details.find((detail) => detail.code === 'month_taken')?.params?.runId
+      : undefined;
   const existing =
-    code === 'month_taken' ? runs.find((run) => run.periodStart.startsWith(month)) : undefined;
+    code !== 'month_taken'
+      ? undefined
+      : (runs.find((run) => (takenBy ? run.id === takenBy : run.periodStart.startsWith(month))) ??
+        (takenBy ? { id: takenBy, reference: null } : undefined));
 
   return (
     <form
@@ -257,7 +266,9 @@ function PrepareRun({ runs }: { runs: readonly PayRunSummary[] }) {
           ) : null}
           {existing === undefined ? null : (
             <AppLink to={paths.payRun(existing.id)} className="text-sm">
-              {t('payroll.prepare.toExisting', { reference: existing.reference })}
+              {existing.reference === null
+                ? t('payroll.prepare.toExistingRun')
+                : t('payroll.prepare.toExisting', { reference: existing.reference })}
             </AppLink>
           )}
         </PayrollFailure>

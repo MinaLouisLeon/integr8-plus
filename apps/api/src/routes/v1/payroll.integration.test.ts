@@ -235,7 +235,13 @@ describe('a pay run', () => {
     // 10,000 + 2,000 gross; the claim paid back on top, untaxed.
     expect(mine).toMatchObject({ gross: '12000', incomeTax: '948.5', reimbursements: '120.5' });
     expect(mine.net).toBe('9846');
-    expect(code(await call(payroller, 'POST', '/v1/payroll/runs', { month }))).toBe('month_taken');
+    const again = await call(payroller, 'POST', '/v1/payroll/runs', { month });
+    expect(code(again)).toBe('month_taken');
+    // The refusal names the run that has the month, to go to it.
+    expect(
+      json<{ error: { details: { params: { runId: string } }[] } }>(again).error.details[0]?.params
+        .runId,
+    ).toBe(run.id);
   });
 
   it('is edited by whoever prepares it, and approved by somebody else', async () => {
@@ -249,6 +255,9 @@ describe('a pay run', () => {
     run = json<Run>(edited);
     expect(run.lines.find((line) => line.id === mine.id)?.gross).toBe('12500');
     expect(run.can.approve).toBe(false);
+    expect(
+      json<{ approveBlockedBy: string | null; hrKeyConfigured: boolean }>(edited),
+    ).toMatchObject({ approveBlockedBy: 'self_approval', hrKeyConfigured: true });
     expect(
       code(
         await call(payroller, 'POST', `/v1/payroll/runs/${run.id}/approve`, {
@@ -299,6 +308,12 @@ describe('a pay run', () => {
     );
     expect(slips.items).toHaveLength(2);
     expect(slips.items[0]?.disclaimer).toMatch(/accountant/u);
+    // Who pays heads every payslip: the company's name until a legal name is set.
+    expect(
+      json<{ items: { company: { name: string } }[] }>(
+        await call(payroller, 'GET', `/v1/payroll/runs/${run.id}/payslips`),
+      ).items[0]?.company.name,
+    ).not.toBe('');
     const own = json<{ items: { run: { reference: string }; line: { net: string } }[] }>(
       await call(engineer, 'GET', '/v1/hr/me/payslips'),
     );

@@ -13,13 +13,41 @@ import {
   Loading,
   useRowMenu,
 } from '../ui.js';
-import { LocationKindBadge, useLocations } from './inventory-parts.js';
+import { SitePicker } from '../assets/asset-parts.js';
+import {
+  type LocationOwnership,
+  LocationKindBadge,
+  OwnershipBadge,
+  OwnershipChoice,
+  useLocations,
+} from './inventory-parts.js';
+
+interface Draft {
+  name: string;
+  kind: 'warehouse' | 'van' | 'site';
+  assignedTo: string;
+  /** A site location: the customer, then one of their sites. */
+  site: { customer: { id: string; name: string } | null; siteId: string };
+  /** A site location: whether its stock is ours or the customer's (ADR-0012). */
+  ownership: LocationOwnership;
+}
+
+const emptyDraft: Draft = {
+  name: '',
+  kind: 'warehouse',
+  assignedTo: '',
+  site: { customer: null, siteId: '' },
+  ownership: 'ours',
+};
+
+const draftReady = (draft: Draft) =>
+  draft.name.trim() !== '' && (draft.kind !== 'site' || draft.site.siteId !== '');
 
 /**
  * Where stock is (CRM/ERP plan, phase E1): warehouses, the engineers' vans
- * and customer sites. Vans are assigned here; a site location is made from
- * the API (its site has to be chosen from the customer's sites), not from this
- * screen yet.
+ * and customer sites. Vans are assigned here; a site location names one of a
+ * customer's sites and says whose stock it holds — ours, counted and valued,
+ * or the customer's, a record only (ADR-0012).
  */
 export function LocationListScreen() {
   const { t } = useTranslation();
@@ -27,11 +55,7 @@ export function LocationListScreen() {
   const queries = useQueryClient();
   const [includeArchived, setIncludeArchived] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState({
-    name: '',
-    kind: 'warehouse' as 'warehouse' | 'van',
-    assignedTo: '',
-  });
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
   const locations = useLocations(includeArchived);
   const members = useMembers();
   const rowMenu = useRowMenu();
@@ -50,6 +74,9 @@ export function LocationListScreen() {
             kind: draft.kind,
             ...(draft.kind === 'van' && draft.assignedTo !== ''
               ? { assignedTo: draft.assignedTo }
+              : {}),
+            ...(draft.kind === 'site'
+              ? { siteId: draft.site.siteId, ownership: draft.ownership }
               : {}),
           },
         })
@@ -88,7 +115,7 @@ export function LocationListScreen() {
               className={buttonClass.primary}
               onClick={() => {
                 create.reset();
-                setDraft({ name: '', kind: 'warehouse', assignedTo: '' });
+                setDraft(emptyDraft);
                 setCreating(true);
               }}
             >
@@ -135,6 +162,7 @@ export function LocationListScreen() {
       {creating ? (
         <Dialog
           title={t('inventory.locations.new')}
+          wide={draft.kind === 'site'}
           onClose={() => setCreating(false)}
           footer={
             <>
@@ -149,7 +177,7 @@ export function LocationListScreen() {
                 type="submit"
                 form="inventory-new-location"
                 className={buttonClass.primary}
-                disabled={draft.name.trim() === '' || create.isPending}
+                disabled={!draftReady(draft) || create.isPending}
               >
                 {create.isPending ? t('inventory.items.creating') : t('inventory.locations.create')}
               </button>
@@ -161,7 +189,7 @@ export function LocationListScreen() {
             className="flex flex-col gap-3"
             onSubmit={(event) => {
               event.preventDefault();
-              if (draft.name.trim() !== '') {
+              if (draftReady(draft)) {
                 create.mutate();
               }
             }}
@@ -185,14 +213,29 @@ export function LocationListScreen() {
                   className={inputClass}
                   value={draft.kind}
                   onChange={(event) =>
-                    setDraft({ ...draft, kind: event.target.value as 'warehouse' | 'van' })
+                    setDraft({
+                      ...draft,
+                      kind: event.target.value as Draft['kind'],
+                      ownership: 'ours',
+                    })
                   }
                 >
                   <option value="warehouse">{t('inventory.locationKind.warehouse')}</option>
                   <option value="van">{t('inventory.locationKind.van')}</option>
+                  <option value="site">{t('inventory.locationKind.site')}</option>
                 </select>
               )}
             </Field>
+            {draft.kind === 'site' ? (
+              <>
+                <SitePicker value={draft.site} onChange={(site) => setDraft({ ...draft, site })} />
+                <OwnershipChoice
+                  name="inventory-new-location-ownership"
+                  value={draft.ownership}
+                  onChange={(ownership) => setDraft({ ...draft, ownership })}
+                />
+              </>
+            ) : null}
             {draft.kind === 'van' ? (
               <Field
                 label={t('inventory.locations.fields.assignedTo')}
@@ -272,6 +315,7 @@ function Row({
         {location.archivedAt === null ? null : (
           <span className="text-xs text-content-muted">{t('inventory.locations.archived')}</span>
         )}
+        <OwnershipBadge ownership={location.ownership} />
         <LocationKindBadge kind={location.kind} />
       </div>
     </li>

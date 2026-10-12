@@ -728,7 +728,7 @@ const ownerSchema = z.union([
 ]);
 
 /** Whether this person may add to or remove from what `owner` names. */
-async function requireAttachable(
+export async function requireAttachable(
   tx: TenantTransaction,
   context: RequestContext,
   owner: AttachmentOwner,
@@ -744,12 +744,33 @@ async function requireAttachable(
     }
     return;
   }
+  if ('itemId' in owner) {
+    // An item's images and datasheets (ADR-0012): the catalogue's keepers.
+    await assertFeatureEnabled(principal.tenantId, 'inventory');
+    if (!holds(principal, 'inventory.manage')) {
+      throw forbidden('Only those who manage the catalogue can change an item’s files.');
+    }
+    if ((await tx.inventoryCatalogue.findItem(owner.itemId)) === undefined) {
+      throw notFound('This item does not exist.');
+    }
+    return;
+  }
   // Everything else is the customer record's, as it always was.
   if (!holds(principal, 'customer.read')) {
     throw forbidden('This action requires the "customer.read" permission.');
   }
   if ('workOrderId' in owner) {
     const job = await readableWorkOrder(tx, principal, owner.workOrderId);
+    await requireWork(tx, principal, job);
+    return;
+  }
+  if ('workOrderPurchaseId' in owner) {
+    // A receipt for a part bought for the job (ADR-0012): the job's.
+    const purchase = await tx.workOrderPurchases.find(owner.workOrderPurchaseId);
+    if (purchase === undefined) {
+      throw notFound('This purchase does not exist.');
+    }
+    const job = await readableWorkOrder(tx, principal, purchase.workOrderId);
     await requireWork(tx, principal, job);
     return;
   }

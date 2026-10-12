@@ -143,6 +143,7 @@ export async function openDeviceDatabase(): Promise<OpenedDatabase> {
       'files',
       'submissions',
       'uploads',
+      'item_images',
     ],
     (sql) => evict(sql, new Date()),
   );

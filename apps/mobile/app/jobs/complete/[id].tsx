@@ -1,6 +1,6 @@
 import { canComplete } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
-import { job, localCompletion, LocalChangeError } from '@integr8/offline';
+import { job, localCompletion } from '@integr8/offline';
 import { radii, spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -23,6 +23,7 @@ import { SignaturePad } from '~/forms/widgets/signature';
 import { missingLines } from '~/lib/describe-change';
 import { moveJob, recordNobodyToSign, signOffJob } from '~/local/job-actions';
 import { useLocalQuery } from '~/local/react';
+import { refusalMessage } from '~/lib/refusals';
 
 /**
  * Completing a job (P14).
@@ -82,10 +83,7 @@ function Complete() {
       await moveJob(workOrder.id, 'complete');
       router.back();
     } catch (error) {
-      Alert.alert(
-        t('mobile.work.failedTitle'),
-        error instanceof LocalChangeError ? error.message : t('mobile.work.failed'),
-      );
+      Alert.alert(t('mobile.work.failedTitle'), refusalMessage(t, error, t('mobile.work.failed')));
     } finally {
       setCompleting(false);
     }

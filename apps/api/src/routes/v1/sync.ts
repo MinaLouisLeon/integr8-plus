@@ -73,13 +73,29 @@ export const pullRoute = defineRoute({
         vanStock: z
           .object({
             location: z.object({ id: z.uuid(), name: z.string() }).nullable(),
-            items: z.array(z.object({ item: itemSummarySchema, onHand: z.string() })),
+            items: z.array(
+              z.object({
+                item: itemSummarySchema,
+                onHand: z.string(),
+                /** Promised to sales orders from the van (ADR-0012). */
+                reserved: z.string(),
+                /** On hand less reserved, never below zero. */
+                available: z.string(),
+                /** The item's main image, which the phone keeps for offline use. */
+                mainImageFileId: z.uuid().nullable(),
+              }),
+            ),
           })
           .nullable(),
         /** The sites whose assets this page holds in full; the phone replaces exactly those (phase E3). */
         assetSiteIds: z.array(z.uuid()),
         /** The assets of those sites, each with its whole history. */
         assets: z.array(assetSyncSchema),
+        /**
+         * The expense categories a claim may name, on the first page only; null
+         * on later pages, and when expenses are not open to the caller (ADR-0012).
+         */
+        expenseCategories: z.array(z.object({ id: z.uuid(), name: z.string() })).nullable(),
       }),
     },
     422: { description: 'A cursor or page token the server did not issue.' },

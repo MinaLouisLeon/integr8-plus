@@ -113,28 +113,10 @@ export function AppLink({
   );
 }
 
-const KNOWN_ERRORS = [
-  'contains_itself',
-  'component_kind',
-  'duplicate_component',
-  'item_archived',
-  'no_bill',
-  'no_supplier',
-  'already_drafted',
-  'order_closed',
-  'version_conflict',
-  'supplier_inactive',
-  'shortage',
-] as const;
-type KnownError = (typeof KNOWN_ERRORS)[number];
-const isKnown = (code: string): code is KnownError =>
-  (KNOWN_ERRORS as readonly string[]).includes(code);
-
 /**
- * A request manufacturing refused, in words: the refusals the API names in
- * this language, the module being off or the seat not allowed said plainly,
- * and anything else as every screen shows it. `extra` goes under the message,
- * such as what was short.
+ * A request manufacturing refused, in words (ADR-0012), with this area's own
+ * wording where a code means more here (an archived component, a supplier of
+ * an item to buy). `extra` goes under the message, such as what was short.
  */
 export function ManufacturingFailure({
   error,
@@ -152,41 +134,26 @@ export function ManufacturingFailure({
   extra?: ReactNode;
 }) {
   const { t } = useTranslation();
-  const retry = onRetry === undefined ? {} : { onRetry };
-  if (!(error instanceof ApiRequestError)) {
-    return <Failure error={error} {...retry} />;
-  }
-  let message: string;
-  if (error.code === 'feature_disabled') {
-    message = t('errors.featureDisabled');
-  } else if (isKnown(error.code)) {
-    message = t(`manufacturing.errors.${error.code}`);
-  } else if (error.status === 403) {
-    message = forbidden ?? t('errors.forbidden');
-  } else {
-    return <Failure error={error} {...retry} />;
-  }
+  const code = error instanceof ApiRequestError ? error.code : undefined;
   return (
-    <div
-      role="alert"
-      className="flex flex-col items-start gap-2 rounded-lg border border-danger bg-danger-subtle p-4 text-start"
-    >
-      <p className="text-sm text-content">{message}</p>
-      {extra}
-      <div className="flex flex-wrap gap-2">
-        {onRetry === undefined ? null : (
-          <button type="button" className={buttonClass.secondary} onClick={onRetry}>
-            {t('common.retry')}
-          </button>
-        )}
-        {onReload !== undefined &&
-        (error.code === 'version_conflict' || error.code === 'already_drafted') ? (
+    <Failure
+      error={error}
+      onRetry={onRetry}
+      overrides={{
+        item_archived: t('manufacturing.errors.item_archived'),
+        supplier_inactive: t('manufacturing.errors.supplier_inactive'),
+        ...(forbidden === undefined ? {} : { forbidden }),
+      }}
+      actions={
+        onReload !== undefined && (code === 'version_conflict' || code === 'already_drafted') ? (
           <button type="button" className={buttonClass.secondary} onClick={onReload}>
             {t('manufacturing.reload')}
           </button>
-        ) : null}
-      </div>
-    </div>
+        ) : undefined
+      }
+    >
+      {extra}
+    </Failure>
   );
 }
 

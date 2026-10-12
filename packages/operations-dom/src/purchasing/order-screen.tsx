@@ -27,6 +27,7 @@ import {
   OrderStatusBadge,
   percentOfBasisPoints,
   QUANTITY_PATTERN,
+  remainingQuantity,
   useIdempotencyKey,
 } from './purchasing-parts.js';
 
@@ -265,7 +266,7 @@ export function OrderScreen({ orderId }: { orderId: string }) {
               }
             }}
           >
-            <LinesEditor lines={lines} onChange={setLines} />
+            <LinesEditor lines={lines} onChange={setLines} error={save.error} />
             <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
@@ -485,18 +486,7 @@ export function OrderScreen({ orderId }: { orderId: string }) {
 // ---------------------------------------------------------------------------
 
 /** Subtracts two decimal strings with up to four places, exactly, never below zero. */
-function remaining(ordered: string, received: string): string {
-  const scale = (text: string) => {
-    const [whole = '0', fraction = ''] = text.split('.');
-    return BigInt(whole + fraction.padEnd(4, '0').slice(0, 4));
-  };
-  const left = scale(ordered) - scale(received);
-  if (left <= 0n) {
-    return '0';
-  }
-  const digits = left.toString().padStart(5, '0');
-  return `${digits.slice(0, -4)}.${digits.slice(-4)}`.replace(/\.?0+$/u, '');
-}
+const remaining = remainingQuantity;
 
 function ReceiveDialog({
   detail,

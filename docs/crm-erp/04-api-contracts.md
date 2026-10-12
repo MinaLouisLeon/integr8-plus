@@ -598,3 +598,117 @@ Audit actions: `manufacturing.bom_saved`, `manufacturing.bom_retired`,
 `manufacturing.order_drafted`, `manufacturing.order_completed`,
 `manufacturing.order_cancelled`, `manufacturing.plan_run`, and
 `purchase_order.created` for drafted purchase orders.
+
+## Follow-ups before the pilot (phase F2; ADR-0012)
+
+### Refusals in the reader's language
+
+Every code a route can return is listed in
+`packages/i18n/src/api-error-codes.ts` (`API_ERROR_CODES`), extracted from
+the API source by `pnpm --filter @integr8/api error-codes`; the api unit test
+`src/testing/error-codes.test.ts` fails when the list drifts from the source,
+and the i18n test fails when a code has no English or Arabic message.
+Clients show `apiErrorMessage(failure, t)` and never the server's `message`.
+
+### Pipelines and stages
+
+Source: `crm-pipelines.ts`. Test: `crm-pipeline-editing.integration.test.ts`.
+Needs `crm`. Editing needs `crm.pipeline.manage` (owners and admins).
+
+| Method and path                                        | What it does                                                                                                       |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `GET /v1/crm/pipelines/{id}`                           | The pipeline, its stages with open and closed counts, `can.edit` (`crm.read`)                                      |
+| `POST /v1/crm/pipelines`                               | A pipeline with the standard stages; 409 `name_taken`                                                              |
+| `PATCH /v1/crm/pipelines/{id}`                         | Rename, or `isDefault: true`                                                                                       |
+| `DELETE /v1/crm/pipelines/{id}`                        | Archives it; 409 `default_pipeline`, `pipeline_has_open`                                                           |
+| `POST /v1/crm/pipelines/{id}/stages`                   | A stage: label, chance (basis points), outcome; its key comes from the label and never changes                     |
+| `PATCH /v1/crm/pipelines/{id}/stages/{stageId}`        | Label, chance, outcome; 409 `stage_in_use` (outcome with deals in it), `stage_needed` (the last open, won or lost) |
+| `PUT /v1/crm/pipelines/{id}/stages/order`              | Every current stage id in order; 422 `order_incomplete`                                                            |
+| `POST /v1/crm/pipelines/{id}/stages/{stageId}/archive` | Moves its open deals to `moveToStageId` (recorded as stage changes); 422 `move_required`, `move_target_not_open`   |
+
+### Customer timeline
+
+`GET /v1/customers/{id}/timeline` (`customer.read`; `customer-timeline.ts`):
+activities, job events, submitted forms, quotes issued and answered, orders
+confirmed, invoices issued and voided, payments received, newest first, a
+cursor page at a time. Each source appears only with its module on and the
+seat's permission (`crm.read`, `work_order.read_all`, `submission.read_all`,
+`sales.read`, `finance.read`); `sources` narrows it, and the answer says
+which were included. The documents tabs use the existing lists filtered by
+`customerId`.
+
+### Figures and exports
+
+Source: `analytics.ts`. Test: `analytics.integration.test.ts`. Periods are
+`from`/`to` calendar days, at most two years (422 `period_too_long`).
+
+| Method and path                                 | Permission                         | What it does                                                                                                |
+| ----------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `GET /v1/analytics/quotes`                      | `sales.read` or `crm.read` (sales) | Issued, accepted, declined, expired, open, median days to accept; overall and by issuer                     |
+| `GET /v1/analytics/pipeline`                    | `crm.read`                         | Won, lost, median days to close; by lead source, owner, or furthest open stage reached                      |
+| `GET /v1/analytics/pipelines/{id}/stage-values` | `crm.read`                         | Open count, amount and weighted amount per stage and currency at each of `months` month ends, today last    |
+| `GET /v1/analytics/parts-usage`                 | `inventory.read`                   | Part lines used and bought on jobs by engineer, customer or job type; `value` null without `inventory.move` |
+| `GET /v1/analytics/parts-usage.csv`             | `inventory.move`                   | The same, as CSV                                                                                            |
+| `GET /v1/crm/leads.csv`                         | `crm.lead.manage`                  | Leads by status, source, days added                                                                         |
+| `GET /v1/crm/opportunities.csv`                 | `crm.opportunity.manage`           | Opportunities by pipeline, status, days added                                                               |
+| `GET /v1/inventory/movements.csv`               | `inventory.move`                   | The stock ledger by item, location, kind, days                                                              |
+
+Exports are oldest first, at most 50,000 rows (`x-export-truncated: true`
+when more matched), `no-store`, and audited with their filters
+(`crm.leads_exported`, `crm.opportunities_exported`,
+`inventory.movements_exported`, `analytics.parts_usage_exported`).
+
+### Inventory and the field
+
+Test: `stock-follow-ups.integration.test.ts`.
+
+| Method and path                                           | Permission                              | What it does                                                                                                                                                          |
+| --------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST`/`PATCH /v1/inventory/locations`                    | `inventory.manage`                      | `ownership` `ours` or `customer` (a site only, 422 `not_a_site`); fixed once stock moved there (409 `ownership_fixed`)                                                |
+| `POST /v1/inventory/movements`                            | `inventory.move`                        | At the customer's stock, movements have no cost; a transfer there issues ours; nothing transfers out of one (422 `customer_stock_stays`)                              |
+| `GET`/`POST /v1/inventory/items/{id}/media`               | `inventory.read` / `inventory.manage`   | An item's images (one main) and datasheets; 422 `main_not_image`                                                                                                      |
+| `POST /v1/inventory/items/{id}/media/{attachmentId}/main` | `inventory.manage`                      | Makes an image the main one                                                                                                                                           |
+| `DELETE /v1/inventory/items/{id}/media/{attachmentId}`    | `inventory.manage`                      | Takes a file off the item                                                                                                                                             |
+| `GET /v1/purchasing/prices`                               | `purchasing.read` and sees prices       | A supplier's or an item's prices; 403 `prices_hidden`                                                                                                                 |
+| `POST /v1/purchasing/suppliers/{id}/prices`               | `purchasing.manage`                     | Item, currency, break, price, days; 409 `price_overlaps`                                                                                                              |
+| `PUT`/`DELETE /v1/purchasing/prices/{priceId}`            | `purchasing.manage`                     | Changes or removes a price                                                                                                                                            |
+| `POST`/`PATCH /v1/purchasing/orders`                      | `purchasing.manage`                     | A line without `unitPrice` takes the price in force for its quantity today; 422 `price_required`. Planning drafts do the same                                         |
+| `GET /v1/inventory/locations/{id}/reorder`                | `purchasing.manage`                     | Items below their level net of what is on order for the location, suggested quantity raised to the smallest break, the preferred supplier and its price               |
+| `POST /v1/inventory/locations/{id}/reorder`               | `purchasing.manage`                     | Chosen lines to one draft purchase order per supplier; 422 `item_repeated`, `supplier_inactive`                                                                       |
+| `POST /v1/sales/orders/{id}/deliveries`                   | `sales.manage`                          | Delivers lines from one of our locations; 422 `over_delivery` (`params.left`), `line_repeated`, `customer_stock_location`; 409 `insufficient_stock`, `order_not_open` |
+| `GET /v1/sales/orders/{id}/deliveries`                    | `sales.read`                            | An order's deliveries                                                                                                                                                 |
+| `GET /v1/sales/deliveries/{id}`                           | `sales.read`                            | The delivery note: company, order, customer, site, lines, no prices                                                                                                   |
+| `GET /v1/inventory/van-requests[/{id}]`                   | `inventory.consume` or `inventory.move` | Refill requests: every van's to the store, one's own van's to an engineer                                                                                             |
+| `GET /v1/inventory/van-requests/proposal`                 | `inventory.consume` or `inventory.move` | What the caller's van needs to get back to its levels, less what open requests ask                                                                                    |
+| `POST /v1/inventory/van-requests`                         | `inventory.consume` or `inventory.move` | Asks for items for one's van; 422 `no_van`, `item_repeated`                                                                                                           |
+| `POST /v1/inventory/van-requests/{id}/pick`               | `inventory.move`                        | Transfers what was picked from a warehouse of ours; 422 `over_request`, `not_a_warehouse`, `item_not_requested`; 409 `insufficient_stock`, `request_not_open`         |
+| `POST /v1/inventory/van-requests/{id}/cancel`             | the asker, or `inventory.move`          | Withdraws an open request                                                                                                                                             |
+| `GET`/`POST /v1/work-orders/{id}/purchases`               | `inventory.read`/`.consume`; `.consume` | Parts bought from a merchant for the job, with receipts and a total for those who see costs; 422 `stock_item_bought`, 409 `purchase_id_taken`                         |
+| `POST /v1/work-orders/{id}/purchases/{pid}/receipts`      | `inventory.consume`                     | Adds a receipt photo                                                                                                                                                  |
+| `POST /v1/work-orders/{id}/purchases/{pid}/cancel`        | the recorder, or `inventory.move`       | Takes it off the job; 409 `purchase_cancelled`                                                                                                                        |
+
+Sync: `work_order.purchase` (entity: the job; `payload.id` the phone's id)
+and `work_order.purchase_receipt` (entity: the purchase; `retry`
+`purchase_not_ready` until it has arrived). The pull's `vanStock` items carry
+`reserved`, `available` and `mainImageFileId`, and the first page
+`expenseCategories`. Uploading media is open to `inventory.manage` too. Job
+cost counts purchases in parts cost.
+
+Audit actions: `inventory_item.media_added`, `inventory_item.main_image_set`,
+`inventory_item.media_removed`, `supplier_price.added`,
+`supplier_price.updated`, `supplier_price.removed`, `purchase_order.created`
+(reorder drafts), `sales_order.delivered`, `van_request.created`,
+`van_request.picked`, `van_request.cancelled`, `work_order.part_bought`,
+`work_order.part_bought_cancelled`.
+
+### Seventh-round follow-ups
+
+- A pay run's detail carries `can.exportInsuranceReport`, `approveBlockedBy`
+  (`no_permission`, `self_approval`, `empty_run`, `negative_net`, or null)
+  and `hrKeyConfigured`; payslips carry the company block (`name`,
+  `address`, `taxReference`). A second run for a month is 409 `month_taken`
+  with the existing run's id in `details[0].params.runId`.
+- `GET /v1/manufacturing/boms/{bomId}` reads any version, superseded ones
+  included. A `shortage` refusal's details carry `params` (`itemId`, `item`,
+  `short`, `needed`, `available`); a plan suggestion's `drafted` carries the
+  drafted order's `reference`.

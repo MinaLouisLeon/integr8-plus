@@ -1,6 +1,6 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { ROLES } from '@integr8/core';
-import { formatDateTime, useTranslation } from '@integr8/i18n';
+import { apiErrorMessage, formatDateTime, useTranslation } from '@integr8/i18n';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { Button, EmptyState, ErrorState, Field, LoadingState } from '~/components/ui';
@@ -216,11 +216,7 @@ export function SettingsPanel({ detail }: { detail: FormDetail }) {
         )}
       </fieldset>
 
-      {update.isError ? (
-        <ErrorState
-          requestId={update.error instanceof ApiRequestError ? update.error.requestId : undefined}
-        />
-      ) : null}
+      {update.isError ? <ErrorState message={apiErrorMessage(update.error, t)} /> : null}
       {saved ? (
         <p role="status" className="text-sm text-content">
           {t('forms.settings.saved')}

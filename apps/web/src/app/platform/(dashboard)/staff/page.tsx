@@ -1,7 +1,7 @@
 'use client';
 
 import { ApiRequestError } from '@integr8/api-client';
-import { type TFunction, useTranslation } from '@integr8/i18n';
+import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 import { Badge, Panel } from '~/components/platform-bits';
@@ -44,21 +44,6 @@ interface IssuedCredentials {
 }
 
 const STAFF_KEY = ['platform', 'staff'] as const;
-
-/** The staff screen's own refusals, worded; everything else as anywhere. */
-function staffError(error: unknown, t: TFunction): string {
-  if (error instanceof ApiRequestError) {
-    switch (error.code) {
-      case 'staff_manager_only':
-        return t('platform.staff.errorManagerOnly');
-      case 'staff_exists':
-        return t('platform.staff.errorExists');
-      case 'terminal_account':
-        return t('platform.staff.errorTerminal');
-    }
-  }
-  return messageForError(error, t);
-}
 
 export default function StaffPage() {
   const { t } = useTranslation();
@@ -197,7 +182,7 @@ function AddStaffForm({ onIssued }: { onIssued: (issued: IssuedCredentials) => v
       </form>
       {add.isError ? (
         <p role="alert" className="text-sm text-danger">
-          {staffError(add.error, t)}
+          {messageForError(add.error, t)}
         </p>
       ) : null}
     </Panel>
@@ -337,7 +322,7 @@ function StaffRow({
       ) : null}
       {failure === null ? null : (
         <p role="alert" className="text-danger">
-          {staffError(failure, t)}
+          {messageForError(failure, t)}
         </p>
       )}
     </li>

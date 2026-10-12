@@ -640,7 +640,7 @@ async function requireCreditNote(tx: TenantTransaction, creditNoteId: string): P
 }
 
 /** The company's own name, for the issuer block when no legal name is set. */
-async function companyName(tenantId: string): Promise<string> {
+export async function companyName(tenantId: string): Promise<string> {
   return (await getPlatformDataSource().tenants.findById(tenantId))?.name ?? '';
 }
 

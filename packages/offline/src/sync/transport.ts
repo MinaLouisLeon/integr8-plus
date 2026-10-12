@@ -38,11 +38,6 @@ export interface SyncApi {
   completeUpload(mediaId: string): Promise<void>;
   /** A short-lived link to a stored file; undefined when it is gone or not this person's to see. */
   mediaLink(fileId: string): Promise<{ url: string } | undefined>;
-  /**
-   * The expense categories in use (ADR-0010); undefined when this person does
-   * not claim expenses here. Optional: without it the phone offers no claims.
-   */
-  expenseCategories?(): Promise<readonly { id: string; name: string }[] | undefined>;
 }
 
 /** Reads a stored file a piece at a time, so a 25 MB video is never all in memory. */
@@ -125,11 +120,6 @@ export function syncApiFor(client: Integr8Client): SyncApi {
     completeUpload: async (mediaId) => {
       await client.POST('/v1/media/{mediaId}/complete', { params: { path: { mediaId } } });
     },
-    expenseCategories: () =>
-      unlessGone(async () => {
-        const data = (await client.GET('/v1/expenses/categories', { params: { query: {} } })).data;
-        return data?.items.map((category) => ({ id: category.id, name: category.name }));
-      }),
     mediaLink: (fileId) =>
       unlessGone(async () => {
         const data = (

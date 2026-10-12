@@ -1,5 +1,6 @@
 import {
   type LocationKind,
+  type LocationOwnership,
   type MovementKind,
   type StockCountStatus,
   type UserId,
@@ -31,6 +32,8 @@ export interface StockLocation {
   assignedTo: UserId | null;
   /** A site location's customer site. */
   siteId: string | null;
+  /** Whose stock it holds: ours, or (a site only) the customer's, never valued (ADR-0012). */
+  ownership: LocationOwnership;
   notes: string | null;
   version: number;
   createdAt: Date;
@@ -43,6 +46,7 @@ export interface LocationInput {
   kind: LocationKind;
   assignedTo?: UserId | string | null;
   siteId?: string | null;
+  ownership?: LocationOwnership;
   notes?: string | null;
 }
 
@@ -173,6 +177,7 @@ export class InventoryStockRepository extends TenantScopedRepository {
             ? null
             : toUserId(input.assignedTo),
         site_id: input.siteId ?? null,
+        ownership: input.ownership ?? 'ours',
         notes: blankToNull(input.notes) ?? null,
       })
       .returningAll()
@@ -246,6 +251,7 @@ export class InventoryStockRepository extends TenantScopedRepository {
     input: {
       name?: string;
       assignedTo?: UserId | string | null;
+      ownership?: LocationOwnership;
       notes?: string | null;
       archived?: boolean;
     },
@@ -258,6 +264,7 @@ export class InventoryStockRepository extends TenantScopedRepository {
           ? {}
           : { assigned_to: input.assignedTo === null ? null : toUserId(input.assignedTo) }),
         ...(input.notes === undefined ? {} : { notes: blankToNull(input.notes) ?? null }),
+        ...(input.ownership === undefined ? {} : { ownership: input.ownership }),
         ...(input.archived === undefined
           ? {}
           : { archived_at: input.archived ? sql<Date>`coalesce(archived_at, now())` : null }),
@@ -272,6 +279,18 @@ export class InventoryStockRepository extends TenantScopedRepository {
       return toLocation(row);
     }
     return (await this.findLocation(locationId)) === undefined ? 'not_found' : 'version_conflict';
+  }
+
+  /** Whether anything has ever moved at this location: its ownership is then fixed. */
+  async hasMovements(locationId: string): Promise<boolean> {
+    const row = await this.db
+      .selectFrom('erp_stock_movements')
+      .select('id')
+      .where('tenant_id', '=', this.tenantId)
+      .where('location_id', '=', locationId)
+      .limit(1)
+      .executeTakeFirst();
+    return row !== undefined;
   }
 
   // -------------------------------------------------------------------------
@@ -357,7 +376,8 @@ export class InventoryStockRepository extends TenantScopedRepository {
       .where('id', '=', itemId)
       .forUpdate()
       .executeTakeFirstOrThrow();
-    const held = sql<string>`coalesce((select sum(b.on_hand) from erp_stock_balances b where b.tenant_id = erp_items.tenant_id and b.item_id = erp_items.id), 0)`;
+    // Ours only: stock held as the customer's has no value (ADR-0012).
+    const held = sql<string>`coalesce((select sum(b.on_hand) from erp_stock_balances b join erp_stock_locations l on l.tenant_id = b.tenant_id and l.id = b.location_id and l.ownership = 'ours' where b.tenant_id = erp_items.tenant_id and b.item_id = erp_items.id), 0)`;
     const row = await this.db
       .updateTable('erp_items')
       .set({
@@ -784,6 +804,7 @@ function toLocation(row: Selectable<ErpStockLocationsTable>): StockLocation {
     kind: row.kind,
     assignedTo: row.assigned_to === null ? null : toUserId(row.assigned_to),
     siteId: row.site_id,
+    ownership: row.ownership,
     notes: row.notes,
     version: row.version,
     createdAt: row.created_at,

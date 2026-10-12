@@ -1,3 +1,4 @@
+import { salesOrderOpen } from '@integr8/core';
 import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -15,7 +16,9 @@ import {
   inputClass,
   Loading,
   StateBadge,
+  usePermissions,
 } from '../ui.js';
+import { DeliverDialog, OrderDeliveries } from './deliveries.js';
 import {
   DocumentLinesTable,
   type SalesLineDraft,
@@ -43,7 +46,9 @@ export function SalesOrderScreen({ orderId }: { orderId: string }) {
   const [confirming, setConfirming] = useState<'confirm' | 'reserve' | null>(null);
   const [linking, setLinking] = useState(false);
   const [invoicing, setInvoicing] = useState(false);
+  const [delivering, setDelivering] = useState(false);
   const finance = useFinanceAccess();
+  const permissions = usePermissions();
 
   const detail = useQuery({
     queryKey: keys.salesOrder(orderId),
@@ -107,6 +112,8 @@ export function SalesOrderScreen({ orderId }: { orderId: string }) {
   const { order, can, workOrders } = detail.data;
   const editing = lines !== null || details !== null;
   const error = [save.error, cancel.error, unlink.error].find((candidate) => candidate !== null);
+  // Hand deliveries (ADR-0012): whoever manages sales orders, while one is open.
+  const canDeliver = permissions.includes('sales.manage') && salesOrderOpen(order.status);
 
   return (
     <div className="flex flex-col gap-6 text-start">
@@ -171,6 +178,15 @@ export function SalesOrderScreen({ orderId }: { orderId: string }) {
         </div>
         {editing ? null : (
           <div className="flex flex-wrap gap-2">
+            {canDeliver ? (
+              <button
+                type="button"
+                className={buttonClass.primary}
+                onClick={() => setDelivering(true)}
+              >
+                {t('sales.deliveries.deliver')}
+              </button>
+            ) : null}
             {can.confirm ? (
               <button
                 type="button"
@@ -394,6 +410,8 @@ export function SalesOrderScreen({ orderId }: { orderId: string }) {
         )}
       </section>
 
+      {order.status === 'draft' ? null : <OrderDeliveries orderId={order.id} />}
+
       <section aria-labelledby="sales-order-jobs" className={cardClass}>
         <h2 id="sales-order-jobs" className="text-base font-semibold text-content">
           {t('sales.orders.jobs')}
@@ -462,6 +480,20 @@ export function SalesOrderScreen({ orderId }: { orderId: string }) {
       ) : null}
       {invoicing ? (
         <InvoiceFromOrderDialog orderId={orderId} onClose={() => setInvoicing(false)} />
+      ) : null}
+      {delivering ? (
+        <DeliverDialog
+          detail={detail.data}
+          onClose={() => setDelivering(false)}
+          onReload={() => {
+            setDelivering(false);
+            void detail.refetch();
+          }}
+          onDone={async (next) => {
+            setDelivering(false);
+            await settle(next);
+          }}
+        />
       ) : null}
     </div>
   );

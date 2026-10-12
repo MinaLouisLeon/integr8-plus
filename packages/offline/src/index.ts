@@ -7,12 +7,14 @@
  * and the same code runs in Node against real SQLite and a real API in tests.
  */
 
+export * from './access.js';
 export type * from './api-types.js';
 export * from './database.js';
 export * from './eviction.js';
 export * from './execution.js';
 export * from './expenses.js';
 export * from './forms.js';
+export * from './purchases.js';
 export * from './migrations.js';
 export * from './queries.js';
 export * from './search.js';

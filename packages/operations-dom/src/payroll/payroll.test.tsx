@@ -110,13 +110,21 @@ const run = (overrides: Partial<PayRunDetail> = {}): PayRunDetail => ({
   preparedAt: '2026-10-10T09:00:00.000Z',
   approvedBy: null,
   approvedAt: null,
+  approveBlockedBy: null,
+  hrKeyConfigured: true,
   totals: TOTALS,
   version: 2,
   ruleSet: { id: RULES, name: 'Egypt 2026', effectiveFrom: '2026-01-01' },
   lines: [line()],
   withoutTerms: [],
   disclaimer: DISCLAIMER,
-  can: { edit: true, approve: true, discard: true, exportBankFile: false },
+  can: {
+    edit: true,
+    approve: true,
+    discard: true,
+    exportBankFile: false,
+    exportInsuranceReport: false,
+  },
   ...overrides,
 });
 
@@ -133,6 +141,7 @@ const summary = (overrides: Partial<PayRunSummary> = {}): PayRunSummary => {
 };
 
 const payslip = (overrides: Partial<Payslip['line']> = {}): Payslip => ({
+  company: { name: 'Nile Services', address: null, taxReference: null },
   run: {
     id: RUN,
     reference: 'PR-2026-10',
@@ -256,11 +265,25 @@ describe('the pay runs', { timeout: 20_000 }, () => {
     answer = apiError(409, 'month_taken', 'Taken');
     fireEvent.change(month, { target: { value: '2026-10' } });
     await user.click(screen.getByRole('button', { name: 'Prepare' }));
-    expect(await screen.findByText('This month already has a pay run.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'There is already one for this month. Change it, or choose another month.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open PR-2026-10' })).toHaveAttribute(
       'href',
       `/hr/pay-runs/${RUN}`,
     );
+
+    // The refusal names the month's run, even one the list does not show.
+    answer = apiError(409, 'month_taken', 'Taken', [
+      { field: 'body.month', code: 'month_taken', message: 'Taken', params: { runId: OLD_RUN } },
+    ]);
+    fireEvent.change(month, { target: { value: '2026-09' } });
+    await user.click(screen.getByRole('button', { name: 'Prepare' }));
+    expect(
+      await screen.findByRole('link', { name: 'Open the run for that month' }),
+    ).toHaveAttribute('href', `/hr/pay-runs/${OLD_RUN}`);
 
     answer = apiError(422, 'month_in_future', 'Too far');
     fireEvent.change(month, { target: { value: '2027-03' } });
@@ -321,7 +344,13 @@ describe('one pay run', { timeout: 20_000 }, () => {
         body: run({
           version: 3,
           preparedBy: { id: USER, name: 'Hala Nabil' },
-          can: { edit: true, approve: false, discard: true, exportBankFile: false },
+          can: {
+            edit: true,
+            approve: false,
+            discard: true,
+            exportBankFile: false,
+            exportInsuranceReport: false,
+          },
           lines: [
             line({
               bonus: '500',
@@ -379,7 +408,14 @@ describe('one pay run', { timeout: 20_000 }, () => {
       'GET /v1/payroll/runs/:id': () => ({
         body: run({
           preparedBy: { id: USER, name: 'Hala Nabil' },
-          can: { edit: true, approve: false, discard: true, exportBankFile: false },
+          approveBlockedBy: 'self_approval',
+          can: {
+            edit: true,
+            approve: false,
+            discard: true,
+            exportBankFile: false,
+            exportInsuranceReport: false,
+          },
         }),
       }),
     });
@@ -390,6 +426,36 @@ describe('one pay run', { timeout: 20_000 }, () => {
     expect(approve).toHaveAccessibleDescription(
       'You prepared this run, so somebody else approves it.',
     );
+    expect(await accessibilityViolations(container)).toEqual([]);
+  });
+
+  it('says a negative net holds approval back, and that the HR key is missing', async () => {
+    const { client } = fakeApi({
+      'GET /v1/me': me(KEEPER),
+      'GET /v1/payroll/runs/:id': () => ({
+        body: run({
+          approveBlockedBy: 'negative_net',
+          hrKeyConfigured: false,
+          can: {
+            edit: true,
+            approve: false,
+            discard: true,
+            exportBankFile: false,
+            exportInsuranceReport: false,
+          },
+        }),
+      }),
+    });
+    const { container } = renderScreen(<PayRunScreen runId={RUN} />, client);
+
+    const approve = await screen.findByRole('button', { name: 'Approve' });
+    expect(approve).toBeDisabled();
+    expect(approve).toHaveAccessibleDescription(
+      'Somebody’s net pay is below zero. Lower their deduction or unpaid days, then approve.',
+    );
+    expect(screen.getByText(/the HR data key is not set on the server/u)).toBeInTheDocument();
+    // Without the key, no insurance report is offered, even to a seat that sees ID numbers.
+    expect(screen.queryByRole('button', { name: 'Download the insurance report' })).toBeNull();
     expect(await accessibilityViolations(container)).toEqual([]);
   });
 
@@ -428,7 +494,13 @@ describe('one pay run', { timeout: 20_000 }, () => {
         status: 'approved',
         approvedBy: { id: USER, name: 'Hala Nabil' },
         approvedAt: '2026-10-12T09:00:00.000Z',
-        can: { edit: false, approve: false, discard: false, exportBankFile: true },
+        can: {
+          edit: false,
+          approve: false,
+          discard: false,
+          exportBankFile: true,
+          exportInsuranceReport: false,
+        },
       }),
     };
     await user.click(screen.getByRole('button', { name: 'Approve' }));
@@ -452,7 +524,13 @@ describe('one pay run', { timeout: 20_000 }, () => {
           payDate: '2026-10-28',
           approvedBy: { id: USER, name: 'Hala Nabil' },
           approvedAt: '2026-10-12T09:00:00.000Z',
-          can: { edit: false, approve: false, discard: false, exportBankFile: true },
+          can: {
+            edit: false,
+            approve: false,
+            discard: false,
+            exportBankFile: true,
+            exportInsuranceReport: true,
+          },
         }),
       }),
       'GET /v1/payroll/runs/:id/insurance.csv': () => ({
@@ -484,6 +562,8 @@ describe('one pay run', { timeout: 20_000 }, () => {
     const slips = await screen.findAllByRole('article', { name: 'Payslip for October 2026' });
     expect(slips).toHaveLength(2);
     expect(within(slips[0]!).getByText('Karim Adel')).toBeInTheDocument();
+    // Who pays, as the server sends it.
+    expect(within(slips[0]!).getByText('Nile Services')).toBeInTheDocument();
     expect(within(slips[0]!).getByText(DISCLAIMER)).toBeInTheDocument();
     expect(within(slips[0]!).getByText('EGP 11,579.92')).toBeInTheDocument();
     expect(await accessibilityViolations(container)).toEqual([]);

@@ -1,10 +1,12 @@
 import { useTranslation } from '@integr8/i18n';
-import { job, LocalChangeError, vanStock, type VanStockRow } from '@integr8/offline';
+import { job, vanStock, type VanStockRow } from '@integr8/offline';
 import { radii, spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, TextInput, View } from 'react-native';
+import { JobPurchases } from '~/components/job-purchases';
 import { LocalGate } from '~/components/local-gate';
+import { VanStockItem } from '~/components/van-stock-row';
 import {
   Body,
   Button,
@@ -19,6 +21,7 @@ import {
 import { formatWhen } from '~/lib/format';
 import { recordPart } from '~/local/job-actions';
 import { useLocalQuery } from '~/local/react';
+import { refusalMessage } from '~/lib/refusals';
 
 /**
  * Using a part on a job, from the phone (CRM/ERP plan, phase E2; ADR-0005).
@@ -42,7 +45,7 @@ function Parts() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const state = useLocalQuery(
     `parts:${id}`,
-    ['work_orders', 'van_stock', 'outbox'],
+    ['work_orders', 'van_stock', 'outbox', 'item_images'],
     async (sql) => ({ job: await job(sql, id), stock: await vanStock(sql) }),
   );
   const [search, setSearch] = useState('');
@@ -94,16 +97,7 @@ function Parts() {
       });
       router.back();
     } catch (error) {
-      Alert.alert(
-        t('mobile.parts.use'),
-        error instanceof LocalChangeError
-          ? error.code === 'quantity_invalid'
-            ? t('mobile.parts.invalidQuantity')
-            : error.code === 'item_not_in_van'
-              ? t('mobile.parts.notInVan')
-              : error.message
-          : t('mobile.work.failed'),
-      );
+      Alert.alert(t('mobile.parts.use'), refusalMessage(t, error, t('mobile.work.failed')));
     } finally {
       setBusy(false);
     }
@@ -135,25 +129,7 @@ function Parts() {
             ]}
           />
           {shown.map((row) => (
-            <Pressable
-              key={row.item.id}
-              accessibilityRole="button"
-              onPress={() => setChosen(row)}
-              style={({ pressed }) => [
-                styles.row,
-                {
-                  backgroundColor: theme.surface,
-                  borderColor: theme.border,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}
-            >
-              <Text style={[styles.rowTitle, { color: theme.text }]}>{row.item.name}</Text>
-              <Text style={[styles.rowLine, { color: theme.textMuted }]}>{row.item.sku}</Text>
-              <Text style={[styles.rowLine, { color: theme.text }]}>
-                {t('mobile.parts.forecast', { quantity: format(row.forecast, row.item.unit) })}
-              </Text>
-            </Pressable>
+            <VanStockItem key={row.item.id} row={row} onPress={() => setChosen(row)} />
           ))}
           <Body muted>
             {t('mobile.parts.asOf', {
@@ -163,10 +139,11 @@ function Parts() {
         </Section>
       ) : (
         <Section title={chosen.item.name}>
+          <VanStockItem row={chosen} />
           <Body muted>
-            {t('mobile.parts.inVan', { quantity: format(chosen.onHand, chosen.item.unit) })} ·{' '}
             {t('mobile.parts.forecast', { quantity: format(chosen.forecast, chosen.item.unit) })}
           </Body>
+          <Body muted>{t('mobile.van.availableHint')}</Body>
           <Field
             label={`${t('mobile.parts.quantity')} (${t(`inventory.unit.${chosen.item.unit}` as 'inventory.unit.each')})`}
             value={quantity}
@@ -191,6 +168,11 @@ function Parts() {
           </View>
         </Section>
       )}
+
+      {/* Bought from a merchant: needs no van, and works offline like a part used. */}
+      {chosen === null ? (
+        <JobPurchases workOrderId={detail.workOrder.id} canRecord={detail.can.recordParts} />
+      ) : null}
     </ScrollScreen>
   );
 }
@@ -204,14 +186,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'auto',
   },
-  row: {
-    gap: spacing[1],
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-  },
-  rowTitle: { fontSize: 16, fontWeight: '600', textAlign: 'auto' },
-  rowLine: { fontSize: 14, textAlign: 'auto' },
   actions: { flexDirection: 'row', gap: spacing[2], flexWrap: 'wrap' },
 });

@@ -421,6 +421,27 @@ export const MIGRATIONS: readonly Migration[] = [
       `create index asset_links_by_job on asset_links (work_order_id)`,
     ],
   },
+  {
+    version: 9,
+    name: 'van stock availability and item images',
+    statements: [
+      // What of the van's stock is promised to sales orders, and what is left
+      // to use (ADR-0012). Null on rows from a server that did not say.
+      `alter table van_stock add column reserved text`,
+      `alter table van_stock add column available text`,
+      // The item's main image, kept on the phone so the van's stock shows it
+      // in a basement.
+      `alter table van_stock add column main_image_file_id text`,
+      // The main images downloaded for the van's items, by file id; they go
+      // when no item on the van shows them any more. Relative to the files
+      // directory, like every other path the phone stores.
+      `create table item_images (
+        file_id text primary key,
+        local_path text not null,
+        downloaded_at text not null
+      ) strict`,
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.at(-1)?.version ?? 0;

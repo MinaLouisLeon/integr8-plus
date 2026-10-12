@@ -15,6 +15,11 @@ import { freshTagCode, readableAsset } from '../routes/v1/assets.js';
 import { crmAudit as assetAudit } from '../routes/v1/crm-shared.js';
 import { recordUse } from '../routes/v1/materials.js';
 import { mayAttachReceipt, submitClaim, submitClaimBody } from '../routes/v1/expenses.js';
+import {
+  addPurchaseReceipt,
+  purchaseInputSchema,
+  recordPurchase,
+} from '../routes/v1/work-order-purchases.js';
 import { deliverOnCompletion } from '../routes/v1/sales-fulfilment.js';
 import type { RequestContext } from '../http/routes.js';
 import { updateAccessNotes } from '../routes/v1/customers.js';
@@ -253,6 +258,26 @@ export const mutationSchema = z.discriminatedUnion('kind', [
     ...common,
     /** A receipt photo for the claim the phone submitted as `entityId`. */
     kind: z.literal('expense.receipt'),
+    payload: z.object({
+      attachmentId: z.uuid(),
+      mediaId: z.uuid(),
+      title: z.string().trim().min(1).max(200),
+    }),
+  }),
+  z.object({
+    ...common,
+    /**
+     * A part bought from a merchant for the job `entityId` (ADR-0012), with
+     * the price paid. `payload.id` is the phone's id for it, so a resend
+     * lands once and its receipt can name it. Nothing enters stock.
+     */
+    kind: z.literal('work_order.purchase'),
+    payload: purchaseInputSchema.omit({ occurredAt: true }),
+  }),
+  z.object({
+    ...common,
+    /** A receipt photo for the purchase the phone recorded as `entityId`. */
+    kind: z.literal('work_order.purchase_receipt'),
     payload: z.object({
       attachmentId: z.uuid(),
       mediaId: z.uuid(),
@@ -607,6 +632,10 @@ async function apply(
       return submitExpense(tx, mutation, push);
     case 'expense.receipt':
       return expenseReceipt(tx, mutation, push);
+    case 'work_order.purchase':
+      return purchase(tx, mutation, push);
+    case 'work_order.purchase_receipt':
+      return purchaseReceipt(tx, mutation, push);
   }
 }
 
@@ -991,6 +1020,75 @@ async function material(
     occurredAt: push.recordedAt(mutation),
   });
   return applied(null, result.outcome === 'already_recorded');
+}
+
+async function purchasesAllowed(principal: Principal): Promise<Outcome | undefined> {
+  if (!(await isFeatureEnabled(principal.tenantId, 'inventory'))) {
+    return rejected('feature_disabled', 'Inventory is not switched on for your company.');
+  }
+  if (!holds(principal, 'inventory.consume')) {
+    return rejected('forbidden', 'You may not record parts.');
+  }
+  return undefined;
+}
+
+async function purchase(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'work_order.purchase' }>,
+  push: PushContext,
+): Promise<Outcome> {
+  const { context } = push;
+  const refused = await purchasesAllowed(context.principal);
+  if (refused !== undefined) {
+    return refused;
+  }
+  const job = await jobFor(tx, context.principal, mutation.entityId);
+  if (job === undefined) {
+    return unavailable();
+  }
+  await requireWork(tx, context.principal, job);
+  const result = await recordPurchase(tx, context, job, {
+    ...mutation.payload,
+    occurredAt: push.recordedAt(mutation).toISOString(),
+  });
+  return applied(null, result.outcome === 'already_recorded');
+}
+
+async function purchaseReceipt(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'work_order.purchase_receipt' }>,
+  push: PushContext,
+): Promise<Outcome> {
+  const { context } = push;
+  const refused = await purchasesAllowed(context.principal);
+  if (refused !== undefined) {
+    return refused;
+  }
+  const bought = await tx.workOrderPurchases.find(mutation.entityId);
+  if (bought === undefined) {
+    // The purchase is behind it in the queue, or was refused.
+    return {
+      outcome: 'retry',
+      code: 'purchase_not_ready',
+      message: 'The purchase this receipt belongs to has not arrived yet.',
+      retryAfterSeconds: 30,
+    };
+  }
+  if (bought.recordedBy !== context.principal.userId) {
+    return rejected(
+      'forbidden',
+      'Only whoever recorded a purchase adds its receipt from the phone.',
+    );
+  }
+  if ((await tx.files.find(mutation.payload.mediaId)) === undefined) {
+    return mediaNotReady();
+  }
+  await addPurchaseReceipt(tx, context, bought, {
+    attachmentId: mutation.payload.attachmentId,
+    fileId: mutation.payload.mediaId,
+    title: mutation.payload.title,
+  });
+  return applied(null);
 }
 
 async function endShift(

@@ -154,19 +154,41 @@ function AssemblyOrder({ orderId }: { orderId: string }) {
   const money = (value: string) => formatAmount(value, currency, locale);
   const short = order.needs.filter((need) => !isZeroDecimal(need.short));
 
-  // A 409 `shortage` names each short item as `items.<id>`; say how short
-  // from the needs as they are now, in this language.
+  // A 409 `shortage` names each short item with what was needed, available
+  // and short (ADR-0012); say it in this language, in the item's unit.
   const shortages =
     error instanceof ApiRequestError && error.code === 'shortage'
-      ? error.details.map((detailRow) => {
-          const id = detailRow.field.replace(/^items\./u, '');
+      ? error.details.flatMap((detailRow) => {
+          if (detailRow.code !== 'shortage') {
+            return [];
+          }
+          const params = detailRow.params ?? {};
+          const id = params.itemId ?? detailRow.field.replace(/^items\./u, '');
           const need = order.needs.find((candidate) => candidate.item.id === id);
-          return need === undefined || isZeroDecimal(need.short)
-            ? detailRow.message
-            : t('manufacturing.orders.shortageLine', {
-                item: need.item.name,
-                quantity: quantityOf(need.short, need.item.unit),
-              });
+          const quantity = (value: string | undefined) =>
+            value === undefined
+              ? '—'
+              : need === undefined
+                ? formatQuantity(value, undefined, locale, unitName)
+                : quantityOf(value, need.item.unit);
+          const item = params.item ?? need?.item.name;
+          // Without the numbers (an older server), how short it is as the needs stand now.
+          const short =
+            params.short ??
+            (need === undefined || isZeroDecimal(need.short) ? undefined : need.short);
+          if (item === undefined || short === undefined) {
+            return [];
+          }
+          return [
+            params.needed === undefined || params.available === undefined
+              ? t('manufacturing.orders.shortageLine', { item, quantity: quantity(short) })
+              : t('manufacturing.orders.shortageDetail', {
+                  item,
+                  needed: quantity(params.needed),
+                  available: quantity(params.available),
+                  short: quantity(short),
+                }),
+          ];
         })
       : [];
 
@@ -420,7 +442,9 @@ function AssemblyOrder({ orderId }: { orderId: string }) {
                 : formatCalendarDate(order.plannedFor, { locale })}
             </Detail>
             <Detail label={t('manufacturing.orders.bill')}>
-              <AppLink to={paths.bom(order.item.id)}>
+              <AppLink
+                to={order.bom.current ? paths.bom(order.item.id) : paths.bomVersion(order.bom.id)}
+              >
                 {t('manufacturing.boms.versionN', {
                   version: formatNumber(order.bom.version, { locale }),
                 })}

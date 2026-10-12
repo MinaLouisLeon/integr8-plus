@@ -1,5 +1,11 @@
 import { ApiRequestError } from '@integr8/api-client';
-import { formatDateTime, formatNumber, useTranslation } from '@integr8/i18n';
+import {
+  apiErrorDetailMessages,
+  apiErrorMessage,
+  formatDateTime,
+  formatNumber,
+  useTranslation,
+} from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useRef, type MouseEvent, type ReactNode } from 'react';
 import {
@@ -35,31 +41,62 @@ export const buttonClass = {
 export const cardClass =
   'flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4 text-start';
 
-/** A request that failed: what went wrong in the server's words where it has some, and the reference. */
-export function Failure({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+/**
+ * A request that failed, in the reader's language (ADR-0012): the
+ * catalogue's message for the refusal's code — or the generic words for its
+ * status, with the reference to quote — and a line for each detail whose code
+ * the catalogue knows. The server's own English is never shown.
+ *
+ * Area screens build on this rather than beside it: `overrides` keeps a
+ * richer message of their own for a code, `lines` replaces the detail lines
+ * (the ledger says which line), `children` adds a way forward under the
+ * message and `actions` puts buttons beside Retry, such as Reload.
+ */
+export function Failure({
+  error,
+  onRetry,
+  overrides,
+  lines,
+  children,
+  actions,
+}: {
+  error: unknown;
+  onRetry?: (() => void) | undefined;
+  overrides?: Readonly<Partial<Record<string, string>>>;
+  lines?: readonly string[];
+  children?: ReactNode;
+  actions?: ReactNode;
+}) {
   const { t } = useTranslation();
   const known = error instanceof ApiRequestError;
+  const message = known
+    ? apiErrorMessage(error, t, overrides)
+    : t('errors.body', { requestId: '—' });
+  const detailLines =
+    lines ?? (known && error.status !== 404 ? apiErrorDetailMessages(error, t, overrides) : []);
   return (
     <div
       role="alert"
       className="flex flex-col items-start gap-2 rounded-lg border border-danger bg-danger-subtle p-4 text-start"
     >
-      <p className="text-sm text-content">
-        {known && error.status >= 400 && error.status < 500 && error.status !== 401
-          ? error.message
-          : t('errors.body', { requestId: known ? error.requestId : '—' })}
-      </p>
-      {known && error.details.length > 0 && error.status !== 404 ? (
+      <p className="text-sm text-content">{message}</p>
+      {detailLines.length > 0 ? (
         <ul className="list-disc ps-5 text-sm text-content">
-          {error.details.map((detail) => (
-            <li key={`${detail.field}-${detail.code}`}>{detail.message}</li>
+          {detailLines.map((line) => (
+            <li key={line}>{line}</li>
           ))}
         </ul>
       ) : null}
-      {onRetry === undefined ? null : (
-        <button type="button" className={buttonClass.secondary} onClick={onRetry}>
-          {t('common.retry')}
-        </button>
+      {children}
+      {onRetry === undefined && actions === undefined ? null : (
+        <div className="flex flex-wrap gap-2">
+          {onRetry === undefined ? null : (
+            <button type="button" className={buttonClass.secondary} onClick={onRetry}>
+              {t('common.retry')}
+            </button>
+          )}
+          {actions}
+        </div>
       )}
     </div>
   );

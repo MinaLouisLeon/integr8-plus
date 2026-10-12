@@ -1,0 +1,30 @@
+{
+  "$comment": "Packages outside the permissive list, each reviewed and accepted (ADR-0012). Matched by package name (a trailing * matches platform variants) and the exact licence string pnpm reports.",
+  "exceptions": [
+    {
+      "package": "@img/sharp-libvips-*",
+      "license": "LGPL-3.0-or-later",
+      "reason": "libvips, the image library sharp loads for Next.js image handling. Dynamically linked and unmodified, which LGPL allows; it is not part of our code."
+    },
+    {
+      "package": "@sentry/cli*",
+      "license": "FSL-1.1-MIT",
+      "reason": "Build-time tool that uploads source maps; not shipped to users. Functional Source Licence, becoming MIT two years after each release; our use is permitted."
+    },
+    {
+      "package": "axe-core",
+      "license": "MPL-2.0",
+      "reason": "Accessibility checks in tests only; never shipped. Unmodified, so MPL's file-level copyleft asks nothing of us."
+    },
+    {
+      "package": "lightningcss*",
+      "license": "MPL-2.0",
+      "reason": "CSS compiler used at build time by Tailwind; its output is our CSS, not the tool. Unmodified."
+    },
+    {
+      "package": "caniuse-lite",
+      "license": "CC-BY-4.0",
+      "reason": "Browser support data used at build time by Browserslist; attribution is in its package, nothing of it ships."
+    }
+  ]
+}

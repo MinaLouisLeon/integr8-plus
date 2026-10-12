@@ -322,3 +322,33 @@ Every route also needs the company's module: `hr`, `payroll` (which needs
 - **Costs** in manufacturing are hidden from seats without `inventory.move`,
   as in inventory. Drafting purchase orders from a plan needs
   `purchasing.manage` as well; they are approved as usual.
+
+## Follow-ups before the pilot (F2; ADR-0012)
+
+- **`crm.pipeline.manage`** — owners and admins edit pipelines and stages;
+  everyone with `crm.read` keeps using them.
+- **Exports** are for the managers of each area and audited with their
+  filters: leads `crm.lead.manage`, opportunities `crm.opportunity.manage`,
+  stock movements and parts usage `inventory.move`. At most 50,000 rows,
+  `no-store`; CSV cells that look like formulas are escaped (`toCsv`).
+- **The customer timeline** shows each source only to a seat that may read
+  it with its module on; figures follow their area (`crm.read`,
+  `sales.read`, `inventory.read`), and money is hidden from seats that do
+  not see costs.
+- **Item media** — everyone who sees an item sees its images and
+  datasheets; `inventory.manage` adds and removes them (media upload now
+  accepts `inventory.manage` as well).
+- **Price lists** are shown only to seats that see prices
+  (`purchasing.manage` or `inventory.move`; 403 `prices_hidden`).
+- **Van refills** — an engineer (`inventory.consume`) asks for their own van
+  and sees only its requests; the store (`inventory.move`) sees every van's
+  and picks; online only.
+- **Merchant parts** — recorded by whoever works the job
+  (`inventory.consume`), seen by those who see the job; the price paid is
+  shown to its recorder and to seats that see costs; cancelled by its
+  recorder or `inventory.move`.
+- **Deliveries by hand** need `sales.manage`; the delivery note
+  (`sales.read`) carries no prices.
+- **Licences** — CI fails on a dependency whose licence is not permissive
+  unless it is listed, with a reason, in `scripts/licences/exceptions.json`
+  (`pnpm licences:check`).

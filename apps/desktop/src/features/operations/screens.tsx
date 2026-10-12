@@ -16,6 +16,11 @@ import {
   OrderScreen,
   BomListScreen,
   BomScreen,
+  BomVersionScreen,
+  CrmReportsScreen,
+  PartsUsageScreen,
+  PipelineListScreen,
+  PipelineScreen,
   AssemblyOrderListScreen,
   AssemblyOrderScreen,
   MaterialPlanListScreen,
@@ -24,6 +29,9 @@ import {
   QuoteScreen,
   SalesOrderListScreen,
   SalesOrderScreen,
+  DeliveryNoteScreen,
+  ReorderScreen,
+  VanRequestsScreen,
   FinanceSettingsScreen,
   LedgerHomeScreen,
   LedgerAccountsScreen,
@@ -112,18 +120,25 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         crmOpportunities: '/crm/opportunities',
         crmOpportunity: (id) => `/crm/opportunities/${id}`,
         crmActivities: '/crm/activities',
+        crmPipelines: '/crm/pipelines',
+        crmPipeline: (id) => `/crm/pipelines/${id}`,
+        crmReports: '/crm/reports',
         inventory: '/inventory',
+        partsUsage: '/inventory/parts-usage',
         items: '/inventory/items',
         item: (id) => `/inventory/items/${id}`,
         stockLocations: '/inventory/locations',
         stockLocation: (id) => `/inventory/locations/${id}`,
         stockCount: (id) => `/inventory/counts/${id}`,
+        reorder: (locationId) => `/inventory/locations/${locationId}/reorder`,
+        vanRequests: '/inventory/van-requests',
         suppliers: '/purchasing/suppliers',
         supplier: (id) => `/purchasing/suppliers/${id}`,
         purchaseOrders: '/purchasing/orders',
         purchaseOrder: (id) => `/purchasing/orders/${id}`,
         boms: '/manufacturing/boms',
         bom: (itemId) => `/manufacturing/boms/${itemId}`,
+        bomVersion: (bomId) => `/manufacturing/boms/versions/${bomId}`,
         assemblyOrders: '/manufacturing/orders',
         assemblyOrder: (id) => `/manufacturing/orders/${id}`,
         materialPlans: '/manufacturing/plans',
@@ -132,6 +147,7 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         quote: (id) => `/sales/quotes/${id}`,
         salesOrders: '/sales/orders',
         salesOrder: (id) => `/sales/orders/${id}`,
+        deliveryNote: (orderId, deliveryId) => `/sales/orders/${orderId}/deliveries/${deliveryId}`,
         invoices: '/finance/invoices',
         invoice: (id) => `/finance/invoices/${id}`,
         payments: '/finance/payments',
@@ -283,6 +299,25 @@ export function StockLocationRoute() {
   );
 }
 
+/** A location's reorder list, to draft purchase orders from (eighth round; ADR-0012). */
+export function ReorderRoute() {
+  const { locationId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <ReorderScreen key={locationId} locationId={locationId} />
+    </OperationsScreens>
+  );
+}
+
+/** The store's queue of van refills (eighth round; ADR-0012). */
+export function VanRequestsRoute() {
+  return (
+    <OperationsScreens>
+      <VanRequestsScreen />
+    </OperationsScreens>
+  );
+}
+
 export function StockCountRoute() {
   const { countId = '' } = useParams();
   return (
@@ -305,6 +340,42 @@ export function OpportunityRoute() {
   return (
     <OperationsScreens>
       <OpportunityScreen key={opportunityId} opportunityId={opportunityId} />
+    </OperationsScreens>
+  );
+}
+
+/** The CRM's pipelines and their stages (eighth round; ADR-0012). */
+export function PipelinesRoute() {
+  return (
+    <OperationsScreens>
+      <PipelineListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function PipelineRoute() {
+  const { pipelineId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <PipelineScreen key={pipelineId} pipelineId={pipelineId} />
+    </OperationsScreens>
+  );
+}
+
+/** The CRM's figures (eighth round; ADR-0012). */
+export function CrmReportsRoute() {
+  return (
+    <OperationsScreens>
+      <CrmReportsScreen />
+    </OperationsScreens>
+  );
+}
+
+/** Parts used on jobs, in the inventory area (eighth round; ADR-0012). */
+export function PartsUsageRoute() {
+  return (
+    <OperationsScreens>
+      <PartsUsageScreen />
     </OperationsScreens>
   );
 }
@@ -429,6 +500,15 @@ export function BomsRoute() {
   );
 }
 
+export function BomVersionRoute() {
+  const { bomId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <BomVersionScreen key={bomId} bomId={bomId} />
+    </OperationsScreens>
+  );
+}
+
 export function BomRoute() {
   const { itemId = '' } = useParams();
   return (
@@ -502,6 +582,16 @@ export function SalesOrderRoute() {
   return (
     <OperationsScreens>
       <SalesOrderScreen key={orderId} orderId={orderId} />
+    </OperationsScreens>
+  );
+}
+
+/** A delivery note, to print (eighth round; ADR-0012). */
+export function DeliveryNoteRoute() {
+  const { orderId = '', deliveryId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <DeliveryNoteScreen key={deliveryId} orderId={orderId} deliveryId={deliveryId} />
     </OperationsScreens>
   );
 }

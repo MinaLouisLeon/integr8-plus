@@ -587,3 +587,48 @@ stock.
 `member_grants`, `hr_employees` (sealed values as stored), the expense,
 payroll and manufacturing tables are in `EXPORTED_TABLES`; the reference
 counters are not.
+
+## Eighth round — follow-ups before the pilot (phase F2; ADR-0012)
+
+The CRM half adds no tables: the pipeline editor works on `crm_pipelines`
+and `crm_pipeline_stages` from 0025 (new permission `crm.pipeline.manage`),
+the customer timeline reads activities, job events, submissions, quotes,
+orders, invoices and payments (`CustomerTimelineRepository`,
+`tx.customerTimeline`), and the figures and exports read the documents and
+their history (`AnalyticsRepository`, `tx.analytics`). Value by stage at a
+month end is rebuilt from `crm_opportunity_events`, at today's amounts:
+amount changes are not kept.
+
+### 0040 — inventory and the field
+
+| Table / change                                     | What it holds                                                                                                                                                                                                                       |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `erp_stock_locations.ownership`                    | `ours` (default) or `customer`, a site only (`erp_stock_locations_customer_is_site`). Fixed once anything has moved there (checked by the API)                                                                                      |
+| `erp_supplier_prices`                              | Per supplier and item: `currency_code`, `min_quantity` (the break, > 0), `unit_price` (≥ 0), `valid_from`, `valid_to` (null for open-ended, ≥ `valid_from`). Overlaps for one break are refused by the API                          |
+| `sales_document_counters.kind`                     | Adds `delivery` (shown `DN-000012`)                                                                                                                                                                                                 |
+| `erp_sales_deliveries`, `erp_sales_delivery_lines` | A delivery by hand: order, location, notes, who and when; per order line the quantity (> 0, once per delivery) and the unit cost it left at. Insert only                                                                            |
+| `erp_van_requests`, `erp_van_request_lines`        | A van refill: van, `status` `open` / `picked` / `cancelled`, notes, who asked; once picked, from where, who and when; per item the quantity asked and the quantity sent (0 to asked)                                                |
+| `erp_work_order_purchases`                         | A part bought from a merchant for a job, under the phone's id: description, optional catalogue item (never a stock item: `erp_work_order_purchases_not_stock`), merchant, quantity, unit price paid, note; cancelled, never deleted |
+| `attachments.item_id`, `.work_order_purchase_id`   | Two more owners (`attachments_one_owner`): an item's images and datasheets, a purchase's receipts                                                                                                                                   |
+| `attachments.is_main`                              | An item's main image: at most one current per item (`attachments_item_main_unique`), an item's only (`attachments_main_is_item`)                                                                                                    |
+
+The ledger: `erp_stock_movements_ledger_capture` skips movements at a
+location holding the customer's stock, and the `stock` proposal leaves them
+out; an `issue` whose source key starts `delivery-line:` or `customer-site:`
+posts to cost of parts used instead of stock adjustments. Stock everywhere
+together (`listItems`) and the average cost (`applyReceiptCost`) count our
+locations only.
+
+Repositories: `SupplierPricesRepository` (`tx.supplierPrices`: `list`,
+`find`, `overlapping`, `create`, `update`, `remove`, `priceFor`, `breaksOn`),
+`InventoryReplenishmentRepository` (`tx.inventoryReplenishment`:
+`reorderNeeds`, `createRequest`, `findRequest`, `requestLines`,
+`listRequests`, `markPicked`, `cancel`), `SalesDeliveriesRepository`
+(`tx.salesDeliveries`: `create`, `fulfilLine`, `find`, `forOrder`, `lines`),
+`WorkOrderPurchasesRepository` (`tx.workOrderPurchases`: `create`, `find`,
+`forJob`, `totalForJob`, `cancel`); `AttachmentsRepository` gains `setMain`
+and `mainImages`, `InventoryStockRepository` `hasMovements`.
+
+### Company data export
+
+The six new tables are in `EXPORTED_TABLES`.

@@ -5,6 +5,7 @@ import {
   itemKindSchema,
   LOCATION_KINDS,
   locationKindSchema,
+  locationOwnershipSchema,
   quantitySchema,
   unitSchema,
   decimalAmountSchema,
@@ -97,6 +98,8 @@ export const locationSummarySchema = z.object({
 });
 
 export const locationSchema = locationSummarySchema.extend({
+  /** Whose stock it holds: ours, or (a site only) the customer's, never valued (ADR-0012). */
+  ownership: locationOwnershipSchema,
   assignedTo: z.uuid().nullable(),
   site: z.object({ id: z.uuid(), name: z.string() }).nullable(),
   notes: z.string().nullable(),
@@ -125,6 +128,7 @@ export async function locationBodies(
     const site = location.siteId === null ? undefined : sites.get(location.siteId);
     return {
       ...locationSummary(location),
+      ownership: location.ownership,
       assignedTo: location.assignedTo,
       site: site === undefined ? null : { id: site.id, name: site.name },
       notes: location.notes,
@@ -737,7 +741,7 @@ export const createLocationRoute = defineRoute({
   operationId: 'createStockLocation',
   summary: 'Add a warehouse, a van or a site location',
   description:
-    'A van may be assigned to one active member, who has at most one van. A site location names one of the company’s customer sites.',
+    'A van may be assigned to one active member, who has at most one van. A site location names one of the company’s customer sites, and says whose stock it holds: `ours` (counted and valued) or `customer` (a record of what they hold, never valued; moving our stock there issues it from ours).',
   tags: TAGS,
   security: 'authenticated',
   permission: 'inventory.manage',
@@ -750,9 +754,17 @@ export const createLocationRoute = defineRoute({
       kind: locationKindSchema,
       assignedTo: z.uuid().nullable().optional(),
       siteId: z.uuid().optional(),
+      ownership: locationOwnershipSchema.default('ours'),
       notes: z.string().max(2000).nullable().optional(),
     })
     .superRefine((body, issues) => {
+      if (body.kind !== 'site' && body.ownership === 'customer') {
+        issues.addIssue({
+          code: 'custom',
+          path: ['ownership'],
+          message: 'Only a site location holds the customer’s stock',
+        });
+      }
       if (body.kind !== 'van' && typeof body.assignedTo === 'string') {
         issues.addIssue({
           code: 'custom',
@@ -793,6 +805,7 @@ export const createLocationRoute = defineRoute({
           kind: body.kind,
           assignedTo: body.assignedTo ?? null,
           siteId: body.siteId ?? null,
+          ownership: body.ownership,
           notes: body.notes ?? null,
         })
         .catch(uniqueRefusal);
@@ -894,6 +907,8 @@ export const updateLocationRoute = defineRoute({
       name: z.string().trim().min(1).max(100).optional(),
       /** Vans only: the member who drives it, or null for nobody. */
       assignedTo: z.uuid().nullable().optional(),
+      /** Site locations only, and only before anything has moved there. */
+      ownership: locationOwnershipSchema.optional(),
       notes: z.string().max(2000).nullable().optional(),
       archived: z.boolean().optional(),
     })
@@ -903,10 +918,11 @@ export const updateLocationRoute = defineRoute({
     404: { description: 'No such location.' },
     409: {
       description:
-        'Changed by somebody else (`version_conflict`), name taken, the member already has a van (`member_has_van`), or it still holds stock (`location_not_empty`).',
+        'Changed by somebody else (`version_conflict`), name taken, the member already has a van (`member_has_van`), it still holds stock (`location_not_empty`), or stock has moved there so whose it is is fixed (`ownership_fixed`).',
     },
     422: {
-      description: 'Only vans are assigned (`not_a_van`), or the assignee is not an active member.',
+      description:
+        'Only vans are assigned (`not_a_van`), only a site holds the customer’s stock (`not_a_site`), or the assignee is not an active member.',
     },
   },
   handler: async ({ params, body }, context) => {
@@ -920,6 +936,17 @@ export const updateLocationRoute = defineRoute({
       }
       if (typeof body.assignedTo === 'string') {
         await requireAssignableMember(tx, body.assignedTo);
+      }
+      if (body.ownership !== undefined && body.ownership !== current.ownership) {
+        if (current.kind !== 'site') {
+          throw unprocessable('not_a_site', 'Only a site location holds the customer’s stock.');
+        }
+        if (await tx.inventoryStock.hasMovements(current.id)) {
+          throw conflict(
+            'ownership_fixed',
+            'Stock has moved at this location, so whose stock it holds can no longer change.',
+          );
+        }
       }
       if (body.archived === true) {
         const held = await tx.inventoryStock.balances({ locationId: current.id });
@@ -935,6 +962,7 @@ export const updateLocationRoute = defineRoute({
           ...(body.name === undefined ? {} : { name: body.name }),
           ...(body.assignedTo === undefined ? {} : { assignedTo: body.assignedTo }),
           ...(body.notes === undefined ? {} : { notes: body.notes }),
+          ...(body.ownership === undefined ? {} : { ownership: body.ownership }),
           ...(body.archived === undefined ? {} : { archived: body.archived }),
         })
         .catch(uniqueRefusal);

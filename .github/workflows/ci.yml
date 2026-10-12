@@ -38,6 +38,11 @@ jobs:
       - name: Check formatting
         run: pnpm format:check
 
+      # Permissive licences only; anything else is named, with its reason, in
+      # scripts/licences/exceptions.json (ADR-0012).
+      - name: Dependency licences
+        run: pnpm licences:check
+
       - name: Lint
         run: pnpm lint
 

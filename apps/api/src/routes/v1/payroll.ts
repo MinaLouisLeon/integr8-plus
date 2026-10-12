@@ -35,6 +35,7 @@ import { ApiError, conflict, forbidden, notFound, unprocessable } from '../../ht
 import { defineRoute, noSchema, type RequestContext } from '../../http/routes.js';
 import { hrKey, openField } from '../../hr/sealed-fields.js';
 import { crmAudit as audit, versionConflict } from './crm-shared.js';
+import { companyName } from './finance-invoices.js';
 import { type People, peopleOf, personBody, personSchema } from './operations.js';
 import { companyToday } from './sales-quotes.js';
 import { iso, isoOrNull } from './schemas.js';
@@ -170,10 +171,25 @@ const runDetailSchema = runSummarySchema.extend({
     approve: z.boolean(),
     discard: z.boolean(),
     exportBankFile: z.boolean(),
+    exportInsuranceReport: z.boolean(),
   }),
+  /** Why approving is not offered, for a draft; null when it is or the run is approved. */
+  approveBlockedBy: z
+    .enum(['no_permission', 'self_approval', 'empty_run', 'negative_net'])
+    .nullable(),
+  /** Whether the server holds the key that opens bank and insurance numbers. */
+  hrKeyConfigured: z.boolean(),
+});
+
+/** Who pays: printed at the head of every payslip. */
+const payslipCompanySchema = z.object({
+  name: z.string(),
+  address: z.string().nullable(),
+  taxReference: z.string().nullable(),
 });
 
 const payslipSchema = z.object({
+  company: payslipCompanySchema,
   run: z.object({
     id: z.uuid(),
     reference: z.string(),
@@ -443,6 +459,19 @@ async function runDetail(
           .map((candidate) => ({ id: candidate.employeeId, name: candidate.fullName }))
       : [];
   const draft = run.status === 'draft';
+  const blockedBy = !draft
+    ? null
+    : !holds(principal, 'payroll.approve')
+      ? ('no_permission' as const)
+      : run.preparedBy === principal.userId
+        ? ('self_approval' as const)
+        : lines.length === 0
+          ? ('empty_run' as const)
+          : lines.some((line) => toUnits(line.net) < 0n)
+            ? ('negative_net' as const)
+            : null;
+  const sensitive = holds(principal, 'hr.sensitive');
+  const keyed = context.config.HR_DATA_KEY !== undefined;
   return {
     ...runSummaryBody(run, totals.get(run.id) ?? emptyPayRunTotals(), people),
     ruleSet: { id: set.id, name: set.name, effectiveFrom: set.effectiveFrom },
@@ -451,15 +480,13 @@ async function runDetail(
     disclaimer: PAYROLL_DISCLAIMER,
     can: {
       edit: draft && holds(principal, 'payroll.run'),
-      approve:
-        draft &&
-        holds(principal, 'payroll.approve') &&
-        run.preparedBy !== principal.userId &&
-        lines.length > 0,
+      approve: draft && blockedBy === null,
       discard: draft && holds(principal, 'payroll.run'),
-      exportBankFile:
-        !draft && holds(principal, 'hr.sensitive') && context.config.HR_DATA_KEY !== undefined,
+      exportBankFile: !draft && sensitive && keyed,
+      exportInsuranceReport: sensitive && keyed,
     },
+    approveBlockedBy: blockedBy,
+    hrKeyConfigured: keyed,
   };
 }
 
@@ -952,7 +979,15 @@ export const createPayRunRoute = defineRoute({
         principal.userId,
       );
       if (run === 'month_taken') {
-        throw conflict('month_taken', 'This month already has a pay run.');
+        const existing = await tx.hrPayroll.runFor(start);
+        throw new ApiError(409, 'month_taken', 'This month already has a pay run.', [
+          {
+            field: 'body.month',
+            code: 'month_taken',
+            message: 'This month already has a pay run.',
+            params: { runId: existing?.id ?? '' },
+          },
+        ]);
       }
       const { lines } = await proposeLines(tx, run, confirmed.rules);
       await tx.hrPayroll.replaceLines(run.id, lines);
@@ -1282,8 +1317,27 @@ export const discardPayRunRoute = defineRoute({
 // Outputs
 // ---------------------------------------------------------------------------
 
-function payslipBody(run: PayRun, employee: Employee, line: PayLine) {
+/** The issuer block the invoices use: the legal name, else the company's name. */
+async function payslipCompany(
+  tx: TenantTransaction,
+  tenantId: string,
+): Promise<z.infer<typeof payslipCompanySchema>> {
+  const settings = await tx.financeInvoices.settings();
   return {
+    name: settings.legalName ?? (await companyName(tenantId)),
+    address: settings.address,
+    taxReference: settings.taxReference,
+  };
+}
+
+function payslipBody(
+  run: PayRun,
+  employee: Employee,
+  line: PayLine,
+  company: z.infer<typeof payslipCompanySchema>,
+) {
+  return {
+    company,
     run: {
       id: run.id,
       reference: formatPayRunReference(run.periodStart),
@@ -1330,6 +1384,7 @@ export const runPayslipsRoute = defineRoute({
         throw conflict('run_not_approved', 'Payslips come from an approved run.');
       }
       const lines = await tx.hrPayroll.lines(run.id);
+      const company = await payslipCompany(tx, principal.tenantId);
       const employees = new Map(
         (await tx.hrEmployees.findMany(lines.map((line) => line.employeeId))).map((employee) => [
           employee.id,
@@ -1339,7 +1394,7 @@ export const runPayslipsRoute = defineRoute({
       return {
         items: lines.flatMap((line) => {
           const employee = employees.get(line.employeeId);
-          return employee === undefined ? [] : [payslipBody(run, employee, line)];
+          return employee === undefined ? [] : [payslipBody(run, employee, line, company)];
         }),
       };
     });
@@ -1370,7 +1425,8 @@ export const myPayslipsRoute = defineRoute({
         return { items: [] };
       }
       const slips = await tx.hrPayroll.payslipsOf(employee.id, query.limit);
-      return { items: slips.map(({ run, line }) => payslipBody(run, employee, line)) };
+      const company = await payslipCompany(tx, principal.tenantId);
+      return { items: slips.map(({ run, line }) => payslipBody(run, employee, line, company)) };
     });
     return { status: 200, body };
   },

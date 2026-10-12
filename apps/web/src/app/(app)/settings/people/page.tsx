@@ -53,25 +53,13 @@ interface Viewer {
 }
 
 /**
- * A refusal from the member routes in words. The API's refusals each have a
- * code; a 403 that touches the HR manager role or grant is the owner-only rule.
+ * A refusal from the member routes in words: the catalogue's message for its
+ * code (ADR-0012), except that a plain 403 on a change touching the HR
+ * manager role or grant is the owner-only rule, which says more here.
  */
 function peopleError(failure: unknown, t: TFunction, touchesHr: boolean): string {
-  if (failure instanceof ApiRequestError) {
-    switch (failure.code) {
-      case 'last_owner':
-        return t('workspace.members.lastOwner');
-      case 'role_above_own':
-        return t('workspace.members.roleAboveOwn');
-      case 'role_holds_grant':
-        return t('workspace.members.roleHoldsGrant');
-      case 'member_not_active':
-        return t('workspace.members.memberNotActive');
-      default:
-        if (failure.status === 403 && touchesHr) {
-          return t('workspace.members.hrOwnerOnly');
-        }
-    }
+  if (failure instanceof ApiRequestError && failure.code === 'forbidden' && touchesHr) {
+    return t('workspace.members.hrOwnerOnly');
   }
   return messageForError(failure, t);
 }

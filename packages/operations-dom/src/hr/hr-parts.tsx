@@ -1,4 +1,3 @@
-import { ApiRequestError } from '@integr8/api-client';
 import { hasFeature, type Role } from '@integr8/core';
 import { formatCalendarDate, useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
@@ -54,56 +53,12 @@ export function useHrAccess() {
   };
 }
 
-/** Every refusal the HR API gives by code, said in this language. */
-const HR_ERRORS = [
-  'hr_key_missing',
-  'number_taken',
-  'member_taken',
-  'name_required',
-  'member_not_found',
-  'version_conflict',
-  'end_before_hire',
-  'end_pairing',
-] as const;
-type HrErrorCode = (typeof HR_ERRORS)[number];
-
-const isHrError = (code: string): code is HrErrorCode =>
-  (HR_ERRORS as readonly string[]).includes(code);
-
 /**
- * A request HR refused, in words: the known refusals in this language, the
- * module being off or the seat not allowed said plainly, and anything else as
- * every screen shows it.
+ * A request HR refused, in words. HR's refusals are said as everywhere else
+ * (ADR-0012); kept as its own name so the HR screens read as one area.
  */
 export function HrFailure({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const { t } = useTranslation();
-  const retry = onRetry === undefined ? {} : { onRetry };
-  if (!(error instanceof ApiRequestError)) {
-    return <Failure error={error} {...retry} />;
-  }
-  let message: string;
-  if (error.code === 'feature_disabled') {
-    message = t('errors.featureDisabled');
-  } else if (error.status === 403) {
-    message = t('errors.forbidden');
-  } else if (isHrError(error.code)) {
-    message = t(`hr.errors.${error.code}`);
-  } else {
-    return <Failure error={error} {...retry} />;
-  }
-  return (
-    <div
-      role="alert"
-      className="flex flex-col items-start gap-2 rounded-lg border border-danger bg-danger-subtle p-4 text-start"
-    >
-      <p className="text-sm text-content">{message}</p>
-      {onRetry === undefined ? null : (
-        <button type="button" className={buttonClass.secondary} onClick={onRetry}>
-          {t('common.retry')}
-        </button>
-      )}
-    </div>
-  );
+  return <Failure error={error} onRetry={onRetry} />;
 }
 
 /** A short note, such as why a form is not offered. */

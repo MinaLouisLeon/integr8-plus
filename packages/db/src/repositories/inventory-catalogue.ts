@@ -233,7 +233,8 @@ export class InventoryCatalogueRepository extends TenantScopedRepository {
       .selectFrom('erp_items')
       .selectAll('erp_items')
       .select(
-        sql<string>`coalesce((select sum(b.on_hand) from erp_stock_balances b where b.tenant_id = erp_items.tenant_id and b.item_id = erp_items.id), 0)::text`.as(
+        // Ours only: what customers hold at their sites is theirs (ADR-0012).
+        sql<string>`coalesce((select sum(b.on_hand) from erp_stock_balances b join erp_stock_locations l on l.tenant_id = b.tenant_id and l.id = b.location_id and l.ownership = 'ours' where b.tenant_id = erp_items.tenant_id and b.item_id = erp_items.id), 0)::text`.as(
           'on_hand',
         ),
       )

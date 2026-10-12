@@ -1,13 +1,12 @@
-import type { LocalDatabase } from './database.js';
 import type { SqlConnection } from './sql.js';
 import type { OutboxState } from './sync/outbox.js';
-import type { SyncApi } from './sync/transport.js';
 
 /**
  * Staff expense claims on the phone (seventh round; ADR-0010).
  *
  * A claim is made with or without signal: the phone keeps the categories the
- * server last said are in use, so the form works in a basement, and the claim
+ * server last said are in use — they come with the first page of every pull
+ * (ADR-0012), so the form works in a basement from the first sync — and the claim
  * waits in the outbox — with its receipts behind it — until it can be sent.
  * Until then the phone's own unsent claims are read straight from the outbox:
  * there is no copy of them anywhere else to drift.
@@ -40,8 +39,9 @@ export async function expenseCategories(sql: SqlConnection): Promise<LocalExpens
 }
 
 /**
- * Keeps what the server said: the categories in use, or `null` when this
- * person does not claim expenses here (the module is off, or they may not).
+ * Keeps what the server said with a pull: the categories in use, or `null`
+ * when this person does not claim expenses here (the module is off, or they
+ * may not).
  */
 export async function saveExpenseCategories(
   sql: SqlConnection,
@@ -61,31 +61,6 @@ export async function saveExpenseCategories(
       [key, value],
     );
   }
-}
-
-/**
- * Asks the server for the categories, when it can. A refusal (the module off,
- * the seat not allowed) is remembered as "no expenses here"; any other
- * failure keeps what the phone had, for the next run to try again.
- */
-export async function refreshExpenseCategories(
-  db: LocalDatabase,
-  api: SyncApi,
-  now: Date,
-): Promise<boolean> {
-  if (api.expenseCategories === undefined) {
-    return false;
-  }
-  let categories: readonly LocalExpenseCategory[] | undefined;
-  try {
-    categories = await api.expenseCategories();
-  } catch {
-    return false;
-  }
-  await db.write(['meta'], (sql) =>
-    saveExpenseCategories(sql, categories ?? null, now.toISOString()),
-  );
-  return true;
 }
 
 /** A claim made on this phone that the server does not fully have yet. */

@@ -1,7 +1,9 @@
+import { saveAccess } from '../access.js';
 import type { PullPage, SyncSubmission, WorkOrderDetail } from '../api-types.js';
 import { applyPulledAssets } from '../assets.js';
 import type { LocalDatabase } from '../database.js';
 import { evict, type EvictionOutcome, type RetentionPolicy } from '../eviction.js';
+import { saveExpenseCategories } from '../expenses.js';
 import { identity } from '../queries.js';
 import { upsertCustomer, upsertForm, upsertSite, upsertWorkOrder } from '../snapshot.js';
 import type { SqlConnection } from '../sql.js';
@@ -56,6 +58,7 @@ const PULL_TABLES = [
   'files',
   'assets',
   'asset_links',
+  'item_images',
 ] as const;
 
 /**
@@ -130,6 +133,7 @@ async function applyPage(
   page: PullPage,
   seen: Set<string>,
   at: string,
+  firstPage: boolean,
 ): Promise<number> {
   const me = await identity(sql);
   const actor: Actor = { id: me?.userId ?? '', name: me?.displayName ?? '' };
@@ -171,14 +175,22 @@ async function applyPage(
 
   // The van's stock comes with the first page and replaces what was held
   // (CRM/ERP plan, phase E2): an engineer taken off a van sees it empty.
+  // Each item carries what is promised to sales orders, what is left, and
+  // its main image, which the phone downloads after the pull (ADR-0012).
   if (page.vanStock !== null && page.vanStock !== undefined) {
     await sql.run('delete from van_stock');
     const { location, items } = page.vanStock;
+    await sql.run(
+      `insert into meta (key, value) values ('van', ?)
+       on conflict (key) do update set value = excluded.value`,
+      [JSON.stringify(location)],
+    );
     if (location !== null) {
       for (const row of items) {
         await sql.run(
-          `insert into van_stock (item_id, location_id, location_name, sku, name, kind, unit, on_hand, updated_at)
-           values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `insert into van_stock (item_id, location_id, location_name, sku, name, kind, unit, on_hand,
+                                  reserved, available, main_image_file_id, updated_at)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             row.item.id,
             location.id,
@@ -188,11 +200,22 @@ async function applyPage(
             row.item.kind,
             row.item.unit,
             row.onHand,
+            (row as Partial<typeof row>).reserved ?? null,
+            (row as Partial<typeof row>).available ?? null,
+            (row as Partial<typeof row>).mainImageFileId ?? null,
             at,
           ],
         );
       }
     }
+  }
+
+  // What expenses may be claimed for, with the first page of every pull
+  // (ADR-0012): null there means this person claims none. Later pages say
+  // nothing, and a server that predates it sends no field at all.
+  const categories = (page as Partial<PullPage>).expenseCategories;
+  if (firstPage && categories !== undefined) {
+    await saveExpenseCategories(sql, categories, at);
   }
 
   // The assets of the page's sites, each with its whole history (phase E3).
@@ -254,6 +277,7 @@ export async function pullChanges(
           [key, value],
         );
       }
+      await saveAccess(sql, me);
     });
   }
 
@@ -273,7 +297,13 @@ export async function pullChanges(
 
     await db.write(PULL_TABLES, async (sql) => {
       await saveClockOffset(sql, measureOffset(response.serverTime, sentAt, receivedAt));
-      outcome.removed += await applyPage(sql, response, seen, response.serverTime);
+      outcome.removed += await applyPage(
+        sql,
+        response,
+        seen,
+        response.serverTime,
+        page === undefined,
+      );
 
       if (response.cursor !== null) {
         if (response.reset) {

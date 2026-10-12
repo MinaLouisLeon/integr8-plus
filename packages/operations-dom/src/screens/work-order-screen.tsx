@@ -1,7 +1,13 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { apiMediaAdapter } from '@integr8/form-renderer-dom/screens';
 import { jobTimes } from '@integr8/core';
-import { formatDateTime, useTranslation } from '@integr8/i18n';
+import {
+  apiErrorCodeMessage,
+  apiErrorMessage,
+  formatDateTime,
+  type TFunction,
+  useTranslation,
+} from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { AccessNotesPanel } from '../access-notes.js';
@@ -432,9 +438,12 @@ type Missing = WorkOrderDetail['execution']['missing'];
 /**
  * What a refused completion names, read from the error's details: one per
  * required form, the before and after photos still needed, and the sign-off.
- * A detail this screen does not know is kept in the server's own words.
+ * A detail this screen does not know is said by its code, or left out.
  */
-function missingFromError(error: ApiRequestError): {
+function missingFromError(
+  error: ApiRequestError,
+  t: TFunction,
+): {
   missing: Missing;
   other: { key: string; text: string }[];
 } {
@@ -455,7 +464,10 @@ function missingFromError(error: ApiRequestError): {
     } else if (detail.code === 'signoff_missing') {
       missing.signoff = true;
     } else {
-      other.push({ key: `${detail.field}-${String(index)}`, text: detail.message });
+      const text = apiErrorCodeMessage(detail.code, t);
+      if (text !== undefined) {
+        other.push({ key: `${detail.field}-${String(index)}`, text });
+      }
     }
   });
   return { missing, other };
@@ -493,13 +505,13 @@ function MissingItems({
 function TransitionFailure({ error }: { error: unknown }) {
   const { t } = useTranslation();
   if (error instanceof ApiRequestError && error.code === 'completion_blocked') {
-    const { missing, other } = missingFromError(error);
+    const { missing, other } = missingFromError(error, t);
     return (
       <div
         role="alert"
         className="flex flex-col gap-2 rounded-md border border-danger bg-danger-subtle p-3 text-start text-sm text-content"
       >
-        <p>{error.message}</p>
+        <p>{apiErrorMessage(error, t)}</p>
         <MissingItems missing={missing} other={other} />
       </div>
     );

@@ -312,6 +312,16 @@ export interface VanStockRow {
   onHand: string;
   /** `onHand` less this phone's own uses not yet applied: what is probably left. */
   forecast: string;
+  /** Promised to sales orders from the van, as the server last said (ADR-0012). */
+  reserved: string;
+  /** On hand less reserved, never below zero, as the server last said. */
+  available: string;
+  /** `available` less this phone's own uses not yet applied. */
+  availableForecast: string;
+  /** The item's main image, and where the phone keeps it once downloaded. */
+  mainImageFileId: string | null;
+  /** Relative to the files directory; null until it has downloaded. */
+  imagePath: string | null;
   updatedAt: string;
 }
 
@@ -346,8 +356,16 @@ export async function vanStock(sql: SqlConnection): Promise<VanStockRow[]> {
     kind: string;
     unit: string;
     on_hand: string;
+    reserved: string | null;
+    available: string | null;
+    main_image_file_id: string | null;
+    image_path: string | null;
     updated_at: string;
-  }>('select * from van_stock order by name, sku');
+  }>(
+    `select van_stock.*, item_images.local_path as image_path
+     from van_stock left join item_images on item_images.file_id = van_stock.main_image_file_id
+     order by name, sku`,
+  );
   const pending = await sql.all<{ payload: string }>(
     `select payload from outbox where kind = 'work_order.material' and state <> 'done'`,
   );
@@ -356,11 +374,31 @@ export async function vanStock(sql: SqlConnection): Promise<VanStockRow[]> {
     const payload = JSON.parse(row.payload) as { itemId: string; quantity: string };
     used.set(payload.itemId, [...(used.get(payload.itemId) ?? []), payload.quantity]);
   }
-  return rows.map((row) => ({
-    item: { id: row.item_id, sku: row.sku, name: row.name, kind: row.kind, unit: row.unit },
-    location: { id: row.location_id, name: row.location_name },
-    onHand: row.on_hand,
-    forecast: minus(row.on_hand, used.get(row.item_id) ?? []),
-    updatedAt: row.updated_at,
-  }));
+  return rows.map((row) => {
+    const own = used.get(row.item_id) ?? [];
+    // A row from a server that did not say what is reserved: none is.
+    const available = row.available ?? row.on_hand;
+    return {
+      item: { id: row.item_id, sku: row.sku, name: row.name, kind: row.kind, unit: row.unit },
+      location: { id: row.location_id, name: row.location_name },
+      onHand: row.on_hand,
+      forecast: minus(row.on_hand, own),
+      reserved: row.reserved ?? '0',
+      available,
+      availableForecast: minus(available, own),
+      mainImageFileId: row.main_image_file_id,
+      imagePath: row.image_path,
+      updatedAt: row.updated_at,
+    };
+  });
+}
+
+/** The engineer's van as the server last said; null without one, undefined before it has said. */
+export async function van(
+  sql: SqlConnection,
+): Promise<{ id: string; name: string } | null | undefined> {
+  const row = await sql.get<{ value: string }>(`select value from meta where key = 'van'`);
+  return row === undefined
+    ? undefined
+    : (JSON.parse(row.value) as { id: string; name: string } | null);
 }

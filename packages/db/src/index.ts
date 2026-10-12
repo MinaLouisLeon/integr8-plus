@@ -544,6 +544,48 @@ export {
   type MrpSuggestionInput,
   type PlanningData,
 } from './repositories/manufacturing.js';
+export {
+  CustomerTimelineRepository,
+  TIMELINE_SOURCES,
+  type TimelineSource,
+  type TimelineKind,
+  type TimelineEntry,
+} from './repositories/customer-timeline.js';
+export {
+  AnalyticsRepository,
+  type QuoteFigures,
+  type PipelineFigures,
+  type StageValue,
+  type PartsUsage,
+  EXPORT_LIMIT,
+  type ExportFilter,
+  type ExportPage,
+  type LeadRow,
+  type OpportunityRow,
+  type MovementRow,
+} from './repositories/analytics.js';
+export {
+  SupplierPricesRepository,
+  type SupplierPrice,
+  type SupplierPriceInput,
+} from './repositories/supplier-prices.js';
+export {
+  InventoryReplenishmentRepository,
+  type ReorderNeed,
+  type VanRequest,
+  type VanRequestLine,
+  type VanRequestRefusal,
+} from './repositories/inventory-replenishment.js';
+export {
+  SalesDeliveriesRepository,
+  type SalesDelivery,
+  type SalesDeliveryLine,
+} from './repositories/sales-deliveries.js';
+export {
+  WorkOrderPurchasesRepository,
+  type WorkOrderPurchase,
+  type WorkOrderPurchaseInput,
+} from './repositories/work-order-purchases.js';
 
 export {
   addressLine,

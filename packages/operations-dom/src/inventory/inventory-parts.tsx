@@ -69,6 +69,69 @@ export function LocationKindBadge({ kind }: { kind: StockLocation['kind'] }) {
 
 export { ITEM_KINDS, LOCATION_KINDS, UNITS };
 
+export type LocationOwnership = StockLocation['ownership'];
+
+/**
+ * Said beside a site location that records the customer's own stock: never
+ * counted in ours, valued, planned from or delivered from (ADR-0012). Our
+ * stock carries no badge — it is the usual case.
+ */
+export function OwnershipBadge({ ownership }: { ownership: LocationOwnership }) {
+  const { t } = useTranslation();
+  if (ownership !== 'customer') {
+    return null;
+  }
+  return (
+    <span className="inline-flex items-center rounded-full border border-warning bg-warning-subtle px-2 py-0.5 text-xs font-medium text-content">
+      {t('inventory.ownership.customerBadge')}
+    </span>
+  );
+}
+
+/** Whose stock a site location holds, each choice explained in one line. Sites only. */
+export function OwnershipChoice({
+  value,
+  onChange,
+  disabled = false,
+  name,
+}: {
+  value: LocationOwnership;
+  onChange: (ownership: LocationOwnership) => void;
+  disabled?: boolean;
+  /** The radio group's name, unique on the page. */
+  name: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <fieldset className="flex flex-col gap-2" disabled={disabled}>
+      <legend className="mb-1 text-sm font-medium text-content">
+        {t('inventory.ownership.label')}
+      </legend>
+      {(['ours', 'customer'] as const).map((choice) => (
+        <div key={choice} className="flex items-start gap-2 text-sm text-content">
+          <input
+            id={`${name}-${choice}`}
+            type="radio"
+            name={name}
+            className="mt-1"
+            checked={value === choice}
+            onChange={() => onChange(choice)}
+            aria-describedby={`${name}-${choice}-hint`}
+          />
+          <span className="flex flex-col">
+            <label htmlFor={`${name}-${choice}`} className="font-medium">
+              {t(`inventory.ownership.${choice}`)}
+            </label>
+            <span id={`${name}-${choice}-hint`} className="text-xs text-content-muted">
+              {t(`inventory.ownership.${choice}Hint`)}
+            </span>
+          </span>
+        </div>
+      ))}
+    </fieldset>
+  );
+}
+
 export function useCategories() {
   const { client } = useOperations();
   return useQuery({
@@ -304,7 +367,9 @@ export function MoveStockDialog({
       <option value="">{t('inventory.move.chooseLocation')}</option>
       {(locations.data ?? []).map((candidate) => (
         <option key={candidate.id} value={candidate.id}>
-          {candidate.name}
+          {candidate.ownership === 'customer'
+            ? t('inventory.ownership.optionCustomer', { name: candidate.name })
+            : candidate.name}
         </option>
       ))}
     </select>

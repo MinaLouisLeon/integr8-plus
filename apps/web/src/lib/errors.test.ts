@@ -1,5 +1,5 @@
 import { ApiRequestError } from '@integr8/api-client';
-import { createI18n } from '@integr8/i18n';
+import { ar, createI18n } from '@integr8/i18n';
 import { describe, expect, it } from 'vitest';
 import { messageForError } from './errors';
 
@@ -37,10 +37,21 @@ describe('turning an API failure into something a person reads', () => {
     expect(messageForError(failure('client_too_old', 503), t)).toBe(t('errors.clientTooOld'));
   });
 
-  it('falls back for a code it has never seen', () => {
+  it('says any code the API returns in the catalogue’s words, in the reader’s language', () => {
+    expect(messageForError(failure('last_owner', 409), t)).toBe(t('apiErrors.last_owner'));
+    const arabic = createI18n({ locale: 'ar' }).t;
+    expect(messageForError(failure('version_conflict', 409), arabic)).toBe(
+      ar.apiErrors.version_conflict,
+    );
+  });
+
+  it('falls back by status for a code it has never seen', () => {
     // The API may add a code inside a version; an old client must still say
     // something sensible rather than rendering `undefined`.
-    expect(messageForError(failure('some.future.code'), t)).toBe(t('errors.unexpected'));
+    expect(messageForError(failure('some.future.code', 403), t)).toBe(t('errors.forbidden'));
+    const other = messageForError(failure('some.future.code'), t);
+    expect(other).toBe(t('errors.body', { requestId: 'req-1' }));
+    expect(other).not.toContain('written for a log');
   });
 
   it('falls back for something that is not an API error at all', () => {

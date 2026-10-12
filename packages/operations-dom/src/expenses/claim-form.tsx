@@ -79,7 +79,7 @@ export function NewExpenseClaimScreen() {
       draft.spentOn === ''
         ? t('expenses.form.spentOnRequired')
         : draft.spentOn > today
-          ? t('expenses.errors.spent_in_future')
+          ? t('apiErrors.spent_in_future')
           : null,
     amount: isAmount(draft.amount) ? null : t('expenses.form.amountInvalid'),
     description: draft.description.trim() === '' ? t('expenses.form.descriptionRequired') : null,

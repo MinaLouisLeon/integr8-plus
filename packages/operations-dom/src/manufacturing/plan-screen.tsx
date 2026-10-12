@@ -371,15 +371,23 @@ function MaterialPlanDetail({ planId }: { planId: string }) {
                           </td>
                           <td className="py-2">
                             {suggestion.drafted !== null ? (
-                              <AppLink
-                                to={
-                                  suggestion.drafted.kind === 'assembly_order'
-                                    ? paths.assemblyOrder(suggestion.drafted.id)
-                                    : paths.purchaseOrder(suggestion.drafted.id)
-                                }
-                              >
-                                {t(`manufacturing.plans.drafted.${suggestion.drafted.kind}`)}
-                              </AppLink>
+                              <>
+                                <span className="block text-xs text-content-muted">
+                                  {t(`manufacturing.plans.drafted.${suggestion.drafted.kind}`)}
+                                </span>
+                                <AppLink
+                                  to={
+                                    suggestion.drafted.kind === 'assembly_order'
+                                      ? paths.assemblyOrder(suggestion.drafted.id)
+                                      : paths.purchaseOrder(suggestion.drafted.id)
+                                  }
+                                  dir="ltr"
+                                >
+                                  {suggestion.drafted.reference === ''
+                                    ? t('manufacturing.plans.openDrafted')
+                                    : suggestion.drafted.reference}
+                                </AppLink>
+                              </>
                             ) : reason === 'noSupplier' || reason === 'noPurchasing' ? (
                               <span className="text-xs text-content-muted">
                                 {t(`manufacturing.plans.blocked.${reason}`)}

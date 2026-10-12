@@ -1,6 +1,6 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { ACCOUNT_TYPES, fromUnits, hasFeature, journalTotals, toUnits } from '@integr8/core';
-import { type TFunction, useTranslation } from '@integr8/i18n';
+import { apiErrorCodeMessage, type TFunction, useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import {
@@ -166,102 +166,46 @@ export const POSTING_REASONS = (Object.keys(REASON_ORDER) as PostingReason[]).so
   (left, right) => REASON_ORDER[left] - REASON_ORDER[right],
 );
 
-/** Every refusal the ledger's API gives by code, said in this language. */
-const LEDGER_ERRORS = [
-  'self_approval',
-  'unbalanced',
-  'period_locked',
-  'before_start',
-  'waits_for_invoice',
-  'cost_unknown',
-  'rate_required',
-  'year_not_ready',
-  'nothing_to_close',
-  'year_closed',
-  'year_not_ended',
-  'year_open',
-  'opening_exists',
-  'opening_date',
-  'already_reversed',
-  'closing_journal',
-  'reversal_of_reversal',
-  'reversal_before_original',
-  'not_draft',
-  'not_posted',
-  'not_pending',
-  'settings_fixed',
-  'account_not_usable',
-  'account_archived',
-  'account_not_found',
-  'customer_not_found',
-  'invalid_lines',
-  'type_fixed',
-  'posting_account',
-  'code_taken',
-  'version_conflict',
-  'ledger_not_set_up',
-  'already_set_up',
-  'range_reversed',
-] as const;
-type LedgerErrorCode = (typeof LEDGER_ERRORS)[number];
-
-const isLedgerError = (code: string): code is LedgerErrorCode =>
-  (LEDGER_ERRORS as readonly string[]).includes(code);
-
 /** The code of an API refusal, when it is one. */
 export function errorCode(error: unknown): string | undefined {
   return error instanceof ApiRequestError ? error.code : undefined;
 }
 
 /**
- * A request the ledger refused, in words: the known refusals in this
- * language — line by line where the server says which line — and anything
- * else as every screen shows it.
+ * A request the ledger refused, in words (ADR-0012) — with the ledger's own
+ * wording where a code means more here, and line by line where the server
+ * says which line.
  */
 export function LedgerFailure({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const { t } = useTranslation();
-  if (!(error instanceof ApiRequestError)) {
-    return <Failure error={error} {...(onRetry === undefined ? {} : { onRetry })} />;
-  }
-  const forbidden = error.status === 403;
-  if (!forbidden && !isLedgerError(error.code)) {
-    return <Failure error={error} {...(onRetry === undefined ? {} : { onRetry })} />;
-  }
-  const lines = error.details.flatMap((detail) => {
-    const line = /^body\.lines\.(\d+)\./u.exec(detail.field);
-    return line !== null && isLedgerError(detail.code)
-      ? [
-          {
-            key: `${detail.field}-${detail.code}`,
-            text: t('ledger.errors.onLine', {
-              line: Number(line[1]) + 1,
-              problem: t(`ledger.errors.${detail.code}`),
-            }),
-          },
-        ]
-      : [];
-  });
+  const overrides = {
+    self_approval: t('ledger.errors.self_approval'),
+    not_posted: t('ledger.errors.not_posted'),
+    account_not_usable: t('ledger.errors.account_not_usable'),
+    code_taken: t('ledger.errors.code_taken'),
+  };
+  const lines =
+    error instanceof ApiRequestError && error.status !== 404
+      ? error.details.flatMap((detail) => {
+          const line = /^body\.lines\.(\d+)\./u.exec(detail.field);
+          const problem = apiErrorCodeMessage(detail.code, t, overrides);
+          if (problem === undefined || detail.code === error.code) {
+            return [];
+          }
+          return [
+            line === null
+              ? problem
+              : t('ledger.errors.onLine', { line: Number(line[1]) + 1, problem }),
+          ];
+        })
+      : undefined;
   return (
-    <div
-      role="alert"
-      className="flex flex-col items-start gap-2 rounded-lg border border-danger bg-danger-subtle p-4 text-start"
-    >
-      <p className="text-sm text-content">
-        {forbidden ? t('errors.forbidden') : t(`ledger.errors.${error.code as LedgerErrorCode}`)}
-      </p>
-      {lines.length > 0 ? (
-        <ul className="list-disc ps-5 text-sm text-content">
-          {lines.map((line) => (
-            <li key={line.key}>{line.text}</li>
-          ))}
-        </ul>
-      ) : null}
-      {onRetry === undefined ? null : (
-        <button type="button" className={buttonClass.secondary} onClick={onRetry}>
-          {t('common.retry')}
-        </button>
-      )}
-    </div>
+    <Failure
+      error={error}
+      onRetry={onRetry}
+      overrides={overrides}
+      {...(lines === undefined ? {} : { lines: [...new Set(lines)] })}
+    />
   );
 }
 

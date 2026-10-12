@@ -158,6 +158,12 @@ describe('bills of materials', () => {
       await call(viewer, 'GET', `/v1/manufacturing/boms/items/${kit}`),
     );
     expect(read.current.unitCost).toBeNull();
+    // Any version opens by its id, and keeps what it held.
+    const version = json<{ id: string; version: number; components: unknown[] }>(
+      await call(viewer, 'GET', `/v1/manufacturing/boms/${json<{ id: string }>(saved).id}`),
+    );
+    expect(version).toMatchObject({ version: 1 });
+    expect(version.components).toHaveLength(3);
     expect((await call(engineer, 'GET', '/v1/manufacturing/boms')).statusCode).toBe(403);
     expect(
       (
@@ -244,13 +250,23 @@ describe('assembly orders', () => {
     );
     expect(order.needs[0]).toMatchObject({ available: '1', short: '1' });
     expect(order.can.complete).toBe(false);
-    expect(
-      code(
-        await call(storekeeper, 'POST', `/v1/manufacturing/orders/${order.id}/complete`, {
-          expectedVersion: order.version,
-        }),
-      ),
-    ).toBe('shortage');
+    const refused = await call(
+      storekeeper,
+      'POST',
+      `/v1/manufacturing/orders/${order.id}/complete`,
+      { expectedVersion: order.version },
+    );
+    expect(code(refused)).toBe('shortage');
+    // Each short item says by how much, for the screen to say it in its language.
+    const details = json<{ error: { details: { params: Record<string, string> }[] } }>(refused)
+      .error.details;
+    expect(details).toHaveLength(1);
+    expect(details[0]?.params).toMatchObject({
+      itemId: pump,
+      short: '1',
+      needed: '2',
+      available: '1',
+    });
     expect(await onHand(pump, store)).toBe('1');
     const cancelled = await call(owner, 'POST', `/v1/manufacturing/orders/${order.id}/cancel`, {
       expectedVersion: order.version,
@@ -292,7 +308,7 @@ describe('planning', () => {
       quantity: string;
       leadTimeDays: number;
       supplier: { name: string } | null;
-      drafted: { kind: string } | null;
+      drafted: { kind: string; reference: string } | null;
     }[];
   }
 
@@ -370,6 +386,11 @@ describe('planning', () => {
       expect.stringMatching(/^PO-\d{6}$/u),
     ]);
     expect(result.plan.suggestions.filter((row) => row.drafted !== null)).toHaveLength(2);
+    expect(
+      result.plan.suggestions
+        .flatMap((row) => (row.drafted === null ? [] : [row.drafted.reference]))
+        .sort(),
+    ).toEqual([result.assemblyOrders[0]!.reference, result.purchaseOrders[0]!.reference].sort());
     const order = json<{ order: { status: string } }>(
       await call(owner, 'GET', `/v1/purchasing/orders/${result.purchaseOrders[0]!.id}`),
     );

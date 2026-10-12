@@ -22,6 +22,7 @@ import { FieldBlock } from './field-block';
 import type { FillModel } from './fill-model';
 import { FormMediaProvider } from './media';
 import { ActionButton, Muted, Problem, TextBox } from './widgets/kit';
+import { refusalMessage } from '~/lib/refusals';
 
 /**
  * A form, filled on the phone: the React Native renderer (P13).
@@ -125,7 +126,7 @@ export function FormFiller(props: FormFillerProps) {
     } catch (error) {
       setFailure(
         t('mobile.fill.failed', {
-          message: error instanceof Error ? error.message : String(error),
+          message: refusalMessage(t, error, t('mobile.work.failed')),
         }),
       );
     } finally {

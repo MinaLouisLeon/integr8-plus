@@ -164,6 +164,18 @@ export async function evict(
     );
   }
 
+  // Item images no item on the van shows any more (ADR-0012): the item left
+  // the van, or was given another main image.
+  const images = await sql.all<{ file_id: string; local_path: string }>(
+    `select file_id, local_path from item_images
+     where file_id not in (select main_image_file_id from van_stock where main_image_file_id is not null)`,
+  );
+  if (images.length > 0) {
+    await sql.run(`delete from item_images where file_id in (select value from json_each(?))`, [
+      JSON.stringify(images.map((image) => image.file_id)),
+    ]);
+  }
+
   return {
     workOrders: workOrders.changes,
     customers: customers.changes,
@@ -172,6 +184,7 @@ export async function evict(
     formVersions: formVersions.changes,
     filePaths: [
       ...evictedFiles.map((file) => file.local_path),
+      ...images.map((image) => image.local_path),
       ...uploaded.flatMap((upload) =>
         upload.thumbnail_path === null
           ? [upload.local_path]

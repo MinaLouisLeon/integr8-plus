@@ -1,3 +1,4 @@
+import { StockMovementsExportButton } from '../exports.js';
 import { ApiRequestError } from '@integr8/api-client';
 import { hasFeature } from '@integr8/core';
 import { formatDateTime, useTranslation } from '@integr8/i18n';
@@ -6,7 +7,10 @@ import { useState, type ReactNode } from 'react';
 import { type InventoryItem, keys, useOperations } from '../api.js';
 import { BackLink, buttonClass, cardClass, Failure, inputClass, Loading } from '../ui.js';
 import { formatAmount } from '../crm/lead-parts.js';
+import { ItemSupplierPrices } from '../purchasing/price-list.js';
+import { useSuppliers } from '../purchasing/purchasing-parts.js';
 import { emptyItemDraft, ItemFields, type ItemDraft } from './item-list.js';
+import { ItemGallery } from './item-media.js';
 import {
   formatQuantity,
   KindBadge,
@@ -33,6 +37,7 @@ function draftOf(item: InventoryItem): ItemDraft {
     salePrice: item.salePrice ?? '',
     description: item.description ?? '',
     leadTimeDays: item.leadTimeDays === null ? '' : String(item.leadTimeDays),
+    preferredSupplierId: item.preferredSupplierId ?? '',
   };
 }
 
@@ -52,6 +57,8 @@ function changes(before: ItemDraft, after: ItemDraft) {
   if (after.description.trim() !== before.description) body.description = orNull(after.description);
   if (after.leadTimeDays.trim() !== before.leadTimeDays)
     body.leadTimeDays = after.leadTimeDays.trim() === '' ? null : Number(after.leadTimeDays.trim());
+  if (after.preferredSupplierId !== before.preferredSupplierId)
+    body.preferredSupplierId = orNull(after.preferredSupplierId);
   return body;
 }
 
@@ -74,6 +81,11 @@ export function ItemScreen({ itemId }: { itemId: string }) {
     queryFn: async () => (await client.GET('/v1/settings')).data!,
   });
   const currency = settings.data?.currency ?? 'EGP';
+  const purchasing =
+    me.data !== undefined &&
+    hasFeature(me.data.features, 'purchasing') &&
+    me.data.permissions.includes('purchasing.read');
+  const suppliers = useSuppliers(true, purchasing);
 
   const detail = useQuery({
     queryKey: keys.item(itemId),
@@ -257,6 +269,7 @@ export function ItemScreen({ itemId }: { itemId: string }) {
               categories={categories.data ?? []}
               seesCosts={seesCosts}
               kindLocked={item.kind === 'stock_item' && onHand !== '0'}
+              choosesSupplier={purchasing}
             />
           </div>
           <div className="flex flex-wrap justify-end gap-2">
@@ -318,6 +331,23 @@ export function ItemScreen({ itemId }: { itemId: string }) {
                 {t('inventory.items.leadTimeValue', { count: item.leadTimeDays })}
               </Detail>
             )}
+            {purchasing ? (
+              <Detail label={t('inventory.preferredSupplier.label')}>
+                {item.preferredSupplierId === null ? null : (
+                  <a
+                    href={paths.supplier(item.preferredSupplierId)}
+                    className="text-accent underline-offset-4 hover:underline"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      navigate(paths.supplier(item.preferredSupplierId!));
+                    }}
+                  >
+                    {suppliers.data?.find((row) => row.id === item.preferredSupplierId)?.name ??
+                      t('purchasing.prices.aSupplier')}
+                  </a>
+                )}
+              </Detail>
+            ) : null}
             <Detail label={t('inventory.items.fields.description')} wide>
               {item.description === null ? null : (
                 <span className="whitespace-pre-wrap">{item.description}</span>
@@ -326,6 +356,10 @@ export function ItemScreen({ itemId }: { itemId: string }) {
           </dl>
         </section>
       )}
+
+      <ItemGallery itemId={item.id} canManage={can.manage} />
+
+      {purchasing ? <ItemSupplierPrices itemId={item.id} /> : null}
 
       {item.kind === 'stock_item' ? (
         <section aria-labelledby="inventory-item-stock" className={cardClass}>
@@ -463,9 +497,12 @@ export function ItemScreen({ itemId }: { itemId: string }) {
 
       {item.kind === 'stock_item' ? (
         <section aria-labelledby="inventory-item-movements" className={cardClass}>
-          <h2 id="inventory-item-movements" className="text-base font-semibold text-content">
-            {t('inventory.items.movements')}
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="inventory-item-movements" className="text-base font-semibold text-content">
+              {t('inventory.items.movements')}
+            </h2>
+            <StockMovementsExportButton filters={{ itemId }} />
+          </div>
           {movements.isPending ? (
             <Loading />
           ) : movements.isError ? (

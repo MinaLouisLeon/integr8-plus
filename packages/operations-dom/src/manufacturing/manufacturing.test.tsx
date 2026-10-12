@@ -8,6 +8,7 @@ import { AssemblyOrderListScreen } from './assembly-order-list.js';
 import { AssemblyOrderScreen } from './assembly-order-screen.js';
 import { BomListScreen } from './bom-list.js';
 import { BomScreen } from './bom-screen.js';
+import { BomVersionScreen } from './bom-version-screen.js';
 import { MaterialPlanListScreen } from './plan-list.js';
 import { MaterialPlanScreen } from './plan-screen.js';
 
@@ -474,6 +475,48 @@ describe('bills of materials', { timeout: 20_000 }, () => {
     );
   });
 
+  it('opens an earlier version from the history, read-only', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(MANAGE),
+      'GET /v1/settings': settings,
+      'GET /v1/inventory/items/:id': () => ({ status: 404, body: undefined }),
+      'GET /v1/manufacturing/orders': () => ({
+        body: { items: [], nextCursor: null, statuses: [] },
+      }),
+      'GET /v1/manufacturing/boms/items/:itemId': () => ({ body: itemBom() }),
+      'GET /v1/manufacturing/boms/:bomId': () => ({
+        body: bom({
+          id: OLD_BOM,
+          version: 1,
+          superseded: true,
+          components: [{ item: motor, quantity: '2', unitCost: '100' }],
+          unitCost: '220',
+        }),
+      }),
+    });
+    const first = renderScreen(<BomScreen itemId={PUMP} />, client);
+    const versions = await screen.findByRole('region', { name: 'Versions' });
+    await user.click(within(versions).getByRole('link', { name: 'Version 1' }));
+    expect(first.navigate).toHaveBeenCalledWith(`/manufacturing/boms/versions/${OLD_BOM}`);
+    first.unmount();
+
+    const { container } = renderScreen(<BomVersionScreen bomId={OLD_BOM} />, client);
+    expect(
+      await screen.findByRole('heading', { name: 'Pump unit, version 1' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Superseded')).toBeInTheDocument();
+    expect(screen.getByText(/An earlier version, kept for the orders/u)).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '2 each' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to the bill in use' })).toHaveAttribute(
+      'href',
+      `/manufacturing/boms/${PUMP}`,
+    );
+    expect(screen.queryByRole('button', { name: 'Save a new version' })).toBeNull();
+    expect(calls.some((call) => call.path === `/v1/manufacturing/boms/${OLD_BOM}`)).toBe(true);
+    expect(await accessibilityViolations(container)).toEqual([]);
+  });
+
   it('shows a viewer the bill without costs or actions', async () => {
     const { client } = fakeApi({
       'GET /v1/me': me(VIEWER),
@@ -656,7 +699,12 @@ describe('assembly orders', { timeout: 20_000 }, () => {
         // Somebody took casings meanwhile.
         current = order();
         return apiError(409, 'shortage', 'There is not enough stock.', [
-          { field: `items.${CASING}`, code: 'shortage', message: 'Casing is short by 2.' },
+          {
+            field: `items.${CASING}`,
+            code: 'shortage',
+            message: 'Casing is short by 2.',
+            params: { itemId: CASING, item: 'Casing', short: '2', needed: '10', available: '8' },
+          },
         ]);
       },
       'POST /v1/manufacturing/orders/:id/cancel': () => {
@@ -677,7 +725,9 @@ describe('assembly orders', { timeout: 20_000 }, () => {
       'There is not enough stock at this location to complete it. Nothing was moved.',
     );
     expect(
-      await within(alert.closest('[role="alert"]')!).findByText('Casing is short by 2 each.'),
+      await within(alert.closest('[role="alert"]')!).findByText(
+        'Casing: needs 10 each, 8 each available, short by 2 each.',
+      ),
     ).toBeInTheDocument();
     expect(calls.find((call) => call.path.endsWith('/complete'))!.body).toEqual({
       expectedVersion: 3,
@@ -775,11 +825,21 @@ describe('material planning', { timeout: 20_000 }, () => {
             suggestions: [
               {
                 ...buyMotor,
-                drafted: { kind: 'purchase_order', id: PO, at: '2026-10-12T09:00:00.000Z' },
+                drafted: {
+                  kind: 'purchase_order',
+                  id: PO,
+                  reference: 'PO-000003',
+                  at: '2026-10-12T09:00:00.000Z',
+                },
               },
               {
                 ...buildPump,
-                drafted: { kind: 'assembly_order', id: ORDER, at: '2026-10-12T09:00:00.000Z' },
+                drafted: {
+                  kind: 'assembly_order',
+                  id: ORDER,
+                  reference: 'AO-000007',
+                  at: '2026-10-12T09:00:00.000Z',
+                },
               },
               buyCasing,
             ],
@@ -823,7 +883,12 @@ describe('material planning', { timeout: 20_000 }, () => {
       'href',
       `/purchasing/orders/${PO}`,
     );
-    expect(screen.getByRole('link', { name: 'Purchase order drafted' })).toHaveAttribute(
+    // Each drafted row names its order, and opens it.
+    const motorRow = within(screen.getByRole('region', { name: 'Level 1' }))
+      .getAllByRole('row')
+      .find((row) => within(row).queryByText('Motor') !== null)!;
+    expect(within(motorRow).getByText('Purchase order drafted')).toBeInTheDocument();
+    expect(within(motorRow).getByRole('link', { name: 'PO-000003' })).toHaveAttribute(
       'href',
       `/purchasing/orders/${PO}`,
     );

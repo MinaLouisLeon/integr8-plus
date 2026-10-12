@@ -1,6 +1,6 @@
 import { ApiRequestError } from '@integr8/api-client';
 import type { FormDefinition } from '@integr8/form-engine';
-import { useTranslation } from '@integr8/i18n';
+import { apiErrorMessage, useTranslation } from '@integr8/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Button, ErrorState, LoadingState } from '~/components/ui';
@@ -344,11 +344,7 @@ export function PublishDialog({
         setProblem(t('forms.publish.draftChanged'));
         void run();
       } else {
-        setProblem(
-          error instanceof ApiRequestError
-            ? t('errors.body', { requestId: error.requestId })
-            : t('errors.unexpected'),
-        );
+        setProblem(apiErrorMessage(error, t));
       }
     } finally {
       setPublishing(false);

@@ -33,6 +33,7 @@ import {
 import { requireLocation, stockRefusal } from './inventory-stock.js';
 import { itemSummary, itemSummarySchema, seesCosts } from './inventory.js';
 import { stripUndefined } from './customers.js';
+import { companyToday } from './sales-quotes.js';
 import {
   addressInputSchema,
   addressSchema,
@@ -554,7 +555,11 @@ const lineInputSchema = z.object({
   /** Defaults to the item's name as it is now. */
   description: z.string().trim().min(1).max(500).optional(),
   quantityOrdered: positiveQuantitySchema,
-  unitPrice: decimalAmountSchema,
+  /**
+   * In the order's currency. Left out, the supplier's price list gives it: the
+   * price in force today for this quantity (ADR-0012).
+   */
+  unitPrice: decimalAmountSchema.optional(),
   /** Basis points: 2000 is 20%. */
   taxRateBp: taxRateSchema.optional(),
 });
@@ -570,14 +575,17 @@ const orderFields = {
 async function orderLineInputs(
   tx: TenantTransaction,
   lines: readonly z.infer<typeof lineInputSchema>[],
+  pricing: { supplierId: string; currencyCode: string },
 ) {
+  const today = await companyToday(tx);
   const items = new Map(
     (await tx.inventoryCatalogue.findItems(lines.map((line) => line.itemId))).map((item) => [
       item.id,
       item,
     ]),
   );
-  return lines.map((line, index) => {
+  const inputs = [];
+  for (const [index, line] of lines.entries()) {
     const item = items.get(line.itemId);
     if (item?.archivedAt !== null) {
       throw new ApiError(404, 'item_not_found', 'This item does not exist.', [
@@ -588,14 +596,38 @@ async function orderLineInputs(
         },
       ]);
     }
-    return {
+    const unitPrice =
+      line.unitPrice ??
+      (
+        await tx.supplierPrices.priceFor({
+          ...pricing,
+          itemId: item.id,
+          quantity: line.quantityOrdered,
+          on: today,
+        })
+      )?.unitPrice;
+    if (unitPrice === undefined) {
+      throw unprocessable(
+        'price_required',
+        'This supplier has no price for this item. Enter one.',
+        [
+          {
+            field: `body.lines.${index}.unitPrice`,
+            code: 'price_required',
+            message: 'Enter the price.',
+          },
+        ],
+      );
+    }
+    inputs.push({
       itemId: item.id,
       description: line.description ?? item.name,
       quantityOrdered: line.quantityOrdered,
-      unitPrice: line.unitPrice,
+      unitPrice,
       ...(line.taxRateBp === undefined ? {} : { taxRateBp: line.taxRateBp }),
-    };
-  });
+    });
+  }
+  return inputs;
 }
 
 const orderParams = z.object({ orderId: z.uuid() });
@@ -696,12 +728,16 @@ export const createOrderRoute = defineRoute({
       if (typeof body.deliveryLocationId === 'string') {
         await requireLocation(tx, body.deliveryLocationId, 'body.deliveryLocationId');
       }
-      const lines = await orderLineInputs(tx, body.lines);
+      const currencyCode = body.currencyCode ?? (await tx.settings.get()).currency;
+      const lines = await orderLineInputs(tx, body.lines, {
+        supplierId: supplier.id,
+        currencyCode,
+      });
       const order = await tx.inventoryPurchasing.createOrder(
         {
           supplierId: supplier.id,
           supplierName: supplier.name,
-          currencyCode: body.currencyCode ?? (await tx.settings.get()).currency,
+          currencyCode,
           expectedDate: body.expectedDate ?? null,
           deliveryLocationId: body.deliveryLocationId ?? null,
           notes: body.notes ?? null,
@@ -787,7 +823,17 @@ export const updateOrderRoute = defineRoute({
       if (typeof body.deliveryLocationId === 'string') {
         await requireLocation(tx, body.deliveryLocationId, 'body.deliveryLocationId');
       }
-      const lines = body.lines === undefined ? undefined : await orderLineInputs(tx, body.lines);
+      let lines;
+      if (body.lines !== undefined) {
+        const current = await tx.inventoryPurchasing.findOrder(params.orderId);
+        if (current === undefined) {
+          throw notFound('This purchase order does not exist.');
+        }
+        lines = await orderLineInputs(tx, body.lines, {
+          supplierId: supplier?.id ?? current.supplierId,
+          currencyCode: current.currencyCode,
+        });
+      }
       const result = await tx.inventoryPurchasing.updateDraft(
         params.orderId,
         body.expectedVersion,
