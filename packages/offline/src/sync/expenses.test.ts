@@ -1,10 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import type { PushResult } from '../api-types.js';
+import type { PullPage, PushResult } from '../api-types.js';
 import {
   expenseCategories,
   expensesEnabled,
-  refreshExpenseCategories,
   saveExpenseCategories,
   unsentExpenseClaims,
 } from '../expenses.js';
@@ -21,6 +20,7 @@ import {
   recordExpenseReceipt,
   selectBatch,
 } from './outbox.js';
+import { pullChanges } from './pull.js';
 import type { SyncApi } from './transport.js';
 
 /**
@@ -310,49 +310,102 @@ describe('the phone’s own unsent claims', () => {
 });
 
 describe('the categories the phone keeps', () => {
-  it('keeps what the server says, forgets them when expenses are off, and keeps them through a failure', async () => {
-    const { db } = await phone(null);
-    const answering = (answer: () => Promise<unknown>) =>
-      ({ expenseCategories: answer }) as unknown as SyncApi;
+  const page = (overrides: Partial<PullPage>): PullPage => ({
+    reset: false,
+    cursor: 'v1.1',
+    page: null,
+    serverTime: NOW.toISOString(),
+    workOrders: [],
+    removedWorkOrderIds: [],
+    customers: [],
+    forms: [],
+    submissions: [],
+    shifts: [],
+    vanStock: null,
+    assetSiteIds: [],
+    assets: [],
+    expenseCategories: null,
+    ...overrides,
+  });
+  const pulling = (...pages: PullPage[]) => {
+    const asked: { cursor?: string; page?: string }[] = [];
+    const api = {
+      me: () => Promise.resolve(me()),
+      pull: (query: { cursor?: string; page?: string }) => {
+        asked.push(query);
+        const next = pages.shift();
+        return next === undefined
+          ? Promise.reject(new TypeError('offline'))
+          : Promise.resolve(next);
+      },
+    } as unknown as SyncApi;
+    return { api, asked };
+  };
+  const clock = { now: () => NOW };
+  const policy = { closedJobDays: 30, downloadedFileBytes: 500 * 1024 * 1024 };
 
-    expect(
-      await refreshExpenseCategories(
-        db,
-        answering(() =>
-          Promise.resolve([
-            { id: FUEL, name: 'Fuel' },
-            { id: MEALS, name: 'Meals' },
-          ]),
-        ),
-        NOW,
-      ),
-    ).toBe(true);
+  it('come with the first page of a pull, with no request of their own', async () => {
+    const { db } = await phone(null);
+    expect(await db.read(expensesEnabled)).toBe(false);
+
+    // The first page carries them; a later page says nothing and changes nothing.
+    const first = pulling(
+      page({
+        cursor: null,
+        page: 'page-2',
+        expenseCategories: [
+          { id: MEALS, name: 'Meals' },
+          { id: FUEL, name: 'Fuel' },
+        ],
+      }),
+      page({ cursor: 'v1.2', expenseCategories: null }),
+    );
+    await pullChanges(db, first.api, clock, policy);
+    expect(first.asked).toHaveLength(2);
     expect(await db.read(expensesEnabled)).toBe(true);
     expect(await db.read(expenseCategories)).toEqual([
       { id: FUEL, name: 'Fuel' },
       { id: MEALS, name: 'Meals' },
     ]);
+    // Claiming works from them straight away, offline.
+    const context: ChangeContext = { db, clock, random };
+    await expect(
+      recordExpenseClaim(context, {
+        categoryId: FUEL,
+        spentOn: '2026-10-11',
+        amount: '10',
+        description: 'Parking',
+      }),
+    ).resolves.toMatchObject({ claimId: expect.any(String) as string });
+
+    // The next pull's first page says again: a category gone is gone.
+    const second = pulling(
+      page({ cursor: 'v1.3', expenseCategories: [{ id: FUEL, name: 'Fuel' }] }),
+    );
+    await pullChanges(db, second.api, clock, policy);
+    expect(second.asked[0]).toMatchObject({ cursor: 'v1.2' });
+    expect(await db.read(expenseCategories)).toEqual([{ id: FUEL, name: 'Fuel' }]);
 
     // No signal: what the phone had stays.
-    expect(
-      await refreshExpenseCategories(
-        db,
-        answering(() => Promise.reject(new TypeError('offline'))),
-        NOW,
-      ),
-    ).toBe(false);
-    expect(await db.read(expenseCategories)).toHaveLength(2);
+    await expect(pullChanges(db, pulling().api, clock, policy)).rejects.toBeInstanceOf(TypeError);
+    expect(await db.read(expenseCategories)).toEqual([{ id: FUEL, name: 'Fuel' }]);
 
-    // The module switched off, or the seat no longer allowed.
-    await refreshExpenseCategories(
+    // The module switched off, or the seat no longer allowed: null on a first page.
+    await pullChanges(
       db,
-      answering(() => Promise.resolve(undefined)),
-      NOW,
+      pulling(page({ cursor: 'v1.4', expenseCategories: null })).api,
+      clock,
+      policy,
     );
     expect(await db.read(expensesEnabled)).toBe(false);
     expect(await db.read(expenseCategories)).toEqual([]);
+  });
 
-    // An app that does not ask is left as it was.
-    expect(await refreshExpenseCategories(db, {} as SyncApi, NOW)).toBe(false);
+  it('are left alone by a server that does not send them', async () => {
+    const { db } = await phone();
+    const { expenseCategories: _omitted, ...older } = page({ cursor: 'v1.5' });
+    await pullChanges(db, pulling(older as PullPage).api, clock, policy);
+    expect(await db.read(expensesEnabled)).toBe(true);
+    expect(await db.read(expenseCategories)).toHaveLength(2);
   });
 });

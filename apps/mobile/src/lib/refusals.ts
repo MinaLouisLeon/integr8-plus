@@ -40,6 +40,9 @@ export const LOCAL_REFUSAL_KEYS = {
   change_done: 'mobile.localRefusal.change_done',
   not_an_access_conflict: 'mobile.localRefusal.not_an_access_conflict',
   not_an_answers_conflict: 'mobile.localRefusal.not_an_answers_conflict',
+  part_description_required: 'mobile.localRefusal.part_description_required',
+  purchase_not_on_phone: 'mobile.localRefusal.purchase_not_on_phone',
+  unit_price_invalid: 'mobile.localRefusal.unit_price_invalid',
 } as const;
 
 /** Phone codes that are API codes meaning the same thing, said as the API's. */

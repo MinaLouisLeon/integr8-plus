@@ -1,5 +1,7 @@
 import { useTranslation } from '@integr8/i18n';
 import {
+  access,
+  allows,
   assetsEnabled,
   expensesEnabled,
   identity,
@@ -7,11 +9,12 @@ import {
   recentlyClosedJobs,
   searchLocal,
   sectionJobs,
+  van,
 } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useBrand } from '~/components/brand';
 import { JobRow } from '~/components/job-row';
@@ -29,6 +32,7 @@ import {
   ScrollScreen,
   Section,
 } from '~/components/ui';
+import { refreshAccess } from '~/local/online';
 import { useLocalQuery } from '~/local/react';
 
 const SECTION_ORDER = ['overdue', 'today', 'upcoming', 'unscheduled'] as const;
@@ -66,6 +70,21 @@ function Jobs() {
 
   const assets = useLocalQuery('assets-enabled', ['meta'], assetsEnabled);
   const expenses = useLocalQuery('expenses-enabled', ['meta'], expensesEnabled);
+  // The van, the store's receiving and payslips (ADR-0012), offered to those they are for.
+  const more = useLocalQuery('more', ['meta', 'van_stock'], async (sql) => {
+    const granted = await access(sql);
+    const myVan = await van(sql);
+    const stocked = await sql.get<{ n: number }>('select count(*) as n from van_stock');
+    return {
+      van: myVan !== null && (myVan !== undefined || (stocked?.n ?? 0) > 0),
+      receive: allows(granted, 'purchasing.manage', 'purchasing'),
+      payslips: granted.features.payroll === true,
+    };
+  });
+  // What the person may do, asked once a launch when there is signal.
+  useEffect(() => {
+    refreshAccess().catch(() => undefined);
+  }, []);
 
   const person = me.status === 'ready' ? me.data : undefined;
   const sections = sectionJobs(open.status === 'ready' ? open.data : [], new Date());
@@ -110,6 +129,30 @@ function Jobs() {
           label={t('mobile.expenses.title')}
           variant="secondary"
           onPress={() => router.push('/expenses')}
+        />
+      ) : null}
+
+      {more.status === 'ready' && more.data.van ? (
+        <Button
+          label={t('mobile.van.title')}
+          variant="secondary"
+          onPress={() => router.push('/van')}
+        />
+      ) : null}
+
+      {more.status === 'ready' && more.data.receive ? (
+        <Button
+          label={t('mobile.receive.title')}
+          variant="secondary"
+          onPress={() => router.push('/receive')}
+        />
+      ) : null}
+
+      {more.status === 'ready' && more.data.payslips ? (
+        <Button
+          label={t('mobile.payslips.title')}
+          variant="secondary"
+          onPress={() => router.push('/payslips')}
         />
       ) : null}
 

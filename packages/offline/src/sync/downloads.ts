@@ -184,3 +184,58 @@ export async function fetchAssetFile(
   );
   return true;
 }
+
+/**
+ * The main images of the items on the engineer's van (ADR-0012), so the van's
+ * stock shows them with no signal. Each is fetched once, under its file id; an
+ * item given a new main image brings the new file, and the old one goes when
+ * nothing on the van shows it.
+ */
+export async function itemImagesToFetch(
+  db: LocalDatabase,
+  limit = DOWNLOADS_PER_RUN,
+): Promise<string[]> {
+  return db.read(async (sql) =>
+    (
+      await sql.all<{ file_id: string }>(
+        `select main_image_file_id as file_id from van_stock
+         where main_image_file_id is not null
+           and main_image_file_id not in (select file_id from item_images)
+         group by main_image_file_id
+         order by min(name), main_image_file_id
+         limit ?`,
+        [limit],
+      )
+    ).map((row) => row.file_id),
+  );
+}
+
+/** Relative to the files directory. */
+export const itemImagePath = (fileId: string) => `item-images/${fileId}`;
+
+/** Fetches one item image to the phone. Resolves whether it is now there. */
+export async function fetchItemImage(
+  db: LocalDatabase,
+  api: SyncApi,
+  transport: ByteTransport,
+  fileId: string,
+  now: Date,
+): Promise<boolean> {
+  const link = await api.mediaLink(fileId);
+  if (link === undefined) {
+    return false;
+  }
+  const path = itemImagePath(fileId);
+  const response = await transport.download(link.url, path);
+  if (response.status !== 200) {
+    return false;
+  }
+  await db.write(['item_images'], (sql) =>
+    sql.run(
+      `insert into item_images (file_id, local_path, downloaded_at) values (?, ?, ?)
+       on conflict (file_id) do nothing`,
+      [fileId, path, now.toISOString()],
+    ),
+  );
+  return true;
+}

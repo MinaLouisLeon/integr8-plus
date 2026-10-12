@@ -1,7 +1,6 @@
 import { ApiRequestError } from '@integr8/api-client';
 import type { LocalDatabase } from '../database.js';
 import { RETENTION, type RetentionPolicy } from '../eviction.js';
-import { refreshExpenseCategories } from '../expenses.js';
 import {
   clockOffset,
   type DeviceClock,
@@ -14,6 +13,8 @@ import {
   attachmentsToFetch,
   fetchAssetFile,
   fetchAttachment,
+  fetchItemImage,
+  itemImagesToFetch,
 } from './downloads.js';
 import { type RandomBytes, uuidv7 } from './ids.js';
 import {
@@ -178,8 +179,6 @@ export class SyncEngine {
           this.#options.policy ?? RETENTION,
         );
         summary.pulled = pulled.workOrders + (await refreshRequested(db, this.#options.api));
-        // What expenses may be claimed for, so a claim can be made without signal.
-        await refreshExpenseCategories(db, this.#options.api, clock.now());
         summary.evictedFiles = pulled.evicted.filePaths;
         if (summary.uploadsPaused === null) {
           summary.downloaded = await this.#downloadAll();
@@ -315,6 +314,18 @@ export class SyncEngine {
     for (const file of await assetFilesToFetch(db)) {
       try {
         if (await fetchAssetFile(db, api, transport, file, clock.now())) {
+          fetched += 1;
+        }
+      } catch (error) {
+        if (isNoConnection(error)) {
+          break;
+        }
+      }
+    }
+    // The main images of the van's items (ADR-0012).
+    for (const fileId of await itemImagesToFetch(db)) {
+      try {
+        if (await fetchItemImage(db, api, transport, fileId, clock.now())) {
           fetched += 1;
         }
       } catch (error) {
