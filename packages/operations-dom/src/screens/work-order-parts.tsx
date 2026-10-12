@@ -10,6 +10,7 @@ import {
   useUnitName,
 } from '../inventory/inventory-parts.js';
 import { useIdempotencyKey } from '../purchasing/purchasing-parts.js';
+import { BoughtForJob, useJobPurchases } from './job-purchases.js';
 import {
   buttonClass,
   cardClass,
@@ -53,8 +54,14 @@ export function Parts({
     queryFn: async () => (await client.GET('/v1/settings')).data!,
     enabled: job.materialsCost !== null,
   });
+  // Parts bought from a merchant for this job (ADR-0012), beside the parts used.
+  const purchases = useJobPurchases(
+    job.workOrder.id,
+    permissions.includes('inventory.read') || permissions.includes('inventory.consume'),
+  );
+  const bought = purchases.data?.items.length ?? 0;
 
-  if (job.materials.length === 0 && !job.can.recordParts) {
+  if (job.materials.length === 0 && !job.can.recordParts && bought === 0) {
     return null;
   }
   const currency = settings.data?.currency ?? null;
@@ -169,6 +176,13 @@ export function Parts({
           <span className="tabular-nums">{money(job.materialsCost)}</span>
         </p>
       )}
+
+      <BoughtForJob
+        workOrderId={job.workOrder.id}
+        purchases={purchases.data}
+        failed={purchases.isError}
+        onRetry={() => void purchases.refetch()}
+      />
 
       {recording ? (
         <RecordDialog

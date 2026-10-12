@@ -52,6 +52,10 @@ export interface OperationsConfig {
     stockLocations: string;
     stockLocation: (id: string) => string;
     stockCount: (id: string) => string;
+    /** A location's reorder list, to draft purchase orders from (eighth round; ADR-0012). */
+    reorder: (locationId: string) => string;
+    /** The store's queue of requests to refill vans (eighth round; ADR-0012). */
+    vanRequests: string;
     /** Purchasing (CRM/ERP plan, phase E2). */
     suppliers: string;
     supplier: (id: string) => string;
@@ -72,6 +76,8 @@ export interface OperationsConfig {
     quote: (id: string) => string;
     salesOrders: string;
     salesOrder: (id: string) => string;
+    /** A delivery note of an order, to print (eighth round; ADR-0012). */
+    deliveryNote: (orderId: string, deliveryId: string) => string;
     /** Finance (CRM/ERP plan, phase B1). */
     invoices: string;
     invoice: (id: string) => string;
@@ -291,6 +297,24 @@ export type SalesOrderStatus = SalesOrderRow['status'];
 export type SalesOrderDetail = Json<'/v1/sales/orders/{orderId}', 'get', 200>;
 export type SalesOrderLine = SalesOrderDetail['lines'][number];
 export type ToOrderLine = Json<'/v1/sales/to-order', 'get', 200>['items'][number];
+export type SalesDelivery = Json<
+  '/v1/sales/orders/{orderId}/deliveries',
+  'get',
+  200
+>['items'][number];
+export type DeliveryNote = Json<'/v1/sales/deliveries/{deliveryId}', 'get', 200>;
+export type ItemMedia = Json<'/v1/inventory/items/{itemId}/media', 'get', 200>['items'][number];
+export type SupplierPrice = Json<'/v1/purchasing/prices', 'get', 200>['items'][number];
+export type ReorderLine = Json<
+  '/v1/inventory/locations/{locationId}/reorder',
+  'get',
+  200
+>['items'][number];
+export type ReorderDrafted = Json<'/v1/inventory/locations/{locationId}/reorder', 'post', 201>;
+export type VanRequest = Json<'/v1/inventory/van-requests', 'get', 200>['items'][number];
+export type VanRequestStatus = VanRequest['status'];
+export type JobPurchases = Json<'/v1/work-orders/{workOrderId}/purchases', 'get', 200>;
+export type JobPurchase = JobPurchases['items'][number];
 export type InvoiceRow = Json<'/v1/finance/invoices', 'get', 200>['items'][number];
 export type InvoiceStatus = InvoiceRow['status'];
 export type InvoiceDetail = Json<'/v1/finance/invoices/{invoiceId}', 'get', 200>;
@@ -387,10 +411,16 @@ export const keys = {
   balances: (query: object) => ['inventory', 'balances', query] as const,
   stockCounts: (query: object) => ['inventory', 'counts', query] as const,
   stockCount: (id: string) => ['inventory', 'count', id] as const,
+  itemMedia: (itemId: string) => ['inventory', 'item-media', itemId] as const,
+  reorder: (locationId: string) => ['inventory', 'reorder', locationId] as const,
+  vanRequests: (query: object) => ['inventory', 'van-requests', query] as const,
+  jobPurchases: (workOrderId: string) => ['inventory', 'job-purchases', workOrderId] as const,
+  media: (mediaId: string) => ['media', mediaId] as const,
   suppliers: (query: object) => ['purchasing', 'suppliers', query] as const,
   supplier: (id: string) => ['purchasing', 'supplier', id] as const,
   purchaseOrders: (query: object) => ['purchasing', 'orders', query] as const,
   purchaseOrder: (id: string) => ['purchasing', 'order', id] as const,
+  supplierPrices: (query: object) => ['purchasing', 'prices', query] as const,
   boms: (query: object) => ['manufacturing', 'boms', query] as const,
   bom: (itemId: string) => ['manufacturing', 'bom', itemId] as const,
   bomVersion: (bomId: string) => ['manufacturing', 'bom-version', bomId] as const,
@@ -403,6 +433,8 @@ export const keys = {
   salesOrders: (query: object) => ['sales', 'orders', query] as const,
   salesOrder: (id: string) => ['sales', 'order', id] as const,
   toOrder: ['sales', 'to-order'] as const,
+  deliveries: (orderId: string) => ['sales', 'deliveries', orderId] as const,
+  deliveryNote: (id: string) => ['sales', 'delivery', id] as const,
   invoices: (query: object) => ['finance', 'invoices', query] as const,
   invoice: (id: string) => ['finance', 'invoice', id] as const,
   payments: (query: object) => ['finance', 'payments', query] as const,

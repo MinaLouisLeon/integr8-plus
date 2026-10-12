@@ -1,3 +1,4 @@
+import { hasFeature } from '@integr8/core';
 import { formatDateTime, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -6,8 +7,11 @@ import { memberName, useMembers } from '../crm/lead-parts.js';
 import { BackLink, buttonClass, cardClass, Failure, Field, inputClass, Loading } from '../ui.js';
 import {
   formatQuantity,
+  type LocationOwnership,
   LocationKindBadge,
   MoveStockDialog,
+  OwnershipBadge,
+  OwnershipChoice,
   useUnitName,
 } from './inventory-parts.js';
 
@@ -28,6 +32,11 @@ export function LocationScreen({ locationId }: { locationId: string }) {
     queryFn: async () => (await client.GET('/v1/me')).data!,
   });
   const seesCosts = me.data?.permissions.includes('inventory.move') ?? false;
+  const reorders =
+    me.data !== undefined &&
+    hasFeature(me.data.features, 'purchasing') &&
+    me.data.permissions.includes('purchasing.manage');
+  const [ownership, setOwnership] = useState<LocationOwnership | null>(null);
 
   const detail = useQuery({
     queryKey: keys.stockLocation(locationId),
@@ -48,7 +57,11 @@ export function LocationScreen({ locationId }: { locationId: string }) {
     await queries.invalidateQueries({ queryKey: ['inventory'] });
   };
   const patch = useMutation({
-    mutationFn: async (body: { assignedTo?: string | null; archived?: boolean }) =>
+    mutationFn: async (body: {
+      assignedTo?: string | null;
+      archived?: boolean;
+      ownership?: LocationOwnership;
+    }) =>
       (
         await client.PATCH('/v1/inventory/locations/{locationId}', {
           params: { path: { locationId } },
@@ -90,6 +103,7 @@ export function LocationScreen({ locationId }: { locationId: string }) {
           <h1 className="text-2xl font-semibold break-words text-content">{location.name}</h1>
           <div className="flex flex-wrap items-center gap-2 text-sm text-content-muted">
             <LocationKindBadge kind={location.kind} />
+            <OwnershipBadge ownership={location.ownership} />
             {location.kind === 'van' ? (
               <span>
                 {assignee === null
@@ -102,6 +116,18 @@ export function LocationScreen({ locationId }: { locationId: string }) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {reorders && location.ownership === 'ours' && location.archivedAt === null ? (
+            <a
+              href={paths.reorder(location.id)}
+              className={buttonClass.secondary}
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(paths.reorder(location.id));
+              }}
+            >
+              {t('purchasing.reorder.title')}
+            </a>
+          ) : null}
           {can.move && location.archivedAt === null ? (
             <>
               <button type="button" className={buttonClass.primary} onClick={() => setMoving(true)}>
@@ -132,8 +158,76 @@ export function LocationScreen({ locationId }: { locationId: string }) {
         </div>
       </header>
 
-      {patch.isError ? <Failure error={patch.error} /> : null}
+      {patch.isError && ownership === null ? <Failure error={patch.error} /> : null}
       {startCount.isError ? <Failure error={startCount.error} /> : null}
+
+      {location.kind === 'site' ? (
+        <section aria-labelledby="inventory-location-ownership" className={cardClass}>
+          <h2 id="inventory-location-ownership" className="text-base font-semibold text-content">
+            {t('inventory.ownership.title')}
+          </h2>
+          {ownership === null ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <p className="text-content">
+                <span className="font-medium">
+                  {t(`inventory.ownership.${location.ownership}`)}
+                </span>
+                <span className="block text-xs text-content-muted">
+                  {t(`inventory.ownership.${location.ownership}Hint`)}
+                </span>
+              </p>
+              {can.manage && location.archivedAt === null ? (
+                <button
+                  type="button"
+                  className={buttonClass.ghost}
+                  onClick={() => {
+                    patch.reset();
+                    setOwnership(location.ownership);
+                  }}
+                >
+                  {t('inventory.ownership.change')}
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <form
+              aria-label={t('inventory.ownership.title')}
+              className="flex flex-col gap-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (ownership === location.ownership) {
+                  setOwnership(null);
+                  return;
+                }
+                patch.mutate({ ownership }, { onSuccess: () => setOwnership(null) });
+              }}
+            >
+              <OwnershipChoice
+                name="inventory-location-ownership-choice"
+                value={ownership}
+                onChange={(next) => {
+                  patch.reset();
+                  setOwnership(next);
+                }}
+              />
+              <p className="text-xs text-content-muted">{t('inventory.ownership.fixedHint')}</p>
+              {patch.isError ? <Failure error={patch.error} /> : null}
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  className={buttonClass.secondary}
+                  onClick={() => setOwnership(null)}
+                >
+                  {t('inventory.items.cancel')}
+                </button>
+                <button type="submit" className={buttonClass.primary} disabled={patch.isPending}>
+                  {patch.isPending ? t('inventory.items.saving') : t('inventory.items.save')}
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
+      ) : null}
 
       {can.manage && location.kind === 'van' ? (
         <section aria-labelledby="inventory-location-van" className={cardClass}>

@@ -10,6 +10,7 @@ import {
   useOperations,
 } from '../api.js';
 import { formatAmount } from '../crm/lead-parts.js';
+import { fieldDetail } from '../field-errors.js';
 import { ItemPicker, useLocations } from '../inventory/inventory-parts.js';
 import {
   BackLink,
@@ -30,6 +31,7 @@ import {
   QUANTITY_PATTERN,
   useActiveSuppliers,
 } from './purchasing-parts.js';
+import { ReorderLocationDialog } from './reorder-screen.js';
 
 /**
  * Purchase orders (CRM/ERP plan, phase E2): what is on order with whom, by
@@ -73,10 +75,14 @@ export function lineDraftsOf(lines: readonly PurchaseOrderLine[]): LineDraft[] {
   }));
 }
 
+/**
+ * A line is ready with an item and a quantity. The unit price may be left
+ * blank: the supplier's price list then gives the one in force (ADR-0012).
+ */
 export const lineDraftValid = (line: LineDraft) =>
   line.item !== null &&
   isPositiveQuantity(line.quantity) &&
-  isQuantity(line.unitPrice) &&
+  (line.unitPrice.trim() === '' || isQuantity(line.unitPrice)) &&
   (line.taxPercent.trim() === '' || basisPointsOfPercent(line.taxPercent) !== undefined);
 
 /** The request lines the drafts stand for; only call once every draft is valid. */
@@ -85,7 +91,7 @@ export function lineBodiesOf(lines: readonly LineDraft[]) {
     itemId: line.item!.id,
     ...(line.description.trim() === '' ? {} : { description: line.description.trim() }),
     quantityOrdered: line.quantity.trim(),
-    unitPrice: line.unitPrice.trim(),
+    ...(line.unitPrice.trim() === '' ? {} : { unitPrice: line.unitPrice.trim() }),
     ...(line.taxPercent.trim() === '' ? {} : { taxRateBp: basisPointsOfPercent(line.taxPercent)! }),
   }));
 }
@@ -93,13 +99,18 @@ export function lineBodiesOf(lines: readonly LineDraft[]) {
 export function LinesEditor({
   lines,
   onChange,
+  error,
 }: {
   lines: LineDraft[];
   onChange: (lines: LineDraft[]) => void;
+  /** The last refusal of these lines: a line the supplier has no price for is marked on it. */
+  error?: unknown;
 }) {
   const { t } = useTranslation();
   const update = (key: string, patch: Partial<LineDraft>) =>
     onChange(lines.map((line) => (line.key === key ? { ...line, ...patch } : line)));
+  const priceRequired = (index: number) =>
+    fieldDetail(error, `body.lines.${index}.unitPrice`)?.code === 'price_required';
   return (
     <div className="flex flex-col gap-3">
       {lines.length === 0 ? (
@@ -157,14 +168,22 @@ export function LinesEditor({
                     />
                   )}
                 </Field>
-                <Field label={t('purchasing.orders.unitPrice')}>
-                  {(id) => (
+                <Field
+                  label={t('purchasing.orders.unitPrice')}
+                  hint={
+                    priceRequired(index) && line.unitPrice.trim() === ''
+                      ? t('purchasing.lines.priceRequired')
+                      : t('purchasing.lines.unitPriceHint')
+                  }
+                >
+                  {(id, describedBy) => (
                     <input
                       id={id}
-                      required
                       inputMode="decimal"
                       dir="ltr"
                       pattern={QUANTITY_PATTERN}
+                      aria-describedby={describedBy}
+                      aria-invalid={priceRequired(index) && line.unitPrice.trim() === ''}
                       className={inputClass}
                       value={line.unitPrice}
                       onChange={(event) =>
@@ -359,7 +378,7 @@ export function NewOrderDialog({
           <legend className="text-sm font-medium text-content">
             {t('purchasing.orders.lines')}
           </legend>
-          <LinesEditor lines={lines} onChange={setLines} />
+          <LinesEditor lines={lines} onChange={setLines} error={create.error} />
         </fieldset>
         {create.isError ? <Failure error={create.error} /> : null}
       </form>
@@ -379,6 +398,7 @@ export function OrderListScreen() {
   const [searched, setSearched] = useState('');
   const [status, setStatus] = useState<PurchaseOrderStatus | ''>('');
   const [creating, setCreating] = useState(false);
+  const [reordering, setReordering] = useState(false);
   const me = useQuery({
     queryKey: keys.me,
     queryFn: async () => (await client.GET('/v1/me')).data!,
@@ -412,9 +432,18 @@ export function OrderListScreen() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold text-content">{t('purchasing.orders.title')}</h1>
         {canManage ? (
-          <button type="button" className={buttonClass.primary} onClick={() => setCreating(true)}>
-            {t('purchasing.orders.new')}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={buttonClass.secondary}
+              onClick={() => setReordering(true)}
+            >
+              {t('purchasing.reorder.title')}
+            </button>
+            <button type="button" className={buttonClass.primary} onClick={() => setCreating(true)}>
+              {t('purchasing.orders.new')}
+            </button>
+          </div>
         ) : null}
       </header>
 
@@ -534,6 +563,7 @@ export function OrderListScreen() {
       )}
 
       {creating ? <NewOrderDialog onClose={() => setCreating(false)} /> : null}
+      {reordering ? <ReorderLocationDialog onClose={() => setReordering(false)} /> : null}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { keys, type PurchaseOrderStatus, type SupplierStatus, useOperations } from '../api.js';
+import { inputClass } from '../ui.js';
 
 /**
  * Pieces the purchasing screens share (CRM/ERP plan, phase E2): status
@@ -86,4 +87,98 @@ export const isPositiveQuantity = (text: string) =>
 export function useIdempotencyKey(request: unknown): string {
   const text = JSON.stringify(request);
   return useMemo(() => (text === '' ? '' : crypto.randomUUID()), [text]);
+}
+
+/**
+ * What is left of one decimal quantity after another, to four places and
+ * never below zero: `5` less `1.5` is `3.5`. Exact, never a float.
+ */
+export function remainingQuantity(total: string, taken: string): string {
+  const scale = (text: string) => {
+    const [whole = '0', fraction = ''] = text.split('.');
+    return BigInt(whole + fraction.padEnd(4, '0').slice(0, 4));
+  };
+  const left = scale(total) - scale(taken);
+  if (left <= 0n) {
+    return '0';
+  }
+  const digits = left.toString().padStart(5, '0');
+  return `${digits.slice(0, -4)}.${digits.slice(-4)}`.replace(/\.?0+$/u, '');
+}
+
+/** Whether this seat sees supplier prices: those who manage purchasing or move stock. */
+export function seesPrices(permissions: readonly string[]): boolean {
+  return permissions.includes('purchasing.manage') || permissions.includes('inventory.move');
+}
+
+/** Suppliers to choose from: the active ones, or every one when `includeInactive`. */
+export function useSuppliers(includeInactive = false, enabled = true) {
+  const { client } = useOperations();
+  return useQuery({
+    queryKey: keys.suppliers({ includeInactive, limit: 200 }),
+    queryFn: async () =>
+      (
+        await client.GET('/v1/purchasing/suppliers', {
+          params: {
+            query: includeInactive
+              ? { status: ['active', 'inactive'], limit: 200 }
+              : { limit: 200 },
+          },
+        })
+      ).data!.items,
+    enabled,
+  });
+}
+
+/**
+ * Chooses a supplier by name, never by id. Active suppliers are offered; an
+ * inactive one only when it is the current choice (or `includeInactive`),
+ * said so beside its name.
+ */
+export function SupplierPicker({
+  id,
+  value,
+  onChange,
+  noneLabel,
+  describedBy,
+  includeInactive = false,
+  required = false,
+  label,
+}: {
+  id: string;
+  value: string;
+  onChange: (supplierId: string) => void;
+  /** The words for choosing nobody. */
+  noneLabel: string;
+  describedBy?: string | undefined;
+  includeInactive?: boolean;
+  required?: boolean;
+  /** An accessible name, when the picker has no visible label of its own. */
+  label?: string;
+}) {
+  const { t } = useTranslation();
+  const suppliers = useSuppliers(true);
+  const offered = (suppliers.data ?? []).filter(
+    (supplier) => supplier.status === 'active' || includeInactive || supplier.id === value,
+  );
+  return (
+    <select
+      id={id}
+      required={required}
+      aria-label={label}
+      aria-describedby={describedBy}
+      className={inputClass}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    >
+      <option value="">{noneLabel}</option>
+      {offered.map((supplier) => (
+        <option key={supplier.id} value={supplier.id}>
+          {supplier.status === 'active'
+            ? supplier.name
+            : `${supplier.name} (${t('purchasing.supplierStatus.inactive')})`}
+        </option>
+      ))}
+    </select>
+  );
 }
