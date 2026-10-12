@@ -93,9 +93,9 @@ Items the plan mentions that no phase above fully covers yet. Each gets a phase
 or a decision before the pilot (phase L).
 
 - [ ] Email reminders for overdue CRM follow-ups (worker job), once a real email channel is configured.
-- [ ] Drag-and-drop on the pipeline board (C3 ships an accessible stage selector first).
+- [x] Drag-and-drop on the pipeline board (C3 ships an accessible stage selector first). Done in G1 (ADR-0013).
 - [x] CSV export of leads and opportunities, with spreadsheet formula-injection protection. Done in F2 (ADR-0012).
-- [ ] Custom roles or per-member permission overrides (deferred; see PLAN.md §8).
+- [x] Custom roles or per-member permission overrides (deferred; see PLAN.md §8). Done in G1 as company roles on a base role (ADR-0013).
 - [x] Licence-policy check in CI (PLAN.md §10.3); no new dependencies so far. Done in F2 (ADR-0012).
 - [x] Self-hosting audit of production-required services (PLAN.md §10.4). Done in F2 (ADR-0012).
 - [x] API test of the module gate end to end (`feature_disabled`): landed with C1 (`crm-leads.integration.test.ts`).
@@ -106,7 +106,7 @@ or a decision before the pilot (phase L).
 - [x] `plan/v1.1-inventory/P22` and `P23` point at the accepted model (E1/E2); P24 when E3 starts.
 - [x] Site stock locations from the screens (the API takes `kind: 'site'` with a `siteId`; the list screen offers warehouses and vans only). Done in F2 (ADR-0012).
 - [x] Item images and attached datasheets (P22), using the existing media storage. Done in F2 (ADR-0012).
-- [ ] Serial number and batch tracking (P22) — a scope decision before any schema.
+- [x] Serial number and batch tracking (P22) — a scope decision before any schema. Done in G1 (ADR-0013).
 - [x] Supplier price lists and a "reorder" draft built from reorder levels (E2 ships one preferred supplier and part number per item). Done in F2 (ADR-0012).
 - [ ] Sending a purchase order to the supplier (PDF or email) once an email channel is configured; E2 keeps the record only.
 - [x] Receiving by barcode scan on the phone (P23) with the rest of the mobile stock work. Done in F2 (ADR-0012).
@@ -121,9 +121,9 @@ or a decision before the pilot (phase L).
 - [x] Order lines fulfilled by hand (a delivery with no job) and partial deliveries of a stock line without a job; S1 delivers only through linked jobs. Done in F2 (ADR-0012).
 - [x] Movement history export (P22 "filterable and exportable"), with the CSV protections above. Done in F2 (ADR-0012).
 - [ ] Update `plan/ROADMAP.md` when the round merges.
-- [ ] Menu entries for the F2 screens (pipelines, reports, parts used, van requests, reorder); today they are reached from links on the screens they belong to.
+- [x] Menu entries for the F2 screens (pipelines, reports, parts used, van requests, reorder); today they are reached from links on the screens they belong to. Done in G1 (ADR-0013).
 - [ ] Try the phone's F2 screens on a device: My van offline, refill, merchant parts with a receipt in aeroplane mode, receiving by scan (the scanner closes after each code, so a barcode is never counted twice).
-- [ ] Amount history on opportunities, if value by stage should use the amount a deal had at each month end rather than today's.
+- [x] Amount history on opportunities, if value by stage should use the amount a deal had at each month end rather than today's. Done in G1 (ADR-0013).
 
 ## Decisions taken with the product owner (2026-10-11)
 

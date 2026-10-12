@@ -762,9 +762,9 @@ The report says development/tests run with recording/local adapters, **but produ
 
 **Status:** `IN PROGRESS` — ninth round; see the [phase tracker](./README.md#phase-tracker) and ADR-0013.
 
-- [ ] Custom roles built on a base role, created by the owner and assigned by owners and admins (G1a).
-- [ ] Serial and batch tracking through every stock movement, on the phone offline, with a serial lookup (G1b).
-- [ ] Drag-and-drop on the pipeline board, menu entries for the eighth round's screens, amount history on opportunities (G1c).
+- [x] Custom roles built on a base role, created by the owner and assigned by owners and admins (G1a).
+- [x] Serial and batch tracking through every stock movement, on the phone offline, with a serial lookup (G1b).
+- [x] Drag-and-drop on the pipeline board, menu entries for the eighth round's screens, amount history on opportunities (G1c).
 - **Done when:** the follow-ups list holds only email, PDFs and the pilot's own items.
 
 ### Phase L — Pilot release
