@@ -4,6 +4,10 @@ How to run a production-shaped stack: for testing first, then for a customer.
 What ships is two container images and a database; everything else is
 configuration.
 
+**Following along?** [The setup checklist](./setup-checklist.md) walks every
+step in order, from creating the accounts and keys to a running stack, going
+live, updating, and wiping or rebuilding the machine.
+
 ```
                       ┌──────────────────────────┐
   browsers ──TLS────▶ │ reverse proxy (Caddy/LB) │
