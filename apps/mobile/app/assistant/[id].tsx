@@ -4,7 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AssistantOffline, MessageBubble, UsageLine } from '~/components/assistant';
+import { AllowanceLine, AssistantOffline, MessageBubble } from '~/components/assistant';
 import { onlineFailureMessage, OnlineStatus } from '~/components/online';
 import {
   BackButton,
@@ -17,11 +17,11 @@ import {
   useTheme,
 } from '~/components/ui';
 import {
+  type Allowance,
   assistantLocale,
-  exhaustedAxis,
   MAX_QUESTION_CHARS,
   quotaResetsAt,
-  type Usage,
+  sendBlock,
 } from '~/lib/assistant';
 import { formatWhen } from '~/lib/format';
 import { useNow } from '~/lib/use-now';
@@ -52,12 +52,12 @@ export default function ConversationScreen() {
     loadConversation(conversationId),
   );
 
-  /** What this screen added since the read: answers, the latest counters, and actions as they moved. */
+  /** What this screen added since the read: answers, the latest allowance, and actions as they moved. */
   const [local, setLocal] = useState<{
     added: AiMessage[];
     proposals: Readonly<Record<string, AiProposal>>;
-    usage: Usage | null;
-  }>({ added: [], proposals: {}, usage: null });
+    allowance: Allowance | null;
+  }>({ added: [], proposals: {}, allowance: null });
   const [text, setText] = useState('');
   const [attempt, setAttempt] = useState<{ key: string; text: string } | null>(null);
   const [sending, setSending] = useState(false);
@@ -74,7 +74,11 @@ export default function ConversationScreen() {
     }));
   }, []);
 
-  const header = (title: string | null, level?: 'help' | 'insights' | 'agent', usage?: Usage) => (
+  const header = (
+    title: string | null,
+    level?: 'help' | 'insights' | 'agent',
+    allowance?: Allowance,
+  ) => (
     <View
       style={[
         styles.header,
@@ -92,7 +96,7 @@ export default function ConversationScreen() {
           <Badge label={t(`mobile.ai.level.${level}`)} tone="accent" />
         </View>
       )}
-      {usage === undefined ? null : <UsageLine usage={usage} />}
+      {allowance === undefined ? null : <AllowanceLine allowance={allowance} />}
     </View>
   );
 
@@ -126,7 +130,8 @@ export default function ConversationScreen() {
     );
   }
 
-  const usage = local.usage ?? capabilities.usage;
+  // Each answer carries what is left after it, so the line moves without a re-read.
+  const allowance = local.allowance ?? capabilities.usage.allowance;
   const known = new Set(state.data.messages.map((message) => message.id));
   const messages = [
     ...state.data.messages,
@@ -141,18 +146,12 @@ export default function ConversationScreen() {
       ? [...messages, pendingMessage(attempt.key, attempt.text)]
       : messages;
 
-  const exhausted = exhaustedAxis(usage);
-  const blockedUntil =
-    exhausted !== null
-      ? exhausted.axis.resetsAt
-      : refusedUntil !== null && Date.parse(refusedUntil) > now.getTime()
-        ? refusedUntil
-        : null;
+  const blocked = sendBlock(allowance, refusedUntil, now.getTime());
   const question = text.trim();
   const number = new Intl.NumberFormat(i18n.language);
 
   const send = () => {
-    if (question === '' || sending || blockedUntil !== null) {
+    if (question === '' || sending || blocked !== null) {
       return;
     }
     // The same question again is the same request: one key, one answer, one charge.
@@ -170,7 +169,7 @@ export default function ConversationScreen() {
         setLocal((current) => ({
           ...current,
           added: [...current.added, pendingMessage(key, question), answer.message],
-          usage: answer.usage,
+          allowance: answer.allowance,
         }));
         setText('');
         setAttempt(null);
@@ -179,6 +178,11 @@ export default function ConversationScreen() {
         const resetsAt = quotaResetsAt(error);
         if (resetsAt !== null) {
           setRefusedUntil(resetsAt);
+          // The refusal is the newest word on the allowance: the line above says used up too.
+          setLocal((current) => ({
+            ...current,
+            allowance: { ...allowance, exhausted: true, resetsAt },
+          }));
           setSendError(t('mobile.ai.quotaExceeded', { when: formatWhen(resetsAt, i18n.language) }));
         } else {
           setSendError(t('mobile.ai.notSent', { reason: onlineFailureMessage(t, error) }));
@@ -192,7 +196,7 @@ export default function ConversationScreen() {
       style={[styles.screen, { backgroundColor: theme.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {header(conversation.title, capabilities.level, usage)}
+      {header(conversation.title, capabilities.level, allowance)}
       <FlatList
         ref={list}
         data={shown}
@@ -216,9 +220,11 @@ export default function ConversationScreen() {
           },
         ]}
       >
-        {blockedUntil === null ? null : (
+        {blocked === null ? null : (
           <Body muted>
-            {t('mobile.ai.exhausted', { when: formatWhen(blockedUntil, i18n.language) })}
+            {blocked.resetsAt === null
+              ? t('mobile.ai.exhaustedNoTime')
+              : t('mobile.ai.exhausted', { when: formatWhen(blocked.resetsAt, i18n.language) })}
           </Body>
         )}
         <Field
@@ -228,7 +234,7 @@ export default function ConversationScreen() {
           onChangeText={setText}
           multiline
           maxLength={MAX_QUESTION_CHARS}
-          editable={!sending && blockedUntil === null}
+          editable={!sending && blocked === null}
           error={sendError ?? undefined}
         />
         <View style={styles.sendRow}>
@@ -241,7 +247,7 @@ export default function ConversationScreen() {
           <Button
             label={sending ? t('mobile.ai.sending') : t('mobile.ai.send')}
             busy={sending}
-            disabled={question === '' || blockedUntil !== null}
+            disabled={question === '' || blocked !== null}
             onPress={send}
           />
         </View>

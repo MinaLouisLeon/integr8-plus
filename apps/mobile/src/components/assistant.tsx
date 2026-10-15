@@ -1,4 +1,4 @@
-import { apiErrorCodeMessage, useTranslation } from '@integr8/i18n';
+import { apiErrorCodeMessage, formatPercent, useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -6,8 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { onlineFailureMessage } from '~/components/online';
 import { Badge, Body, Button, Detail, EmptyState, useTheme } from '~/components/ui';
-import { limitedAxes, screenForAppRoute, type Usage } from '~/lib/assistant';
-import { formatDuration } from '~/lib/format';
+import { type Allowance, allowanceLine, screenForAppRoute } from '~/lib/assistant';
+import { formatDuration, formatWhen } from '~/lib/format';
 import { useNow } from '~/lib/use-now';
 import {
   confirmAiAction,
@@ -35,35 +35,31 @@ export function AssistantOffline({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-/** What is left of the day's and the month's messages, on each axis the policy limits. */
-export function UsageLine({ usage }: { usage: Usage }) {
+/**
+ * What is left of this person's allowance, as one line: a percentage and when
+ * it resets (ADR-0002 D7). Never a count or an amount — the server sends none.
+ */
+export function AllowanceLine({ allowance }: { allowance: Allowance }) {
   const { t, i18n } = useTranslation();
-  const axes = limitedAxes(usage);
-  const number = new Intl.NumberFormat(i18n.language);
-  if (axes.length === 0) {
-    return usage.unlimited ? <Body muted>{t('mobile.ai.usage.unlimited')}</Body> : null;
+  const line = allowanceLine(allowance);
+  if (line === null) {
+    return null;
   }
+  const when = line.resetsAt === null ? null : formatWhen(line.resetsAt, i18n.language);
+  if (line.kind === 'usedUp') {
+    return (
+      <Body muted>
+        {when === null ? t('mobile.ai.usage.usedUp') : t('mobile.ai.usage.usedUpResets', { when })}
+      </Body>
+    );
+  }
+  const percent = formatPercent(line.percent / 100, { locale: i18n.language });
   return (
-    <View style={styles.usage}>
-      {axes.map(({ scope, period, axis }) => {
-        const key =
-          scope === 'company'
-            ? period === 'daily'
-              ? 'companyDaily'
-              : 'companyMonthly'
-            : period === 'daily'
-              ? 'youDaily'
-              : 'youMonthly';
-        return (
-          <Body key={`${scope}.${period}`} muted>
-            {t(`mobile.ai.usage.${key}`, {
-              remaining: number.format(axis.remaining ?? 0),
-              limit: number.format(axis.limit ?? 0),
-            })}
-          </Body>
-        );
-      })}
-    </View>
+    <Body muted>
+      {when === null
+        ? t('mobile.ai.usage.left', { percent })
+        : t('mobile.ai.usage.leftResets', { percent, when })}
+    </Body>
   );
 }
 
@@ -316,7 +312,6 @@ export function ProposalCard({
 }
 
 const styles = StyleSheet.create({
-  usage: { gap: 2 },
   bubble: {
     maxWidth: '88%',
     gap: spacing[2],

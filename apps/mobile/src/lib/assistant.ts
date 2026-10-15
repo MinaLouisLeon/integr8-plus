@@ -3,57 +3,77 @@ import { ApiRequestError } from '@integr8/api-client';
 /**
  * The assistant's answers, read for the phone (docs/ai §10.4).
  *
- * Pure: what a citation's route key means on this app, which usage axis is
- * used up, and when a refused question may be asked again. The screen does
- * the rest.
+ * Pure: what a citation's route key means on this app, what the person is
+ * told about their allowance, and when a refused question may be asked again.
+ * The screen does the rest.
  */
 
-/** One counter: a day's or a month's messages, the company's or the member's. */
-export interface UsageAxis {
-  used: number;
-  reserved: number;
-  limit: number | null;
-  remaining: number | null;
-  resetsAt: string;
+/**
+ * What is left of this person's share of the company's allowance
+ * (ADR-0002 D6, D7). A percentage and a reset time only: the server never
+ * sends a token count, a message count or a price, and neither does the screen.
+ */
+export interface Allowance {
+  /** 0–100; null when nothing is limited. */
+  remainingPercent: number | null;
+  resetsAt: string | null;
+  /** True when a question would be refused now. */
+  exhausted: boolean;
 }
 
-export interface Usage {
-  daily: UsageAxis | null;
-  monthly: UsageAxis | null;
-  user: { daily: UsageAxis; monthly: UsageAxis };
-  unlimited: boolean;
-}
+/** The one line the screen says about the allowance, or nothing at all. */
+export type AllowanceLine =
+  | { kind: 'remaining'; percent: number; resetsAt: string | null }
+  | { kind: 'usedUp'; resetsAt: string | null }
+  | null;
 
-export type UsageScope = 'company' | 'you';
-export type UsagePeriod = 'daily' | 'monthly';
-
-export interface LimitedAxis {
-  scope: UsageScope;
-  period: UsagePeriod;
-  axis: UsageAxis;
+/**
+ * The allowance as one line. Used up wins over any percentage, because the
+ * server decides "exhausted" from every limit it checks, the company's pool
+ * included, and a member's own share can show some left while the pool is not.
+ * Nothing limited is nothing said: a line reading "no limit" invites the
+ * question of whose limit, which this screen cannot answer.
+ */
+export function allowanceLine(allowance: Allowance): AllowanceLine {
+  if (allowance.exhausted) {
+    return { kind: 'usedUp', resetsAt: validInstant(allowance.resetsAt) };
+  }
+  if (allowance.remainingPercent === null) {
+    return null;
+  }
+  return {
+    kind: 'remaining',
+    percent: Math.min(100, Math.max(0, Math.round(allowance.remainingPercent))),
+    resetsAt: validInstant(allowance.resetsAt),
+  };
 }
 
 /**
- * The axes with a limit, in the order a person reads them: the company's day
- * and month, then their own. An axis the policy does not limit is not shown.
+ * Why the composer is closed, and until when; null while a question may be
+ * sent. Closed by the allowance the server last reported, or by a quota
+ * refusal the server just gave. A reset time already passed opens it again:
+ * the screen may have been open across midnight, and the server says so if
+ * the allowance is still used up.
  */
-export function limitedAxes(usage: Usage): LimitedAxis[] {
-  const all: { scope: UsageScope; period: UsagePeriod; axis: UsageAxis | null }[] = [
-    { scope: 'company', period: 'daily', axis: usage.daily },
-    { scope: 'company', period: 'monthly', axis: usage.monthly },
-    { scope: 'you', period: 'daily', axis: usage.user.daily },
-    { scope: 'you', period: 'monthly', axis: usage.user.monthly },
-  ];
-  return all.flatMap(({ scope, period, axis }) =>
-    axis?.limit == null ? [] : [{ scope, period, axis }],
-  );
+export function sendBlock(
+  allowance: Allowance,
+  refusedUntil: string | null,
+  now: number,
+): { resetsAt: string | null } | null {
+  if (allowance.exhausted) {
+    const resetsAt = validInstant(allowance.resetsAt);
+    if (resetsAt === null || Date.parse(resetsAt) > now) {
+      return { resetsAt };
+    }
+  }
+  if (refusedUntil !== null && Date.parse(refusedUntil) > now) {
+    return { resetsAt: refusedUntil };
+  }
+  return null;
 }
 
-/** The first axis with nothing left, so the composer can say when it resets; null while any is left. */
-export function exhaustedAxis(usage: Usage): LimitedAxis | null {
-  return (
-    limitedAxes(usage).find(({ axis }) => axis.remaining !== null && axis.remaining <= 0) ?? null
-  );
+function validInstant(value: string | null): string | null {
+  return value === null || Number.isNaN(Date.parse(value)) ? null : value;
 }
 
 /**
@@ -77,7 +97,15 @@ export function screenForAppRoute(appRoute: string | null): string | null {
   return appRoute === null ? null : (SCREENS.get(appRoute) ?? null);
 }
 
-/** When a question refused for a used-up quota may be asked again, from the refusal's details. */
+/**
+ * When a question refused for a used-up allowance may be asked again, from
+ * the refusal's details. Every quota refusal is a 429 carrying `resetsAt` —
+ * the message quotas, the token quotas (`ai_daily_token_quota_exceeded`,
+ * `ai_monthly_token_quota_exceeded`) and a member's monthly budget
+ * (`ai_member_budget_exceeded`) alike — so the shape is read rather than a
+ * list of codes that the next limit would fall outside. A 429 without it (too
+ * many at once) is not a quota and may be retried now.
+ */
 export function quotaResetsAt(error: unknown): string | null {
   if (!(error instanceof ApiRequestError) || error.status !== 429) {
     return null;

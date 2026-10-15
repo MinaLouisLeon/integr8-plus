@@ -1,54 +1,81 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { describe, expect, it } from 'vitest';
 import {
+  type Allowance,
+  allowanceLine,
   assistantLocale,
-  exhaustedAxis,
-  limitedAxes,
   quotaResetsAt,
   screenForAppRoute,
-  type Usage,
-  type UsageAxis,
+  sendBlock,
 } from './assistant';
 
-const axis = (used: number, limit: number | null): UsageAxis => ({
-  used,
-  reserved: 0,
-  limit,
-  remaining: limit === null ? null : Math.max(0, limit - used),
-  resetsAt: '2026-10-16T00:00:00.000Z',
-});
+const RESET = '2026-10-16T00:00:00.000Z';
+const NOW = Date.parse('2026-10-15T12:00:00.000Z');
 
-const usage = (over: Partial<Usage> = {}): Usage => ({
-  daily: axis(3, 50),
-  monthly: null,
-  user: { daily: axis(3, null), monthly: axis(3, null) },
-  unlimited: false,
+const allowance = (over: Partial<Allowance> = {}): Allowance => ({
+  remainingPercent: 62,
+  resetsAt: RESET,
+  exhausted: false,
   ...over,
 });
 
-describe('limitedAxes', () => {
-  it('lists only the axes the policy limits, company first', () => {
-    expect(limitedAxes(usage()).map(({ scope, period }) => `${scope}.${period}`)).toEqual([
-      'company.daily',
-    ]);
-    expect(
-      limitedAxes(
-        usage({ monthly: axis(10, 1000), user: { daily: axis(1, 10), monthly: axis(1, null) } }),
-      ).map(({ scope, period }) => `${scope}.${period}`),
-    ).toEqual(['company.daily', 'company.monthly', 'you.daily']);
-    expect(limitedAxes(usage({ daily: null, unlimited: true }))).toEqual([]);
+describe('allowanceLine', () => {
+  it('says what is left and when it resets', () => {
+    expect(allowanceLine(allowance())).toEqual({ kind: 'remaining', percent: 62, resetsAt: RESET });
+    expect(allowanceLine(allowance({ resetsAt: null }))).toEqual({
+      kind: 'remaining',
+      percent: 62,
+      resetsAt: null,
+    });
+  });
+
+  it('says nothing when nothing is limited', () => {
+    expect(allowanceLine(allowance({ remainingPercent: null, resetsAt: null }))).toBeNull();
+  });
+
+  it('is used up whenever the server says so, whatever percentage is left', () => {
+    expect(allowanceLine(allowance({ remainingPercent: 0, exhausted: true }))).toEqual({
+      kind: 'usedUp',
+      resetsAt: RESET,
+    });
+    // The company's pool can be spent while the member's own slice is not.
+    expect(allowanceLine(allowance({ remainingPercent: 40, exhausted: true }))).toEqual({
+      kind: 'usedUp',
+      resetsAt: RESET,
+    });
+    expect(allowanceLine(allowance({ remainingPercent: null, exhausted: true }))).toEqual({
+      kind: 'usedUp',
+      resetsAt: RESET,
+    });
+  });
+
+  it('keeps the percentage whole and between 0 and 100, and drops a reset it cannot read', () => {
+    expect(allowanceLine(allowance({ remainingPercent: 140 }))).toMatchObject({ percent: 100 });
+    expect(allowanceLine(allowance({ remainingPercent: -3 }))).toMatchObject({ percent: 0 });
+    expect(allowanceLine(allowance({ resetsAt: 'soon' }))).toMatchObject({ resetsAt: null });
   });
 });
 
-describe('exhaustedAxis', () => {
-  it('is the first axis with nothing left, and null while something is', () => {
-    expect(exhaustedAxis(usage())).toBeNull();
-    const spent = usage({ user: { daily: axis(10, 10), monthly: axis(10, null) } });
-    expect(exhaustedAxis(spent)).toMatchObject({ scope: 'you', period: 'daily' });
-    expect(exhaustedAxis(usage({ daily: axis(50, 50) }))).toMatchObject({
-      scope: 'company',
-      period: 'daily',
+describe('sendBlock', () => {
+  it('is open while some allowance is left and nothing was refused', () => {
+    expect(sendBlock(allowance(), null, NOW)).toBeNull();
+    expect(sendBlock(allowance({ remainingPercent: null }), null, NOW)).toBeNull();
+  });
+
+  it('is closed until the reset while the allowance is used up', () => {
+    expect(sendBlock(allowance({ exhausted: true }), null, NOW)).toEqual({ resetsAt: RESET });
+    expect(sendBlock(allowance({ exhausted: true, resetsAt: null }), null, NOW)).toEqual({
+      resetsAt: null,
     });
+  });
+
+  it('opens again once a used-up allowance’s reset has passed', () => {
+    expect(sendBlock(allowance({ exhausted: true }), null, Date.parse(RESET) + 1)).toBeNull();
+  });
+
+  it('is closed until a refusal’s reset, and open after it', () => {
+    expect(sendBlock(allowance(), RESET, NOW)).toEqual({ resetsAt: RESET });
+    expect(sendBlock(allowance(), RESET, Date.parse(RESET))).toBeNull();
   });
 });
 
@@ -70,26 +97,28 @@ describe('screenForAppRoute', () => {
 });
 
 describe('quotaResetsAt', () => {
-  it('reads the reset instant from a used-up quota and nothing else', () => {
-    const when = '2026-10-16T00:00:00.000Z';
-    const quota = new ApiRequestError(429, 'ai_daily_quota_exceeded', 'Used up.', 'req', [
-      {
-        field: 'message',
-        code: 'ai_daily_quota_exceeded',
-        message: '',
-        params: { resetsAt: when },
-      },
+  const refusal = (code: string, params?: Record<string, string>) =>
+    new ApiRequestError(429, code, 'Used up.', 'req', [
+      { field: 'message', code, message: '', ...(params === undefined ? {} : { params }) },
     ]);
-    expect(quotaResetsAt(quota)).toBe(when);
+
+  it('reads the reset instant from every used-up quota', () => {
+    for (const code of [
+      'ai_daily_quota_exceeded',
+      'ai_monthly_quota_exceeded',
+      'ai_daily_token_quota_exceeded',
+      'ai_monthly_token_quota_exceeded',
+      'ai_member_budget_exceeded',
+    ]) {
+      expect(quotaResetsAt(refusal(code, { resetsAt: RESET })), code).toBe(RESET);
+    }
+  });
+
+  it('is null for anything else', () => {
     expect(quotaResetsAt(new ApiRequestError(429, 'ai_concurrency_limit', '', 'req'))).toBeNull();
+    expect(quotaResetsAt(refusal('ai_daily_token_quota_exceeded'))).toBeNull();
     expect(quotaResetsAt(new ApiRequestError(403, 'ai_disabled', '', 'req'))).toBeNull();
-    expect(
-      quotaResetsAt(
-        new ApiRequestError(429, 'x', '', 'req', [
-          { field: 'f', code: 'x', message: '', params: { resetsAt: 'soon' } },
-        ]),
-      ),
-    ).toBeNull();
+    expect(quotaResetsAt(refusal('x', { resetsAt: 'soon' }))).toBeNull();
     expect(quotaResetsAt(new TypeError('Network request failed'))).toBeNull();
   });
 });
