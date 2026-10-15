@@ -416,7 +416,8 @@ export type AiCapabilities = Json<'/v1/ai/capabilities', 'get', 200>;
 export type AiLevel = AiCapabilities['level'];
 export type AiBlockedBy = NonNullable<AiCapabilities['blockedBy']>;
 export type AiUsage = AiCapabilities['usage'];
-export type AiUsageAxis = NonNullable<AiUsage['daily']>;
+/** What is left of an allowance, as a percentage only (ADR-0002 D7). */
+export type AiAllowance = AiUsage['allowance'];
 export type AiConversation = Json<'/v1/ai/conversations', 'get', 200>['items'][number];
 export type AiConversationDetail = Json<'/v1/ai/conversations/{conversationId}', 'get', 200>;
 export type AiMessage = AiConversationDetail['messages'][number];

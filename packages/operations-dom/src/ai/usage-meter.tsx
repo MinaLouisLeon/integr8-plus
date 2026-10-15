@@ -1,87 +1,52 @@
-import { formatDateTime, formatNumber, useTranslation } from '@integr8/i18n';
-import type { AiUsage, AiUsageAxis } from '../api.js';
+import { formatDateTime, formatPercent, useTranslation } from '@integr8/i18n';
+import type { AiAllowance } from '../api.js';
 import { useOperations } from '../api.js';
 
 /**
- * How much of the assistant is left, in numbers and never only in colour
- * (docs/ai §10.5): the company's pooled counters and the member's own, each
- * axis with its limit and the moment it resets, in the reader's locale. An
- * axis the policy does not limit is not shown at all — a limit of "none" is
- * not a number worth a line.
+ * How much of the member's own share of the assistant is left (ADR-0002 D7).
+ *
+ * One bar and one sentence, the percentage in words as well as in the bar so
+ * nothing depends on colour (docs/ai §10.5). A member is never shown a count
+ * of messages or tokens, nor a price: the percentage is of the tightest of
+ * whatever the company's plan limits, and the server has already worked out
+ * which that is. When nothing is limited there is nothing worth a line.
  */
-
-/** The first axis with nothing left, which closes the composer; `undefined` while something is. */
-export function exhaustedAxis(usage: AiUsage): AiUsageAxis | undefined {
-  if (usage.unlimited) {
-    return undefined;
-  }
-  return [usage.daily, usage.monthly, usage.user.daily, usage.user.monthly]
-    .filter(limited)
-    .find((axis) => axis.remaining !== null && axis.remaining <= 0);
-}
-
-function limited(axis: AiUsageAxis | null): axis is AiUsageAxis {
-  return axis !== null && axis.limit !== null;
-}
-
-export function UsageMeter({ usage }: { usage: AiUsage }) {
-  const { t } = useTranslation();
-  const rows: { key: string; label: string; axis: AiUsageAxis }[] = [];
-  if (!usage.unlimited) {
-    if (limited(usage.daily)) {
-      rows.push({ key: 'company-daily', label: t('ai.usage.companyDaily'), axis: usage.daily });
-    }
-    if (limited(usage.monthly)) {
-      rows.push({
-        key: 'company-monthly',
-        label: t('ai.usage.companyMonthly'),
-        axis: usage.monthly,
-      });
-    }
-    if (limited(usage.user.daily)) {
-      rows.push({ key: 'mine-daily', label: t('ai.usage.mineDaily'), axis: usage.user.daily });
-    }
-    if (limited(usage.user.monthly)) {
-      rows.push({
-        key: 'mine-monthly',
-        label: t('ai.usage.mineMonthly'),
-        axis: usage.user.monthly,
-      });
-    }
-  }
-  if (rows.length === 0) {
-    return <p className="text-xs text-content-muted">{t('ai.usage.unlimited')}</p>;
-  }
-  return (
-    <dl
-      aria-label={t('ai.usage.title')}
-      className="grid gap-x-4 gap-y-1 text-xs sm:grid-cols-[auto_1fr]"
-    >
-      {rows.map((row) => (
-        <UsageRow key={row.key} label={row.label} axis={row.axis} />
-      ))}
-    </dl>
-  );
-}
-
-function UsageRow({ label, axis }: { label: string; axis: AiUsageAxis }) {
+export function UsageMeter({ allowance }: { allowance: AiAllowance }) {
   const { t } = useTranslation();
   const { locale } = useOperations();
-  const limit = axis.limit ?? 0;
-  const spent = axis.used + axis.reserved;
-  const empty = axis.remaining !== null && axis.remaining <= 0;
+  if (allowance.remainingPercent === null) {
+    return null;
+  }
+  const remaining = Math.min(100, Math.max(0, allowance.remainingPercent));
+  const percent = formatPercent(remaining / 100, { locale });
+  const time = allowance.resetsAt === null ? null : formatDateTime(allowance.resetsAt, { locale });
+  const words = allowance.exhausted
+    ? time === null
+      ? t('ai.allowance.usedUpShort')
+      : t('ai.allowance.usedUpShortResets', { time })
+    : time === null
+      ? t('ai.allowance.left', { percent })
+      : t('ai.allowance.leftResets', { percent, time });
+
   return (
-    <>
-      <dt className="font-medium text-content">{label}</dt>
-      <dd className={`flex flex-wrap gap-x-2 ${empty ? 'text-danger' : 'text-content-muted'}`}>
-        <span className="tabular-nums">
-          {t('ai.usage.count', {
-            used: formatNumber(spent, { locale }),
-            limit: formatNumber(limit, { locale }),
-          })}
-        </span>
-        <span>{t('ai.usage.resets', { time: formatDateTime(axis.resetsAt, { locale }) })}</span>
-      </dd>
-    </>
+    <div className="flex max-w-sm flex-col gap-1 text-xs">
+      <div
+        role="progressbar"
+        aria-label={t('ai.allowance.title')}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={remaining}
+        aria-valuetext={words}
+        className="h-2 w-full overflow-hidden rounded-full bg-surface-muted"
+      >
+        <div
+          className={`h-full rounded-full ${
+            allowance.exhausted ? 'bg-danger' : remaining <= 20 ? 'bg-warning' : 'bg-accent'
+          }`}
+          style={{ inlineSize: `${String(remaining)}%` }}
+        />
+      </div>
+      <p className={allowance.exhausted ? 'text-danger' : 'text-content-muted'}>{words}</p>
+    </div>
   );
 }
