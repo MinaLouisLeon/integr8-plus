@@ -32,8 +32,9 @@ import {
   ScrollScreen,
   Section,
 } from '~/components/ui';
-import { refreshAccess } from '~/local/online';
+import { fetchAiCapabilities, refreshAccess } from '~/local/online';
 import { useLocalQuery } from '~/local/react';
+import { useOnlineRequest } from '~/local/use-online';
 
 const SECTION_ORDER = ['overdue', 'today', 'upcoming', 'unscheduled'] as const;
 
@@ -85,6 +86,9 @@ function Jobs() {
   useEffect(() => {
     refreshAccess().catch(() => undefined);
   }, []);
+  // The assistant is online only (docs/ai §10.4), so it is offered only when the
+  // server says it is on — and not at all while that is unknown or there is no signal.
+  const { state: assistant } = useOnlineRequest('assistant-capabilities', fetchAiCapabilities);
 
   const person = me.status === 'ready' ? me.data : undefined;
   const sections = sectionJobs(open.status === 'ready' ? open.data : [], new Date());
@@ -153,6 +157,14 @@ function Jobs() {
           label={t('mobile.payslips.title')}
           variant="secondary"
           onPress={() => router.push('/payslips')}
+        />
+      ) : null}
+
+      {assistant.status === 'ready' && assistant.data.level !== 'off' ? (
+        <Button
+          label={t('mobile.ai.title')}
+          variant="secondary"
+          onPress={() => router.push('/assistant')}
         />
       ) : null}
 
