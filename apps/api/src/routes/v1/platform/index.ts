@@ -1,4 +1,5 @@
 import type { AnyRoute } from '../../../http/routes.js';
+import { platformAiRoutes } from './ai.js';
 import { platformAuditRoutes } from './audit.js';
 import { platformAuthRoutes } from './auth.js';
 import { platformCompanyRoutes } from './companies.js';
@@ -28,6 +29,7 @@ export const platformRoutes: AnyRoute[] = [
   ...platformLifecycleRoutes,
   ...platformAuditRoutes,
   ...platformSettingsRoutes,
+  ...platformAiRoutes,
   ...platformTemplateRoutes,
   ...platformSupportRoutes,
   ...platformStaffRoutes,

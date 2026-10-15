@@ -192,6 +192,11 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
   // Off by default: a company is set up first and its owner invited when there
   // is something to log in to, from the company's page.
   const [sendInvitation, setSendInvitation] = useState(false);
+  // All off by default (ADR-0001 D6): the assistant appears in an app only
+  // once somebody here says so, and the plan's policy still has to allow it.
+  const [aiWeb, setAiWeb] = useState(false);
+  const [aiDesktop, setAiDesktop] = useState(false);
+  const [aiMobile, setAiMobile] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const effectiveSlug = slugTouched ? slug : suggestSlug(name);
@@ -208,6 +213,7 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
           ownerEmail: ownerEmail.trim(),
           websiteUrl: website.trim() === '' ? null : website.trim(),
           sendInvitation,
+          aiChannels: { web: aiWeb, desktop: aiDesktop, mobile: aiMobile },
         },
       });
       return data;
@@ -371,6 +377,36 @@ function OnboardForm({ onDone }: { onDone: () => void }) {
             </p>
           </div>
         </div>
+        <fieldset className="flex flex-col gap-2 text-sm sm:col-span-2">
+          <legend className="font-medium text-content">{t('platform.onboard.aiChannels')}</legend>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-content">
+              <input
+                type="checkbox"
+                checked={aiWeb}
+                onChange={(event) => setAiWeb(event.target.checked)}
+              />
+              {t('platform.onboard.aiWeb')}
+            </label>
+            <label className="flex items-center gap-2 text-content">
+              <input
+                type="checkbox"
+                checked={aiDesktop}
+                onChange={(event) => setAiDesktop(event.target.checked)}
+              />
+              {t('platform.onboard.aiDesktop')}
+            </label>
+            <label className="flex items-center gap-2 text-content">
+              <input
+                type="checkbox"
+                checked={aiMobile}
+                onChange={(event) => setAiMobile(event.target.checked)}
+              />
+              {t('platform.onboard.aiMobile')}
+            </label>
+          </div>
+          <p className="text-content-muted">{t('platform.onboard.aiChannelsHint')}</p>
+        </fieldset>
       </div>
 
       <div className="flex gap-2">

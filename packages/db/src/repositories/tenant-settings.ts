@@ -37,6 +37,10 @@ export interface TenantSettings {
   workDayEnds: number;
   /** ISO weekday numbers; 1 is Monday. Empty means the company is closed. */
   workingDays: number[];
+  /** Which of the company's apps show the assistant (0044; ADR-0001). Each narrows the platform grant. */
+  aiWebEnabled: boolean;
+  aiDesktopEnabled: boolean;
+  aiMobileEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
@@ -54,6 +58,9 @@ export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
   workDayStarts: 8 * 60,
   workDayEnds: 17 * 60,
   workingDays: [1, 2, 3, 4, 5],
+  aiWebEnabled: false,
+  aiDesktopEnabled: false,
+  aiMobileEnabled: false,
 };
 
 export class TenantSettingsRepository {
@@ -92,6 +99,9 @@ export class TenantSettingsRepository {
     workDayStarts?: number | undefined;
     workDayEnds?: number | undefined;
     workingDays?: number[] | undefined;
+    aiWebEnabled?: boolean | undefined;
+    aiDesktopEnabled?: boolean | undefined;
+    aiMobileEnabled?: boolean | undefined;
   }): Promise<TenantSettings> {
     const values = {
       ...(input.logoMediaId === undefined ? {} : { logo_media_id: input.logoMediaId }),
@@ -107,6 +117,11 @@ export class TenantSettingsRepository {
       ...(input.workDayStarts === undefined ? {} : { work_day_starts: input.workDayStarts }),
       ...(input.workDayEnds === undefined ? {} : { work_day_ends: input.workDayEnds }),
       ...(input.workingDays === undefined ? {} : { working_days: input.workingDays }),
+      ...(input.aiWebEnabled === undefined ? {} : { ai_web_enabled: input.aiWebEnabled }),
+      ...(input.aiDesktopEnabled === undefined
+        ? {}
+        : { ai_desktop_enabled: input.aiDesktopEnabled }),
+      ...(input.aiMobileEnabled === undefined ? {} : { ai_mobile_enabled: input.aiMobileEnabled }),
     };
 
     const row = await this.db
@@ -124,12 +139,26 @@ export class TenantSettingsRepository {
 export class TenantSettingsWriter {
   constructor(private readonly db: Kysely<Database>) {}
 
-  async ensure(tenantId: string, input: { websiteUrl?: string | null } = {}): Promise<void> {
+  async ensure(
+    tenantId: string,
+    input: {
+      websiteUrl?: string | null;
+      /** Which of its apps show the assistant, chosen at onboarding (ADR-0001). */
+      aiChannels?: { web: boolean; desktop: boolean; mobile: boolean };
+    } = {},
+  ): Promise<void> {
     await this.db
       .insertInto('tenant_settings')
       .values({
         tenant_id: tenantId,
         ...(input.websiteUrl === undefined ? {} : { website_url: input.websiteUrl }),
+        ...(input.aiChannels === undefined
+          ? {}
+          : {
+              ai_web_enabled: input.aiChannels.web,
+              ai_desktop_enabled: input.aiChannels.desktop,
+              ai_mobile_enabled: input.aiChannels.mobile,
+            }),
       })
       .onConflict((conflict) => conflict.column('tenant_id').doNothing())
       .execute();
@@ -215,5 +244,8 @@ function toSettings(row: Selectable<TenantSettingsTable>): TenantSettings {
     workDayStarts: row.work_day_starts,
     workDayEnds: row.work_day_ends,
     workingDays: row.working_days,
+    aiWebEnabled: row.ai_web_enabled,
+    aiDesktopEnabled: row.ai_desktop_enabled,
+    aiMobileEnabled: row.ai_mobile_enabled,
   };
 }

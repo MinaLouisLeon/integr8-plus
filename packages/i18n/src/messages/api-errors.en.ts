@@ -24,6 +24,26 @@ export const apiErrorsEn = {
   account_not_found: 'No such account. Choose one from the chart.',
   account_not_usable: 'Choose an account that exists and is in use.',
   account_number_taken: 'Another customer already has this account number. Choose another.',
+  ai_action_already_executed: 'This action was already carried out. Nothing was done twice.',
+  ai_action_expired:
+    'This proposal has expired or the record changed. Ask the assistant again for a fresh one.',
+  ai_budget_unavailable: 'The assistant is paused for now. Try again later.',
+  ai_concurrency_limit: 'Too many questions are being answered at once. Wait for one to finish.',
+  ai_conversation_not_found: 'No such conversation.',
+  ai_daily_quota_exceeded:
+    'Today’s assistant messages are used up. They reset at midnight UTC; ask your company administrator or Integr8 about the limit.',
+  ai_disabled: 'The assistant is not included for your company, or is switched off. Ask Integr8.',
+  ai_level_required: 'This needs a higher assistant level than your company’s plan includes.',
+  ai_monthly_quota_exceeded:
+    'This month’s assistant messages are used up. They reset on the first of next month, UTC.',
+  ai_policy_changed: 'Somebody else changed this policy first. Reload and try again.',
+  ai_policy_invalid:
+    'The policy is inconsistent: an enabled level needs a quota mode and the limits it names.',
+  ai_provider_unavailable: 'The assistant could not reach its model. Try again in a moment.',
+  ai_request_in_progress:
+    'This question is still being answered. Wait for the answer rather than sending it again.',
+  ai_tool_forbidden: 'Your role may not use this with the assistant.',
+  ai_validation_failed: 'The assistant could not use this request as sent.',
   allocation_mismatch:
     'A payment is put only against the same customer’s invoices, in its own currency.',
   allocation_removed: 'This was already taken off the invoice. Reload to see the payment as it is.',

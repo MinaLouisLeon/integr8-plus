@@ -74,6 +74,8 @@ const DYNAMIC_SITES: Record<string, (source: string) => readonly string[]> = {
   'server.ts|error.code': () => [],
   // A shared helper's ApiError, turned into a push outcome: already collected.
   'sync/push.ts|error.code': () => [],
+  // The assistant's quota refusal names its day or month code (docs/ai).
+  'ai/errors.ts|code': () => ['ai_daily_quota_exceeded', 'ai_monthly_quota_exceeded'],
   // `refuse('code', 'message', field)` for serial numbers and batches.
   'routes/v1/stock-lots.ts|code': (source) =>
     [...source.matchAll(/refuse\(\s*'([a-z][a-z0-9_]*)'/gu)].map(([, code]) => code ?? ''),

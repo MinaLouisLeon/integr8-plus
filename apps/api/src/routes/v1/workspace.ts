@@ -276,6 +276,7 @@ export const listMembersRoute = defineRoute({
           grants: grants.get(member.userId) ?? [],
           customRole: customRoleBody(member.customRoleId, roleNames),
           status: member.status,
+          aiEnabled: member.aiEnabled,
           createdAt: iso(member.createdAt),
         })),
       },

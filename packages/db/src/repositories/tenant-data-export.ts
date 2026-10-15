@@ -32,6 +32,13 @@ import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
  */
 export const EXPORTED_TABLES = [
   'tenant_roles',
+  // The assistant (0044; ADR-0001): a member's chats, the actions prepared for
+  // them and the record of what was charged are the company's own.
+  'ai_conversations',
+  'ai_messages',
+  'ai_action_proposals',
+  'ai_action_events',
+  'ai_usage_periods',
   'tenant_users',
   'customers',
   'customer_contacts',

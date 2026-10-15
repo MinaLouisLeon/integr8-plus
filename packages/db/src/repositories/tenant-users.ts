@@ -20,6 +20,8 @@ export interface TenantUser {
   /** The company's own role on top of `role`, its base (ADR-0013); null for a built-in role. */
   customRoleId: string | null;
   status: MembershipStatus;
+  /** Whether this member may use the assistant when the company has it (ADR-0001). */
+  aiEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -135,6 +137,20 @@ export class TenantUsersRepository extends TenantScopedRepository {
     return row === undefined ? undefined : toDomain(row);
   }
 
+  /** Lets a member use the assistant, or stops them (ADR-0001). Set by owners and admins. */
+  async setAiEnabled(userId: UserId | string, enabled: boolean): Promise<TenantUser | undefined> {
+    const row = await this.db
+      .updateTable('tenant_users')
+      .set({ ai_enabled: enabled })
+      .where('tenant_id', '=', this.tenantId)
+      .where('user_id', '=', toUserId(userId))
+      .where('deleted_at', 'is', null)
+      .returningAll()
+      .executeTakeFirst();
+
+    return row === undefined ? undefined : toDomain(row);
+  }
+
   async updateStatus(
     userId: UserId | string,
     status: MembershipStatus,
@@ -194,6 +210,7 @@ function toDomain(row: Selectable<TenantUsersTable>): TenantUser {
     role: roleSchema.parse(row.role),
     customRoleId: row.custom_role_id,
     status: membershipStatusSchema.parse(row.status),
+    aiEnabled: row.ai_enabled,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

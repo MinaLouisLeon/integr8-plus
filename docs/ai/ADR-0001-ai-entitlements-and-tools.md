@@ -97,7 +97,9 @@ client_request_id)`); a replay while reserved answers 409 `ai_request_in_progres
   a completed one replays the stored answer; a different fingerprint answers 409.
 - Counters: `ai_usage_periods(tenant|user, day|month)` locked in a fixed order
   (tenant-day, tenant-month, user-day, user-month) in one transaction;
-  `used + reserved + 1 <= limit` or reject all.
+  `used + reserved + 1 <= limit` or reject all. All four counters are always
+  reserved, limited or not, so usage is known and a later policy change settles
+  against the same rows; the reservation row records the periods it holds.
 - No rollover, refill, overage or packs. A cap change applies to current usage.
 - Confirming an L3 proposal is not a second message; it is an action execution.
 
@@ -105,8 +107,8 @@ client_request_id)`); a replay while reserved answers 409 `ai_request_in_progres
 
 - Money is integer **USD micros** (`bigint`). Never floats.
 - Two-stage reservation: platform month budget (`AI_GLOBAL_MONTHLY_BUDGET_MICROUSD`,
-  counter `ai_cost_periods` with `tenant_id` = the platform sentinel row) first, then
-  the tenant month budget; a tenant refusal releases the global reservation.
+  platform-only table `ai_platform_cost_periods`) first, then the tenant month budget
+  (`ai_cost_periods`); a tenant refusal releases the global reservation.
 - Worst case reserved = `max_provider_calls × (max_input_tokens × in_price +
 max_output_tokens × out_price)`; settled from reported usage, or a conservative
   estimate flagged `tokens_estimated` when the provider reports none.

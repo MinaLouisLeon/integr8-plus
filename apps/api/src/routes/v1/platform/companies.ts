@@ -202,6 +202,14 @@ export const onboardCompanyRoute = defineRoute({
     /** The company's own website, https only. Its phone app opens on this page. */
     websiteUrl: websiteUrlSchema.nullable().optional(),
     /**
+     * Which of the company's apps show the assistant (ADR-0001). Off everywhere
+     * by default; the company's owner can change them later. They only narrow
+     * what the plan or override grants.
+     */
+    aiChannels: z
+      .object({ web: z.boolean(), desktop: z.boolean(), mobile: z.boolean() })
+      .default({ web: false, desktop: false, mobile: false }),
+    /**
      * Email the owner's invitation now. Off by default: a company is usually
      * set up first (its forms, job types and look), and the invitation is sent
      * from the company's page once there is something to log in to. The link
@@ -237,6 +245,7 @@ export const onboardCompanyRoute = defineRoute({
       billingMode: body.billingMode,
       ownerEmail: body.ownerEmail,
       websiteUrl: body.websiteUrl ?? null,
+      aiChannels: body.aiChannels,
       ...(body.jobTypes === undefined ? {} : { jobTypes: body.jobTypes }),
       onboardedBy: toPlatformUserId(context.platform.platformUserId),
       // The platform path always invites: whoever is onboarding this company is
@@ -261,6 +270,7 @@ export const onboardCompanyRoute = defineRoute({
         seats: body.seats,
         billingMode: body.billingMode,
         ownerEmail: body.ownerEmail,
+        aiChannels: body.aiChannels,
         jobTypes: onboarded.jobTypes,
         bucket: onboarded.storage.bucket,
         storageError: onboarded.storage.error,
@@ -482,6 +492,9 @@ export const updateCompanySettingsRoute = defineRoute({
   body: z.object({
     websiteUrl: websiteUrlSchema.nullable().optional(),
     appsEnabled: z.boolean().optional(),
+    aiWebEnabled: z.boolean().optional(),
+    aiDesktopEnabled: z.boolean().optional(),
+    aiMobileEnabled: z.boolean().optional(),
   }),
   responses: {
     200: { description: 'Changed.', schema: companySettingsSchema },
@@ -521,6 +534,9 @@ function toCompanySettings(settings: {
   defaultTheme: 'light' | 'dark' | 'system';
   websiteUrl: string | null;
   appsEnabled: boolean;
+  aiWebEnabled: boolean;
+  aiDesktopEnabled: boolean;
+  aiMobileEnabled: boolean;
 }): z.infer<typeof companySettingsSchema> {
   return {
     logoMediaId: settings.logoMediaId,
@@ -530,6 +546,9 @@ function toCompanySettings(settings: {
     defaultTheme: settings.defaultTheme,
     websiteUrl: settings.websiteUrl,
     appsEnabled: settings.appsEnabled,
+    aiWebEnabled: settings.aiWebEnabled,
+    aiDesktopEnabled: settings.aiDesktopEnabled,
+    aiMobileEnabled: settings.aiMobileEnabled,
   };
 }
 
