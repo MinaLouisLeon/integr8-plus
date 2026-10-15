@@ -19,6 +19,17 @@ describe('the dashboard map', () => {
     expect(desktop.map((s) => s.key)).not.toContain('billing');
   });
 
+  it('shows the assistant only when the caller says it is on for this seat and app', () => {
+    const without = visibleNavigation('web', permissionsFor('viewer')).flatMap((g) => g.sections);
+    expect(without.map((s) => s.key)).not.toContain('assistant');
+    const withIt = visibleNavigation('web', permissionsFor('viewer'), undefined, {
+      assistant: true,
+    }).flatMap((g) => g.sections);
+    expect(withIt.map((s) => s.key)).toContain('assistant');
+    expect(withIt[0]?.key).toBe('dashboard');
+    expect(withIt[1]?.key).toBe('assistant');
+  });
+
   it('shows branding only to staff sitting in the seat', () => {
     const owner = visibleNavigation('desktop', permissionsHeld({ role: 'owner' }));
     expect(owner.flatMap((g) => g.sections).map((s) => s.key)).not.toContain('branding');

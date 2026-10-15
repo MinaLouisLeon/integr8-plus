@@ -53,7 +53,8 @@ export type NavIcon =
   | 'clipboard-check'
   | 'calculator'
   | 'scale'
-  | 'barcode';
+  | 'barcode'
+  | 'sparkles';
 
 export type NavGroup =
   | 'overview'
@@ -88,10 +89,18 @@ export interface NavSection {
    * permission says this seat may use it.
    */
   feature?: ModuleFeature;
+  /**
+   * Shown only when the assistant is on for this seat in this app (docs/ai;
+   * ADR-0001): the plan, the company's override, the company's switch for the
+   * app and the member's own switch all say yes, as `/v1/ai/capabilities`
+   * reports. Off is the default, so a caller that has not asked shows nothing.
+   */
+  assistant?: boolean;
 }
 
 export type NavPath =
   | 'dashboard'
+  | 'assistant'
   | 'forms'
   | 'fill'
   | 'submissions'
@@ -164,6 +173,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
  */
 export const NAV_SECTIONS: readonly NavSection[] = [
   { key: 'dashboard', group: 'overview', path: 'dashboard', icon: 'home' },
+  { key: 'assistant', group: 'overview', path: 'assistant', icon: 'sparkles', assistant: true },
 
   { key: 'fill', group: 'work', path: 'fill', icon: 'pen', permission: 'submission.fill' },
   {
@@ -574,12 +584,15 @@ export function visibleNavigation(
    * not been taught about modules shows nothing it should not.
    */
   features?: Readonly<Record<string, boolean>>,
+  /** Whether the assistant is on for this seat in this app; off when not asked. */
+  options: { assistant?: boolean } = {},
 ): { group: NavGroup; sections: NavSection[] }[] {
   const held = new Set(permissions);
   const shown = NAV_SECTIONS.filter(
     (section) =>
       (section.permission === undefined || held.has(section.permission)) &&
       (section.feature === undefined || hasFeature(features, section.feature)) &&
+      (section.assistant !== true || options.assistant === true) &&
       !(section.desktopOnly === true && app !== 'desktop') &&
       !(section.webOnly === true && app !== 'web'),
   );

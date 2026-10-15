@@ -53,6 +53,8 @@ interface Member {
   /** The company's own role, whose base is `role` (ADR-0013). */
   customRole?: { id: string; name: string } | null;
   status: Status;
+  /** Whether this member may use the assistant (docs/ai; ADR-0001). */
+  aiEnabled: boolean;
 }
 
 /** Who is looking at the screen: their role and what they may do. */
@@ -278,6 +280,7 @@ function InviteForm({ viewer, onDone }: { viewer: Viewer; onDone: (message: stri
 type MemberAction =
   | { kind: 'grant'; grant: Grant; give: boolean }
   | { kind: 'status'; status: 'active' | 'suspended' }
+  | { kind: 'ai'; enabled: boolean }
   | { kind: 'remove' };
 
 function MemberRow({
@@ -290,9 +293,11 @@ function MemberRow({
   onDone: (message: string) => void;
 }) {
   const { t } = useTranslation();
+  const queries = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const grants = manageableGrants(viewer.role, viewer.permissions);
   const roleLocked = !mayChangeRole(viewer.role, member.role);
+  const mayToggleAi = viewer.permissions.includes('member.update_role');
 
   const act = useMutation({
     mutationFn: async (action: MemberAction) => {
@@ -308,6 +313,15 @@ function MemberRow({
           params: { path: { userId: member.userId } },
           body: { status: action.status },
         });
+        return;
+      }
+      if (action.kind === 'ai') {
+        await apiClient().PATCH('/v1/members/{userId}/ai', {
+          params: { path: { userId: member.userId } },
+          body: { aiEnabled: action.enabled },
+        });
+        // The member's own menu follows this switch.
+        void queries.invalidateQueries({ queryKey: ['ai', 'capabilities'] });
         return;
       }
       await apiClient().DELETE('/v1/members/{userId}', {
@@ -354,6 +368,23 @@ function MemberRow({
         <span className="text-xs text-content-muted">
           {t(`workspace.members.status.${member.status}`)}
         </span>
+
+        {mayToggleAi ? (
+          <label className="flex items-center gap-1.5 text-xs text-content">
+            <input
+              type="checkbox"
+              checked={member.aiEnabled}
+              disabled={act.isPending}
+              aria-label={t('workspace.members.ai.toggle', { name: member.displayName })}
+              onChange={(event) => act.mutate({ kind: 'ai', enabled: event.target.checked })}
+            />
+            {t('workspace.members.ai.label')}
+          </label>
+        ) : (
+          <span className="text-xs text-content-muted">
+            {member.aiEnabled ? t('workspace.members.ai.on') : t('workspace.members.ai.off')}
+          </span>
+        )}
 
         {member.grants.length === 0 ? null : (
           <span className="flex flex-wrap items-center gap-1 text-xs text-content-muted">

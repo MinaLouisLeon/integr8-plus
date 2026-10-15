@@ -361,6 +361,12 @@ export const en = {
       empty: 'Nobody else has joined yet.',
       manage: 'People',
       manageSubtitle: 'Who is in this company, and what they may do.',
+      ai: {
+        label: 'Assistant',
+        toggle: 'Assistant for {{name}}',
+        on: 'Assistant on',
+        off: 'Assistant off',
+      },
       invite: 'Invite somebody',
       inviteEmail: 'Their email address',
       inviteRole: 'Their role',
@@ -488,6 +494,14 @@ export const en = {
       closed: 'Closed — no working days selected.',
       save: 'Save settings',
       saved: 'Saved.',
+      ai: {
+        title: 'Assistant',
+        intro:
+          'Integr8 decides whether the assistant is included in your subscription. These switches only choose which apps show it.',
+        web: 'Show the assistant in the web app',
+        desktop: 'Show the assistant in the desktop app',
+        mobile: 'Show the assistant in the mobile app',
+      },
       days: {
         mon: 'Mon',
         tue: 'Tue',
@@ -5899,6 +5913,73 @@ export const en = {
       unknown:
         'Something went wrong opening it. Nothing has been deleted. Restart the app, and contact support if it happens again.',
     },
+    // The assistant (docs/ai §10.4): online only, and never a word about which
+    // model answers. `off.*` is keyed by which switch closed it.
+    ai: {
+      title: 'Assistant',
+      intro:
+        'Ask about Integr8, or about your company’s work. Only you can read your conversations.',
+      offline:
+        'Connect to the internet to use the Integr8 assistant. Your assigned work and forms remain available offline.',
+      level: {
+        help: 'Help',
+        insights: 'Insights',
+        agent: 'Actions',
+      },
+      off: {
+        title: 'The assistant is not available',
+        global_off: 'The assistant is switched off for everyone at the moment.',
+        plan_off: 'The assistant is not included in your company’s subscription.',
+        custom_off: 'The assistant is switched off for your company.',
+        not_served: 'The assistant is not available to your company at the moment.',
+        channel_off: 'Your company has not switched the assistant on for the phone app.',
+        member_off:
+          'The assistant is switched off for your account. Ask your company administrator.',
+      },
+      conversations: 'Conversations',
+      newConversation: 'New conversation',
+      untitled: 'Untitled conversation',
+      empty: 'No conversations yet',
+      emptyBody: 'Start one and ask a question.',
+      delete: 'Delete',
+      deleteTitle: 'Delete this conversation?',
+      deleteBody: 'Its messages are removed from everywhere. Only you could read them.',
+      keep: 'Keep',
+      usage: {
+        companyDaily: 'Company today: {{remaining}} of {{limit}} left',
+        companyMonthly: 'Company this month: {{remaining}} of {{limit}} left',
+        youDaily: 'You today: {{remaining}} of {{limit}} left',
+        youMonthly: 'You this month: {{remaining}} of {{limit}} left',
+        unlimited: 'No limit on messages',
+      },
+      exhausted: 'No messages left for now. More from {{when}}.',
+      quotaExceeded: 'The assistant’s messages are used up. More from {{when}}.',
+      threadEmpty: 'Ask your first question.',
+      question: 'Your question',
+      placeholder: 'Ask the assistant…',
+      counter: '{{used}} / {{max}}',
+      send: 'Send',
+      sending: 'Sending…',
+      notSent: 'Not sent. {{reason}}',
+      you: 'You',
+      assistant: 'Assistant',
+      sources: 'Sources',
+      proposal: {
+        title: 'Proposed action',
+        pending: 'Nothing happens until you confirm.',
+        confirm: 'Confirm',
+        reject: 'Decline',
+        expiresIn: 'Expires in {{time}}',
+        expiresSoon: 'Expires in under a minute',
+        expired: 'Expired. Ask the assistant again for a fresh one.',
+        executing: 'Being carried out…',
+        completed: 'Done',
+        failed: 'Could not be carried out.',
+        rejected: 'Declined.',
+        warnings: 'Before you confirm',
+        open: 'Open',
+      },
+    },
   },
 
   // The super admin dashboard (P15). Not a customer-facing surface: these
@@ -5908,6 +5989,93 @@ export const en = {
    * The dashboard shell: the side menu, its groups, and the top bar. The
    * sections come from `@integr8/core`'s navigation model; the words live here.
    */
+  // The Integr8 Plus assistant (docs/ai; ADR-0001). It never names a model or a
+  // vendor: a company member is talking to Integr8 Plus.
+  ai: {
+    title: 'Assistant',
+    level: {
+      help: 'Help',
+      insights: 'Insights',
+      agent: 'Agent',
+      hint: {
+        help: 'Answers from the help library only.',
+        insights:
+          'Answers from the help library, and can look up company records your seat may see.',
+        agent:
+          'Answers from the help library, can look up company records your seat may see, and can prepare changes for you to confirm.',
+      },
+      noCompanyData: 'Your company’s records are not sent outside Integr8 Plus.',
+    },
+    off: {
+      generic: 'The assistant is not available here.',
+      global_off: 'The assistant is switched off across Integr8 Plus for now.',
+      plan_off:
+        'The assistant is not included in your company’s subscription. Ask Integr8 about it.',
+      custom_off: 'Integr8 has switched the assistant off for your company.',
+      not_served: 'The assistant is not available in this release yet.',
+      channel_off:
+        'Your company has not switched the assistant on for this app. Ask an owner to turn it on under Company settings.',
+      member_off: 'The assistant is switched off for you. Ask an owner to turn it on under People.',
+    },
+    usage: {
+      title: 'Messages left',
+      companyDaily: 'Company today',
+      companyMonthly: 'Company this month',
+      mineDaily: 'You today',
+      mineMonthly: 'You this month',
+      count: '{{used}} of {{limit}}',
+      resets: 'Resets {{time}}',
+      unlimited: 'No limit on messages.',
+      exhausted: 'No messages left. They reset {{time}}.',
+    },
+    conversations: {
+      title: 'Conversations',
+      new: 'New conversation',
+      empty: 'No conversations yet. Start one.',
+      untitled: 'Untitled conversation',
+      pick: 'Open a conversation, or start a new one.',
+      deleteLabel: 'Delete {{title}}',
+      deleteConfirm:
+        'Delete this conversation? Its messages go. What was already counted against your allowance stays counted.',
+    },
+    thread: {
+      title: 'Conversation',
+      messages: 'Messages',
+      empty: 'Ask a question to begin.',
+      you: 'You',
+      assistant: 'Assistant',
+      answering: 'Answering…',
+      sources: 'Sources',
+      lookedUp: 'What was looked up',
+      newTab: 'Opens in a new tab',
+    },
+    composer: {
+      label: 'Your question',
+      hint: 'Enter sends. Shift+Enter starts a new line.',
+      counter: '{{used}} / {{max}}',
+      send: 'Send',
+    },
+    proposal: {
+      title: 'A change the assistant prepared',
+      state: {
+        pending: 'Waiting for you',
+        confirmed: 'Confirmed',
+        executing: 'Carrying out…',
+        completed: 'Done',
+        rejected: 'Declined',
+        expired: 'Expired',
+        failed: 'Failed',
+      },
+      expiresIn: 'Expires in {{time}}',
+      expired: 'This proposal has expired. Ask the assistant again for a fresh one.',
+      warnings: 'Before you confirm',
+      nothingYet: 'Nothing has been changed yet.',
+      openRecord: 'Open the record',
+      confirm: 'Confirm',
+      reject: 'Decline',
+    },
+  },
+
   nav: {
     menu: 'Menu',
     openMenu: 'Open the menu',
@@ -5932,6 +6100,7 @@ export const en = {
     },
     section: {
       dashboard: 'Dashboard',
+      assistant: 'Assistant',
       fill: 'Fill in a form',
       submissions: 'Submissions',
       workOrders: 'Work orders',
@@ -5982,6 +6151,7 @@ export const en = {
     },
     hint: {
       dashboard: 'Where you are, and what needs doing.',
+      assistant: 'Ask about Integr8 Plus, and about your company’s records.',
       fill: 'Start a form for a job.',
       submissions: 'Forms filled in, and their status.',
       workOrders: 'Jobs to schedule, dispatch, work and sign off.',

@@ -12,6 +12,7 @@ import type { NavPath, PlatformNavPath } from '@integr8/core';
 /** The web routes for every section the web app draws. Forms and branding are desktop-only. */
 export const NAV_PATHS: Readonly<Record<Exclude<NavPath, 'forms' | 'branding'>, string>> = {
   dashboard: '/dashboard',
+  assistant: '/assistant',
   fill: '/fill',
   submissions: '/submissions',
   workOrders: '/work-orders',
