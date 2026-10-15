@@ -58,14 +58,15 @@ export async function runAiReconciliation(options: {
     try {
       const stale = await withTenant(tenantId, (tx) => tx.aiUsage.listStale(now));
       for (const reservation of stale) {
-        const answered = await withTenant(tenantId, async (tx) => {
-          if (reservation.responseMessageId !== null) {
-            return (
-              (await tx.aiConversations.findMessage(reservation.responseMessageId)) !== undefined
-            );
-          }
-          return false;
-        });
+        // The answer is the charging boundary (docs/ai §8.6): a slot whose
+        // worker died after storing it and before settling is charged, not
+        // released, so a stored answer is never free.
+        const answer = await withTenant(tenantId, async (tx) =>
+          reservation.responseMessageId === null
+            ? tx.aiConversations.findAnswerForReservation(reservation.id)
+            : tx.aiConversations.findMessage(reservation.responseMessageId),
+        );
+        const answered = answer !== undefined;
         const calls = await withTenant(tenantId, (tx) => tx.aiUsage.callsFor(reservation.id));
         const spent = calls
           .filter((call) => call.status === 'success')
@@ -77,7 +78,7 @@ export async function runAiReconciliation(options: {
           tenantId,
           reservationId: reservation.id,
           outcome: answered ? 'completed' : 'expired',
-          responseMessageId: reservation.responseMessageId,
+          responseMessageId: answer?.id ?? reservation.responseMessageId,
           // What a timed-out call may have cost is counted as spent now: the
           // budget stays conservative, and the slot is no longer held open.
           spentMicrousd: spent + unknown,

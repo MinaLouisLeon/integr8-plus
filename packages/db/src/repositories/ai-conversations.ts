@@ -164,6 +164,23 @@ export class AiConversationsRepository extends TenantScopedRepository {
     return row === undefined ? undefined : toMessage(row);
   }
 
+  /**
+   * The assistant's answer stored against a reservation, if one was. The
+   * reconciler asks this of a slot the worker never settled: an answer that
+   * reached the table is the charging boundary, whatever happened after.
+   */
+  async findAnswerForReservation(reservationId: string): Promise<AiMessage | undefined> {
+    const row = await this.db
+      .selectFrom('ai_messages')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('usage_reservation_id', '=', reservationId)
+      .where('role', '=', 'assistant')
+      .orderBy('created_at', 'desc')
+      .executeTakeFirst();
+    return row === undefined ? undefined : toMessage(row);
+  }
+
   /** Oldest first, bounded; `before` pages backwards from a message id's time. */
   async listMessages(
     conversationId: string,
