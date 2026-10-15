@@ -229,3 +229,99 @@ export async function receiveGoods(input: {
   });
   return data!;
 }
+
+// ---------------------------------------------------------------------------
+// The assistant (docs/ai §10.4)
+// ---------------------------------------------------------------------------
+//
+// Online only, by design: a question is answered by the server or not at all,
+// and nothing here goes through the outbox. Every write carries its own
+// idempotency key, and a message's key is the caller's, so a retry of the same
+// question is answered once and charged once.
+
+export type AiCapabilities = Awaited<ReturnType<typeof fetchAiCapabilities>>;
+export type AiUsage = AiCapabilities['usage'];
+export type AiConversation = Awaited<ReturnType<typeof fetchAiConversations>>[number];
+export type AiMessage = Awaited<ReturnType<typeof fetchAiConversation>>['messages'][number];
+export type AiProposal = NonNullable<AiMessage['actionProposal']>;
+export type AiLocale = AiConversation['locale'];
+
+/** A fresh idempotency key, for a send the caller may have to retry as itself. */
+export function newIdempotencyKey(): string {
+  return Crypto.randomUUID();
+}
+
+export async function fetchAiCapabilities() {
+  await online();
+  const { data } = await client().GET('/v1/ai/capabilities');
+  return data!;
+}
+
+export async function fetchAiConversations() {
+  await online();
+  const { data } = await client().GET('/v1/ai/conversations');
+  return data?.items ?? [];
+}
+
+export async function createAiConversation(locale: AiLocale) {
+  await online();
+  const { data } = await client().POST('/v1/ai/conversations', { body: { locale } });
+  return data!;
+}
+
+export async function fetchAiConversation(conversationId: string) {
+  await online();
+  const { data } = await client().GET('/v1/ai/conversations/{conversationId}', {
+    params: { path: { conversationId } },
+  });
+  return data!;
+}
+
+export async function deleteAiConversation(conversationId: string): Promise<void> {
+  await online();
+  await client().DELETE('/v1/ai/conversations/{conversationId}', {
+    params: { path: { conversationId } },
+  });
+}
+
+export async function sendAiMessage(input: {
+  conversationId: string;
+  message: string;
+  locale: AiLocale;
+  /** One per question; the same again to retry that question. */
+  key: string;
+}) {
+  await online();
+  const { data } = await client().POST('/v1/ai/conversations/{conversationId}/messages', {
+    params: {
+      path: { conversationId: input.conversationId },
+      header: { 'Idempotency-Key': input.key },
+    },
+    body: { message: input.message, locale: input.locale },
+  });
+  return data!;
+}
+
+export async function fetchAiAction(proposalId: string) {
+  await online();
+  const { data } = await client().GET('/v1/ai/actions/{proposalId}', {
+    params: { path: { proposalId } },
+  });
+  return data!;
+}
+
+export async function confirmAiAction(proposalId: string) {
+  await online();
+  const { data } = await client().POST('/v1/ai/actions/{proposalId}/confirm', {
+    params: { path: { proposalId }, header: idempotencyKey() },
+  });
+  return data!;
+}
+
+export async function rejectAiAction(proposalId: string) {
+  await online();
+  const { data } = await client().POST('/v1/ai/actions/{proposalId}/reject', {
+    params: { path: { proposalId } },
+  });
+  return data!;
+}

@@ -19,6 +19,7 @@ type Json<
   : never;
 
 export type Me = Json<'/v1/me', 'get', 200>;
+export type AiCapabilities = Json<'/v1/ai/capabilities', 'get', 200>;
 export type FormList = Json<'/v1/forms', 'get', 200>;
 export type FormListItem = FormList['items'][number];
 export type FormDetail = Json<'/v1/forms/{formId}', 'get', 200>;
@@ -36,6 +37,7 @@ const client = () => session().client;
 
 export const formKeys = {
   me: ['me'] as const,
+  aiCapabilities: ['ai', 'capabilities'] as const,
   list: ['forms'] as const,
   detail: (formId: string) => ['forms', formId] as const,
   versions: (formId: string) => ['forms', formId, 'versions'] as const,
@@ -50,6 +52,25 @@ export function useMe() {
     queryKey: formKeys.me,
     queryFn: async () => (await client().GET('/v1/me')).data!,
   });
+}
+
+/**
+ * Whether, and how far, this seat may use the assistant in this app (docs/ai;
+ * ADR-0001). The frame and the dashboard ask this to decide whether to show
+ * the assistant at all; the same key the shared screen reads, so one answer
+ * serves both.
+ */
+export function useAiCapabilities() {
+  return useQuery({
+    queryKey: formKeys.aiCapabilities,
+    queryFn: async () => (await client().GET('/v1/ai/capabilities')).data!,
+    staleTime: 30_000,
+  });
+}
+
+/** What the menu model is told: nothing until the server has answered, and nothing at `off`. */
+export function assistantShown(capabilities: AiCapabilities | undefined): { assistant: boolean } {
+  return { assistant: capabilities !== undefined && capabilities.level !== 'off' };
 }
 
 /** Whether this person may build and publish forms. A convenience for hiding buttons; the server decides. */

@@ -40,10 +40,22 @@ export function WorkspaceShell({
     },
   });
 
+  // The assistant's item is the server's answer to "may this seat see it in
+  // this app", and hidden until that answer lands (docs/ai; ADR-0001).
+  const capabilities = useQuery({
+    queryKey: ['ai', 'capabilities'],
+    queryFn: async () => {
+      const { data } = await apiClient().GET('/v1/ai/capabilities');
+      return data;
+    },
+    staleTime: 30_000,
+  });
+
   const groups: ShellNavGroup[] = visibleNavigation(
     'web',
     me.data?.permissions ?? [],
     me.data?.features,
+    { assistant: capabilities.data !== undefined && capabilities.data.level !== 'off' },
   ).map((group) => ({
     key: group.group,
     label: t(`nav.group.${group.group}`),

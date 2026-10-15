@@ -1,16 +1,35 @@
 'use client';
 
 import { ApiRequestError } from '@integr8/api-client';
-import { type Role, ROLES } from '@integr8/core';
+import {
+  aiLevelAtLeast,
+  quotaModeHasDaily,
+  quotaModeHasMonthly,
+  type Role,
+  ROLES,
+} from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useId, useState } from 'react';
+import {
+  AiPolicyEditor,
+  AiPolicySummary,
+  draftFromPolicy,
+  draftIsValid,
+  formatMicrousd,
+  levelLabel,
+  pickPolicyFields,
+  policyFromDraft,
+  type AiPolicyDraft,
+  type AiPolicyFields,
+} from '~/components/ai-policy-editor';
 import { Badge, Panel, StatusBadge } from '~/components/platform-bits';
 import { Button, ErrorState, Field, LoadingState } from '~/components/ui';
 import { messageForError } from '~/lib/errors';
 import { formatBytes, formatDate, formatDuration, formatWhen } from '~/lib/platform-format';
 import { platformClient } from '~/lib/platform-session';
+import { planLabel } from '~/lib/plans';
 
 /**
  * One company, and everything you can do to it (P15).
@@ -100,6 +119,7 @@ export default function CompanyPage() {
       />
       <InvitationsPanel tenantId={tenantId} invitations={detail.invitations} />
       <AppsPanel tenantId={tenantId} settings={detail.settings} />
+      <AiPanel tenantId={tenantId} />
       <BillingPanel billing={detail.billing} />
 
       <Panel title={t('platform.company.people')}>
@@ -439,18 +459,29 @@ function AppsPanel({
     appsEnabled: boolean;
     brandColour: string | null;
     logoMediaId: string | null;
+    aiWebEnabled: boolean;
+    aiDesktopEnabled: boolean;
+    aiMobileEnabled: boolean;
   };
 }) {
   const { t } = useTranslation();
   const queries = useQueryClient();
   const [website, setWebsite] = useState(settings.websiteUrl ?? '');
   const [appsEnabled, setAppsEnabled] = useState(settings.appsEnabled);
+  // Where the assistant appears for this company (ADR-0001 D6). Each app is
+  // its own switch: a company can have it on the desktop and off the phones.
+  const [aiWeb, setAiWeb] = useState(settings.aiWebEnabled);
+  const [aiDesktop, setAiDesktop] = useState(settings.aiDesktopEnabled);
+  const [aiMobile, setAiMobile] = useState(settings.aiMobileEnabled);
   const [problem, setProblem] = useState<string | undefined>(undefined);
 
   const websiteOk = website.trim() === '' || /^https:\/\/\S+$/u.test(website.trim());
   const unchanged =
     (website.trim() === '' ? null : website.trim()) === settings.websiteUrl &&
-    appsEnabled === settings.appsEnabled;
+    appsEnabled === settings.appsEnabled &&
+    aiWeb === settings.aiWebEnabled &&
+    aiDesktop === settings.aiDesktopEnabled &&
+    aiMobile === settings.aiMobileEnabled;
 
   const save = useMutation({
     mutationFn: async () => {
@@ -459,6 +490,9 @@ function AppsPanel({
         body: {
           websiteUrl: website.trim() === '' ? null : website.trim(),
           appsEnabled,
+          aiWebEnabled: aiWeb,
+          aiDesktopEnabled: aiDesktop,
+          aiMobileEnabled: aiMobile,
         },
       });
     },
@@ -499,6 +533,33 @@ function AppsPanel({
           </label>
         </div>
         <p className="text-xs text-content-muted">{t('platform.apps.buildAppsHint')}</p>
+        <div className="flex flex-wrap items-center gap-4 text-sm text-content">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={aiWeb}
+              onChange={(event) => setAiWeb(event.target.checked)}
+            />
+            {t('platform.apps.aiWeb')}
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={aiDesktop}
+              onChange={(event) => setAiDesktop(event.target.checked)}
+            />
+            {t('platform.apps.aiDesktop')}
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={aiMobile}
+              onChange={(event) => setAiMobile(event.target.checked)}
+            />
+            {t('platform.apps.aiMobile')}
+          </label>
+        </div>
+        <p className="text-xs text-content-muted">{t('platform.apps.aiChannelsHint')}</p>
         <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <Fact
             label={t('platform.apps.brandSummary')}
@@ -524,6 +585,399 @@ function AppsPanel({
         </div>
       </form>
     </Panel>
+  );
+}
+
+/**
+ * The assistant for this company (ADR-0001 D1/D6): what it may do, where that
+ * comes from, and how much it has been used.
+ *
+ * Two modes. `inherit`: the plan's policy applies, and changing the plan
+ * changes the assistant with it. `custom`: the policy here applies, whole, and
+ * a plan change leaves it alone — which is the warning on screen, because it
+ * is the one thing somebody moving a company between plans would not expect.
+ */
+function AiPanel({ tenantId }: { tenantId: string }) {
+  const { t } = useTranslation();
+
+  const ai = useQuery({
+    queryKey: ['platform', 'company', tenantId, 'ai'],
+    queryFn: async () => {
+      const { data } = await platformClient().GET('/v1/platform/companies/{tenantId}/ai', {
+        params: { path: { tenantId } },
+      });
+      return data;
+    },
+  });
+
+  if (ai.isPending) {
+    return (
+      <Panel title={t('platform.ai.title')}>
+        <LoadingState />
+      </Panel>
+    );
+  }
+
+  if (ai.isError || ai.data === undefined) {
+    return (
+      <Panel title={t('platform.ai.title')}>
+        <ErrorState
+          requestId={ai.error instanceof ApiRequestError ? ai.error.requestId : undefined}
+          onRetry={() => void ai.refetch()}
+        />
+      </Panel>
+    );
+  }
+
+  // Keyed by what was read, so a save — or somebody else's — starts a fresh
+  // form from the new version rather than keeping a stale draft.
+  return (
+    <AiPanelForm
+      key={`${String(ai.data.override?.version ?? 0)}:${String(ai.data.planPolicy.version)}:${ai.data.plan}`}
+      tenantId={tenantId}
+      data={ai.data}
+    />
+  );
+}
+
+interface CompanyAi {
+  plan: string;
+  planPolicy: AiPolicyFields & { version: number };
+  override:
+    | (AiPolicyFields & {
+        mode: 'inherit' | 'custom';
+        companyDataToProvider: boolean;
+        version: number;
+        reason: string | null;
+        updatedAt: string;
+      })
+    | null;
+  effective: AiPolicyFields & {
+    source: 'plan' | 'custom';
+    configuredLevel: AiPolicyFields['level'];
+    offReason: 'global_off' | 'plan_off' | 'custom_off' | 'not_served' | null;
+    companyDataToProvider: boolean;
+  };
+  maxLevelServed: AiPolicyFields['level'];
+  globalEnabled: boolean;
+  usage: {
+    day: { used: number; reserved: number };
+    month: { used: number; reserved: number };
+    cost: { spent: number; reserved: number; unknown: number };
+    providerCalls: number;
+    failedCalls: number;
+    dayResetsAt: string;
+    monthResetsAt: string;
+  };
+}
+
+function AiPanelForm({ tenantId, data }: { tenantId: string; data: CompanyAi }) {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language;
+  const queries = useQueryClient();
+  const companyDataId = useId();
+  const { override, effective, usage } = data;
+  const hasCustom = override !== null && override.mode === 'custom';
+
+  const [mode, setMode] = useState<'inherit' | 'custom'>(hasCustom ? 'custom' : 'inherit');
+  const [draft, setDraft] = useState<AiPolicyDraft>(() =>
+    draftFromPolicy(hasCustom ? override : effective),
+  );
+  const [companyData, setCompanyData] = useState(override?.companyDataToProvider ?? false);
+  const [reason, setReason] = useState('');
+  const [problem, setProblem] = useState<string | undefined>(undefined);
+
+  const reset = () => {
+    setMode(hasCustom ? 'custom' : 'inherit');
+    setDraft(draftFromPolicy(hasCustom ? override : effective));
+    setCompanyData(override?.companyDataToProvider ?? false);
+    setReason('');
+    setProblem(undefined);
+  };
+
+  const chooseMode = (next: 'inherit' | 'custom') => {
+    setMode(next);
+    if (next === 'custom' && !hasCustom) {
+      // Start from what runs today, so "custom" begins as "the same, but mine".
+      setDraft(draftFromPolicy(effective));
+    }
+  };
+
+  const save = useMutation({
+    mutationFn: async (body: {
+      mode: 'inherit' | 'custom';
+      policy: AiPolicyFields;
+      companyDataToProvider: boolean;
+      reason: string | null;
+    }) => {
+      await platformClient().PUT('/v1/platform/companies/{tenantId}/ai', {
+        params: { path: { tenantId } },
+        body: { ...body, expectedVersion: override?.version ?? null },
+      });
+    },
+    onSuccess: () => {
+      setProblem(undefined);
+      void queries.invalidateQueries({ queryKey: ['platform', 'company', tenantId, 'ai'] });
+    },
+    onError: (error) => {
+      setProblem(messageForError(error, t));
+    },
+  });
+
+  const submit = () => {
+    save.mutate({
+      mode,
+      policy: mode === 'custom' ? policyFromDraft(draft) : pickPolicyFields(override ?? effective),
+      companyDataToProvider: companyData,
+      reason: reason.trim() === '' ? null : reason.trim(),
+    });
+  };
+
+  // "Reset to plan": the override stays, in inherit mode, with its fields as
+  // they are — so switching back to custom later starts where it left off.
+  const resetToPlan = () => {
+    if (override === null) {
+      return;
+    }
+    save.mutate({
+      mode: 'inherit',
+      policy: pickPolicyFields(override),
+      companyDataToProvider: companyData,
+      reason: reason.trim() === '' ? null : reason.trim(),
+    });
+  };
+
+  const offReason =
+    effective.offReason === null
+      ? null
+      : effective.offReason === 'global_off'
+        ? t('platform.ai.offGlobal')
+        : effective.offReason === 'plan_off'
+          ? t('platform.ai.offPlan')
+          : effective.offReason === 'custom_off'
+            ? t('platform.ai.offCustom')
+            : t('platform.ai.offNotServed');
+
+  const dayLimit =
+    effective.unlimitedMessages || !quotaModeHasDaily(effective.quotaMode)
+      ? null
+      : effective.dailyLimit;
+  const monthLimit =
+    effective.unlimitedMessages || !quotaModeHasMonthly(effective.quotaMode)
+      ? null
+      : effective.monthlyLimit;
+
+  const canSave = mode === 'inherit' || draftIsValid(draft, t);
+
+  return (
+    <Panel title={t('platform.ai.title')} description={t('platform.ai.companyDescription')}>
+      {data.globalEnabled ? null : (
+        <p className="rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
+          {t('platform.ai.globalOff')}
+        </p>
+      )}
+      {effective.configuredLevel !== 'off' &&
+      !aiLevelAtLeast(data.maxLevelServed, effective.configuredLevel) ? (
+        <p className="rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
+          {t('platform.ai.levelAboveServed', {
+            configured: levelLabel(t, effective.configuredLevel),
+            served: levelLabel(t, data.maxLevelServed),
+          })}
+        </p>
+      ) : null}
+
+      <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+        <Fact label={t('platform.ai.plan')} value={planLabel(t, data.plan)} />
+        <div className="flex flex-col gap-0.5">
+          <dt className="text-content-muted">{t('platform.ai.source')}</dt>
+          <dd>
+            <Badge tone={effective.source === 'custom' ? 'warning' : 'muted'}>
+              {effective.source === 'custom'
+                ? t('platform.ai.sourceCustom')
+                : t('platform.ai.sourcePlan')}
+            </Badge>
+          </dd>
+        </div>
+        <Fact label={t('platform.ai.effectiveLevel')} value={levelLabel(t, effective.level)} />
+        <Fact
+          label={t('platform.ai.configuredLevel')}
+          value={levelLabel(t, effective.configuredLevel)}
+        />
+        {offReason === null ? null : <Fact label={t('platform.ai.offReason')} value={offReason} />}
+      </dl>
+
+      <form
+        className="flex flex-col gap-4"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
+        }}
+      >
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-content">{t('platform.ai.mode')}</span>
+          <select
+            value={mode}
+            onChange={(event) => chooseMode(event.target.value as 'inherit' | 'custom')}
+            className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-content"
+          >
+            <option value="inherit">{t('platform.ai.modeInherit')}</option>
+            <option value="custom">{t('platform.ai.modeCustom')}</option>
+          </select>
+        </label>
+
+        {mode === 'custom' ? (
+          <>
+            <p className="rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
+              {t('platform.ai.overrideWarning')}
+            </p>
+            <AiPolicyEditor draft={draft} onChange={setDraft} disabled={save.isPending} />
+          </>
+        ) : (
+          <AiPolicySummary policy={data.planPolicy} />
+        )}
+
+        <div className="flex items-start gap-2 text-sm">
+          <input
+            id={companyDataId}
+            type="checkbox"
+            className="mt-1"
+            aria-describedby={`${companyDataId}-hint`}
+            checked={companyData}
+            onChange={(event) => setCompanyData(event.target.checked)}
+          />
+          <div className="flex flex-col gap-0.5">
+            <label htmlFor={companyDataId} className="font-medium text-content">
+              {t('platform.ai.companyData')}
+            </label>
+            <p id={`${companyDataId}-hint`} className="text-xs text-content-muted">
+              {t('platform.ai.companyDataHint')}
+            </p>
+          </div>
+        </div>
+
+        <Field
+          label={t('platform.ai.reason')}
+          hint={t('platform.ai.reasonHint')}
+          maxLength={500}
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+        />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" busy={save.isPending} disabled={!canSave}>
+            {save.isPending ? t('platform.ai.saving') : t('platform.ai.save')}
+          </Button>
+          {hasCustom ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={save.isPending}
+              onClick={resetToPlan}
+            >
+              {t('platform.ai.resetToPlan')}
+            </Button>
+          ) : null}
+          <Button type="button" variant="secondary" disabled={save.isPending} onClick={reset}>
+            {t('common.cancel')}
+          </Button>
+          {problem === undefined ? null : (
+            <span role="alert" className="text-sm text-danger">
+              {problem}
+            </span>
+          )}
+        </div>
+      </form>
+
+      <div className="flex flex-col gap-3">
+        <h3 className="text-sm font-semibold text-content">{t('platform.ai.usage')}</h3>
+        <UsageBar
+          label={t('platform.ai.today')}
+          used={usage.day.used}
+          reserved={usage.day.reserved}
+          limit={dayLimit}
+          resetsAt={usage.dayResetsAt}
+        />
+        <UsageBar
+          label={t('platform.ai.thisMonth')}
+          used={usage.month.used}
+          reserved={usage.month.reserved}
+          limit={monthLimit}
+          resetsAt={usage.monthResetsAt}
+        />
+        <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+          <Fact label={t('platform.ai.spent')} value={formatMicrousd(usage.cost.spent, locale)} />
+          <Fact
+            label={t('platform.ai.reserved')}
+            value={formatMicrousd(usage.cost.reserved, locale)}
+          />
+          <Fact
+            label={t('platform.ai.unknown')}
+            value={formatMicrousd(usage.cost.unknown, locale)}
+          />
+          <Fact
+            label={t('platform.ai.monthlyCostCap')}
+            value={
+              effective.monthlyCostCapMicrousd === null
+                ? t('platform.ai.noCap')
+                : formatMicrousd(effective.monthlyCostCapMicrousd, locale)
+            }
+          />
+          <Fact label={t('platform.ai.providerCalls')} value={usage.providerCalls} />
+          <Fact label={t('platform.ai.failedCalls')} value={usage.failedCalls} />
+        </dl>
+      </div>
+    </Panel>
+  );
+}
+
+/** Used plus reserved against a limit, or just the count when nothing caps it. */
+function UsageBar({
+  label,
+  used,
+  reserved,
+  limit,
+  resetsAt,
+}: {
+  label: string;
+  used: number;
+  reserved: number;
+  limit: number | null;
+  resetsAt: string;
+}) {
+  const { t, i18n } = useTranslation();
+  const total = used + reserved;
+  const fraction = limit === null || limit <= 0 ? 0 : Math.min(1, total / limit);
+
+  return (
+    <div className="flex flex-col gap-1 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-medium text-content">{label}</span>
+        <span className="text-content-muted">
+          {limit === null
+            ? t('platform.ai.usedNoLimit', { used: total })
+            : t('platform.ai.usedOf', { used: total, limit })}
+          {reserved > 0 ? ` ${t('platform.ai.reservedNote', { reserved })}` : ''}
+          {' · '}
+          {t('platform.ai.resetsAt', { when: formatWhen(resetsAt, i18n.language) })}
+        </span>
+      </div>
+      {limit === null ? null : (
+        <div
+          role="progressbar"
+          aria-label={label}
+          aria-valuemin={0}
+          aria-valuemax={limit}
+          aria-valuenow={Math.min(total, limit)}
+          className="h-2 w-full overflow-hidden rounded-full bg-surface-muted"
+        >
+          <div
+            className={`h-full rounded-full ${fraction >= 1 ? 'bg-danger' : fraction >= 0.8 ? 'bg-warning' : 'bg-accent'}`}
+            style={{ width: `${String(Math.round(fraction * 100))}%` }}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 

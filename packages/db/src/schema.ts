@@ -201,6 +201,8 @@ export interface TenantUsersTable {
   /** The company's own role on top of `role` (0041). */
   custom_role_id: Generated<string | null>;
   status: Generated<MembershipStatus>;
+  /** Whether this member may use the assistant when the company has it (0044; ADR-0001). */
+  ai_enabled: Generated<boolean>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
   deleted_at: Date | null;
@@ -632,6 +634,8 @@ export type ThumbnailStatus = (typeof THUMBNAIL_STATUSES)[number];
 
 /** bigint columns: the driver returns them as text. */
 type BigIntColumn = ColumnType<string, number, number>;
+/** A bigint with a database default: a counter that starts at zero (0044). */
+type GeneratedBigInt = ColumnType<string, number | undefined, number>;
 
 export interface TenantStorageTable {
   tenant_id: string;
@@ -866,6 +870,10 @@ export interface TenantSettingsTable {
   work_day_ends: Generated<number>;
   /** ISO weekday numbers; 1 is Monday. Empty means the company is closed. */
   working_days: Generated<number[]>;
+  /** Which of the company's apps show the assistant (0044; ADR-0001). Narrow the platform grant only. */
+  ai_web_enabled: Generated<boolean>;
+  ai_desktop_enabled: Generated<boolean>;
+  ai_mobile_enabled: Generated<boolean>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
@@ -2644,6 +2652,217 @@ export interface ErpWorkOrderPurchasesTable {
   cancelled_at: Date | null;
 }
 
+// ---------------------------------------------------------------------------
+// The AI assistant (0044; docs/ai, ADR-0001)
+// ---------------------------------------------------------------------------
+
+export type AiLevel = 'off' | 'help' | 'insights' | 'agent';
+export type AiQuotaMode = 'daily' | 'monthly' | 'daily_and_monthly';
+export type AiPolicyMode = 'inherit' | 'custom';
+export type AiUsageSubjectType = 'tenant' | 'user';
+export type AiPeriodType = 'day' | 'month';
+export type AiReservationState = 'reserved' | 'completed' | 'released' | 'expired' | 'uncertain';
+export type AiMessageRole = 'user' | 'assistant' | 'tool_summary';
+export type AiCallPurpose = 'help' | 'insights' | 'agent' | 'other';
+export type AiCallStatus = 'success' | 'failed' | 'timeout' | 'unknown';
+export type AiProposalState =
+  'pending' | 'confirmed' | 'executing' | 'completed' | 'rejected' | 'expired' | 'failed';
+export type AiHelpArticleStatus = 'published' | 'disabled';
+
+/** The policy columns a plan and a company override share. Money is USD micros. */
+interface AiPolicyColumns {
+  level: Generated<AiLevel>;
+  quota_mode: AiQuotaMode | null;
+  daily_limit: number | null;
+  monthly_limit: number | null;
+  per_user_daily_limit: number | null;
+  per_user_monthly_limit: number | null;
+  unlimited_messages: Generated<boolean>;
+  monthly_cost_cap_microusd: BigIntColumn | null;
+  max_input_tokens: Generated<number>;
+  max_output_tokens: Generated<number>;
+  max_tool_steps: Generated<number>;
+  max_provider_calls: Generated<number>;
+  allow_history: Generated<boolean>;
+  retention_days: Generated<number>;
+  version: Generated<number>;
+  updated_at: Generated<Date>;
+  /** A platform user's id, kept as a plain value (no foreign key). */
+  updated_by: string | null;
+}
+
+/** What each plan allows, off until an admin decides. Platform-only. */
+export interface AiPlanPoliciesTable extends AiPolicyColumns {
+  plan: TenantPlan;
+}
+
+/** A company's override, written only by the platform. */
+export interface AiTenantPoliciesTable extends AiPolicyColumns {
+  tenant_id: string;
+  mode: Generated<AiPolicyMode>;
+  /** Whether the company's own records may go to the provider for L2 and L3. */
+  company_data_to_provider: Generated<boolean>;
+  reason: string | null;
+}
+
+export interface AiUsagePeriodsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  subject_type: AiUsageSubjectType;
+  subject_id: string;
+  period_type: AiPeriodType;
+  /** `YYYY-MM-DD`, the first UTC day of the period; read as a Date by the driver. */
+  period_start_utc: ColumnType<string | Date, string, string>;
+  used_messages: Generated<number>;
+  reserved_messages: Generated<number>;
+  version: Generated<number>;
+  updated_at: Generated<Date>;
+}
+
+export interface AiConversationsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  created_by_user_id: string;
+  title: string | null;
+  locale: Generated<string>;
+  level_at_creation: AiLevel;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+export interface AiMessageReservationsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  user_id: string;
+  conversation_id: string;
+  client_request_id: string;
+  request_fingerprint: string;
+  /** `YYYY-MM-DD`; read as a Date by the driver, so normalise before comparing. */
+  period_day: ColumnType<string | Date, string, string>;
+  period_month: ColumnType<string | Date, string, string>;
+  state: Generated<AiReservationState>;
+  reserved_message_units: Generated<number>;
+  reserved_cost_microusd: GeneratedBigInt;
+  settled_cost_microusd: BigIntColumn | null;
+  provider_attempts: Generated<number>;
+  last_error_code: string | null;
+  response_message_id: string | null;
+  created_at: Generated<Date>;
+  expires_at: Date;
+  settled_at: Date | null;
+}
+
+export interface AiMessagesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  conversation_id: string;
+  user_id: string | null;
+  role: AiMessageRole;
+  content: string;
+  /** JSON arrays, written as text so the driver does not read them as Postgres arrays. */
+  source_refs: ColumnType<unknown[], string | undefined, string>;
+  tool_summaries: ColumnType<unknown[], string | undefined, string>;
+  action_proposal_id: string | null;
+  usage_reservation_id: string | null;
+  redacted: Generated<boolean>;
+  created_at: Generated<Date>;
+}
+
+export interface AiProviderCallsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  reservation_id: string;
+  provider: string;
+  model: string;
+  attempt_number: Generated<number>;
+  purpose: AiCallPurpose;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cached_tokens: number | null;
+  reasoning_tokens: number | null;
+  tokens_estimated: Generated<boolean>;
+  cost_microusd: GeneratedBigInt;
+  price_version: string;
+  status: AiCallStatus;
+  error_code: string | null;
+  started_at: Date;
+  ended_at: Date | null;
+}
+
+export interface AiCostPeriodsTable {
+  tenant_id: string;
+  period_start_utc: ColumnType<string | Date, string, string>;
+  reserved_microusd: GeneratedBigInt;
+  spent_microusd: GeneratedBigInt;
+  unknown_microusd: GeneratedBigInt;
+  updated_at: Generated<Date>;
+}
+
+/** The deployment's own monthly budget. Platform-only. */
+export interface AiPlatformCostPeriodsTable {
+  period_start_utc: ColumnType<string | Date, string, string>;
+  reserved_microusd: GeneratedBigInt;
+  spent_microusd: GeneratedBigInt;
+  unknown_microusd: GeneratedBigInt;
+  updated_at: Generated<Date>;
+}
+
+export interface AiActionProposalsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  user_id: string;
+  conversation_id: string;
+  tool_key: string;
+  typed_payload: Jsonb<Record<string, unknown>>;
+  payload_schema_version: Generated<number>;
+  display_summary: Jsonb<Record<string, unknown>>;
+  request_digest: string;
+  resource_versions: Jsonb<Record<string, unknown>>;
+  state: Generated<AiProposalState>;
+  expires_at: Date;
+  confirmed_at: Date | null;
+  result_resource_type: string | null;
+  result_resource_id: string | null;
+  result_summary: Jsonb<Record<string, unknown>> | null;
+  execution_idempotency_key: string | null;
+  error_code: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface AiActionEventsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  proposal_id: string;
+  actor_user_id: string | null;
+  action: string;
+  code: string | null;
+  request_id: string | null;
+  details: Jsonb<Record<string, unknown>>;
+  created_at: Generated<Date>;
+}
+
+/** The curated help the assistant cites, in both languages. Platform-only. */
+export interface AiHelpArticlesTable {
+  article_key: string;
+  locale: string;
+  module: string;
+  title: string;
+  summary: string;
+  body: string;
+  keywords: Generated<string[]>;
+  app_route: string | null;
+  help_url: string | null;
+  feature: string | null;
+  min_permission: string | null;
+  source_commit: string | null;
+  content_hash: string;
+  status: Generated<AiHelpArticleStatus>;
+  published_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
 export interface Database {
   tenants: TenantsTable;
   platform_users: PlatformUsersTable;
@@ -2676,6 +2895,9 @@ export interface Database {
   files: FilesTable;
   tenant_storage_usage: TenantStorageUsageTable;
   plan_allowances: PlanAllowancesTable;
+  ai_plan_policies: AiPlanPoliciesTable;
+  ai_platform_cost_periods: AiPlatformCostPeriodsTable;
+  ai_help_articles: AiHelpArticlesTable;
   tenant_storage_samples: TenantStorageSamplesTable;
   storage_reconciliations: StorageReconciliationsTable;
   scheduled_task_runs: ScheduledTaskRunsTable;
@@ -2784,6 +3006,15 @@ export interface Database {
   signup_requests: SignupRequestsTable;
   signup_events: SignupEventsTable;
   tenant_settings: TenantSettingsTable;
+  ai_tenant_policies: AiTenantPoliciesTable;
+  ai_usage_periods: AiUsagePeriodsTable;
+  ai_conversations: AiConversationsTable;
+  ai_message_reservations: AiMessageReservationsTable;
+  ai_messages: AiMessagesTable;
+  ai_provider_calls: AiProviderCallsTable;
+  ai_cost_periods: AiCostPeriodsTable;
+  ai_action_proposals: AiActionProposalsTable;
+  ai_action_events: AiActionEventsTable;
   auth_memberships: AuthMembershipsView;
 }
 
@@ -2848,6 +3079,12 @@ export const PLATFORM_TABLES = [
   // cannot hold either, being tenant-scoped. The runtime role reaches neither.
   'signup_requests',
   'signup_events',
+  // The assistant (0044; ADR-0001). What a plan allows belongs to the plan; the
+  // help it cites belongs to the product; the deployment's own provider budget
+  // belongs to nobody's company. The runtime role reaches none of them.
+  'ai_plan_policies',
+  'ai_platform_cost_periods',
+  'ai_help_articles',
 ] as const;
 
 /**
@@ -2946,6 +3183,15 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   storage_reconciliations: true,
   subscriptions: true,
   tenant_settings: true,
+  ai_tenant_policies: true,
+  ai_usage_periods: true,
+  ai_conversations: true,
+  ai_message_reservations: true,
+  ai_messages: true,
+  ai_provider_calls: true,
+  ai_cost_periods: true,
+  ai_action_proposals: true,
+  ai_action_events: true,
   audit_log: true,
   sessions: true,
   refresh_tokens: true,

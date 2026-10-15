@@ -43,6 +43,10 @@ const settingsSchema = z.object({
   workDayEnds: z.number().int(),
   /** ISO weekday numbers; 1 is Monday. Empty means the company is closed. */
   workingDays: z.array(z.number().int().min(1).max(7)),
+  /** Which of the company's apps show the assistant (ADR-0001). Each only narrows what the plan grants. */
+  aiWebEnabled: z.boolean(),
+  aiDesktopEnabled: z.boolean(),
+  aiMobileEnabled: z.boolean(),
 });
 
 export const getSettingsRoute = defineRoute({
@@ -101,6 +105,9 @@ export const updateSettingsRoute = defineRoute({
     workDayStarts: z.number().int().min(0).max(1440).optional(),
     workDayEnds: z.number().int().min(0).max(1440).optional(),
     workingDays: z.array(z.number().int().min(1).max(7)).max(7).optional(),
+    aiWebEnabled: z.boolean().optional(),
+    aiDesktopEnabled: z.boolean().optional(),
+    aiMobileEnabled: z.boolean().optional(),
   }),
   responses: {
     200: { description: 'The settings, as they now are.', schema: settingsSchema },
@@ -276,6 +283,9 @@ function toBody(settings: {
   workDayStarts: number;
   workDayEnds: number;
   workingDays: number[];
+  aiWebEnabled: boolean;
+  aiDesktopEnabled: boolean;
+  aiMobileEnabled: boolean;
 }) {
   return {
     logoMediaId: settings.logoMediaId,
@@ -291,6 +301,9 @@ function toBody(settings: {
     workDayStarts: settings.workDayStarts,
     workDayEnds: settings.workDayEnds,
     workingDays: settings.workingDays,
+    aiWebEnabled: settings.aiWebEnabled,
+    aiDesktopEnabled: settings.aiDesktopEnabled,
+    aiMobileEnabled: settings.aiMobileEnabled,
   };
 }
 

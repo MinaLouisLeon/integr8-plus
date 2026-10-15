@@ -82,6 +82,10 @@ import {
 } from './repositories/platform-insights.js';
 import { BillingRepository, TenantSubscriptionReader } from './repositories/billing.js';
 import { DemoDataRepository } from './repositories/demo-data.js';
+import { AiUsageRepository } from './repositories/ai-usage.js';
+import { AiConversationsRepository } from './repositories/ai-conversations.js';
+import { AiActionsRepository } from './repositories/ai-actions.js';
+import { AiPlatformRepository } from './repositories/ai-platform.js';
 import { SignupRepository } from './repositories/signup.js';
 import { TenantSettingsRepository, TenantSettingsWriter } from './repositories/tenant-settings.js';
 import {
@@ -187,6 +191,12 @@ export interface TenantTransaction {
   readonly settings: TenantSettingsRepository;
   /** Sample data, labelled so it can be taken away in one action (P18). */
   readonly demo: DemoDataRepository;
+  /** Admitting and charging assistant messages (docs/ai; ADR-0001). */
+  readonly aiUsage: AiUsageRepository;
+  /** A member's private chats with the assistant. */
+  readonly aiConversations: AiConversationsRepository;
+  /** Actions the assistant prepared, awaiting the member's confirmation. */
+  readonly aiActions: AiActionsRepository;
 }
 
 /**
@@ -265,6 +275,8 @@ export interface PlatformDataSource {
   readonly tenantSettings: TenantSettingsWriter;
   /** Which company a quote's customer link belongs to (CRM/ERP plan, S1; ADR-0006). */
   readonly publicQuotes: PublicQuotesLookup;
+  /** The assistant's plan policies, company overrides, help library, budget and usage report (docs/ai; ADR-0001). */
+  readonly ai: AiPlatformRepository;
 }
 
 /**
@@ -452,6 +464,9 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     subscription: new TenantSubscriptionReader(scope.trx, scope.tenantId),
     settings: new TenantSettingsRepository(scope.trx, scope.tenantId),
     demo: new DemoDataRepository(scope.trx, scope.tenantId),
+    aiUsage: new AiUsageRepository(scope),
+    aiConversations: new AiConversationsRepository(scope),
+    aiActions: new AiActionsRepository(scope),
   };
 }
 
@@ -523,6 +538,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     signup: new SignupRepository(db),
     tenantSettings: new TenantSettingsWriter(db),
     publicQuotes: new PublicQuotesLookup(db),
+    ai: new AiPlatformRepository(db),
     jobs: {
       claim: (options) => claimJobs(db, options),
       complete: (jobId, options) => completeJob(db, jobId, options),

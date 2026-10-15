@@ -8,7 +8,7 @@ import { useContextMenu } from '~/components/context-menu';
 import { ImpersonationBanner } from '~/components/impersonation-banner';
 import { ChromeIconGlyph, NavIconGlyph } from '~/components/nav-icon';
 import { useShellChromeOverride } from '~/components/shell-chrome';
-import { type Me, useMe } from '~/features/forms/api';
+import { assistantShown, type Me, useAiCapabilities, useMe } from '~/features/forms/api';
 import { desktopNavigation, routeChrome, type DesktopNavGroup } from '~/lib/navigation';
 import { readStorage, writeStorage } from '~/lib/preferences';
 import { session } from '~/lib/session';
@@ -41,6 +41,9 @@ export function AppFrame({
   const { t } = useTranslation();
   const location = useLocation();
   const me = useMe();
+  // The assistant's row is the server's answer to "may this seat see it in
+  // this app", and hidden until that answer lands (docs/ai; ADR-0001).
+  const capabilities = useAiCapabilities();
   const [collapsed, setCollapsed] = useState(() => readStorage(SIDEBAR_KEY) === 'collapsed');
   // The drawer is open for the route it was opened on: going anywhere closes
   // it, because the destination is what was wanted, and no effect is needed
@@ -77,7 +80,9 @@ export function AppFrame({
   }, [drawerOpen]);
 
   const groups =
-    me.data === undefined ? [] : desktopNavigation(me.data.permissions, me.data.features);
+    me.data === undefined
+      ? []
+      : desktopNavigation(me.data.permissions, me.data.features, assistantShown(capabilities.data));
   const chrome = routeChrome(location.pathname);
 
   return (

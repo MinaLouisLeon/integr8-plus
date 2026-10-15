@@ -1,9 +1,20 @@
 'use client';
 
 import { ApiRequestError } from '@integr8/api-client';
+import { aiLevelAtLeast } from '@integr8/core';
 import { formatCurrency, formatPercent, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
+import {
+  AiPolicyEditor,
+  AiPolicySummary,
+  draftFromPolicy,
+  draftIsValid,
+  levelLabel,
+  policyFromDraft,
+  type AiPolicyDraft,
+  type AiPolicyFields,
+} from '~/components/ai-policy-editor';
 import { Badge, Panel } from '~/components/platform-bits';
 import { Button, ErrorState, Field, LoadingState } from '~/components/ui';
 import { messageForError } from '~/lib/errors';
@@ -36,7 +47,17 @@ export default function PlansPage() {
     },
   });
 
-  if (plans.isPending) {
+  // What each plan allows of the assistant (ADR-0001 D1): its own request,
+  // because it is its own table and its own version number.
+  const aiPlans = useQuery({
+    queryKey: ['platform', 'ai', 'plans'],
+    queryFn: async () => {
+      const { data } = await platformClient().GET('/v1/platform/ai/plans');
+      return data;
+    },
+  });
+
+  if (plans.isPending || aiPlans.isPending) {
     return <LoadingState />;
   }
 
@@ -49,6 +70,17 @@ export default function PlansPage() {
     );
   }
 
+  if (aiPlans.isError || aiPlans.data === undefined) {
+    return (
+      <ErrorState
+        requestId={aiPlans.error instanceof ApiRequestError ? aiPlans.error.requestId : undefined}
+        onRetry={() => void aiPlans.refetch()}
+      />
+    );
+  }
+
+  const ai = aiPlans.data;
+
   return (
     <main className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
@@ -56,9 +88,30 @@ export default function PlansPage() {
         <p className="text-sm text-content-muted">{t('platform.plans.subtitle')}</p>
       </header>
 
-      {plans.data.map((plan) => (
-        <PlanRow key={plan.plan} plan={plan} />
-      ))}
+      <div
+        className={`flex flex-col gap-1 rounded-md px-3 py-2 text-sm ${
+          ai.globalEnabled ? 'bg-surface-muted text-content' : 'bg-warning-subtle text-warning'
+        }`}
+      >
+        <p>{ai.globalEnabled ? t('platform.ai.globalOn') : t('platform.ai.globalOff')}</p>
+        <p>{t('platform.ai.maxLevelServed', { level: levelLabel(t, ai.maxLevelServed) })}</p>
+      </div>
+
+      {plans.data.map((plan) => {
+        const aiPolicy = ai.items.find((item) => item.plan === plan.plan);
+        return (
+          <div key={plan.plan} className="flex flex-col gap-3">
+            <PlanRow plan={plan} />
+            {aiPolicy === undefined ? null : (
+              <AiPlanRow
+                key={`${aiPolicy.plan}:${String(aiPolicy.version)}`}
+                policy={aiPolicy}
+                maxLevelServed={ai.maxLevelServed}
+              />
+            )}
+          </div>
+        );
+      })}
     </main>
   );
 }
@@ -300,6 +353,118 @@ function PlanRow({ plan }: { plan: Allowance }) {
         <div className="flex gap-2">
           <Button type="submit" busy={save.isPending}>
             {t('platform.plans.save')}
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setEditing(false)}>
+            {t('common.cancel')}
+          </Button>
+        </div>
+      </form>
+    </Panel>
+  );
+}
+
+interface AiPlanPolicy extends AiPolicyFields {
+  plan: Plan;
+  version: number;
+  updatedAt: string;
+}
+
+/**
+ * What a plan allows of the assistant (ADR-0001 D1).
+ *
+ * Saved whole with the version that was read: two people editing the same
+ * plan get a 409 for the second, not a silent merge of half of each. The row
+ * is keyed by version above, so a save that succeeds re-reads into a fresh
+ * form rather than keeping stale state.
+ */
+function AiPlanRow({
+  policy,
+  maxLevelServed,
+}: {
+  policy: AiPlanPolicy;
+  maxLevelServed: AiPolicyFields['level'];
+}) {
+  const { t } = useTranslation();
+  const queries = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<AiPolicyDraft>(() => draftFromPolicy(policy));
+  const [reason, setReason] = useState('');
+
+  const save = useMutation({
+    mutationFn: async () => {
+      await platformClient().PUT('/v1/platform/ai/plans/{plan}', {
+        params: { path: { plan: policy.plan } },
+        body: {
+          policy: policyFromDraft(draft),
+          expectedVersion: policy.version,
+          reason: reason.trim() === '' ? null : reason.trim(),
+        },
+      });
+    },
+    onSuccess: () => {
+      setEditing(false);
+      setReason('');
+      void queries.invalidateQueries({ queryKey: ['platform', 'ai', 'plans'] });
+    },
+  });
+
+  const title = t('platform.ai.planTitle', { plan: planLabel(t, policy.plan) });
+  const aboveServed =
+    !aiLevelAtLeast(maxLevelServed, policy.level) && policy.level !== 'off' ? (
+      <p className="rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
+        {t('platform.ai.levelAboveServed', {
+          configured: levelLabel(t, policy.level),
+          served: levelLabel(t, maxLevelServed),
+        })}
+      </p>
+    ) : null;
+
+  if (!editing) {
+    return (
+      <Panel
+        title={title}
+        description={t('platform.ai.planDescription')}
+        actions={
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setDraft(draftFromPolicy(policy));
+              setEditing(true);
+            }}
+          >
+            {t('platform.ai.change')}
+          </Button>
+        }
+      >
+        {aboveServed}
+        <AiPolicySummary policy={policy} />
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel title={title} description={t('platform.ai.planDescription')}>
+      <form
+        noValidate
+        className="flex flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          save.mutate();
+        }}
+      >
+        {aboveServed}
+        <AiPolicyEditor draft={draft} onChange={setDraft} disabled={save.isPending} />
+        <Field
+          label={t('platform.ai.reason')}
+          hint={t('platform.ai.reasonHint')}
+          maxLength={500}
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          {...(save.isError ? { error: messageForError(save.error, t) } : {})}
+        />
+        <div className="flex gap-2">
+          <Button type="submit" busy={save.isPending} disabled={!draftIsValid(draft, t)}>
+            {t('platform.ai.save')}
           </Button>
           <Button type="button" variant="secondary" onClick={() => setEditing(false)}>
             {t('common.cancel')}

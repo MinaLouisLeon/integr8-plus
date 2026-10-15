@@ -224,6 +224,74 @@ export const apiConfigSchema = z.object({
    */
   BUILD_TOKEN: z.string().min(32).optional(),
 
+  // -------------------------------------------------------------------------
+  // The AI assistant (docs/ai; ADR-0001)
+  // -------------------------------------------------------------------------
+
+  /**
+   * The kill switch. Off means no company gets the assistant whatever its
+   * plan or override says; every `/v1/ai` route answers 403 `ai_disabled`.
+   * Off by default everywhere, production included, until an operator turns
+   * it on deliberately.
+   */
+  AI_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  /**
+   * Who answers. `recording` is a deterministic fake for development and
+   * tests; `groq`, `gemini` and `anthropic` are live, each needing its key.
+   * Production refuses `recording` only when AI_ENABLED is true: an assistant
+   * nobody can reach needs no provider.
+   */
+  AI_PROVIDER: z.enum(['recording', 'groq', 'gemini', 'anthropic']).default('recording'),
+  AI_GROQ_API_KEY: z.string().optional(),
+  AI_GEMINI_API_KEY: z.string().optional(),
+  AI_ANTHROPIC_API_KEY: z.string().optional(),
+  /** Overrides each provider's default endpoint, for a proxy or a regional host. */
+  AI_GROQ_BASE_URL: z.url().default('https://api.groq.com/openai/v1'),
+  AI_GEMINI_BASE_URL: z.url().default('https://generativelanguage.googleapis.com/v1beta'),
+  AI_ANTHROPIC_BASE_URL: z.url().default('https://api.anthropic.com/v1'),
+  /**
+   * The model ids, one per level, as the provider names them today. No
+   * defaults for a live provider: model names change without a deployment,
+   * and a guessed one is a 404 at the first question.
+   */
+  AI_MODEL_HELP: z.string().min(1).optional(),
+  AI_MODEL_INSIGHTS: z.string().min(1).optional(),
+  AI_MODEL_AGENT: z.string().min(1).optional(),
+  /**
+   * Which data classes each provider is approved for, beyond public help:
+   * `groq:company_operational,anthropic:company_operational;company_financial`.
+   * A company's own records go to a provider only when the platform has
+   * approved the company for it *and* the provider is listed here.
+   */
+  AI_PROVIDER_APPROVED_DATA_CLASSES: z.string().default(''),
+  /**
+   * Prices per million tokens in USD micros, as a JSON list:
+   * `[{"provider":"groq","model":"…","inputPerMillion":590000,"outputPerMillion":790000}]`.
+   * A model not listed uses the defaults below and is marked estimated.
+   */
+  AI_MODEL_PRICES: z.string().default('[]'),
+  AI_DEFAULT_PRICE_INPUT_PER_MILLION_MICROUSD: positiveInt(3_000_000),
+  AI_DEFAULT_PRICE_OUTPUT_PER_MILLION_MICROUSD: positiveInt(15_000_000),
+  AI_REQUEST_TIMEOUT_MS: positiveInt(20_000),
+  /** Ceilings no plan or override may exceed, whatever an admin types. */
+  AI_MAX_INPUT_TOKENS: positiveInt(8_000),
+  AI_MAX_OUTPUT_TOKENS: positiveInt(1_500),
+  AI_MAX_PROVIDER_CALLS: positiveInt(6),
+  AI_MAX_TOOL_STEPS: positiveInt(6),
+  AI_MAX_CONCURRENT_PER_TENANT: positiveInt(4),
+  AI_MAX_CONCURRENT_PER_USER: positiveInt(2),
+  /** The whole deployment's monthly provider budget, in USD micros. 5,000,000 is five dollars. */
+  AI_GLOBAL_MONTHLY_BUDGET_MICROUSD: positiveInt(5_000_000),
+  /** How long an admitted request may hold its slot before the reconciler looks at it. */
+  AI_RESERVATION_TTL_SECONDS: positiveInt(120),
+  /** How long a prepared action waits for its confirmation. */
+  AI_ACTION_TTL_SECONDS: positiveInt(300),
+  /** How many previous turns go to the model with each question. */
+  AI_HISTORY_TURNS: positiveInt(6),
+
   /**
    * Encrypts employees' national ID, social insurance and bank account
    * numbers at rest (ADR-0010): 32 bytes, base64. Unset means those fields
@@ -373,7 +441,11 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     );
   }
   if (result.success) {
-    const billing = [...billingProblems(result.data), ...emailProblems(result.data)];
+    const billing = [
+      ...billingProblems(result.data),
+      ...emailProblems(result.data),
+      ...aiProblems(result.data),
+    ];
     if (billing.length > 0) {
       throw new Error(
         [
@@ -435,6 +507,34 @@ export function emailProblems(config: ApiConfig): string[] {
     : [`EMAIL_SENDER is resend but ${missing.join(' and ')} not set.`];
 }
 
+/**
+ * What is missing for the configured assistant provider, if anything (ADR-0001).
+ *
+ * Checked at load, like billing and email: the first live question is a
+ * customer's, and finding out then means finding out from them. A deployment
+ * with AI_ENABLED off is not checked, because nothing would call the provider.
+ */
+export function aiProblems(config: ApiConfig): string[] {
+  if (!config.AI_ENABLED || config.AI_PROVIDER === 'recording') {
+    return [];
+  }
+  const problems: string[] = [];
+  const key = {
+    groq: config.AI_GROQ_API_KEY,
+    gemini: config.AI_GEMINI_API_KEY,
+    anthropic: config.AI_ANTHROPIC_API_KEY,
+  }[config.AI_PROVIDER];
+  if (key === undefined || key === '') {
+    problems.push(
+      `AI_PROVIDER is ${config.AI_PROVIDER} but AI_${config.AI_PROVIDER.toUpperCase()}_API_KEY is not set.`,
+    );
+  }
+  if (config.AI_MODEL_HELP === undefined) {
+    problems.push(`AI_PROVIDER is ${config.AI_PROVIDER} but AI_MODEL_HELP is not set.`);
+  }
+  return problems;
+}
+
 export function billingProblems(config: ApiConfig): string[] {
   if (config.BILLING_PROVIDER !== 'stripe') {
     return [];
@@ -478,6 +578,11 @@ export function assertProductionReady(config: ApiConfig): void {
   if (config.EMAIL_SENDER === 'recording') {
     problems.push(
       'EMAIL_SENDER is recording: no invitation, signup confirmation or payment warning would leave the building.',
+    );
+  }
+  if (config.AI_ENABLED && config.AI_PROVIDER === 'recording') {
+    problems.push(
+      'AI_PROVIDER is recording while AI_ENABLED is true: every answer would be a canned one.',
     );
   }
   if (config.WEB_APP_URL === undefined) {

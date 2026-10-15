@@ -156,6 +156,11 @@ const NAV_GLYPHS: Record<NavIcon, Glyph> = {
     'M21 17v2a1 1 0 0 1-1 1h-2M6 20H4a1 1 0 0 1-1-1v-2',
     'M7 8v8M10 8v8M13 8v8M17 8v8',
   ],
+  sparkles: [
+    'M10 4l1.8 4.7L16.5 10.5l-4.7 1.8L10 17l-1.8-4.7L3.5 10.5l4.7-1.8z',
+    'M18 3v4M16 5h4',
+    'M19 15v4M17 17h4',
+  ],
 };
 
 export type ChromeIcon =

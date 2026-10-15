@@ -123,6 +123,18 @@ export interface OperationsConfig {
     payRun: (id: string) => string;
     payrollRules: string;
     myPayslips: string;
+    /** The Integr8 Plus assistant (docs/ai; ADR-0001). */
+    assistant: string;
+    /**
+     * Where the assistant's citations may point when the host app has the
+     * page: people, company settings, billing, submissions and forms are the
+     * app's own, so each is optional and a citation without one shows no link.
+     */
+    people?: string;
+    companySettings?: string;
+    billing?: string;
+    submissions?: string;
+    forms?: string;
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
@@ -399,6 +411,19 @@ export type PayRunSummary = PayRunPage['items'][number];
 export type PayRunDetail = Json<'/v1/payroll/runs/{runId}', 'get', 200>;
 export type PayLine = PayRunDetail['lines'][number];
 export type Payslip = Json<'/v1/hr/me/payslips', 'get', 200>['items'][number];
+/** The assistant (docs/ai; ADR-0001): what it may do, a conversation, its messages and a prepared action. */
+export type AiCapabilities = Json<'/v1/ai/capabilities', 'get', 200>;
+export type AiLevel = AiCapabilities['level'];
+export type AiBlockedBy = NonNullable<AiCapabilities['blockedBy']>;
+export type AiUsage = AiCapabilities['usage'];
+export type AiUsageAxis = NonNullable<AiUsage['daily']>;
+export type AiConversation = Json<'/v1/ai/conversations', 'get', 200>['items'][number];
+export type AiConversationDetail = Json<'/v1/ai/conversations/{conversationId}', 'get', 200>;
+export type AiMessage = AiConversationDetail['messages'][number];
+export type AiSource = AiMessage['sources'][number];
+export type AiProposal = NonNullable<AiMessage['actionProposal']>;
+export type AiProposalState = AiProposal['state'];
+export type AiAnswer = Json<'/v1/ai/conversations/{conversationId}/messages', 'post', 200>;
 
 export const keys = {
   me: ['me'] as const,
@@ -492,6 +517,11 @@ export const keys = {
   payTerms: (employeeId: string) => ['payroll', 'terms', employeeId] as const,
   runPayslips: (id: string) => ['payroll', 'payslips', id] as const,
   myPayslips: ['payroll', 'mine'] as const,
+  // The assistant. Capabilities carry the usage meter, so an answer updates
+  // them in place rather than asking again.
+  aiCapabilities: ['ai', 'capabilities'] as const,
+  aiConversations: ['ai', 'conversations'] as const,
+  aiConversation: (id: string) => ['ai', 'conversation', id] as const,
   /** The seat's own recent jobs, for saying which job an expense was for. */
   myRecentJobs: ['work-orders', 'mine-recent'] as const,
   forms: ['forms'] as const,

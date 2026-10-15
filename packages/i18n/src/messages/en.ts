@@ -361,6 +361,12 @@ export const en = {
       empty: 'Nobody else has joined yet.',
       manage: 'People',
       manageSubtitle: 'Who is in this company, and what they may do.',
+      ai: {
+        label: 'Assistant',
+        toggle: 'Assistant for {{name}}',
+        on: 'Assistant on',
+        off: 'Assistant off',
+      },
       invite: 'Invite somebody',
       inviteEmail: 'Their email address',
       inviteRole: 'Their role',
@@ -488,6 +494,22 @@ export const en = {
       closed: 'Closed — no working days selected.',
       save: 'Save settings',
       saved: 'Saved.',
+      ai: {
+        title: 'Assistant',
+        intro:
+          'Integr8 decides whether the assistant is included in your subscription. These switches only choose which apps show it.',
+        web: 'Show the assistant in the web app',
+        desktop: 'Show the assistant in the desktop app',
+        mobile: 'Show the assistant in the mobile app',
+        // The desktop app's own screen for these switches, since its menu has
+        // no company settings or people pages.
+        manage: 'Assistant settings',
+        manageHint: 'Which apps show the assistant, and who may use it.',
+        members: 'Who may use it',
+        membersHint:
+          'Each person has their own switch. Somebody switched off sees no assistant in any app.',
+        failed: 'Could not save. Try again.',
+      },
       days: {
         mon: 'Mon',
         tue: 'Tue',
@@ -5899,6 +5921,73 @@ export const en = {
       unknown:
         'Something went wrong opening it. Nothing has been deleted. Restart the app, and contact support if it happens again.',
     },
+    // The assistant (docs/ai §10.4): online only, and never a word about which
+    // model answers. `off.*` is keyed by which switch closed it.
+    ai: {
+      title: 'Assistant',
+      intro:
+        'Ask about Integr8, or about your company’s work. Only you can read your conversations.',
+      offline:
+        'Connect to the internet to use the Integr8 assistant. Your assigned work and forms remain available offline.',
+      level: {
+        help: 'Help',
+        insights: 'Insights',
+        agent: 'Actions',
+      },
+      off: {
+        title: 'The assistant is not available',
+        global_off: 'The assistant is switched off for everyone at the moment.',
+        plan_off: 'The assistant is not included in your company’s subscription.',
+        custom_off: 'The assistant is switched off for your company.',
+        not_served: 'The assistant is not available to your company at the moment.',
+        channel_off: 'Your company has not switched the assistant on for the phone app.',
+        member_off:
+          'The assistant is switched off for your account. Ask your company administrator.',
+      },
+      conversations: 'Conversations',
+      newConversation: 'New conversation',
+      untitled: 'Untitled conversation',
+      empty: 'No conversations yet',
+      emptyBody: 'Start one and ask a question.',
+      delete: 'Delete',
+      deleteTitle: 'Delete this conversation?',
+      deleteBody: 'Its messages are removed from everywhere. Only you could read them.',
+      keep: 'Keep',
+      usage: {
+        companyDaily: 'Company today: {{remaining}} of {{limit}} left',
+        companyMonthly: 'Company this month: {{remaining}} of {{limit}} left',
+        youDaily: 'You today: {{remaining}} of {{limit}} left',
+        youMonthly: 'You this month: {{remaining}} of {{limit}} left',
+        unlimited: 'No limit on messages',
+      },
+      exhausted: 'No messages left for now. More from {{when}}.',
+      quotaExceeded: 'The assistant’s messages are used up. More from {{when}}.',
+      threadEmpty: 'Ask your first question.',
+      question: 'Your question',
+      placeholder: 'Ask the assistant…',
+      counter: '{{used}} / {{max}}',
+      send: 'Send',
+      sending: 'Sending…',
+      notSent: 'Not sent. {{reason}}',
+      you: 'You',
+      assistant: 'Assistant',
+      sources: 'Sources',
+      proposal: {
+        title: 'Proposed action',
+        pending: 'Nothing happens until you confirm.',
+        confirm: 'Confirm',
+        reject: 'Decline',
+        expiresIn: 'Expires in {{time}}',
+        expiresSoon: 'Expires in under a minute',
+        expired: 'Expired. Ask the assistant again for a fresh one.',
+        executing: 'Being carried out…',
+        completed: 'Done',
+        failed: 'Could not be carried out.',
+        rejected: 'Declined.',
+        warnings: 'Before you confirm',
+        open: 'Open',
+      },
+    },
   },
 
   // The super admin dashboard (P15). Not a customer-facing surface: these
@@ -5908,6 +5997,93 @@ export const en = {
    * The dashboard shell: the side menu, its groups, and the top bar. The
    * sections come from `@integr8/core`'s navigation model; the words live here.
    */
+  // The Integr8 Plus assistant (docs/ai; ADR-0001). It never names a model or a
+  // vendor: a company member is talking to Integr8 Plus.
+  ai: {
+    title: 'Assistant',
+    level: {
+      help: 'Help',
+      insights: 'Insights',
+      agent: 'Agent',
+      hint: {
+        help: 'Answers from the help library only.',
+        insights:
+          'Answers from the help library, and can look up company records your seat may see.',
+        agent:
+          'Answers from the help library, can look up company records your seat may see, and can prepare changes for you to confirm.',
+      },
+      noCompanyData: 'Your company’s records are not sent outside Integr8 Plus.',
+    },
+    off: {
+      generic: 'The assistant is not available here.',
+      global_off: 'The assistant is switched off across Integr8 Plus for now.',
+      plan_off:
+        'The assistant is not included in your company’s subscription. Ask Integr8 about it.',
+      custom_off: 'Integr8 has switched the assistant off for your company.',
+      not_served: 'The assistant is not available in this release yet.',
+      channel_off:
+        'Your company has not switched the assistant on for this app. Ask an owner to turn it on under Company settings.',
+      member_off: 'The assistant is switched off for you. Ask an owner to turn it on under People.',
+    },
+    usage: {
+      title: 'Messages left',
+      companyDaily: 'Company today',
+      companyMonthly: 'Company this month',
+      mineDaily: 'You today',
+      mineMonthly: 'You this month',
+      count: '{{used}} of {{limit}}',
+      resets: 'Resets {{time}}',
+      unlimited: 'No limit on messages.',
+      exhausted: 'No messages left. They reset {{time}}.',
+    },
+    conversations: {
+      title: 'Conversations',
+      new: 'New conversation',
+      empty: 'No conversations yet. Start one.',
+      untitled: 'Untitled conversation',
+      pick: 'Open a conversation, or start a new one.',
+      deleteLabel: 'Delete {{title}}',
+      deleteConfirm:
+        'Delete this conversation? Its messages go. What was already counted against your allowance stays counted.',
+    },
+    thread: {
+      title: 'Conversation',
+      messages: 'Messages',
+      empty: 'Ask a question to begin.',
+      you: 'You',
+      assistant: 'Assistant',
+      answering: 'Answering…',
+      sources: 'Sources',
+      lookedUp: 'What was looked up',
+      newTab: 'Opens in a new tab',
+    },
+    composer: {
+      label: 'Your question',
+      hint: 'Enter sends. Shift+Enter starts a new line.',
+      counter: '{{used}} / {{max}}',
+      send: 'Send',
+    },
+    proposal: {
+      title: 'A change the assistant prepared',
+      state: {
+        pending: 'Waiting for you',
+        confirmed: 'Confirmed',
+        executing: 'Carrying out…',
+        completed: 'Done',
+        rejected: 'Declined',
+        expired: 'Expired',
+        failed: 'Failed',
+      },
+      expiresIn: 'Expires in {{time}}',
+      expired: 'This proposal has expired. Ask the assistant again for a fresh one.',
+      warnings: 'Before you confirm',
+      nothingYet: 'Nothing has been changed yet.',
+      openRecord: 'Open the record',
+      confirm: 'Confirm',
+      reject: 'Decline',
+    },
+  },
+
   nav: {
     menu: 'Menu',
     openMenu: 'Open the menu',
@@ -5932,6 +6108,7 @@ export const en = {
     },
     section: {
       dashboard: 'Dashboard',
+      assistant: 'Assistant',
       fill: 'Fill in a form',
       submissions: 'Submissions',
       workOrders: 'Work orders',
@@ -5982,6 +6159,7 @@ export const en = {
     },
     hint: {
       dashboard: 'Where you are, and what needs doing.',
+      assistant: 'Ask about Integr8 Plus, and about your company’s records.',
       fill: 'Start a form for a job.',
       submissions: 'Forms filled in, and their status.',
       workOrders: 'Jobs to schedule, dispatch, work and sign off.',
@@ -6155,6 +6333,12 @@ export const en = {
       copied: 'Copied.',
       storageMissing:
         'The company was created, but its storage could not be. It will be created automatically within the hour.',
+      aiChannels: 'AI assistant',
+      aiChannelsHint:
+        'Where the assistant appears for this company. All off by default; the plan’s policy still has to allow it. Can be changed later from the company’s page.',
+      aiWeb: 'Assistant in web app',
+      aiDesktop: 'Assistant in desktop app',
+      aiMobile: 'Assistant in mobile app',
     },
     staff: {
       title: 'Staff',
@@ -6233,6 +6417,11 @@ export const en = {
       brandSummary: 'Brand',
       brandSet: 'Set from the desktop app',
       brandUnset: 'Not set yet: the apps use the product’s own look',
+      aiWeb: 'Assistant in web app',
+      aiDesktop: 'Assistant in desktop app',
+      aiMobile: 'Assistant in mobile app',
+      aiChannelsHint:
+        'Where the assistant appears for this company. It also needs a level other than off in the plan or the company’s own configuration below.',
     },
     company: {
       overview: 'Overview',
@@ -6487,6 +6676,104 @@ export const en = {
       readOnly: 'Read-only since {{when}}',
       customerId: 'Customer at provider',
       subscriptionId: 'Subscription at provider',
+    },
+    ai: {
+      title: 'AI assistant',
+      planTitle: '{{plan}}: AI assistant',
+      planDescription:
+        'What the assistant may do for every company on this plan, unless a company has a custom configuration of its own.',
+      companyDescription:
+        'What the assistant may do for this company, where that comes from, and how much it has been used.',
+      globalOn: 'The assistant is switched on for this deployment.',
+      globalOff:
+        'The assistant is switched off for this deployment (kill switch). Nothing set here is served until it is switched on again.',
+      maxLevelServed: 'This deployment serves up to: {{level}}',
+      levelAboveServed:
+        'The configured level is {{configured}}, but this deployment serves up to {{served}}. The assistant runs at {{served}} until a later release.',
+      level: 'Level',
+      levelOff: 'Off',
+      levelHelp: 'Help',
+      levelInsights: 'Insights',
+      levelAgent: 'Agent',
+      levelHint:
+        'Help answers questions about the product. Insights also reads company data. Agent also proposes actions for somebody to approve.',
+      quota: 'Message quota',
+      quotaMode: 'Quota mode',
+      quotaDaily: 'Daily',
+      quotaMonthly: 'Monthly',
+      quotaDailyAndMonthly: 'Daily and monthly',
+      quotaNone: 'None',
+      dailyLimit: 'Messages per day',
+      monthlyLimit: 'Messages per month',
+      perDay: '{{n}} per day',
+      perMonth: '{{n}} per month',
+      perUser: 'Per person',
+      perUserDailyLimit: 'Per person per day',
+      perUserMonthlyLimit: 'Per person per month',
+      perUserHint: 'Optional. Leave empty for no per-person limit.',
+      limitRequired: 'Required for this quota mode.',
+      unlimitedMessages: 'Unlimited messages',
+      unlimitedMessagesHint:
+        'No message count at all. The monthly cost cap becomes the only limit, so it is required.',
+      monthlyCostCap: 'Monthly cost cap (USD)',
+      monthlyCostCapHint:
+        'The provider spend this may cause in a calendar month, in US dollars. Leave empty for no cap.',
+      monthlyCostCapRequiredHint:
+        'The provider spend this may cause in a calendar month, in US dollars. Required with unlimited messages.',
+      capRequired: 'A monthly cost cap is required with unlimited messages.',
+      noCap: 'No cap',
+      noLimit: 'No limit',
+      tokens: 'Tokens per message',
+      tokensValue: '{{input}} in, {{output}} out',
+      maxInputTokens: 'Max input tokens',
+      maxOutputTokens: 'Max output tokens',
+      maxProviderCalls: 'Max provider calls per message',
+      maxToolSteps: 'Max tool steps per message',
+      allowHistory: 'Keep conversation history',
+      allowHistoryHint:
+        'When off, every question stands alone and nothing is kept beyond the reply.',
+      retention: 'Conversations kept for',
+      retentionDays: 'Keep conversations for (days)',
+      retentionHint: 'Between 1 and 3650 days.',
+      retentionValue: '{{n}} days',
+      historyOff: 'Not kept',
+      reason: 'Reason',
+      reasonHint: 'Optional. Written to the audit log beside the change.',
+      change: 'Change',
+      save: 'Save',
+      saving: 'Saving…',
+      plan: 'Plan',
+      source: 'Policy comes from',
+      sourcePlan: 'The plan',
+      sourceCustom: 'A custom configuration',
+      effectiveLevel: 'Effective level',
+      configuredLevel: 'Configured level',
+      offReason: 'Why it is off',
+      offGlobal: 'Switched off for the whole deployment',
+      offPlan: 'The plan sets it off',
+      offCustom: 'The custom configuration sets it off',
+      offNotServed: 'Not served by this deployment yet',
+      mode: 'Configuration',
+      modeInherit: 'Inherit plan',
+      modeCustom: 'Custom configuration',
+      overrideWarning:
+        'A custom configuration stays when the company’s plan changes. To follow the plan again, reset to plan.',
+      companyData: 'Company data may be sent to the AI provider',
+      companyDataHint:
+        'Off by default. Applies to insights and actions; help never sends the company’s records.',
+      resetToPlan: 'Reset to plan',
+      usage: 'Usage',
+      today: 'Today',
+      thisMonth: 'This month',
+      usedOf: '{{used}} of {{limit}}',
+      usedNoLimit: '{{used}} used',
+      reservedNote: '({{reserved}} reserved)',
+      resetsAt: 'Resets {{when}}',
+      spent: 'Provider spend',
+      reserved: 'Reserved',
+      unknown: 'Unknown spend',
+      providerCalls: 'Provider calls',
+      failedCalls: 'Failed calls',
     },
     plans: {
       title: 'Plans',

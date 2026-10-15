@@ -92,6 +92,8 @@ export {
   type SubscriptionStatus,
   type TenantExportStatus,
   type TenantPlan,
+  type AiLevel as DbAiLevel,
+  type AiHelpArticleStatus,
 } from './schema.js';
 
 export type {
@@ -117,6 +119,44 @@ export type {
   PlatformSettingsRepository,
   UpsertFeatureFlagInput,
 } from './repositories/platform-settings.js';
+
+export {
+  AiQuotaExceededError,
+  AiBudgetExceededError,
+  micros,
+  dayKey,
+  type AiMessageReservation,
+  type AiUsageCounter,
+  type AiPeriodKeys,
+  type ReserveAiMessageInput,
+  type ReserveAiMessageOutcome,
+  type SettleAiMessageInput,
+  type RecordAiProviderCallInput,
+  type AiProviderCall,
+  type AiUsageRepository,
+} from './repositories/ai-usage.js';
+export type {
+  AiConversation,
+  AiMessage,
+  AppendAiMessageInput,
+  AiConversationsRepository,
+} from './repositories/ai-conversations.js';
+export type {
+  AiActionProposal,
+  AiActionEvent,
+  CreateAiActionProposalInput,
+  AiActionsRepository,
+} from './repositories/ai-actions.js';
+export {
+  AiPolicyVersionConflictError,
+  type AiPolicyFields,
+  type AiPlanPolicy,
+  type AiTenantPolicy,
+  type AiHelpArticle,
+  type UpsertAiHelpArticleInput,
+  type AiTenantUsageRow,
+  type AiPlatformRepository,
+} from './repositories/ai-platform.js';
 
 export type {
   TenantDeletion,

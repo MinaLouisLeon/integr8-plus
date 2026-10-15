@@ -60,6 +60,7 @@ import {
   PayrollRulesScreen,
   MyPayslipsScreen,
   AssetListScreen,
+  AssistantScreen,
   WarrantyAlertsPanel,
   AssetScreen,
   InvoiceListScreen,
@@ -103,6 +104,12 @@ function OperationsScreens({ children }: { children: ReactNode }) {
       locale: i18n.language,
       navigate: (to, options) => void navigate(to, { replace: options?.replace === true }),
       paths: {
+        // The assistant, and where its citations may point here (docs/ai;
+        // ADR-0001). People, company settings and billing are web-only, so a
+        // citation to them shows without a link.
+        assistant: '/assistant',
+        submissions: '/submissions',
+        forms: '/forms',
         workOrders: '/work-orders',
         newWorkOrder: (options) =>
           options?.customerId === undefined
@@ -221,6 +228,15 @@ export function WorkOrdersRoute() {
   return (
     <OperationsScreens>
       <WorkOrderListScreen />
+    </OperationsScreens>
+  );
+}
+
+/** The Integr8 Plus assistant (docs/ai; ADR-0001). */
+export function AssistantRoute() {
+  return (
+    <OperationsScreens>
+      <AssistantScreen />
     </OperationsScreens>
   );
 }

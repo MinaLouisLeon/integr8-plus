@@ -132,6 +132,10 @@ export const companySettingsSchema = z.object({
   websiteUrl: z.string().nullable(),
   /** Whether the release pipeline builds this company's own desktop and phone apps. */
   appsEnabled: z.boolean(),
+  /** Which of the company's apps show the assistant (ADR-0001). */
+  aiWebEnabled: z.boolean(),
+  aiDesktopEnabled: z.boolean(),
+  aiMobileEnabled: z.boolean(),
 });
 
 /** An invitation nobody has accepted or withdrawn, as the company page shows it. */

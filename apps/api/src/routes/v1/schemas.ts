@@ -155,6 +155,8 @@ export const memberSchema = z.object({
   /** The company's own role, whose base is `role` (ADR-0013); null for a built-in role. */
   customRole: z.object({ id: z.uuid(), name: z.string() }).nullable().optional(),
   status: z.enum(['invited', 'active', 'suspended']),
+  /** Whether this member may use the assistant when the company has it (ADR-0001). */
+  aiEnabled: z.boolean(),
   createdAt: timestamp,
 });
 

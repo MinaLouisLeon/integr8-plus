@@ -61,6 +61,9 @@ function timezones(): string[] {
 
 interface Settings {
   logoMediaId: string | null;
+  aiWebEnabled: boolean;
+  aiDesktopEnabled: boolean;
+  aiMobileEnabled: boolean;
   brandColour: string | null;
   shellColour: string | null;
   defaultTheme: 'light' | 'dark' | 'system';
@@ -110,6 +113,9 @@ function SettingsForm({ initial }: { initial: Settings }) {
   const [startsAt, setStartsAt] = useState(toTime(initial.workDayStarts));
   const [endsAt, setEndsAt] = useState(toTime(initial.workDayEnds));
   const [days, setDays] = useState<number[]>(initial.workingDays);
+  const [aiWeb, setAiWeb] = useState(initial.aiWebEnabled);
+  const [aiDesktop, setAiDesktop] = useState(initial.aiDesktopEnabled);
+  const [aiMobile, setAiMobile] = useState(initial.aiMobileEnabled);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
 
@@ -123,6 +129,9 @@ function SettingsForm({ initial }: { initial: Settings }) {
           workDayStarts: toMinutes(startsAt),
           workDayEnds: toMinutes(endsAt),
           workingDays: [...days].sort((a, b) => a - b),
+          aiWebEnabled: aiWeb,
+          aiDesktopEnabled: aiDesktop,
+          aiMobileEnabled: aiMobile,
         },
       });
     },
@@ -130,6 +139,8 @@ function SettingsForm({ initial }: { initial: Settings }) {
       setSaved(true);
       setError(undefined);
       void queries.invalidateQueries({ queryKey: ['settings'] });
+      // The menu's assistant item follows these switches.
+      void queries.invalidateQueries({ queryKey: ['ai', 'capabilities'] });
     },
     onError: (failure) => {
       setSaved(false);
@@ -238,6 +249,31 @@ function SettingsForm({ initial }: { initial: Settings }) {
               <p className="text-sm text-warning">{t('workspace.settings.closed')}</p>
             ) : null}
           </fieldset>
+        </section>
+
+        <section className="flex flex-col gap-4">
+          <h2 className="text-base font-semibold text-content">
+            {t('workspace.settings.ai.title')}
+          </h2>
+          <p className="text-sm text-content-muted">{t('workspace.settings.ai.intro')}</p>
+          <div className="flex flex-col gap-2">
+            {(
+              [
+                { key: 'web', checked: aiWeb, set: setAiWeb },
+                { key: 'desktop', checked: aiDesktop, set: setAiDesktop },
+                { key: 'mobile', checked: aiMobile, set: setAiMobile },
+              ] as const
+            ).map((channel) => (
+              <label key={channel.key} className="flex items-center gap-2 text-sm text-content">
+                <input
+                  type="checkbox"
+                  checked={channel.checked}
+                  onChange={(event) => channel.set(event.target.checked)}
+                />
+                {t(`workspace.settings.ai.${channel.key}`)}
+              </label>
+            ))}
+          </div>
         </section>
 
         <div className="flex items-center gap-3">

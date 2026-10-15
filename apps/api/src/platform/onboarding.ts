@@ -52,6 +52,8 @@ export interface OnboardCompanyInput {
   ownerEmail: string;
   /** The company's own website, https only; null when it has none yet (0022). */
   websiteUrl?: string | null;
+  /** Which of its apps show the assistant (ADR-0001). Off everywhere when absent. */
+  aiChannels?: { web: boolean; desktop: boolean; mobile: boolean };
   /**
    * How the owner gets in.
    *
@@ -212,7 +214,10 @@ export async function onboardCompany(input: OnboardCompanyInput): Promise<Onboar
 
   // Every company gets its settings row here, so nothing downstream has to
   // cope with its absence.
-  await platform.tenantSettings.ensure(tenant.id, { websiteUrl: input.websiteUrl ?? null });
+  await platform.tenantSettings.ensure(tenant.id, {
+    websiteUrl: input.websiteUrl ?? null,
+    ...(input.aiChannels === undefined ? {} : { aiChannels: input.aiChannels }),
+  });
 
   // After the transaction, because a failure in there takes the company row
   // back out and a subscription pointing at a deleted company would block it.

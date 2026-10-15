@@ -118,6 +118,165 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ai/actions/{proposalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One of your prepared actions, and where it stands */
+        get: operations["getAiAction"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/actions/{proposalId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Carry out an action the assistant prepared
+         * @description Only the member who asked, only while the proposal is pending and in time, and only after the company’s level, the seat’s permission, the module and the records concerned have been checked again. Runs through the same code as the screen would, in the member’s name, exactly once: a second confirmation answers 409 `ai_action_already_executed`. Needs an `Idempotency-Key`.
+         */
+        post: operations["confirmAiAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/actions/{proposalId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline an action the assistant prepared */
+        post: operations["rejectAiAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the assistant may do for the signed-in member
+         * @description The level after the plan, the company’s override, the company’s switch for this app (from `x-client-app`) and the member’s own switch. Off is an answer, not an error: the screen hides the assistant or says why it is not included.
+         */
+        get: operations["getAiCapabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How much of the assistant is left today and this month
+         * @description The company’s pooled counters and the member’s own, with the UTC instant each resets. Reserved slots are requests still being answered, and count against what is left.
+         */
+        get: operations["getAiUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in member’s conversations, newest first */
+        get: operations["listAiConversations"];
+        put?: never;
+        /**
+         * Start a private conversation with the assistant
+         * @description Private to the member who starts it: nobody else in the company, owners included, can read it. Refused with 403 `ai_disabled` when the assistant is off for this company, this app or this member.
+         */
+        post: operations["createAiConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/conversations/{conversationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One conversation with its messages
+         * @description Only the member who started it can read it; anybody else is told it does not exist.
+         */
+        get: operations["getAiConversation"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete one of your conversations
+         * @description The chat goes; the record that messages were charged stays, because that is the company’s usage and not the conversation.
+         */
+        delete: operations["deleteAiConversation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/conversations/{conversationId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask the assistant a question
+         * @description Needs an `Idempotency-Key`: the same key with the same question is answered once and replayed, never charged twice. One durably stored answer is one message against the company’s and the member’s allowance. Refused while the company is read-only for non-payment, like every other write.
+         */
+        post: operations["postAiMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/billing/subscription": {
         parameters: {
             query?: never;
@@ -236,6 +395,26 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/members/{userId}/ai": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Let somebody use the assistant, or stop them
+         * @description The company’s own switch for one member (ADR-0001). It can only narrow what the company has: a member switched on still gets nothing while the plan, the override or the app’s switch says off. Owners and admins set it, for members they outrank.
+         */
+        patch: operations["setMemberAi"];
         trace?: never;
     };
     "/v1/members/{userId}/role": {
@@ -6189,6 +6368,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/platform/ai/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What each plan allows of the assistant */
+        get: operations["listAiPlanPolicies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/ai/plans/{plan}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change what a plan allows of the assistant
+         * @description The whole policy, not a patch: a quota mode and its limits only make sense together. `expectedVersion` must be the version last read, or the write is refused with 409 `ai_policy_changed` and the current version. Takes effect for every company inheriting the plan within thirty seconds, and at once on the instance that served this request.
+         */
+        put: operations["setAiPlanPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/companies/{tenantId}/ai": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A company’s assistant policy, where it comes from, and its usage */
+        get: operations["getCompanyAi"];
+        /**
+         * Set a company’s assistant override, or return it to its plan
+         * @description `mode: inherit` follows the plan (the policy fields are kept but ignored); `mode: custom` uses the policy sent, whole. `companyDataToProvider` says whether the company’s own records may be sent to the configured provider for insights and actions; off until somebody here says otherwise. `expectedVersion` is the override’s version last read, or null when the company has none yet. Usage counters are never touched.
+         */
+        put: operations["setCompanyAi"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/ai/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every company’s assistant use and spend in one month */
+        get: operations["aiUsageReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/ai/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Which provider answers, and which are ready to
+         * @description Configuration facts only. No key, nor any part of one, is ever returned.
+         */
+        get: operations["aiProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/ai/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How the assistant is doing: provider failures, open reservations */
+        get: operations["aiHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/platform/form-templates": {
         parameters: {
             query?: never;
@@ -7112,6 +7403,1190 @@ export interface operations {
             };
         };
     };
+    getAiAction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The proposal. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        toolKey: string;
+                        /** @enum {string} */
+                        state: "pending" | "confirmed" | "executing" | "completed" | "rejected" | "expired" | "failed";
+                        preview: {
+                            title: string;
+                            fields: {
+                                label: string;
+                                value: string;
+                            }[];
+                            warnings: string[];
+                        };
+                        /** Format: date-time */
+                        expiresAt: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        result: {
+                            resourceType: string;
+                            resourceId: string;
+                            summary: string;
+                            appRoute: string;
+                        } | null;
+                        errorCode: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such proposal (`ai_action_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    confirmAiAction: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done; the proposal with its result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        toolKey: string;
+                        /** @enum {string} */
+                        state: "pending" | "confirmed" | "executing" | "completed" | "rejected" | "expired" | "failed";
+                        preview: {
+                            title: string;
+                            fields: {
+                                label: string;
+                                value: string;
+                            }[];
+                            warnings: string[];
+                        };
+                        /** Format: date-time */
+                        expiresAt: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        result: {
+                            resourceType: string;
+                            resourceId: string;
+                            summary: string;
+                            appRoute: string;
+                        } | null;
+                        errorCode: string | null;
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not allowed any more (`ai_disabled`, `ai_tool_forbidden`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such proposal (`ai_action_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Expired or changed (`ai_action_expired`), or already carried out (`ai_action_already_executed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    rejectAiAction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Declined. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        toolKey: string;
+                        /** @enum {string} */
+                        state: "pending" | "confirmed" | "executing" | "completed" | "rejected" | "expired" | "failed";
+                        preview: {
+                            title: string;
+                            fields: {
+                                label: string;
+                                value: string;
+                            }[];
+                            warnings: string[];
+                        };
+                        /** Format: date-time */
+                        expiresAt: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        result: {
+                            resourceType: string;
+                            resourceId: string;
+                            summary: string;
+                            appRoute: string;
+                        } | null;
+                        errorCode: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such proposal (`ai_action_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already carried out (`ai_action_already_executed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getAiCapabilities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The capabilities. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        level: "off" | "help" | "insights" | "agent";
+                        /** @enum {string|null} */
+                        blockedBy: "global_off" | "plan_off" | "custom_off" | "not_served" | "channel_off" | "member_off" | null;
+                        /** @enum {string} */
+                        channel: "web" | "desktop" | "mobile";
+                        tools: string[];
+                        companyDataToProvider: boolean;
+                        locales: ("en" | "ar")[];
+                        historyTurns: number;
+                        allowHistory: boolean;
+                        usage: {
+                            daily: {
+                                used: number;
+                                reserved: number;
+                                limit: number | null;
+                                remaining: number | null;
+                                /** Format: date-time */
+                                resetsAt: string;
+                            } | null;
+                            monthly: {
+                                used: number;
+                                reserved: number;
+                                limit: number | null;
+                                remaining: number | null;
+                                /** Format: date-time */
+                                resetsAt: string;
+                            } | null;
+                            user: {
+                                daily: {
+                                    used: number;
+                                    reserved: number;
+                                    limit: number | null;
+                                    remaining: number | null;
+                                    /** Format: date-time */
+                                    resetsAt: string;
+                                };
+                                monthly: {
+                                    used: number;
+                                    reserved: number;
+                                    limit: number | null;
+                                    remaining: number | null;
+                                    /** Format: date-time */
+                                    resetsAt: string;
+                                };
+                            };
+                            unlimited: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getAiUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The usage. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        daily: {
+                            used: number;
+                            reserved: number;
+                            limit: number | null;
+                            remaining: number | null;
+                            /** Format: date-time */
+                            resetsAt: string;
+                        } | null;
+                        monthly: {
+                            used: number;
+                            reserved: number;
+                            limit: number | null;
+                            remaining: number | null;
+                            /** Format: date-time */
+                            resetsAt: string;
+                        } | null;
+                        user: {
+                            daily: {
+                                used: number;
+                                reserved: number;
+                                limit: number | null;
+                                remaining: number | null;
+                                /** Format: date-time */
+                                resetsAt: string;
+                            };
+                            monthly: {
+                                used: number;
+                                reserved: number;
+                                limit: number | null;
+                                remaining: number | null;
+                                /** Format: date-time */
+                                resetsAt: string;
+                            };
+                        };
+                        unlimited: boolean;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listAiConversations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The conversations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string | null;
+                            /** @enum {string} */
+                            locale: "en" | "ar";
+                            /** @enum {string} */
+                            level: "off" | "help" | "insights" | "agent";
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The assistant is not available (`ai_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createAiConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @default en
+                     * @enum {string}
+                     */
+                    locale?: "en" | "ar";
+                };
+            };
+        };
+        responses: {
+            /** @description Started. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string | null;
+                        /** @enum {string} */
+                        locale: "en" | "ar";
+                        /** @enum {string} */
+                        level: "off" | "help" | "insights" | "agent";
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The assistant is not available (`ai_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getAiConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The conversation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        conversation: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string | null;
+                            /** @enum {string} */
+                            locale: "en" | "ar";
+                            /** @enum {string} */
+                            level: "off" | "help" | "insights" | "agent";
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        };
+                        messages: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            role: "user" | "assistant" | "tool_summary";
+                            text: string;
+                            sources: {
+                                /** @enum {string} */
+                                kind: "help";
+                                articleKey: string;
+                                label: string;
+                                appRoute: string | null;
+                                helpUrl: string | null;
+                            }[];
+                            toolSummaries: {
+                                tool: string;
+                                result: string;
+                            }[];
+                            actionProposal: {
+                                /** Format: uuid */
+                                id: string;
+                                toolKey: string;
+                                /** @enum {string} */
+                                state: "pending" | "confirmed" | "executing" | "completed" | "rejected" | "expired" | "failed";
+                                preview: {
+                                    title: string;
+                                    fields: {
+                                        label: string;
+                                        value: string;
+                                    }[];
+                                    warnings: string[];
+                                };
+                                /** Format: date-time */
+                                expiresAt: string;
+                                /** Format: date-time */
+                                createdAt: string;
+                                result: {
+                                    resourceType: string;
+                                    resourceId: string;
+                                    summary: string;
+                                    appRoute: string;
+                                } | null;
+                                errorCode: string | null;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such conversation (`ai_conversation_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteAiConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such conversation (`ai_conversation_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    postAiMessage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    message: string;
+                    /**
+                     * @default en
+                     * @enum {string}
+                     */
+                    locale?: "en" | "ar";
+                    clientContext?: {
+                        page?: string;
+                        /** Format: uuid */
+                        entityId?: string | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The answer, and what is left. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            role: "user" | "assistant" | "tool_summary";
+                            text: string;
+                            sources: {
+                                /** @enum {string} */
+                                kind: "help";
+                                articleKey: string;
+                                label: string;
+                                appRoute: string | null;
+                                helpUrl: string | null;
+                            }[];
+                            toolSummaries: {
+                                tool: string;
+                                result: string;
+                            }[];
+                            actionProposal: {
+                                /** Format: uuid */
+                                id: string;
+                                toolKey: string;
+                                /** @enum {string} */
+                                state: "pending" | "confirmed" | "executing" | "completed" | "rejected" | "expired" | "failed";
+                                preview: {
+                                    title: string;
+                                    fields: {
+                                        label: string;
+                                        value: string;
+                                    }[];
+                                    warnings: string[];
+                                };
+                                /** Format: date-time */
+                                expiresAt: string;
+                                /** Format: date-time */
+                                createdAt: string;
+                                result: {
+                                    resourceType: string;
+                                    resourceId: string;
+                                    summary: string;
+                                    appRoute: string;
+                                } | null;
+                                errorCode: string | null;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                        };
+                        usage: {
+                            daily: {
+                                used: number;
+                                reserved: number;
+                                limit: number | null;
+                                remaining: number | null;
+                                /** Format: date-time */
+                                resetsAt: string;
+                            } | null;
+                            monthly: {
+                                used: number;
+                                reserved: number;
+                                limit: number | null;
+                                remaining: number | null;
+                                /** Format: date-time */
+                                resetsAt: string;
+                            } | null;
+                            user: {
+                                daily: {
+                                    used: number;
+                                    reserved: number;
+                                    limit: number | null;
+                                    remaining: number | null;
+                                    /** Format: date-time */
+                                    resetsAt: string;
+                                };
+                                monthly: {
+                                    used: number;
+                                    reserved: number;
+                                    limit: number | null;
+                                    remaining: number | null;
+                                    /** Format: date-time */
+                                    resetsAt: string;
+                                };
+                            };
+                            unlimited: boolean;
+                        };
+                        replayed: boolean;
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The assistant is not available (`ai_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such conversation (`ai_conversation_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The same question is still being answered (`ai_request_in_progress`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The day’s or month’s messages are used up (`ai_daily_quota_exceeded`, `ai_monthly_quota_exceeded`), or too many at once (`ai_concurrency_limit`). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The model could not be reached (`ai_provider_unavailable`), or the assistant is paused (`ai_budget_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     getSubscription: {
         parameters: {
             query?: never;
@@ -7648,6 +9123,113 @@ export interface operations {
             };
         };
     };
+    setMemberAi: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    aiEnabled: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The person, with the switch as it now is. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        userId: string;
+                        email: string;
+                        displayName: string;
+                        /** @enum {string} */
+                        role: "owner" | "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
+                        grants: ("hr_manager" | "inventory_manager")[];
+                        customRole?: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                        /** @enum {string} */
+                        status: "invited" | "active" | "suspended";
+                        aiEnabled: boolean;
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such person in this company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     changeMemberRole: {
         parameters: {
             query?: never;
@@ -7689,6 +9271,7 @@ export interface operations {
                         } | null;
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
+                        aiEnabled: boolean;
                         /** Format: date-time */
                         createdAt: string;
                     };
@@ -7801,6 +9384,7 @@ export interface operations {
                         } | null;
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
+                        aiEnabled: boolean;
                         /** Format: date-time */
                         createdAt: string;
                     };
@@ -8001,6 +9585,7 @@ export interface operations {
                         } | null;
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
+                        aiEnabled: boolean;
                         /** Format: date-time */
                         createdAt: string;
                     };
@@ -8107,6 +9692,7 @@ export interface operations {
                         } | null;
                         /** @enum {string} */
                         status: "invited" | "active" | "suspended";
+                        aiEnabled: boolean;
                         /** Format: date-time */
                         createdAt: string;
                     };
@@ -8486,6 +10072,9 @@ export interface operations {
                         workDayStarts: number;
                         workDayEnds: number;
                         workingDays: number[];
+                        aiWebEnabled: boolean;
+                        aiDesktopEnabled: boolean;
+                        aiMobileEnabled: boolean;
                     };
                 };
             };
@@ -8571,6 +10160,9 @@ export interface operations {
                     workDayStarts?: number;
                     workDayEnds?: number;
                     workingDays?: number[];
+                    aiWebEnabled?: boolean;
+                    aiDesktopEnabled?: boolean;
+                    aiMobileEnabled?: boolean;
                 };
             };
         };
@@ -8598,6 +10190,9 @@ export interface operations {
                         workDayStarts: number;
                         workDayEnds: number;
                         workingDays: number[];
+                        aiWebEnabled: boolean;
+                        aiDesktopEnabled: boolean;
+                        aiMobileEnabled: boolean;
                     };
                 };
             };
@@ -9594,6 +11189,7 @@ export interface operations {
                             } | null;
                             /** @enum {string} */
                             status: "invited" | "active" | "suspended";
+                            aiEnabled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                         }[];
@@ -62151,6 +63747,18 @@ export interface operations {
                     /** Format: email */
                     ownerEmail: string;
                     websiteUrl?: string | null;
+                    /**
+                     * @default {
+                     *       "web": false,
+                     *       "desktop": false,
+                     *       "mobile": false
+                     *     }
+                     */
+                    aiChannels?: {
+                        web: boolean;
+                        desktop: boolean;
+                        mobile: boolean;
+                    };
                     /** @default false */
                     sendInvitation?: boolean;
                     jobTypes?: {
@@ -62316,6 +63924,9 @@ export interface operations {
                             defaultTheme: "light" | "dark" | "system";
                             websiteUrl: string | null;
                             appsEnabled: boolean;
+                            aiWebEnabled: boolean;
+                            aiDesktopEnabled: boolean;
+                            aiMobileEnabled: boolean;
                         };
                         invitations: {
                             /** Format: uuid */
@@ -62750,6 +64361,9 @@ export interface operations {
                 "application/json": {
                     websiteUrl?: string | null;
                     appsEnabled?: boolean;
+                    aiWebEnabled?: boolean;
+                    aiDesktopEnabled?: boolean;
+                    aiMobileEnabled?: boolean;
                 };
             };
         };
@@ -62771,6 +64385,9 @@ export interface operations {
                         defaultTheme: "light" | "dark" | "system";
                         websiteUrl: string | null;
                         appsEnabled: boolean;
+                        aiWebEnabled: boolean;
+                        aiDesktopEnabled: boolean;
+                        aiMobileEnabled: boolean;
                     };
                 };
             };
@@ -64137,6 +65754,869 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listAiPlanPolicies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The plans, and what this deployment serves. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** @enum {string} */
+                            level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string|null} */
+                            quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
+                            dailyLimit: number | null;
+                            monthlyLimit: number | null;
+                            perUserDailyLimit: number | null;
+                            perUserMonthlyLimit: number | null;
+                            unlimitedMessages: boolean;
+                            monthlyCostCapMicrousd: number | null;
+                            maxInputTokens: number;
+                            maxOutputTokens: number;
+                            maxToolSteps: number;
+                            maxProviderCalls: number;
+                            allowHistory: boolean;
+                            retentionDays: number;
+                            /** @enum {string} */
+                            plan: "trial" | "starter" | "standard" | "enterprise";
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: uuid */
+                            updatedBy: string | null;
+                        }[];
+                        /** @enum {string} */
+                        maxLevelServed: "off" | "help" | "insights" | "agent";
+                        globalEnabled: boolean;
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setAiPlanPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan: "trial" | "starter" | "standard" | "enterprise";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    policy: {
+                        /** @enum {string} */
+                        level: "off" | "help" | "insights" | "agent";
+                        /** @enum {string|null} */
+                        quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
+                        dailyLimit: number | null;
+                        monthlyLimit: number | null;
+                        perUserDailyLimit: number | null;
+                        perUserMonthlyLimit: number | null;
+                        unlimitedMessages: boolean;
+                        monthlyCostCapMicrousd: number | null;
+                        maxInputTokens: number;
+                        maxOutputTokens: number;
+                        maxToolSteps: number;
+                        maxProviderCalls: number;
+                        allowHistory: boolean;
+                        retentionDays: number;
+                    };
+                    expectedVersion: number;
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        level: "off" | "help" | "insights" | "agent";
+                        /** @enum {string|null} */
+                        quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
+                        dailyLimit: number | null;
+                        monthlyLimit: number | null;
+                        perUserDailyLimit: number | null;
+                        perUserMonthlyLimit: number | null;
+                        unlimitedMessages: boolean;
+                        monthlyCostCapMicrousd: number | null;
+                        maxInputTokens: number;
+                        maxOutputTokens: number;
+                        maxToolSteps: number;
+                        maxProviderCalls: number;
+                        allowHistory: boolean;
+                        retentionDays: number;
+                        /** @enum {string} */
+                        plan: "trial" | "starter" | "standard" | "enterprise";
+                        version: number;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        /** Format: uuid */
+                        updatedBy: string | null;
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Somebody else changed it first (`ai_policy_changed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The policy is inconsistent (`ai_policy_invalid`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getCompanyAi: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The company’s assistant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        plan: "trial" | "starter" | "standard" | "enterprise";
+                        planPolicy: {
+                            /** @enum {string} */
+                            level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string|null} */
+                            quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
+                            dailyLimit: number | null;
+                            monthlyLimit: number | null;
+                            perUserDailyLimit: number | null;
+                            perUserMonthlyLimit: number | null;
+                            unlimitedMessages: boolean;
+                            monthlyCostCapMicrousd: number | null;
+                            maxInputTokens: number;
+                            maxOutputTokens: number;
+                            maxToolSteps: number;
+                            maxProviderCalls: number;
+                            allowHistory: boolean;
+                            retentionDays: number;
+                            /** @enum {string} */
+                            plan: "trial" | "starter" | "standard" | "enterprise";
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: uuid */
+                            updatedBy: string | null;
+                        };
+                        override: {
+                            /** @enum {string} */
+                            level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string|null} */
+                            quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
+                            dailyLimit: number | null;
+                            monthlyLimit: number | null;
+                            perUserDailyLimit: number | null;
+                            perUserMonthlyLimit: number | null;
+                            unlimitedMessages: boolean;
+                            monthlyCostCapMicrousd: number | null;
+                            maxInputTokens: number;
+                            maxOutputTokens: number;
+                            maxToolSteps: number;
+                            maxProviderCalls: number;
+                            allowHistory: boolean;
+                            retentionDays: number;
+                            /** @enum {string} */
+                            mode: "inherit" | "custom";
+                            companyDataToProvider: boolean;
+                            version: number;
+                            reason: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: uuid */
+                            updatedBy: string | null;
+                        } | null;
+                        effective: {
+                            /** @enum {string} */
+                            level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string|null} */
+                            quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
+                            dailyLimit: number | null;
+                            monthlyLimit: number | null;
+                            perUserDailyLimit: number | null;
+                            perUserMonthlyLimit: number | null;
+                            unlimitedMessages: boolean;
+                            monthlyCostCapMicrousd: number | null;
+                            maxInputTokens: number;
+                            maxOutputTokens: number;
+                            maxToolSteps: number;
+                            maxProviderCalls: number;
+                            allowHistory: boolean;
+                            retentionDays: number;
+                            /** @enum {string} */
+                            source: "plan" | "custom";
+                            /** @enum {string} */
+                            configuredLevel: "off" | "help" | "insights" | "agent";
+                            /** @enum {string|null} */
+                            offReason: "global_off" | "plan_off" | "custom_off" | "not_served" | null;
+                            companyDataToProvider: boolean;
+                        };
+                        /** @enum {string} */
+                        maxLevelServed: "off" | "help" | "insights" | "agent";
+                        globalEnabled: boolean;
+                        usage: {
+                            day: {
+                                used: number;
+                                reserved: number;
+                            };
+                            month: {
+                                used: number;
+                                reserved: number;
+                            };
+                            cost: {
+                                spent: number;
+                                reserved: number;
+                                unknown: number;
+                            };
+                            providerCalls: number;
+                            failedCalls: number;
+                            /** Format: date-time */
+                            dayResetsAt: string;
+                            /** Format: date-time */
+                            monthResetsAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setCompanyAi: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    mode: "inherit" | "custom";
+                    policy: {
+                        /** @enum {string} */
+                        level: "off" | "help" | "insights" | "agent";
+                        /** @enum {string|null} */
+                        quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
+                        dailyLimit: number | null;
+                        monthlyLimit: number | null;
+                        perUserDailyLimit: number | null;
+                        perUserMonthlyLimit: number | null;
+                        unlimitedMessages: boolean;
+                        monthlyCostCapMicrousd: number | null;
+                        maxInputTokens: number;
+                        maxOutputTokens: number;
+                        maxToolSteps: number;
+                        maxProviderCalls: number;
+                        allowHistory: boolean;
+                        retentionDays: number;
+                    };
+                    companyDataToProvider: boolean;
+                    reason: string | null;
+                    expectedVersion: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        plan: "trial" | "starter" | "standard" | "enterprise";
+                        planPolicy: {
+                            /** @enum {string} */
+                            level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string|null} */
+                            quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
+                            dailyLimit: number | null;
+                            monthlyLimit: number | null;
+                            perUserDailyLimit: number | null;
+                            perUserMonthlyLimit: number | null;
+                            unlimitedMessages: boolean;
+                            monthlyCostCapMicrousd: number | null;
+                            maxInputTokens: number;
+                            maxOutputTokens: number;
+                            maxToolSteps: number;
+                            maxProviderCalls: number;
+                            allowHistory: boolean;
+                            retentionDays: number;
+                            /** @enum {string} */
+                            plan: "trial" | "starter" | "standard" | "enterprise";
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: uuid */
+                            updatedBy: string | null;
+                        };
+                        override: {
+                            /** @enum {string} */
+                            level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string|null} */
+                            quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
+                            dailyLimit: number | null;
+                            monthlyLimit: number | null;
+                            perUserDailyLimit: number | null;
+                            perUserMonthlyLimit: number | null;
+                            unlimitedMessages: boolean;
+                            monthlyCostCapMicrousd: number | null;
+                            maxInputTokens: number;
+                            maxOutputTokens: number;
+                            maxToolSteps: number;
+                            maxProviderCalls: number;
+                            allowHistory: boolean;
+                            retentionDays: number;
+                            /** @enum {string} */
+                            mode: "inherit" | "custom";
+                            companyDataToProvider: boolean;
+                            version: number;
+                            reason: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            /** Format: uuid */
+                            updatedBy: string | null;
+                        } | null;
+                        effective: {
+                            /** @enum {string} */
+                            level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string|null} */
+                            quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
+                            dailyLimit: number | null;
+                            monthlyLimit: number | null;
+                            perUserDailyLimit: number | null;
+                            perUserMonthlyLimit: number | null;
+                            unlimitedMessages: boolean;
+                            monthlyCostCapMicrousd: number | null;
+                            maxInputTokens: number;
+                            maxOutputTokens: number;
+                            maxToolSteps: number;
+                            maxProviderCalls: number;
+                            allowHistory: boolean;
+                            retentionDays: number;
+                            /** @enum {string} */
+                            source: "plan" | "custom";
+                            /** @enum {string} */
+                            configuredLevel: "off" | "help" | "insights" | "agent";
+                            /** @enum {string|null} */
+                            offReason: "global_off" | "plan_off" | "custom_off" | "not_served" | null;
+                            companyDataToProvider: boolean;
+                        };
+                        /** @enum {string} */
+                        maxLevelServed: "off" | "help" | "insights" | "agent";
+                        globalEnabled: boolean;
+                        usage: {
+                            day: {
+                                used: number;
+                                reserved: number;
+                            };
+                            month: {
+                                used: number;
+                                reserved: number;
+                            };
+                            cost: {
+                                spent: number;
+                                reserved: number;
+                                unknown: number;
+                            };
+                            providerCalls: number;
+                            failedCalls: number;
+                            /** Format: date-time */
+                            dayResetsAt: string;
+                            /** Format: date-time */
+                            monthResetsAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Somebody else changed it first (`ai_policy_changed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The policy is inconsistent (`ai_policy_invalid`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    aiUsageReport: {
+        parameters: {
+            query?: {
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One row per company that used the assistant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            tenantId: string;
+                            tenantName: string;
+                            tenantSlug: string;
+                            /** @enum {string} */
+                            plan: "trial" | "starter" | "standard" | "enterprise";
+                            monthStart: string;
+                            messagesUsed: number;
+                            messagesReserved: number;
+                            providerCalls: number;
+                            failedCalls: number;
+                            spentMicrousd: number;
+                            reservedMicrousd: number;
+                            unknownMicrousd: number;
+                        }[];
+                        monthStart: string;
+                        global: {
+                            budgetMicrousd: number;
+                            spentMicrousd: number;
+                            reservedMicrousd: number;
+                            unknownMicrousd: number;
+                        };
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    aiProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The providers. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        active: "recording" | "groq" | "gemini" | "anthropic";
+                        globalEnabled: boolean;
+                        /** @enum {string} */
+                        maxLevelServed: "off" | "help" | "insights" | "agent";
+                        models: {
+                            help: string | null;
+                            insights: string | null;
+                            agent: string | null;
+                        };
+                        providers: {
+                            /** @enum {string} */
+                            id: "recording" | "groq" | "gemini" | "anthropic";
+                            configured: boolean;
+                            approvedDataClasses: ("public_help" | "company_operational" | "company_financial" | "restricted_personal")[];
+                        }[];
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    aiHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The last 24 hours, and what is waiting for the reconciler. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        window: {
+                            /** Format: date-time */
+                            since: string;
+                            calls: number;
+                            failed: number;
+                            limited: number;
+                            averageMs: number | null;
+                        };
+                        staleReservations: {
+                            count: number;
+                            /** Format: date-time */
+                            oldestExpiredAt: string | null;
+                        };
+                        budget: {
+                            monthStart: string;
+                            budgetMicrousd: number;
+                            spentMicrousd: number;
+                            reservedMicrousd: number;
+                            unknownMicrousd: number;
+                        };
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description The request failed validation. */
             422: {

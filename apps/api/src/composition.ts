@@ -27,6 +27,11 @@ import { ExpoPushSender, type PushSender, RecordingPushSender } from './push/sen
 import { type EmailSender, RecordingEmailSender, ResendEmailSender } from './email/sender.js';
 import { R2Storage } from './media/r2.js';
 import type { MediaStorage } from './media/storage.js';
+import type { AiServices } from './ai/chat.js';
+import { HelpLibrary } from './ai/help/library.js';
+import { PriceTable } from './ai/pricing.js';
+import { buildAiProvider } from './ai/providers/index.js';
+import { INSIGHT_TOOLS } from './ai/tools/insights.js';
 
 /**
  * The composition root.
@@ -72,6 +77,13 @@ export interface Services {
    * in-app.
    */
   email: EmailSender;
+  /**
+   * The assistant (docs/ai; ADR-0001): the model provider `AI_PROVIDER` names,
+   * the price table it is costed with, and the help library it answers from.
+   * Built whether or not AI_ENABLED is on: off is a policy answer, not a
+   * missing service.
+   */
+  ai: AiServices;
 }
 
 export interface BuildServicesOptions {
@@ -124,6 +136,12 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     push: buildPushSender(options.config),
     billing: buildBillingProvider(options.config),
     email: buildEmailSender(options.config),
+    ai: {
+      provider: buildAiProvider(options.config),
+      prices: new PriceTable(options.config),
+      help: new HelpLibrary(options.config.API_RELEASE),
+      tools: INSIGHT_TOOLS,
+    },
   };
 }
 

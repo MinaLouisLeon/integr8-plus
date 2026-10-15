@@ -61,6 +61,7 @@ function memberBody(
     role: string;
     customRoleId: string | null;
     status: string;
+    aiEnabled: boolean;
     createdAt: Date;
   },
   grants: readonly Grant[],
@@ -74,6 +75,7 @@ function memberBody(
     grants: [...grants],
     customRole: customRoleBody(member.customRoleId, roleNames),
     status: member.status as 'invited' | 'active' | 'suspended',
+    aiEnabled: member.aiEnabled,
     createdAt: iso(member.createdAt),
   };
 }
@@ -511,8 +513,59 @@ export const removeGrantRoute = defineRoute({
   handler: async ({ params }, context) => grantChange(context, params, false),
 });
 
+export const setMemberAiRoute = defineRoute({
+  method: 'patch',
+  path: '/v1/members/:userId/ai',
+  operationId: 'setMemberAi',
+  summary: 'Let somebody use the assistant, or stop them',
+  description:
+    'The company’s own switch for one member (ADR-0001). It can only narrow what the company has: a member switched on still gets nothing while the plan, the override or the app’s switch says off. Owners and admins set it, for members they outrank.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'member.update_role',
+  params: z.object({ userId: z.uuid() }),
+  query: noSchema,
+  body: z.object({ aiEnabled: z.boolean() }),
+  responses: {
+    200: { description: 'The person, with the switch as it now is.', schema: memberSchema },
+    404: { description: 'No such person in this company.' },
+  },
+  handler: async ({ params, body }, context) => {
+    const tenantId = context.principal.tenantId;
+    const target = await memberOr404(tenantId, params.userId);
+    if (params.userId !== context.principal.userId) {
+      assertOutranks(context.principal, target, 'change the assistant access of');
+    }
+
+    const { updated, grants, roleNames } = await withTenant(tenantId, async (tx) => {
+      const updated = await tx.tenantUsers.setAiEnabled(params.userId, body.aiEnabled);
+      await tx.auditLog.append({
+        actorKind: 'tenant_user',
+        actorId: context.principal.userId,
+        actorLabel: context.principal.userId,
+        action: body.aiEnabled ? 'member.ai_enabled' : 'member.ai_disabled',
+        resourceType: 'tenant_user',
+        resourceId: params.userId,
+        requestId: context.requestId,
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+      });
+      return {
+        updated,
+        grants: await tx.memberGrants.forUser(params.userId),
+        roleNames: await customRoleNames(tx),
+      };
+    });
+    if (updated === undefined) {
+      throw notFound('No such person in this company.');
+    }
+    return { status: 200, body: memberBody(updated, grants, roleNames) };
+  },
+});
+
 export const memberRoutes = [
   resendInvitationRoute,
+  setMemberAiRoute,
   changeMemberRoleRoute,
   setMemberStatusRoute,
   removeMemberRoute,
