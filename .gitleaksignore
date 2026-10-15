@@ -7,3 +7,9 @@
 # took the next variable name as the secret. The template was reworded in the
 # following commit; this entry covers the commit that is already in history.
 ac99074d4566f49d6f05a0fab9b58abf1c9c9121:deploy/.env.example:generic-api-key:100
+
+# docs/ai/INTEGR8_AI_IMPLEMENTATION_PLAN.md shows an example request to the
+# assistant's message route, and the example's Idempotency-Key header is a
+# made-up UUID. The generic rule reads any `Key: <high-entropy value>` as a
+# credential. It is a client-chosen request id, never a secret.
+6ffc8e2ceeaf27689db58347f90c303126a8536d:docs/ai/INTEGR8_AI_IMPLEMENTATION_PLAN.md:generic-api-key:413
