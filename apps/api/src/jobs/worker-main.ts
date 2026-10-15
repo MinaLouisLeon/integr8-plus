@@ -6,6 +6,7 @@ import { flushSentry, initialiseSentry } from '../observability/sentry.js';
 import { runMediaMaintenance } from '../media/maintenance.js';
 import { runMetering } from '../media/metering.js';
 import { runDunning } from '../billing/dunning.js';
+import { runAiReconciliation } from '../ai/reconcile.js';
 import { runSignupExpiry } from '../signup/expire.js';
 import { purgeDueTenants } from '../platform/purge.js';
 import { runSyncMaintenance } from '../sync/maintenance.js';
@@ -110,6 +111,25 @@ async function main(): Promise<void> {
       // Signups nobody verified (P18). Nothing was created for them, so this
       // only closes live tokens.
       await runSignupExpiry({ logger, workerId: worker.id });
+
+      // The assistant (docs/ai): slots held by requests that never settled,
+      // proposals nobody confirmed, chats past their retention.
+      const assistant = await runAiReconciliation({ config, logger, workerId: worker.id });
+      if (
+        assistant.reconciled > 0 ||
+        assistant.expiredProposals > 0 ||
+        assistant.sweptConversations > 0 ||
+        assistant.failures.length > 0
+      ) {
+        logger.info('Assistant reconciliation finished', {
+          reconciled: assistant.reconciled,
+          charged: assistant.charged,
+          released: assistant.released,
+          expiredProposals: assistant.expiredProposals,
+          sweptConversations: assistant.sweptConversations,
+          failures: assistant.failures.length,
+        });
+      }
     } catch (error) {
       logger.error('Media maintenance failed', {
         error: error instanceof Error ? error.message : String(error),

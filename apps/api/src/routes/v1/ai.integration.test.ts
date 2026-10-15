@@ -40,7 +40,7 @@ const HELP_DAILY: AiPolicy = {
 
 beforeAll(async () => {
   api = await startApi({
-    env: { AI_ENABLED: 'true', AI_GLOBAL_MONTHLY_BUDGET_MICROUSD: '100000' },
+    env: { AI_ENABLED: 'true', AI_GLOBAL_MONTHLY_BUDGET_MICROUSD: '1000000000' },
   });
   admin = await api.platformAdmin('ai');
   owner = await api.member('owner', 'ai-owner');
@@ -85,7 +85,7 @@ describe('plan policies', () => {
       'trial',
     ]);
     expect(body.items.every((item) => item.level === 'off')).toBe(true);
-    expect(body.maxLevelServed).toBe('off');
+    expect(body.maxLevelServed).toBe('agent');
   });
 
   it('are set whole, version-checked, and refused when inconsistent', async () => {
@@ -148,9 +148,10 @@ describe('what a company sees', () => {
       tools: string[];
       usage: { daily: { limit: number; remaining: number } | null; monthly: unknown; user: object };
     }>(await api.call(token, { method: 'GET', url: '/v1/ai/capabilities' }));
-    // The trial plan now says help, but this build serves nothing yet.
+    // The trial plan now says help, but the company has not switched the
+    // assistant on in any of its apps yet.
     expect(capabilities.level).toBe('off');
-    expect(capabilities.blockedBy).toBe('not_served');
+    expect(capabilities.blockedBy).toBe('channel_off');
     expect(capabilities.channel).toBe('desktop');
     expect(capabilities.tools).toEqual([]);
     expect(capabilities.usage.daily).toMatchObject({ limit: 10, remaining: 10 });
@@ -216,11 +217,12 @@ describe('a company override', () => {
     expect(custom.statusCode, custom.body).toBe(200);
     const afterCustom = json<CompanyAiBody>(custom);
     expect(afterCustom.override).toMatchObject({ mode: 'custom', version: 1 });
+    // This build serves every level, so the configured level runs as is.
     expect(afterCustom.effective).toMatchObject({
       source: 'custom',
       configuredLevel: 'agent',
-      level: 'off',
-      offReason: 'not_served',
+      level: 'agent',
+      offReason: null,
     });
 
     // The server's ceiling wins over what the admin typed, and the member's
@@ -477,7 +479,7 @@ describe('admission', () => {
       clientRequestId: 'budget-1',
       requestFingerprint: 'f'.repeat(64),
       policy: { ...HELP_DAILY, dailyLimit: 100 },
-      worstCaseCostMicrousd: 10_000_000,
+      worstCaseCostMicrousd: 10_000_000_000,
       config: api.config,
     });
     await expect(refused).rejects.toMatchObject({ status: 503, code: 'ai_budget_unavailable' });

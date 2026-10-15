@@ -14,6 +14,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   account_number_taken: 'لدى عميل آخر رقم الحساب هذا بالفعل. اختر رقمًا آخر.',
   ai_action_already_executed: 'سبق تنفيذ هذا الإجراء. لم يُنفَّذ شيء مرتين.',
   ai_action_expired: 'انتهت صلاحية هذا الاقتراح أو تغيّر السجل. اطلب من المساعد اقتراحًا جديدًا.',
+  ai_action_not_found: 'لا يوجد اقتراح كهذا. ربما أُزيل؛ اطلب من المساعد مجددًا.',
   ai_budget_unavailable: 'المساعد متوقف مؤقتًا الآن. حاول لاحقًا.',
   ai_concurrency_limit: 'تُجاب أسئلة كثيرة في الوقت نفسه. انتظر حتى ينتهي أحدها.',
   ai_conversation_not_found: 'لا توجد محادثة كهذه.',

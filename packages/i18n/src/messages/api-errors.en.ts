@@ -27,6 +27,7 @@ export const apiErrorsEn = {
   ai_action_already_executed: 'This action was already carried out. Nothing was done twice.',
   ai_action_expired:
     'This proposal has expired or the record changed. Ask the assistant again for a fresh one.',
+  ai_action_not_found: 'No such proposal. It may have been cleared; ask the assistant again.',
   ai_budget_unavailable: 'The assistant is paused for now. Try again later.',
   ai_concurrency_limit: 'Too many questions are being answered at once. Wait for one to finish.',
   ai_conversation_not_found: 'No such conversation.',

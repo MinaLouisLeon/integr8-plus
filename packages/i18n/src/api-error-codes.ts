@@ -15,6 +15,7 @@ export const API_ERROR_CODES = [
   'account_number_taken',
   'ai_action_already_executed',
   'ai_action_expired',
+  'ai_action_not_found',
   'ai_budget_unavailable',
   'ai_concurrency_limit',
   'ai_conversation_not_found',

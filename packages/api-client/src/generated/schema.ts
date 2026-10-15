@@ -118,6 +118,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ai/actions/{proposalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One of your prepared actions, and where it stands */
+        get: operations["getAiAction"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/actions/{proposalId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Carry out an action the assistant prepared
+         * @description Only the member who asked, only while the proposal is pending and in time, and only after the company’s level, the seat’s permission, the module and the records concerned have been checked again. Runs through the same code as the screen would, in the member’s name, exactly once: a second confirmation answers 409 `ai_action_already_executed`. Needs an `Idempotency-Key`.
+         */
+        post: operations["confirmAiAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/actions/{proposalId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline an action the assistant prepared */
+        post: operations["rejectAiAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ai/capabilities": {
         parameters: {
             query?: never;
@@ -152,6 +206,71 @@ export interface paths {
         get: operations["getAiUsage"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in member’s conversations, newest first */
+        get: operations["listAiConversations"];
+        put?: never;
+        /**
+         * Start a private conversation with the assistant
+         * @description Private to the member who starts it: nobody else in the company, owners included, can read it. Refused with 403 `ai_disabled` when the assistant is off for this company, this app or this member.
+         */
+        post: operations["createAiConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/conversations/{conversationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One conversation with its messages
+         * @description Only the member who started it can read it; anybody else is told it does not exist.
+         */
+        get: operations["getAiConversation"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete one of your conversations
+         * @description The chat goes; the record that messages were charged stays, because that is the company’s usage and not the conversation.
+         */
+        delete: operations["deleteAiConversation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/conversations/{conversationId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask the assistant a question
+         * @description Needs an `Idempotency-Key`: the same key with the same question is answered once and replayed, never charged twice. One durably stored answer is one message against the company’s and the member’s allowance. Refused while the company is read-only for non-payment, like every other write.
+         */
+        post: operations["postAiMessage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7284,6 +7403,354 @@ export interface operations {
             };
         };
     };
+    getAiAction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The proposal. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        toolKey: string;
+                        /** @enum {string} */
+                        state: "pending" | "confirmed" | "executing" | "completed" | "rejected" | "expired" | "failed";
+                        preview: {
+                            title: string;
+                            fields: {
+                                label: string;
+                                value: string;
+                            }[];
+                            warnings: string[];
+                        };
+                        /** Format: date-time */
+                        expiresAt: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        result: {
+                            resourceType: string;
+                            resourceId: string;
+                            summary: string;
+                            appRoute: string;
+                        } | null;
+                        errorCode: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such proposal (`ai_action_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    confirmAiAction: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done; the proposal with its result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        toolKey: string;
+                        /** @enum {string} */
+                        state: "pending" | "confirmed" | "executing" | "completed" | "rejected" | "expired" | "failed";
+                        preview: {
+                            title: string;
+                            fields: {
+                                label: string;
+                                value: string;
+                            }[];
+                            warnings: string[];
+                        };
+                        /** Format: date-time */
+                        expiresAt: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        result: {
+                            resourceType: string;
+                            resourceId: string;
+                            summary: string;
+                            appRoute: string;
+                        } | null;
+                        errorCode: string | null;
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not allowed any more (`ai_disabled`, `ai_tool_forbidden`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such proposal (`ai_action_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Expired or changed (`ai_action_expired`), or already carried out (`ai_action_already_executed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    rejectAiAction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Declined. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        toolKey: string;
+                        /** @enum {string} */
+                        state: "pending" | "confirmed" | "executing" | "completed" | "rejected" | "expired" | "failed";
+                        preview: {
+                            title: string;
+                            fields: {
+                                label: string;
+                                value: string;
+                            }[];
+                            warnings: string[];
+                        };
+                        /** Format: date-time */
+                        expiresAt: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        result: {
+                            resourceType: string;
+                            resourceId: string;
+                            summary: string;
+                            appRoute: string;
+                        } | null;
+                        errorCode: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such proposal (`ai_action_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already carried out (`ai_action_already_executed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     getAiCapabilities: {
         parameters: {
             query?: never;
@@ -7514,6 +7981,609 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+        };
+    };
+    listAiConversations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The conversations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string | null;
+                            /** @enum {string} */
+                            locale: "en" | "ar";
+                            /** @enum {string} */
+                            level: "off" | "help" | "insights" | "agent";
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The assistant is not available (`ai_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createAiConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @default en
+                     * @enum {string}
+                     */
+                    locale?: "en" | "ar";
+                };
+            };
+        };
+        responses: {
+            /** @description Started. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string | null;
+                        /** @enum {string} */
+                        locale: "en" | "ar";
+                        /** @enum {string} */
+                        level: "off" | "help" | "insights" | "agent";
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The assistant is not available (`ai_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getAiConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The conversation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        conversation: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string | null;
+                            /** @enum {string} */
+                            locale: "en" | "ar";
+                            /** @enum {string} */
+                            level: "off" | "help" | "insights" | "agent";
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        };
+                        messages: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            role: "user" | "assistant" | "tool_summary";
+                            text: string;
+                            sources: {
+                                /** @enum {string} */
+                                kind: "help";
+                                articleKey: string;
+                                label: string;
+                                appRoute: string | null;
+                                helpUrl: string | null;
+                            }[];
+                            toolSummaries: {
+                                tool: string;
+                                result: string;
+                            }[];
+                            actionProposal: {
+                                /** Format: uuid */
+                                id: string;
+                                toolKey: string;
+                                /** @enum {string} */
+                                state: "pending" | "confirmed" | "executing" | "completed" | "rejected" | "expired" | "failed";
+                                preview: {
+                                    title: string;
+                                    fields: {
+                                        label: string;
+                                        value: string;
+                                    }[];
+                                    warnings: string[];
+                                };
+                                /** Format: date-time */
+                                expiresAt: string;
+                                /** Format: date-time */
+                                createdAt: string;
+                                result: {
+                                    resourceType: string;
+                                    resourceId: string;
+                                    summary: string;
+                                    appRoute: string;
+                                } | null;
+                                errorCode: string | null;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such conversation (`ai_conversation_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteAiConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such conversation (`ai_conversation_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    postAiMessage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    message: string;
+                    /**
+                     * @default en
+                     * @enum {string}
+                     */
+                    locale?: "en" | "ar";
+                    clientContext?: {
+                        page?: string;
+                        /** Format: uuid */
+                        entityId?: string | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The answer, and what is left. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            role: "user" | "assistant" | "tool_summary";
+                            text: string;
+                            sources: {
+                                /** @enum {string} */
+                                kind: "help";
+                                articleKey: string;
+                                label: string;
+                                appRoute: string | null;
+                                helpUrl: string | null;
+                            }[];
+                            toolSummaries: {
+                                tool: string;
+                                result: string;
+                            }[];
+                            actionProposal: {
+                                /** Format: uuid */
+                                id: string;
+                                toolKey: string;
+                                /** @enum {string} */
+                                state: "pending" | "confirmed" | "executing" | "completed" | "rejected" | "expired" | "failed";
+                                preview: {
+                                    title: string;
+                                    fields: {
+                                        label: string;
+                                        value: string;
+                                    }[];
+                                    warnings: string[];
+                                };
+                                /** Format: date-time */
+                                expiresAt: string;
+                                /** Format: date-time */
+                                createdAt: string;
+                                result: {
+                                    resourceType: string;
+                                    resourceId: string;
+                                    summary: string;
+                                    appRoute: string;
+                                } | null;
+                                errorCode: string | null;
+                            } | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                        };
+                        usage: {
+                            daily: {
+                                used: number;
+                                reserved: number;
+                                limit: number | null;
+                                remaining: number | null;
+                                /** Format: date-time */
+                                resetsAt: string;
+                            } | null;
+                            monthly: {
+                                used: number;
+                                reserved: number;
+                                limit: number | null;
+                                remaining: number | null;
+                                /** Format: date-time */
+                                resetsAt: string;
+                            } | null;
+                            user: {
+                                daily: {
+                                    used: number;
+                                    reserved: number;
+                                    limit: number | null;
+                                    remaining: number | null;
+                                    /** Format: date-time */
+                                    resetsAt: string;
+                                };
+                                monthly: {
+                                    used: number;
+                                    reserved: number;
+                                    limit: number | null;
+                                    remaining: number | null;
+                                    /** Format: date-time */
+                                    resetsAt: string;
+                                };
+                            };
+                            unlimited: boolean;
+                        };
+                        replayed: boolean;
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The assistant is not available (`ai_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such conversation (`ai_conversation_not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The same question is still being answered (`ai_request_in_progress`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The day’s or month’s messages are used up (`ai_daily_quota_exceeded`, `ai_monthly_quota_exceeded`), or too many at once (`ai_concurrency_limit`). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The model could not be reached (`ai_provider_unavailable`), or the assistant is paused (`ai_budget_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

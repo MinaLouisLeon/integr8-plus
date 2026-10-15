@@ -33,7 +33,7 @@ import { planFor } from '../http/suspension.js';
  * pass (docs/ai/IMPLEMENTATION_STATUS.md). A plan or company set above it is
  * capped here, so an operator cannot switch on code that has not shipped.
  */
-export const AI_MAX_LEVEL_SERVED: AiLevel = 'off';
+export const AI_MAX_LEVEL_SERVED: AiLevel = 'agent';
 
 const CACHE_TTL_MS = 30_000;
 

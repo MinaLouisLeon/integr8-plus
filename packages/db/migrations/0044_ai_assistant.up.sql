@@ -472,6 +472,9 @@ comment on table ai_help_articles is
   'The curated help the assistant cites (ADR-0001), in both languages, seeded from the checked-in manifest by content hash. Platform-only.';
 alter table ai_help_articles enable row level security;
 
+-- The retention sweep claims its daily turn here, like metering and dunning.
+insert into scheduled_task_runs (task) values ('ai.retention');
+
 -- ---------------------------------------------------------------------------
 -- The company's own switches
 -- ---------------------------------------------------------------------------

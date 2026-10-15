@@ -1,5 +1,7 @@
 -- Reverses 0044.
 
+delete from scheduled_task_runs where task = 'ai.retention';
+
 alter table tenant_users drop column ai_enabled;
 alter table tenant_settings
   drop column ai_web_enabled,
