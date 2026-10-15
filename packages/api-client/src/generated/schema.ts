@@ -66871,6 +66871,7 @@ export interface operations {
                             calls: number;
                             failed: number;
                             limited: number;
+                            creditExhausted: number;
                             averageMs: number | null;
                         };
                         staleReservations: {

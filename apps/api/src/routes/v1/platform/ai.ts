@@ -689,6 +689,8 @@ export const aiHealthRoute = defineRoute({
           calls: z.number().int(),
           failed: z.number().int(),
           limited: z.number().int(),
+          /** Refused because the provider account's credit was spent (ADR-0002 D8). */
+          creditExhausted: z.number().int(),
           averageMs: z.number().int().nullable(),
         }),
         staleReservations: z.object({

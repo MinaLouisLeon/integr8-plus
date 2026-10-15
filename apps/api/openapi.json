@@ -156273,6 +156273,11 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
+                        "creditExhausted": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
                         "averageMs": {
                           "nullable": true,
                           "type": "integer",
@@ -156285,6 +156290,7 @@
                         "calls",
                         "failed",
                         "limited",
+                        "creditExhausted",
                         "averageMs"
                       ],
                       "additionalProperties": false

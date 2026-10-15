@@ -4,7 +4,8 @@ import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { periodKeysAt } from '../../ai/periods.js';
 import { forgetAiPolicy } from '../../ai/policy.js';
-import type { RecordingAiProvider } from '../../ai/providers/index.js';
+import { AiProviderError, type RecordingAiProvider } from '../../ai/providers/index.js';
+import { clearProviderPauses } from '../../ai/providers/pause.js';
 import {
   type ApiHarness,
   type Member,
@@ -425,6 +426,49 @@ describe('asking', () => {
         updatedBy: null,
       });
       forgetAiPolicy();
+    }
+  });
+
+  it('pauses the provider when its credit is spent, and charges nobody (ADR-0002 D8)', async () => {
+    const token = await api.signIn(engineer);
+    const conversationId = await startConversation(token);
+    const before = await companyUsage();
+    const original = provider.generate.bind(provider);
+    let asked = 0;
+    provider.generate = () => {
+      asked += 1;
+      return Promise.reject(
+        new AiProviderError('recording', 'credit_exhausted', 'credit spent', undefined, 429),
+      );
+    };
+    try {
+      const failed = await ask(token, conversationId, 'How do I create a work order?');
+      expect(failed.statusCode).toBe(503);
+      // The company is told the assistant is unavailable, not that it ran out.
+      expect(code(failed)).toBe('ai_provider_unavailable');
+      expect(failed.body).not.toMatch(/credit|quota|billing/iu);
+
+      // Paused: the next question does not reach the provider at all.
+      const paused = await ask(token, conversationId, 'Anything else?');
+      expect(paused.statusCode).toBe(503);
+      expect(asked).toBe(1);
+
+      const after = await companyUsage();
+      expect(after.day).toEqual(before.day);
+      expect(after.tokens.day).toEqual(before.tokens.day);
+
+      const health = json<{ window: { creditExhausted: number } }>(
+        await api.call(admin.accessToken, { method: 'GET', url: '/v1/platform/ai/health' }),
+      );
+      expect(health.window.creditExhausted).toBeGreaterThanOrEqual(1);
+      const providers = json<{ creditPauseSeconds: number | null }>(
+        await api.call(admin.accessToken, { method: 'GET', url: '/v1/platform/ai/providers' }),
+      );
+      expect(providers.creditPauseSeconds).toBeGreaterThan(0);
+    } finally {
+      provider.generate = original;
+      provider.reset();
+      clearProviderPauses();
     }
   });
 

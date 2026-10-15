@@ -576,15 +576,21 @@ export class AiPlatformRepository {
   }
 
   /** Provider calls across every company in a window, for the health screen. */
-  async providerHealth(
-    since: Date,
-  ): Promise<{ calls: number; failed: number; limited: number; averageMs: number | null }> {
+  async providerHealth(since: Date): Promise<{
+    calls: number;
+    failed: number;
+    limited: number;
+    /** Calls the provider refused because the account's credit was spent (ADR-0002 D8). */
+    creditExhausted: number;
+    averageMs: number | null;
+  }> {
     const row = await this.db
       .selectFrom('ai_provider_calls')
       .select([
         sql<string>`count(*)`.as('calls'),
         sql<string>`count(*) filter (where status <> 'success')`.as('failed'),
         sql<string>`count(*) filter (where error_code = 'rate_limited')`.as('limited'),
+        sql<string>`count(*) filter (where error_code = 'credit_exhausted')`.as('credit_exhausted'),
         sql<string | null>`avg(extract(epoch from (ended_at - started_at)) * 1000)`.as(
           'average_ms',
         ),
@@ -595,6 +601,7 @@ export class AiPlatformRepository {
       calls: Number(row.calls),
       failed: Number(row.failed),
       limited: Number(row.limited),
+      creditExhausted: Number(row.credit_exhausted),
       averageMs: row.average_ms === null ? null : Math.round(Number(row.average_ms)),
     };
   }
