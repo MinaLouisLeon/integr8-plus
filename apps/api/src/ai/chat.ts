@@ -16,6 +16,7 @@ import type { ApiConfig } from '../config.js';
 import type { Logger } from '../http/logger.js';
 import type { ClientApp } from '../http/routes.js';
 import { acquireSlot, admitMessage, settleMessage } from './admission.js';
+import { type AiModelLevel, modelFor } from './configuration.js';
 import {
   aiConversationNotFound,
   aiDisabled,
@@ -27,6 +28,7 @@ import { periodKeysAt, usageView, type AiUsageView } from './periods.js';
 import { resolveAiAccess, type AiAccess } from './policy.js';
 import { costOf, estimateTokens, type PriceTable, worstCaseCost } from './pricing.js';
 import { type AiChatMessage, type AiProvider, AiProviderError } from './providers/index.js';
+import { pauseProvider, providerPausedFor } from './providers/pause.js';
 import { estimatePromptTokens } from './providers/provider.js';
 import { ACTION_CATALOGUE } from './actions/catalogue.js';
 import {
@@ -126,7 +128,20 @@ export async function answerMessage(input: AnswerInput): Promise<AnswerOutput> {
     throw aiConversationNotFound();
   }
 
-  const model = config.AI_MODEL_HELP ?? 'recording-help';
+  // The model of the level this member actually has, after every gate
+  // (ADR-0002 D3). The level was already lowered to one the server has a
+  // model for, so a missing one here is a configuration that changed under
+  // us: refuse rather than borrow another level's model.
+  const model = modelFor(access.level as AiModelLevel, config);
+  if (model === null) {
+    throw aiDisabled('provider_unconfigured');
+  }
+  // A provider that said its credit is spent is not asked again until the
+  // pause ends; nothing is reserved meanwhile (ADR-0002 D8).
+  const paused = providerPausedFor(services.provider.id);
+  if (paused !== null) {
+    throw aiProviderUnavailable(paused);
+  }
   const price = services.prices.priceFor(services.provider.id, model);
   const policy = access.policy;
   const worstCase = worstCaseCost(price, {
@@ -360,6 +375,15 @@ async function generateWithTools(args: {
     } catch (error) {
       const failure = error instanceof AiProviderError ? error : null;
       const errorCode = failure === null ? 'provider_error' : failure.kind;
+      if (failure?.kind === 'credit_exhausted') {
+        // The deployment's provider account is out of credit: pause this
+        // process's calls and tell the platform, never the company, why.
+        pauseProvider(services.provider.id, config.AI_CREDIT_EXHAUSTED_PAUSE_SECONDS);
+        input.logger.error('ai.provider.credit_exhausted', {
+          provider: services.provider.id,
+          pauseSeconds: config.AI_CREDIT_EXHAUSTED_PAUSE_SECONDS,
+        });
+      }
       // Nothing came back, so nothing is known about the bill: a timeout may
       // still have been served and charged, the rest certainly were not.
       const maybeSpent =
@@ -403,12 +427,18 @@ async function generateWithTools(args: {
         errorCode,
         status: failure?.status ?? null,
       });
-      throw aiProviderUnavailable(failure?.retryAfterSeconds ?? 30);
+      throw aiProviderUnavailable(
+        failure?.kind === 'credit_exhausted'
+          ? config.AI_CREDIT_EXHAUSTED_PAUSE_SECONDS
+          : (failure?.retryAfterSeconds ?? 30),
+      );
     }
 
     const callTokens = {
       inputTokens: generation.usage.inputTokens ?? estimatePromptTokens({ system, messages }),
       outputTokens: generation.usage.outputTokens ?? estimateTokens(generation.text),
+      cachedTokens: generation.usage.cachedTokens ?? null,
+      reasoningTokens: generation.usage.reasoningTokens ?? null,
     };
     const callCost = costOf(price, callTokens);
     spent += callCost;
@@ -423,6 +453,8 @@ async function generateWithTools(args: {
         purpose: args.purpose,
         inputTokens: callTokens.inputTokens,
         outputTokens: callTokens.outputTokens,
+        cachedTokens: callTokens.cachedTokens,
+        reasoningTokens: callTokens.reasoningTokens,
         tokensEstimated: generation.usage.estimated || !price.listed,
         costMicrousd: callCost,
         priceVersion: price.version,

@@ -114,6 +114,50 @@ afterAll(async () => {
   await api.close();
 });
 
+describe('the model each level runs on (ADR-0002 D3)', () => {
+  it('is the level’s own model on every call, never the Help model for all', async () => {
+    const token = await api.signIn(owner);
+    const platform = getPlatformDataSource().ai;
+    const modelsAt = async (level: 'help' | 'insights' | 'agent') => {
+      const current = (await platform.tenantPolicy(api.tenantId))!;
+      await platform.setTenantPolicy(api.tenantId, {
+        mode: 'custom',
+        policy: { ...AGENT, level },
+        companyDataToProvider: true,
+        reason: `model for ${level}`,
+        expectedVersion: current.version,
+        updatedBy: null,
+      });
+      forgetAiPolicy();
+      const conversationId = await conversation(token);
+      provider.reset();
+      // A tool round at the higher levels, so more than one call is checked.
+      const asked = await ask(
+        token,
+        conversationId,
+        level === 'help' ? 'How do I create a work order?' : '/tool get_work_order_summary {}',
+      );
+      expect(asked.statusCode, asked.body).toBe(200);
+      return [...new Set(provider.calls.map((call) => call.input.model))];
+    };
+
+    expect(await modelsAt('help')).toEqual(['recording-help']);
+    expect(await modelsAt('insights')).toEqual(['recording-insights']);
+    expect(await modelsAt('agent')).toEqual(['recording-agent']);
+
+    const current = (await platform.tenantPolicy(api.tenantId))!;
+    await platform.setTenantPolicy(api.tenantId, {
+      mode: 'inherit',
+      policy: AGENT,
+      companyDataToProvider: true,
+      reason: null,
+      expectedVersion: current.version,
+      updatedBy: null,
+    });
+    forgetAiPolicy();
+  });
+});
+
 describe('what a seat is offered', () => {
   it('lists the tools by the seat’s permissions and the company’s modules', async () => {
     const ownerTools = json<{ level: string; tools: string[] }>(

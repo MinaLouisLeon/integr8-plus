@@ -56,7 +56,15 @@ export const aiCapabilitiesSchema = z.object({
   level: z.enum(AI_LEVELS),
   /** Which switch closed, when `level` is off: for the screen to say why. */
   blockedBy: z
-    .enum(['global_off', 'plan_off', 'custom_off', 'not_served', 'channel_off', 'member_off'])
+    .enum([
+      'global_off',
+      'plan_off',
+      'custom_off',
+      'not_served',
+      'provider_unconfigured',
+      'channel_off',
+      'member_off',
+    ])
     .nullable(),
   channel: z.enum(AI_CHANNELS),
   /** The tools this member may use at this level: insight tools and prepare-only actions. */

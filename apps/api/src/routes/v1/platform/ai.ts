@@ -20,8 +20,10 @@ import {
   forgetAiPolicy,
   resolveEffectiveAiPolicy,
 } from '../../../ai/policy.js';
+import { aiConfiguration } from '../../../ai/configuration.js';
 import { periodKeysAt } from '../../../ai/periods.js';
 import { approvedDataClasses, providerStatus } from '../../../ai/providers/index.js';
+import { providerPausedFor } from '../../../ai/providers/pause.js';
 import { conflict, notFound, unprocessable } from '../../../http/errors.js';
 import { defineRoute, noSchema } from '../../../http/routes.js';
 import { iso, isoOrNull } from '../schemas.js';
@@ -76,7 +78,9 @@ const effectivePolicySchema = policyFieldsSchema.extend({
   source: z.enum(['plan', 'custom']),
   /** The level before this build's cap: what the policy says, not what runs. */
   configuredLevel: z.enum(AI_LEVELS),
-  offReason: z.enum(['global_off', 'plan_off', 'custom_off', 'not_served']).nullable(),
+  offReason: z
+    .enum(['global_off', 'plan_off', 'custom_off', 'not_served', 'provider_unconfigured'])
+    .nullable(),
   companyDataToProvider: z.boolean(),
 });
 
@@ -372,6 +376,26 @@ export const aiProvidersRoute = defineRoute({
           insights: z.string().nullable(),
           agent: z.string().nullable(),
         }),
+        /**
+         * Whether the active provider can answer at all, and what is wrong
+         * when it cannot (ADR-0002 D2). Configuration never stops the
+         * server; it turns the assistant off and says so here.
+         */
+        ready: z.boolean(),
+        problems: z.array(z.string()),
+        /** The levels that have a model, highest first. */
+        servedLevels: z.array(z.enum(['agent', 'insights', 'help'])),
+        /** Per level: whether its model has its own price row, and a cached-input rate. */
+        prices: z.object({
+          help: z.object({ listed: z.boolean(), cachedInputPriced: z.boolean() }),
+          insights: z.object({ listed: z.boolean(), cachedInputPriced: z.boolean() }),
+          agent: z.object({ listed: z.boolean(), cachedInputPriced: z.boolean() }),
+        }),
+        /**
+         * Seconds this API process still waits before asking the provider
+         * again after it said the account's credit is spent (ADR-0002 D8).
+         */
+        creditPauseSeconds: z.number().int().nullable(),
         providers: z.array(
           z.object({
             id: z.enum(AI_PROVIDERS),
@@ -384,6 +408,14 @@ export const aiProvidersRoute = defineRoute({
   },
   handler: (_input, context) => {
     const config = context.config;
+    const configuration = aiConfiguration(config);
+    const priced = (model: string | null) => {
+      if (model === null) {
+        return { listed: false, cachedInputPriced: false };
+      }
+      const price = context.services.ai.prices.priceFor(config.AI_PROVIDER, model);
+      return { listed: price.listed, cachedInputPriced: price.cachedInputPerMillion !== null };
+    };
     return Promise.resolve({
       status: 200,
       body: {
@@ -395,6 +427,15 @@ export const aiProvidersRoute = defineRoute({
           insights: config.AI_MODEL_INSIGHTS ?? null,
           agent: config.AI_MODEL_AGENT ?? null,
         },
+        ready: configuration.ready,
+        problems: configuration.problems,
+        servedLevels: configuration.servedLevels,
+        prices: {
+          help: priced(configuration.models.help),
+          insights: priced(configuration.models.insights),
+          agent: priced(configuration.models.agent),
+        },
+        creditPauseSeconds: providerPausedFor(config.AI_PROVIDER),
         providers: AI_PROVIDERS.map((id) => ({
           id,
           configured: providerStatus(id, config),

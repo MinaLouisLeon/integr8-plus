@@ -7770,7 +7770,7 @@ export interface operations {
                         /** @enum {string} */
                         level: "off" | "help" | "insights" | "agent";
                         /** @enum {string|null} */
-                        blockedBy: "global_off" | "plan_off" | "custom_off" | "not_served" | "channel_off" | "member_off" | null;
+                        blockedBy: "global_off" | "plan_off" | "custom_off" | "not_served" | "provider_unconfigured" | "channel_off" | "member_off" | null;
                         /** @enum {string} */
                         channel: "web" | "desktop" | "mobile";
                         tools: string[];
@@ -66102,7 +66102,7 @@ export interface operations {
                             /** @enum {string} */
                             configuredLevel: "off" | "help" | "insights" | "agent";
                             /** @enum {string|null} */
-                            offReason: "global_off" | "plan_off" | "custom_off" | "not_served" | null;
+                            offReason: "global_off" | "plan_off" | "custom_off" | "not_served" | "provider_unconfigured" | null;
                             companyDataToProvider: boolean;
                         };
                         /** @enum {string} */
@@ -66308,7 +66308,7 @@ export interface operations {
                             /** @enum {string} */
                             configuredLevel: "off" | "help" | "insights" | "agent";
                             /** @enum {string|null} */
-                            offReason: "global_off" | "plan_off" | "custom_off" | "not_served" | null;
+                            offReason: "global_off" | "plan_off" | "custom_off" | "not_served" | "provider_unconfigured" | null;
                             companyDataToProvider: boolean;
                         };
                         /** @enum {string} */
@@ -66505,7 +66505,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        active: "recording" | "groq" | "gemini" | "anthropic";
+                        active: "recording" | "groq" | "gemini" | "anthropic" | "openai";
                         globalEnabled: boolean;
                         /** @enum {string} */
                         maxLevelServed: "off" | "help" | "insights" | "agent";
@@ -66514,9 +66514,27 @@ export interface operations {
                             insights: string | null;
                             agent: string | null;
                         };
+                        ready: boolean;
+                        problems: string[];
+                        servedLevels: ("agent" | "insights" | "help")[];
+                        prices: {
+                            help: {
+                                listed: boolean;
+                                cachedInputPriced: boolean;
+                            };
+                            insights: {
+                                listed: boolean;
+                                cachedInputPriced: boolean;
+                            };
+                            agent: {
+                                listed: boolean;
+                                cachedInputPriced: boolean;
+                            };
+                        };
+                        creditPauseSeconds: number | null;
                         providers: {
                             /** @enum {string} */
-                            id: "recording" | "groq" | "gemini" | "anthropic";
+                            id: "recording" | "groq" | "gemini" | "anthropic" | "openai";
                             configured: boolean;
                             approvedDataClasses: ("public_help" | "company_operational" | "company_financial" | "restricted_personal")[];
                         }[];

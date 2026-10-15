@@ -62,7 +62,7 @@ export const AI_DATA_CLASSES = [
 export const aiDataClassSchema = z.enum(AI_DATA_CLASSES);
 export type AiDataClass = z.infer<typeof aiDataClassSchema>;
 
-export const AI_PROVIDERS = ['recording', 'groq', 'gemini', 'anthropic'] as const;
+export const AI_PROVIDERS = ['recording', 'groq', 'gemini', 'anthropic', 'openai'] as const;
 export const aiProviderSchema = z.enum(AI_PROVIDERS);
 export type AiProviderId = z.infer<typeof aiProviderSchema>;
 

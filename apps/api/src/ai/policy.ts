@@ -8,6 +8,7 @@ import {
 } from '@integr8/core';
 import { type AiPolicyFields, getPlatformDataSource, withTenant } from '@integr8/db';
 import type { ApiConfig } from '../config.js';
+import { servableLevel } from './configuration.js';
 import type { ClientApp } from '../http/routes.js';
 import { planFor } from '../http/suspension.js';
 
@@ -40,8 +41,13 @@ const CACHE_TTL_MS = 30_000;
 export interface EffectiveAiPolicy extends AiPolicy {
   /** Where the policy came from: the plan, or the company's own override. */
   source: 'plan' | 'custom';
-  /** Why the level is `off`, when it is. `null` when the assistant is on. */
-  offReason: 'global_off' | 'plan_off' | 'custom_off' | 'not_served' | null;
+  /**
+   * Why the level is `off`, when it is. `null` when the assistant is on.
+   * `provider_unconfigured` is the server's settings, not the company's
+   * policy: no key, no model, or a fake provider in production (ADR-0002 D2).
+   */
+  offReason:
+    'global_off' | 'plan_off' | 'custom_off' | 'not_served' | 'provider_unconfigured' | null;
   /** The level before this build's cap, for the dashboard to show honestly. */
   configuredLevel: AiLevel;
   /** Whether the company's own records may go to the provider (L2, L3). */
@@ -101,7 +107,12 @@ async function read(tenantId: string, config: ApiConfig, now: number): Promise<E
     offReason = 'not_served';
     level = 'off';
   } else {
-    level = minAiLevel(configuredLevel, AI_MAX_LEVEL_SERVED);
+    // Capped again by what the server can run: a level whose model is not set
+    // gives way to the highest one below it that has one (ADR-0002 D2, D3).
+    level = servableLevel(minAiLevel(configuredLevel, AI_MAX_LEVEL_SERVED), config);
+    if (level === 'off') {
+      offReason = 'provider_unconfigured';
+    }
   }
 
   return {

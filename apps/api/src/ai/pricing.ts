@@ -20,11 +20,19 @@ const priceRowSchema = z.object({
   inputPerMillion: z.number().int().min(0),
   /** USD micros per million output tokens. */
   outputPerMillion: z.number().int().min(0),
+  /**
+   * USD micros per million input tokens served from the provider's prompt
+   * cache. Optional: without it every input token is charged at the input
+   * rate, and no discount is ever invented (ADR-0002 D4).
+   */
+  cachedInputPerMillion: z.number().int().min(0).optional(),
 });
 
 export interface ModelPrice {
   inputPerMillion: number;
   outputPerMillion: number;
+  /** Null when no cached-input rate is configured: cached input is full price. */
+  cachedInputPerMillion: number | null;
   /** False when the model had no row and the defaults were used. */
   listed: boolean;
   version: string;
@@ -64,22 +72,45 @@ export class PriceTable {
   priceFor(provider: string, model: string): ModelPrice {
     const row = this.#rows.get(`${provider}:${model}`);
     return row === undefined
-      ? { ...this.#defaults, listed: false, version: this.version }
+      ? { ...this.#defaults, cachedInputPerMillion: null, listed: false, version: this.version }
       : {
           inputPerMillion: row.inputPerMillion,
           outputPerMillion: row.outputPerMillion,
+          cachedInputPerMillion: row.cachedInputPerMillion ?? null,
           listed: true,
           version: this.version,
         };
   }
+
+  /** Whether a model has its own price row, for the platform provider screen. */
+  isListed(provider: string, model: string): boolean {
+    return this.#rows.has(`${provider}:${model}`);
+  }
 }
 
-/** The cost of a call, rounded up to the micro. */
+/**
+ * The cost of a call, rounded up to the micro.
+ *
+ * Cached input is a subset of input: those tokens are charged at the cached
+ * rate when one is configured and at the input rate otherwise, and the rest
+ * at the input rate. Reasoning tokens are already in the output count and are
+ * never charged again (ADR-0002 D4).
+ */
 export function costOf(
-  price: Pick<ModelPrice, 'inputPerMillion' | 'outputPerMillion'>,
-  tokens: { inputTokens: number; outputTokens: number },
+  price: Pick<ModelPrice, 'inputPerMillion' | 'outputPerMillion'> & {
+    cachedInputPerMillion?: number | null;
+  },
+  tokens: { inputTokens: number; outputTokens: number; cachedTokens?: number | null },
 ): number {
-  const input = BigInt(Math.max(0, tokens.inputTokens)) * BigInt(price.inputPerMillion);
+  const allInput = BigInt(Math.max(0, tokens.inputTokens));
+  const cachedRate = price.cachedInputPerMillion ?? null;
+  const cached =
+    cachedRate === null
+      ? 0n
+      : BigInt(Math.min(Math.max(0, tokens.cachedTokens ?? 0), Math.max(0, tokens.inputTokens)));
+  const input =
+    (allInput - cached) * BigInt(price.inputPerMillion) +
+    cached * BigInt(cachedRate ?? price.inputPerMillion);
   const output = BigInt(Math.max(0, tokens.outputTokens)) * BigInt(price.outputPerMillion);
   const micros = (input + output + 999_999n) / 1_000_000n;
   if (micros > BigInt(Number.MAX_SAFE_INTEGER)) {
@@ -90,8 +121,8 @@ export function costOf(
 
 /**
  * The most a message may cost: every allowed call at its full input and
- * output bound. Reserved before the first call, settled to the real figure
- * after the last.
+ * output bound, with no cache discount. Reserved before the first call,
+ * settled to the real figure after the last.
  */
 export function worstCaseCost(
   price: Pick<ModelPrice, 'inputPerMillion' | 'outputPerMillion'>,

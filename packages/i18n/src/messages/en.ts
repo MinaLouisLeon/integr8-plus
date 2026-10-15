@@ -5940,6 +5940,7 @@ export const en = {
         plan_off: 'The assistant is not included in your company’s subscription.',
         custom_off: 'The assistant is switched off for your company.',
         not_served: 'The assistant is not available to your company at the moment.',
+        provider_unconfigured: 'The assistant is temporarily unavailable. Please try again later.',
         channel_off: 'Your company has not switched the assistant on for the phone app.',
         member_off:
           'The assistant is switched off for your account. Ask your company administrator.',
@@ -6021,6 +6022,7 @@ export const en = {
         'The assistant is not included in your company’s subscription. Ask Integr8 about it.',
       custom_off: 'Integr8 has switched the assistant off for your company.',
       not_served: 'The assistant is not available in this release yet.',
+      provider_unconfigured: 'The assistant is temporarily unavailable. Please try again later.',
       channel_off:
         'Your company has not switched the assistant on for this app. Ask an owner to turn it on under Company settings.',
       member_off: 'The assistant is switched off for you. Ask an owner to turn it on under People.',
@@ -6753,6 +6755,8 @@ export const en = {
       offPlan: 'The plan sets it off',
       offCustom: 'The custom configuration sets it off',
       offNotServed: 'Not served by this deployment yet',
+      offProviderUnconfigured:
+        'Off because the server’s AI settings are incomplete: see Providers for what is missing',
       mode: 'Configuration',
       modeInherit: 'Inherit plan',
       modeCustom: 'Custom configuration',

@@ -655,7 +655,8 @@ interface CompanyAi {
   effective: AiPolicyFields & {
     source: 'plan' | 'custom';
     configuredLevel: AiPolicyFields['level'];
-    offReason: 'global_off' | 'plan_off' | 'custom_off' | 'not_served' | null;
+    offReason:
+      'global_off' | 'plan_off' | 'custom_off' | 'not_served' | 'provider_unconfigured' | null;
     companyDataToProvider: boolean;
   };
   maxLevelServed: AiPolicyFields['level'];
@@ -756,7 +757,9 @@ function AiPanelForm({ tenantId, data }: { tenantId: string; data: CompanyAi }) 
           ? t('platform.ai.offPlan')
           : effective.offReason === 'custom_off'
             ? t('platform.ai.offCustom')
-            : t('platform.ai.offNotServed');
+            : effective.offReason === 'provider_unconfigured'
+              ? t('platform.ai.offProviderUnconfigured')
+              : t('platform.ai.offNotServed');
 
   const dayLimit =
     effective.unlimitedMessages || !quotaModeHasDaily(effective.quotaMode)

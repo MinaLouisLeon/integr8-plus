@@ -1710,6 +1710,7 @@
                         "plan_off",
                         "custom_off",
                         "not_served",
+                        "provider_unconfigured",
                         "channel_off",
                         "member_off"
                       ]
@@ -154509,7 +154510,8 @@
                             "global_off",
                             "plan_off",
                             "custom_off",
-                            "not_served"
+                            "not_served",
+                            "provider_unconfigured"
                           ]
                         },
                         "companyDataToProvider": {
@@ -155276,7 +155278,8 @@
                             "global_off",
                             "plan_off",
                             "custom_off",
-                            "not_served"
+                            "not_served",
+                            "provider_unconfigured"
                           ]
                         },
                         "companyDataToProvider": {
@@ -155723,7 +155726,8 @@
                         "recording",
                         "groq",
                         "gemini",
-                        "anthropic"
+                        "anthropic",
+                        "openai"
                       ]
                     },
                     "globalEnabled": {
@@ -155761,6 +155765,91 @@
                       ],
                       "additionalProperties": false
                     },
+                    "ready": {
+                      "type": "boolean"
+                    },
+                    "problems": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "servedLevels": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "agent",
+                          "insights",
+                          "help"
+                        ]
+                      }
+                    },
+                    "prices": {
+                      "type": "object",
+                      "properties": {
+                        "help": {
+                          "type": "object",
+                          "properties": {
+                            "listed": {
+                              "type": "boolean"
+                            },
+                            "cachedInputPriced": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "listed",
+                            "cachedInputPriced"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "insights": {
+                          "type": "object",
+                          "properties": {
+                            "listed": {
+                              "type": "boolean"
+                            },
+                            "cachedInputPriced": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "listed",
+                            "cachedInputPriced"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "agent": {
+                          "type": "object",
+                          "properties": {
+                            "listed": {
+                              "type": "boolean"
+                            },
+                            "cachedInputPriced": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "listed",
+                            "cachedInputPriced"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "help",
+                        "insights",
+                        "agent"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "creditPauseSeconds": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
                     "providers": {
                       "type": "array",
                       "items": {
@@ -155772,7 +155861,8 @@
                               "recording",
                               "groq",
                               "gemini",
-                              "anthropic"
+                              "anthropic",
+                              "openai"
                             ]
                           },
                           "configured": {
@@ -155805,6 +155895,11 @@
                     "globalEnabled",
                     "maxLevelServed",
                     "models",
+                    "ready",
+                    "problems",
+                    "servedLevels",
+                    "prices",
+                    "creditPauseSeconds",
                     "providers"
                   ],
                   "additionalProperties": false

@@ -4,6 +4,7 @@ import type { AiProvider } from './provider.js';
 import { AnthropicAiProvider } from './anthropic.js';
 import { GeminiAiProvider } from './gemini.js';
 import { GroqAiProvider } from './groq.js';
+import { OpenAiProvider } from './openai.js';
 import { RecordingAiProvider } from './recording.js';
 
 /**
@@ -24,6 +25,8 @@ export function providerStatus(id: AiProviderId, config: ApiConfig): boolean {
       return (config.AI_GEMINI_API_KEY ?? '') !== '';
     case 'anthropic':
       return (config.AI_ANTHROPIC_API_KEY ?? '') !== '';
+    case 'openai':
+      return (config.AI_OPENAI_API_KEY ?? '') !== '';
   }
 }
 
@@ -52,7 +55,10 @@ export function approvedDataClasses(id: AiProviderId, config: ApiConfig): AiData
   return AI_DATA_CLASSES.filter((dataClass) => approved.has(dataClass));
 }
 
-/** The provider `AI_PROVIDER` names, built once at composition. */
+/**
+ * The provider `AI_PROVIDER` names, built once at composition. Only that one
+ * is built, so no other provider can be called by mistake or by fallback.
+ */
 export function buildAiProvider(config: ApiConfig): AiProvider {
   switch (config.AI_PROVIDER) {
     case 'recording':
@@ -71,6 +77,12 @@ export function buildAiProvider(config: ApiConfig): AiProvider {
       return new AnthropicAiProvider({
         apiKey: config.AI_ANTHROPIC_API_KEY ?? '',
         baseUrl: config.AI_ANTHROPIC_BASE_URL,
+      });
+    case 'openai':
+      return new OpenAiProvider({
+        apiKey: config.AI_OPENAI_API_KEY ?? '',
+        baseUrl: config.AI_OPENAI_BASE_URL,
+        reasoningEffort: config.AI_OPENAI_REASONING_EFFORT,
       });
   }
 }

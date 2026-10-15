@@ -1,4 +1,5 @@
 import { closeDatabase } from '@integr8/db';
+import { aiConfiguration } from './ai/configuration.js';
 import { buildAppInfo } from './app-info.js';
 import { buildServices } from './composition.js';
 import {
@@ -53,6 +54,12 @@ async function main(): Promise<void> {
   const corsGap = webOriginMissingFromCors(config);
   if (corsGap !== undefined) {
     logger.warn(corsGap);
+  }
+
+  // The assistant's settings never stop the server (ADR-0002 D2): what keeps
+  // it from answering is said here, and on the platform AI screen.
+  for (const problem of aiConfiguration(config).problems) {
+    logger.warn(`Assistant: ${problem}`);
   }
 
   /**
