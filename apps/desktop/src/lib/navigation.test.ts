@@ -35,6 +35,19 @@ describe('mapping the shared menu onto hash routes', () => {
       '/settings/job-types',
     ]);
   });
+
+  it('shows the assistant only once the server says it is on for this seat here', () => {
+    const unasked = desktopNavigation(PERMISSIONS);
+    expect(unasked.flatMap((group) => group.sections.map((s) => s.key))).not.toContain('assistant');
+    const off = desktopNavigation(PERMISSIONS, undefined, { assistant: false });
+    expect(off.flatMap((group) => group.sections.map((s) => s.key))).not.toContain('assistant');
+
+    const on = desktopNavigation([], undefined, { assistant: true });
+    expect(on.find((group) => group.group === 'overview')?.sections.map((s) => s.to)).toEqual([
+      '/dashboard',
+      '/assistant',
+    ]);
+  });
 });
 
 describe('finding the section a route is in', () => {
@@ -46,6 +59,8 @@ describe('finding the section a route is in', () => {
     expect(sectionPathFor('/forms/f1/versions/v2')).toBe('forms');
     expect(sectionPathFor('/settings/job-types')).toBe('jobTypes');
     expect(sectionPathFor('/settings/branding')).toBe('branding');
+    expect(sectionPathFor('/assistant')).toBe('assistant');
+    expect(sectionPathFor('/assistant/c1')).toBe('assistant');
   });
 
   it('finds the ledger, its journals and its reports apart, and other ledger pages in the ledger', () => {
@@ -142,6 +157,7 @@ describe('what the top bar needs', () => {
   it('offers no way back from a section root', () => {
     expect(routeChrome('/dashboard')).toEqual({ section: 'dashboard', back: undefined });
     expect(routeChrome('/settings/branding')).toEqual({ section: 'branding', back: undefined });
+    expect(routeChrome('/assistant')).toEqual({ section: 'assistant', back: undefined });
   });
 
   it('leads a nested route back to its section', () => {
@@ -158,6 +174,11 @@ describe('what the top bar needs', () => {
 
   it('leads an unknown settings route back to the dashboard', () => {
     expect(routeChrome('/settings/elsewhere')).toEqual({
+      section: undefined,
+      back: { to: '/dashboard', section: 'dashboard' },
+    });
+    // The assistant's switches are a settings screen without a menu row.
+    expect(routeChrome('/settings/assistant')).toEqual({
       section: undefined,
       back: { to: '/dashboard', section: 'dashboard' },
     });

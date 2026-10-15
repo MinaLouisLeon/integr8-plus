@@ -501,6 +501,14 @@ export const en = {
         web: 'Show the assistant in the web app',
         desktop: 'Show the assistant in the desktop app',
         mobile: 'Show the assistant in the mobile app',
+        // The desktop app's own screen for these switches, since its menu has
+        // no company settings or people pages.
+        manage: 'Assistant settings',
+        manageHint: 'Which apps show the assistant, and who may use it.',
+        members: 'Who may use it',
+        membersHint:
+          'Each person has their own switch. Somebody switched off sees no assistant in any app.',
+        failed: 'Could not save. Try again.',
       },
       days: {
         mon: 'Mon',

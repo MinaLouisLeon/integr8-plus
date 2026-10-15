@@ -18,6 +18,7 @@ import {
 /** Where each section lives in this app. Web-only sections have no home here. */
 export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   dashboard: '/dashboard',
+  assistant: '/assistant',
   forms: '/forms',
   fill: '/fill',
   submissions: '/submissions',
@@ -89,8 +90,14 @@ export function desktopNavigation(
   permissions: readonly Permission[],
   /** The company's resolved feature flags from `/v1/me`; module sections need them. */
   features?: Readonly<Record<string, boolean>>,
+  /**
+   * Whether the assistant is on for this seat in this app, as
+   * `/v1/ai/capabilities` reports; its section is hidden until that answer
+   * says yes (docs/ai; ADR-0001).
+   */
+  options?: { assistant?: boolean },
 ): DesktopNavGroup[] {
-  return visibleNavigation('desktop', permissions, features)
+  return visibleNavigation('desktop', permissions, features, options)
     .map(({ group, sections }) => ({
       group,
       sections: sections.flatMap((section) => {

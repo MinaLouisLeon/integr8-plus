@@ -18,6 +18,7 @@ import { FormBuilderRoute } from '~/features/forms/routes/form-builder';
 import { FormVersionRoute } from '~/features/forms/routes/form-version';
 import { FormsListRoute } from '~/features/forms/routes/forms-list';
 import {
+  AssistantRoute,
   CrmRoute,
   ActivitiesRoute,
   InventoryRoute,
@@ -99,6 +100,7 @@ import {
   WorkOrdersRoute,
 } from '~/features/operations/screens';
 import { FillRoute, SubmissionRoute, SubmissionsRoute } from '~/features/submissions/screens';
+import { AssistantSettingsRoute } from '~/routes/assistant-settings';
 import { BrandingRoute } from '~/routes/branding';
 import { DashboardRoute } from '~/routes/dashboard';
 import { SignInRoute } from '~/routes/sign-in';
@@ -137,6 +139,7 @@ const queryClient = new QueryClient({
 /** The signed-in screens, each the element of a route. */
 const SIGNED_IN_ROUTES: readonly { path: string; element: ReactNode }[] = [
   { path: '/dashboard', element: <DashboardRoute /> },
+  { path: '/assistant', element: <AssistantRoute /> },
   { path: '/forms', element: <FormsListRoute /> },
   { path: '/forms/:formId', element: <FormBuilderRoute /> },
   { path: '/forms/:formId/versions/:versionId', element: <FormVersionRoute /> },
@@ -221,6 +224,7 @@ const SIGNED_IN_ROUTES: readonly { path: string; element: ReactNode }[] = [
   { path: '/sites/:siteId', element: <SiteRoute /> },
   { path: '/settings/job-types', element: <JobTypesRoute /> },
   { path: '/settings/branding', element: <BrandingRoute /> },
+  { path: '/settings/assistant', element: <AssistantSettingsRoute /> },
   { path: '/imports', element: <ImportsRoute /> },
   { path: '/timesheets', element: <TimesheetsRoute /> },
 ];

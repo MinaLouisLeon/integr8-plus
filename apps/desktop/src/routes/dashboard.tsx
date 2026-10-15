@@ -1,10 +1,11 @@
 import { ApiRequestError } from '@integr8/api-client';
+import type { NavIcon } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
 import { Link } from 'react-router';
 import { CompanyMark } from '~/components/company-brand';
 import { NavIconGlyph } from '~/components/nav-icon';
 import { ErrorState, LoadingState, Shell } from '~/components/ui';
-import { useMe } from '~/features/forms/api';
+import { assistantShown, useAiCapabilities, useMe } from '~/features/forms/api';
 import { WarrantyAlerts } from '~/features/operations/screens';
 import { desktopNavigation } from '~/lib/navigation';
 import { isTauri } from '~/lib/platform';
@@ -21,6 +22,7 @@ import { isTauri } from '~/lib/platform';
 export function DashboardRoute() {
   const { t } = useTranslation();
   const me = useMe();
+  const capabilities = useAiCapabilities();
 
   if (me.isPending) {
     return (
@@ -41,7 +43,17 @@ export function DashboardRoute() {
     );
   }
 
-  const groups = desktopNavigation(me.data.permissions, me.data.features)
+  // The assistant's switches have no row in the shared menu model (its
+  // company settings and people pages are web-only), so the seat that may
+  // throw them finds them here, with the rest of the setup.
+  const maySetUpAssistant =
+    me.data.permissions.includes('tenant.update') || me.data.permissions.includes('member.read');
+
+  const groups = desktopNavigation(
+    me.data.permissions,
+    me.data.features,
+    assistantShown(capabilities.data),
+  )
     .map((entry) => ({
       ...entry,
       // The dashboard is where we are; a card leading here would lead nowhere.
@@ -70,20 +82,24 @@ export function DashboardRoute() {
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {sections.map((section) => (
                 <li key={section.key}>
-                  <Link
+                  <SectionCard
                     to={section.to}
-                    className="flex h-full flex-col gap-2 rounded-lg border border-border-subtle bg-surface p-6 text-start hover:bg-surface-muted"
-                  >
-                    <span className="flex items-center gap-2 text-lg font-semibold text-content">
-                      <NavIconGlyph name={section.icon} className="shrink-0 text-accent" />
-                      {t(`nav.section.${section.path}`)}
-                    </span>
-                    <span className="text-sm text-content-muted">
-                      {t(`nav.hint.${section.path}`)}
-                    </span>
-                  </Link>
+                    icon={section.icon}
+                    title={t(`nav.section.${section.path}`)}
+                    hint={t(`nav.hint.${section.path}`)}
+                  />
                 </li>
               ))}
+              {group === 'setup' && maySetUpAssistant ? (
+                <li>
+                  <SectionCard
+                    to="/settings/assistant"
+                    icon="sparkles"
+                    title={t('workspace.settings.ai.manage')}
+                    hint={t('workspace.settings.ai.manageHint')}
+                  />
+                </li>
+              ) : null}
             </ul>
           </nav>
         ))}
@@ -113,5 +129,30 @@ export function DashboardRoute() {
         </section>
       </div>
     </Shell>
+  );
+}
+
+function SectionCard({
+  to,
+  icon,
+  title,
+  hint,
+}: {
+  to: string;
+  icon: NavIcon;
+  title: string;
+  hint: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className="flex h-full flex-col gap-2 rounded-lg border border-border-subtle bg-surface p-6 text-start hover:bg-surface-muted"
+    >
+      <span className="flex items-center gap-2 text-lg font-semibold text-content">
+        <NavIconGlyph name={icon} className="shrink-0 text-accent" />
+        {title}
+      </span>
+      <span className="text-sm text-content-muted">{hint}</span>
+    </Link>
   );
 }
