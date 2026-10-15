@@ -146,7 +146,11 @@ describe('what a company sees', () => {
       blockedBy: string | null;
       channel: string;
       tools: string[];
-      usage: { daily: { limit: number; remaining: number } | null; monthly: unknown; user: object };
+      usage: {
+        allowance: { remainingPercent: number | null; exhausted: boolean };
+        sharePercent: number | null;
+        company: { allowance: { remainingPercent: number | null }; assignedPercent: number } | null;
+      };
     }>(await api.call(token, { method: 'GET', url: '/v1/ai/capabilities' }));
     // The trial plan now says help, but the company has not switched the
     // assistant on in any of its apps yet.
@@ -154,13 +158,21 @@ describe('what a company sees', () => {
     expect(capabilities.blockedBy).toBe('channel_off');
     expect(capabilities.channel).toBe('desktop');
     expect(capabilities.tools).toEqual([]);
-    expect(capabilities.usage.daily).toMatchObject({ limit: 10, remaining: 10 });
-    expect(capabilities.usage.monthly).toBeNull();
+    // Percentages only (ADR-0002 D7): the owner sees the company's whole
+    // allowance left and none of it assigned; with no share of their own,
+    // nothing is theirs to use.
+    expect(capabilities.usage.company).toMatchObject({
+      allowance: { remainingPercent: 100, exhausted: false },
+      assignedPercent: 0,
+    });
+    expect(capabilities.usage.sharePercent).toBeNull();
+    expect(capabilities.usage.allowance).toMatchObject({ remainingPercent: 0, exhausted: true });
 
-    const usage = json<{ user: { daily: { used: number } } }>(
-      await api.call(token, { method: 'GET', url: '/v1/ai/usage' }),
+    // Somebody who does not assign shares sees only their own.
+    const engineerUsage = json<{ company: unknown }>(
+      await api.call(await api.signIn(engineer), { method: 'GET', url: '/v1/ai/usage' }),
     );
-    expect(usage.user.daily.used).toBe(0);
+    expect(engineerUsage.company).toBeNull();
   });
 
   it('never names a provider, a key or a budget to the company', async () => {
@@ -207,6 +219,8 @@ describe('a company override', () => {
           dailyLimit: 50,
           monthlyLimit: 1000,
           perUserDailyLimit: 5,
+          dailyTokenLimit: 200_000,
+          monthlyTokenLimit: 4_000_000,
           maxInputTokens: 999_999,
         },
         companyDataToProvider: true,
@@ -216,7 +230,12 @@ describe('a company override', () => {
     });
     expect(custom.statusCode, custom.body).toBe(200);
     const afterCustom = json<CompanyAiBody>(custom);
-    expect(afterCustom.override).toMatchObject({ mode: 'custom', version: 1 });
+    expect(afterCustom.override).toMatchObject({
+      mode: 'custom',
+      version: 1,
+      dailyTokenLimit: 200_000,
+      monthlyTokenLimit: 4_000_000,
+    });
     // This build serves every level, so the configured level runs as is.
     expect(afterCustom.effective).toMatchObject({
       source: 'custom',
@@ -228,18 +247,10 @@ describe('a company override', () => {
     // The server's ceiling wins over what the admin typed, and the member's
     // view shows the override's limits, with their own cap beside them.
     const token = await api.signIn(owner);
-    const capabilities = json<{
-      usage: {
-        daily: { limit: number };
-        monthly: { limit: number };
-        user: { daily: { limit: number } };
-      };
-      companyDataToProvider: boolean;
-    }>(await api.call(token, { method: 'GET', url: '/v1/ai/capabilities' }));
-    expect(capabilities.usage.daily.limit).toBe(50);
-    expect(capabilities.usage.monthly.limit).toBe(1000);
-    expect(capabilities.usage.user.daily.limit).toBe(5);
-    expect(capabilities.companyDataToProvider).toBe(true);
+    const capabilities = await api.call(token, { method: 'GET', url: '/v1/ai/capabilities' });
+    expect(json<{ companyDataToProvider: boolean }>(capabilities).companyDataToProvider).toBe(true);
+    // The company is shown percentages, never the limits behind them.
+    expect(capabilities.body).not.toMatch(/200000|4000000|"limit"|"used"/u);
 
     const stale = await api.call(admin.accessToken, {
       method: 'PUT',
@@ -259,7 +270,8 @@ describe('a company override', () => {
       url: `/v1/platform/companies/${api.tenantId}/ai`,
       payload: {
         mode: 'inherit',
-        policy: HELP_DAILY,
+        // As a dashboard from before token limits sends it: no token fields.
+        policy: (({ dailyTokenLimit: _d, monthlyTokenLimit: _m, ...rest }) => rest)(HELP_DAILY),
         companyDataToProvider: false,
         reason: 'back to plan',
         expectedVersion: 1,
@@ -270,6 +282,10 @@ describe('a company override', () => {
       source: 'plan',
       configuredLevel: 'help',
     });
+    // A write in the shape from before token limits keeps the stored ones.
+    expect(
+      json<CompanyAiBody & { override: { dailyTokenLimit: number } }>(reset).override,
+    ).toMatchObject({ dailyTokenLimit: 200_000, monthlyTokenLimit: 4_000_000 });
   });
 
   it('is refused for a company that does not exist', async () => {
@@ -416,6 +432,7 @@ describe('admission', () => {
         clientRequestId,
         requestFingerprint: fingerprint,
         policy,
+        sharePercent: 100,
         worstCaseCostMicrousd: 1_000,
         config: api.config,
       });
@@ -479,6 +496,7 @@ describe('admission', () => {
       clientRequestId: 'budget-1',
       requestFingerprint: 'f'.repeat(64),
       policy: { ...HELP_DAILY, dailyLimit: 100 },
+      sharePercent: 100,
       worstCaseCostMicrousd: 10_000_000_000,
       config: api.config,
     });

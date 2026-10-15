@@ -1,6 +1,7 @@
 import { aiPeriodOf, type AiPolicy, type Principal } from '@integr8/core';
 import {
   AiBudgetExceededError,
+  AiMemberBudgetExceededError,
   type AiMessageReservation,
   AiQuotaExceededError,
   getPlatformDataSource,
@@ -10,6 +11,7 @@ import type { ApiConfig } from '../config.js';
 import {
   aiBudgetUnavailable,
   aiConcurrencyLimit,
+  aiMemberBudgetExceeded,
   aiQuotaExceeded,
   aiRequestInProgress,
 } from './errors.js';
@@ -85,6 +87,10 @@ export async function admitMessage(input: {
   clientRequestId: string;
   requestFingerprint: string;
   policy: AiPolicy;
+  /** The member's percentage of the company's allowance (ADR-0002 D6). */
+  sharePercent: number | null;
+  /** The member's own monthly dollar cap, set by the platform (D7). */
+  memberCostCapMicrousd?: number | null;
   worstCaseCostMicrousd: number;
   config: ApiConfig;
   now?: Date;
@@ -129,9 +135,10 @@ export async function admitMessage(input: {
         clientRequestId: input.clientRequestId,
         requestFingerprint: input.requestFingerprint,
         periods,
-        limits: limitsOf(input.policy),
+        limits: limitsOf(input.policy, input.sharePercent),
         costMicrousd: input.worstCaseCostMicrousd,
         costCapMicrousd: input.policy.monthlyCostCapMicrousd,
+        memberCostCapMicrousd: input.memberCostCapMicrousd ?? null,
         expiresAt: new Date(now.getTime() + input.config.AI_RESERVATION_TTL_SECONDS * 1000),
       }),
     );
@@ -167,7 +174,11 @@ export async function admitMessage(input: {
         throw new Error('unreachable reservation outcome');
     }
   } catch (error) {
-    if (error instanceof AiQuotaExceededError || error instanceof AiBudgetExceededError) {
+    if (
+      error instanceof AiQuotaExceededError ||
+      error instanceof AiBudgetExceededError ||
+      error instanceof AiMemberBudgetExceededError
+    ) {
       await platform.settleGlobalBudget(periods.month, {
         reserved: input.worstCaseCostMicrousd,
         spent: 0,
@@ -179,6 +190,9 @@ export async function admitMessage(input: {
     }
     if (error instanceof AiBudgetExceededError) {
       throw aiBudgetUnavailable();
+    }
+    if (error instanceof AiMemberBudgetExceededError) {
+      throw aiMemberBudgetExceeded(aiPeriodOf('month', now).resetsAt);
     }
     throw error;
   }

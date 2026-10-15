@@ -137,6 +137,8 @@ export function clampToServer(policy: AiPolicyFields, config: ApiConfig): AiPoli
     perUserMonthlyLimit: policy.perUserMonthlyLimit,
     unlimitedMessages: policy.unlimitedMessages,
     monthlyCostCapMicrousd: policy.monthlyCostCapMicrousd,
+    dailyTokenLimit: policy.dailyTokenLimit,
+    monthlyTokenLimit: policy.monthlyTokenLimit,
     maxInputTokens: Math.min(policy.maxInputTokens, config.AI_MAX_INPUT_TOKENS),
     maxOutputTokens: Math.min(policy.maxOutputTokens, config.AI_MAX_OUTPUT_TOKENS),
     maxToolSteps: Math.min(policy.maxToolSteps, config.AI_MAX_TOOL_STEPS),
@@ -163,8 +165,12 @@ export interface AiAccess {
   channel: AiChannel;
   channelEnabled: boolean;
   memberEnabled: boolean;
+  /** The member's percentage of the company's allowance; null is none (ADR-0002 D6). */
+  sharePercent: number | null;
+  /** The member's monthly dollar cap, set by the platform; never shown to the company (D7). */
+  memberCostCapMicrousd: number | null;
   /** The first gate that closed, for the capabilities screen to explain. */
-  blockedBy: EffectiveAiPolicy['offReason'] | 'channel_off' | 'member_off' | null;
+  blockedBy: EffectiveAiPolicy['offReason'] | 'channel_off' | 'member_off' | 'no_share' | null;
 }
 
 /**
@@ -180,9 +186,10 @@ export async function resolveAiAccess(input: {
 }): Promise<AiAccess> {
   const policy = await resolveEffectiveAiPolicy(input.principal.tenantId, input.config, input.now);
   const channel = channelOf(input.clientApp);
-  const { settings, member } = await withTenant(input.principal.tenantId, async (tx) => ({
+  const { settings, member, limits } = await withTenant(input.principal.tenantId, async (tx) => ({
     settings: await tx.settings.get(),
     member: await tx.tenantUsers.findByUserId(input.principal.userId),
+    limits: await tx.aiMemberLimits.find(input.principal.userId),
   }));
   const channelEnabled = {
     web: settings.aiWebEnabled,
@@ -190,8 +197,11 @@ export async function resolveAiAccess(input: {
     mobile: settings.aiMobileEnabled,
   }[channel];
   // Integr8 staff acting as the company hold no membership row; their seat
-  // follows the company's switches and nothing else.
+  // follows the company's switches, and having no share, has no assistant.
   const memberEnabled = member?.aiEnabled ?? true;
+  // A member needs a share of the company's allowance as well as their
+  // switch: no share, no assistant (ADR-0002 D6).
+  const sharePercent = limits?.sharePercent ?? null;
 
   const blockedBy =
     policy.level === 'off'
@@ -200,7 +210,9 @@ export async function resolveAiAccess(input: {
         ? 'channel_off'
         : !memberEnabled
           ? 'member_off'
-          : null;
+          : sharePercent === null
+            ? 'no_share'
+            : null;
 
   return {
     policy,
@@ -208,6 +220,8 @@ export async function resolveAiAccess(input: {
     channel,
     channelEnabled,
     memberEnabled,
+    sharePercent,
+    memberCostCapMicrousd: limits?.monthlyCostCapMicrousd ?? null,
     blockedBy,
   };
 }

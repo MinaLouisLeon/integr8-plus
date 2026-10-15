@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
+  aiPeriodOf,
   type AiCallPurpose,
   type AiLevel,
   type AiSourceRef,
@@ -11,7 +12,12 @@ import {
   MODULE_FEATURES,
   type Principal,
 } from '@integr8/core';
-import { type AiHelpArticle, type AiMessage, withTenant } from '@integr8/db';
+import {
+  type AiHelpArticle,
+  type AiMessage,
+  AiTokenQuotaExceededError,
+  withTenant,
+} from '@integr8/db';
 import type { ApiConfig } from '../config.js';
 import type { Logger } from '../http/logger.js';
 import type { ClientApp } from '../http/routes.js';
@@ -21,10 +27,11 @@ import {
   aiConversationNotFound,
   aiDisabled,
   aiProviderUnavailable,
+  aiTokenQuotaExceeded,
   aiValidationFailed,
 } from './errors.js';
 import type { HelpLibrary } from './help/library.js';
-import { periodKeysAt, usageView, type AiUsageView } from './periods.js';
+import { type AiAllowance, memberAllowance, periodKeysAt, tokenLimitsOf } from './periods.js';
 import { resolveAiAccess, type AiAccess } from './policy.js';
 import { costOf, estimateTokens, type PriceTable, worstCaseCost } from './pricing.js';
 import { type AiChatMessage, type AiProvider, AiProviderError } from './providers/index.js';
@@ -91,7 +98,8 @@ export interface AnswerOutput {
     actionProposal: ProposalView | null;
     createdAt: string;
   };
-  usage: AiUsageView;
+  /** What is left of the member's own allowance, as a percentage (ADR-0002 D7). */
+  allowance: AiAllowance;
   replayed: boolean;
 }
 
@@ -161,6 +169,8 @@ export async function answerMessage(input: AnswerInput): Promise<AnswerOutput> {
       clientRequestId: input.clientRequestId,
       requestFingerprint: fingerprint,
       policy,
+      sharePercent: access.sharePercent,
+      memberCostCapMicrousd: access.memberCostCapMicrousd,
       worstCaseCostMicrousd: worstCase,
       config,
     });
@@ -183,7 +193,7 @@ export async function answerMessage(input: AnswerInput): Promise<AnswerOutput> {
           toOutputMessage(stored),
           stored.actionProposalId,
         ),
-        usage: await usageFor(input, access, now),
+        allowance: await allowanceFor(input, access, now),
         replayed: true,
       };
     }
@@ -314,7 +324,7 @@ export async function answerMessage(input: AnswerInput): Promise<AnswerOutput> {
 
     return {
       message: { ...toOutputMessage(stored), actionProposal: proposal },
-      usage: await usageFor(input, access, new Date()),
+      allowance: await allowanceFor(input, access, new Date()),
       replayed: false,
     };
   } finally {
@@ -349,7 +359,11 @@ async function generateWithTools(args: {
 }> {
   const { input, reservation, model, price, system, offered } = args;
   const { principal, config, services } = input;
-  const policy = (await resolveAiAccess({ principal, clientApp: input.clientApp, config })).policy;
+  // Read again, not trusted from admission: a share lowered or a level
+  // dropped mid-question narrows what the next call may use.
+  const access = await resolveAiAccess({ principal, clientApp: input.clientApp, config });
+  const policy = access.policy;
+  const tokenLimits = tokenLimitsOf(policy, access.sharePercent);
   const messages = [...args.messages];
   const toolSummaries: AiToolSummary[] = [];
   let spent = 0;
@@ -358,6 +372,47 @@ async function generateWithTools(args: {
   let steps = 0;
 
   for (let attempt = 1; attempt <= policy.maxProviderCalls; attempt += 1) {
+    // Hold this call's tokens before asking (ADR-0002 D5): the prompt as it
+    // stands, estimated, and the output bound. When they do not fit, stop:
+    // refuse if nothing was asked yet, else answer from what was gathered.
+    const held = estimatePromptTokens({ system, messages }) + policy.maxOutputTokens;
+    try {
+      await withTenant(principal.tenantId, (tx) =>
+        tx.aiUsage.holdTokens({ reservationId: reservation.id, tokens: held, limits: tokenLimits }),
+      );
+    } catch (error) {
+      if (!(error instanceof AiTokenQuotaExceededError)) {
+        throw error;
+      }
+      input.logger.info('ai.request.token_allowance_reached', {
+        tenantId: principal.tenantId,
+        reservationId: reservation.id,
+        attempt,
+        axis: error.axis,
+        subject: error.subject,
+      });
+      if (attempt === 1) {
+        await settleMessage({
+          tenantId: principal.tenantId,
+          reservationId: reservation.id,
+          outcome: 'released',
+          spentMicrousd: 0,
+          errorCode: 'token_quota',
+        });
+        throw aiTokenQuotaExceeded(error.axis, aiPeriodOf(error.axis, new Date()).resetsAt);
+      }
+      const last = [...messages].reverse().find((turn) => turn.role === 'assistant');
+      return {
+        text:
+          last === undefined || last.content.trim() === ''
+            ? allowanceRanOut(input.locale)
+            : last.content,
+        spent,
+        tokens: { inputTokens, outputTokens },
+        toolSummaries,
+      };
+    }
+
     const startedAt = new Date();
     let generation;
     try {
@@ -411,6 +466,15 @@ async function generateWithTools(args: {
           endedAt: new Date(),
         }),
       );
+      // A timed-out call may have been billed, so its hold is kept as used;
+      // any other failure was refused before any work and gives it back.
+      await withTenant(principal.tenantId, (tx) =>
+        tx.aiUsage.settleTokens({
+          reservationId: reservation.id,
+          held,
+          used: failure?.kind === 'timeout' ? held : 0,
+        }),
+      );
       await settleMessage({
         tenantId: principal.tenantId,
         reservationId: reservation.id,
@@ -444,6 +508,15 @@ async function generateWithTools(args: {
     spent += callCost;
     inputTokens += callTokens.inputTokens;
     outputTokens += callTokens.outputTokens;
+    // The hold becomes what the provider reported: input plus output. Cached
+    // and reasoning tokens are inside those already and are not added again.
+    await withTenant(principal.tenantId, (tx) =>
+      tx.aiUsage.settleTokens({
+        reservationId: reservation.id,
+        held,
+        used: callTokens.inputTokens + callTokens.outputTokens,
+      }),
+    );
     await withTenant(principal.tenantId, (tx) =>
       tx.aiUsage.recordProviderCall({
         reservationId: reservation.id,
@@ -540,11 +613,26 @@ async function generateWithTools(args: {
   };
 }
 
-async function usageFor(input: AnswerInput, access: AiAccess, now: Date): Promise<AiUsageView> {
-  const counters = await withTenant(input.principal.tenantId, (tx) =>
-    tx.aiUsage.counters(input.principal.userId, periodKeysAt(now)),
-  );
-  return usageView(access.policy, counters, now);
+/** What the member is told when their allowance ran out between two model calls. */
+function allowanceRanOut(locale: 'en' | 'ar'): string {
+  return locale === 'ar'
+    ? 'نفد رصيد المساعد قبل أن أُكمل هذه الإجابة. يُرجى المحاولة مرة أخرى بعد إعادة تعيينه.'
+    : 'The assistant allowance ran out before I could finish this answer. Please try again after it resets.';
+}
+
+async function allowanceFor(input: AnswerInput, access: AiAccess, now: Date): Promise<AiAllowance> {
+  const periods = periodKeysAt(now);
+  const { messages, tokens } = await withTenant(input.principal.tenantId, async (tx) => ({
+    messages: await tx.aiUsage.counters(input.principal.userId, periods),
+    tokens: await tx.aiUsage.tokenCounters(input.principal.userId, periods),
+  }));
+  return memberAllowance({
+    policy: access.policy,
+    sharePercent: access.sharePercent,
+    messages,
+    tokens,
+    now,
+  });
 }
 
 export function toOutputMessage(stored: AiMessage): AnswerOutput['message'] {

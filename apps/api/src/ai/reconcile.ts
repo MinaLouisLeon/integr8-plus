@@ -67,6 +67,17 @@ export async function runAiReconciliation(options: {
             : tx.aiConversations.findMessage(reservation.responseMessageId),
         );
         const answered = answer !== undefined;
+        // A call still holding tokens when its worker died may have been
+        // served: its hold is charged as used, once (ADR-0002 D5).
+        if (reservation.reservedTokens > 0) {
+          await withTenant(tenantId, (tx) =>
+            tx.aiUsage.settleTokens({
+              reservationId: reservation.id,
+              held: reservation.reservedTokens,
+              used: reservation.reservedTokens,
+            }),
+          );
+        }
         const calls = await withTenant(tenantId, (tx) => tx.aiUsage.callsFor(reservation.id));
         const spent = calls
           .filter((call) => call.status === 'success')

@@ -11,7 +11,7 @@ import type {
   Database,
   TenantPlan,
 } from '../schema.js';
-import { micros } from './ai-usage.js';
+import { dayKey, micros } from './ai-usage.js';
 
 /**
  * What the platform decides about the assistant, and what it can see of its
@@ -30,6 +30,9 @@ export interface AiPolicyFields {
   perUserMonthlyLimit: number | null;
   unlimitedMessages: boolean;
   monthlyCostCapMicrousd: number | null;
+  /** Pooled tokens per UTC day and month; null is no token limit (ADR-0002 D5). */
+  dailyTokenLimit: number | null;
+  monthlyTokenLimit: number | null;
   maxInputTokens: number;
   maxOutputTokens: number;
   maxToolSteps: number;
@@ -105,6 +108,9 @@ export interface AiTenantUsageRow {
   monthStart: string;
   messagesUsed: number;
   messagesReserved: number;
+  /** Input plus output tokens this month (ADR-0002 D5). */
+  tokensUsed: number;
+  tokensReserved: number;
   providerCalls: number;
   failedCalls: number;
   spentMicrousd: number;
@@ -412,7 +418,17 @@ export class AiPlatformRepository {
           .onRef('ai_cost_periods.tenant_id', '=', 'tenants.id')
           .on('ai_cost_periods.period_start_utc', '=', monthStart),
       )
+      .leftJoin('ai_token_periods', (join) =>
+        join
+          .onRef('ai_token_periods.tenant_id', '=', 'tenants.id')
+          .onRef('ai_token_periods.subject_id', '=', 'tenants.id')
+          .on('ai_token_periods.subject_type', '=', 'tenant')
+          .on('ai_token_periods.period_type', '=', 'month')
+          .on('ai_token_periods.period_start_utc', '=', monthStart),
+      )
       .select([
+        'ai_token_periods.used_tokens as used_tokens',
+        'ai_token_periods.reserved_tokens as reserved_tokens',
         'tenants.id as tenant_id',
         'tenants.name as tenant_name',
         'tenants.slug as tenant_slug',
@@ -455,6 +471,8 @@ export class AiPlatformRepository {
         monthStart,
         messagesUsed: row.used_messages ?? 0,
         messagesReserved: row.reserved_messages ?? 0,
+        tokensUsed: micros(row.used_tokens ?? 0),
+        tokensReserved: micros(row.reserved_tokens ?? 0),
         providerCalls: Number(row.provider_calls),
         failedCalls: Number(row.failed_calls),
         spentMicrousd: micros(row.spent_microusd ?? 0),
@@ -470,6 +488,8 @@ export class AiPlatformRepository {
   ): Promise<{
     day: { used: number; reserved: number };
     month: { used: number; reserved: number };
+    /** Input plus output tokens, company-wide (ADR-0002 D5). */
+    tokens: { day: { used: number; reserved: number }; month: { used: number; reserved: number } };
     cost: { spent: number; reserved: number; unknown: number };
     providerCalls: number;
     failedCalls: number;
@@ -483,6 +503,24 @@ export class AiPlatformRepository {
       .execute();
     const day = counters.find((row) => row.period_type === 'day');
     const month = counters.find((row) => row.period_type === 'month');
+    const tokenRows = await this.db
+      .selectFrom('ai_token_periods')
+      .select(['period_type', 'period_start_utc', 'used_tokens', 'reserved_tokens'])
+      .where('tenant_id', '=', tenantId)
+      .where('subject_type', '=', 'tenant')
+      .where('period_start_utc', 'in', [periods.day, periods.month])
+      .execute();
+    const tokensFor = (period: 'day' | 'month') => {
+      const row = tokenRows.find(
+        (candidate) =>
+          candidate.period_type === period &&
+          dayKey(candidate.period_start_utc) === periods[period],
+      );
+      return {
+        used: row === undefined ? 0 : micros(row.used_tokens),
+        reserved: row === undefined ? 0 : micros(row.reserved_tokens),
+      };
+    };
     const cost = await this.db
       .selectFrom('ai_cost_periods')
       .selectAll()
@@ -502,6 +540,7 @@ export class AiPlatformRepository {
     return {
       day: { used: day?.used_messages ?? 0, reserved: day?.reserved_messages ?? 0 },
       month: { used: month?.used_messages ?? 0, reserved: month?.reserved_messages ?? 0 },
+      tokens: { day: tokensFor('day'), month: tokensFor('month') },
       cost: {
         spent: micros(cost?.spent_microusd ?? 0),
         reserved: micros(cost?.reserved_microusd ?? 0),
@@ -571,6 +610,8 @@ function policyColumns(policy: AiPolicyFields) {
     per_user_monthly_limit: policy.perUserMonthlyLimit,
     unlimited_messages: policy.unlimitedMessages,
     monthly_cost_cap_microusd: policy.monthlyCostCapMicrousd,
+    daily_token_limit: policy.dailyTokenLimit,
+    monthly_token_limit: policy.monthlyTokenLimit,
     max_input_tokens: policy.maxInputTokens,
     max_output_tokens: policy.maxOutputTokens,
     max_tool_steps: policy.maxToolSteps,
@@ -591,6 +632,8 @@ function fields(row: Selectable<AiPlanPoliciesTable> | Selectable<AiTenantPolici
     unlimitedMessages: row.unlimited_messages,
     monthlyCostCapMicrousd:
       row.monthly_cost_cap_microusd === null ? null : micros(row.monthly_cost_cap_microusd),
+    dailyTokenLimit: row.daily_token_limit === null ? null : micros(row.daily_token_limit),
+    monthlyTokenLimit: row.monthly_token_limit === null ? null : micros(row.monthly_token_limit),
     maxInputTokens: row.max_input_tokens,
     maxOutputTokens: row.max_output_tokens,
     maxToolSteps: row.max_tool_steps,

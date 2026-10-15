@@ -33,16 +33,26 @@ export const apiErrorsEn = {
   ai_conversation_not_found: 'No such conversation.',
   ai_daily_quota_exceeded:
     'Today’s assistant messages are used up. They reset at midnight UTC; ask your company administrator or Integr8 about the limit.',
+  ai_daily_token_quota_exceeded:
+    'Today’s assistant allowance is used up. It resets at midnight UTC; ask your company administrator about your share.',
   ai_disabled: 'The assistant is not included for your company, or is switched off. Ask Integr8.',
   ai_level_required: 'This needs a higher assistant level than your company’s plan includes.',
+  ai_member_budget_exceeded:
+    'Your assistant allowance for this month is used up. It resets on the first of next month, UTC.',
+  ai_member_limits_changed:
+    'Somebody else changed this person’s assistant share first. Reload and try again.',
   ai_monthly_quota_exceeded:
     'This month’s assistant messages are used up. They reset on the first of next month, UTC.',
+  ai_monthly_token_quota_exceeded:
+    'This month’s assistant allowance is used up. It resets on the first of next month, UTC.',
   ai_policy_changed: 'Somebody else changed this policy first. Reload and try again.',
   ai_policy_invalid:
     'The policy is inconsistent: an enabled level needs a quota mode and the limits it names.',
   ai_provider_unavailable: 'The assistant could not reach its model. Try again in a moment.',
   ai_request_in_progress:
     'This question is still being answered. Wait for the answer rather than sending it again.',
+  ai_shares_over_total:
+    'The shares would add up to more than 100% of the company’s allowance. Lower another person’s share first.',
   ai_tool_forbidden: 'Your role may not use this with the assistant.',
   ai_validation_failed: 'The assistant could not use this request as sent.',
   allocation_mismatch:

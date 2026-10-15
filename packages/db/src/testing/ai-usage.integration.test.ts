@@ -423,6 +423,8 @@ describe('the platform’s side', () => {
       perUserMonthlyLimit: null,
       unlimitedMessages: false,
       monthlyCostCapMicrousd: 5_000_000,
+      dailyTokenLimit: 200_000,
+      monthlyTokenLimit: 5_000_000,
       maxInputTokens: 4000,
       maxOutputTokens: 600,
       maxToolSteps: 3,
@@ -439,6 +441,7 @@ describe('the platform’s side', () => {
       updatedBy: null,
     });
     expect(first.version).toBe(1);
+    expect(first).toMatchObject({ dailyTokenLimit: 200_000, monthlyTokenLimit: 5_000_000 });
     await expect(
       platform.setTenantPolicy(tenant.id, {
         mode: 'inherit',

@@ -5944,6 +5944,8 @@ export const en = {
         channel_off: 'Your company has not switched the assistant on for the phone app.',
         member_off:
           'The assistant is switched off for your account. Ask your company administrator.',
+        no_share:
+          'You have not been given a share of your company’s assistant allowance yet. Ask your company administrator.',
       },
       conversations: 'Conversations',
       newConversation: 'New conversation',
@@ -6026,6 +6028,8 @@ export const en = {
       channel_off:
         'Your company has not switched the assistant on for this app. Ask an owner to turn it on under Company settings.',
       member_off: 'The assistant is switched off for you. Ask an owner to turn it on under People.',
+      no_share:
+        'You have not been given a share of your company’s assistant allowance yet. Ask an owner to give you one under People.',
     },
     usage: {
       title: 'Messages left',

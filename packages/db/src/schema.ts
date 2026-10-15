@@ -2679,6 +2679,9 @@ interface AiPolicyColumns {
   per_user_monthly_limit: number | null;
   unlimited_messages: Generated<boolean>;
   monthly_cost_cap_microusd: BigIntColumn | null;
+  /** Pooled input-plus-output tokens per UTC day and month; null is no token limit (ADR-0002). */
+  daily_token_limit: BigIntColumn | null;
+  monthly_token_limit: BigIntColumn | null;
   max_input_tokens: Generated<number>;
   max_output_tokens: Generated<number>;
   max_tool_steps: Generated<number>;
@@ -2751,6 +2754,9 @@ export interface AiMessageReservationsTable {
   created_at: Generated<Date>;
   expires_at: Date;
   settled_at: Date | null;
+  /** Tokens held for the call in flight, and used by the request so far (ADR-0002 D5). */
+  reserved_tokens: GeneratedBigInt;
+  used_tokens: GeneratedBigInt;
 }
 
 export interface AiMessagesTable {
@@ -2792,6 +2798,43 @@ export interface AiProviderCallsTable {
 
 export interface AiCostPeriodsTable {
   tenant_id: string;
+  period_start_utc: ColumnType<string | Date, string, string>;
+  reserved_microusd: GeneratedBigInt;
+  spent_microusd: GeneratedBigInt;
+  unknown_microusd: GeneratedBigInt;
+  updated_at: Generated<Date>;
+}
+
+/** A member's percentage of the company's allowance, and their dollar cap (ADR-0002 D6, D7). */
+export interface AiMemberLimitsTable {
+  tenant_id: string;
+  user_id: string;
+  /** 1–100, or null: no share and so no assistant. */
+  share_percent: number | null;
+  /** Set by the platform admin only. */
+  monthly_cost_cap_microusd: BigIntColumn | null;
+  version: Generated<number>;
+  updated_at: Generated<Date>;
+  updated_by: string | null;
+}
+
+/** Tokens used and held per company or member, per UTC day and month (ADR-0002 D5). */
+export interface AiTokenPeriodsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  subject_type: AiUsageSubjectType;
+  subject_id: string;
+  period_type: AiPeriodType;
+  period_start_utc: ColumnType<string | Date, string, string>;
+  used_tokens: GeneratedBigInt;
+  reserved_tokens: GeneratedBigInt;
+  updated_at: Generated<Date>;
+}
+
+/** One member's share of the company's provider spend per UTC month (ADR-0002 D7). */
+export interface AiMemberCostPeriodsTable {
+  tenant_id: string;
+  user_id: string;
   period_start_utc: ColumnType<string | Date, string, string>;
   reserved_microusd: GeneratedBigInt;
   spent_microusd: GeneratedBigInt;
@@ -3015,6 +3058,9 @@ export interface Database {
   ai_cost_periods: AiCostPeriodsTable;
   ai_action_proposals: AiActionProposalsTable;
   ai_action_events: AiActionEventsTable;
+  ai_member_limits: AiMemberLimitsTable;
+  ai_token_periods: AiTokenPeriodsTable;
+  ai_member_cost_periods: AiMemberCostPeriodsTable;
   auth_memberships: AuthMembershipsView;
 }
 
@@ -3192,6 +3238,9 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   ai_cost_periods: true,
   ai_action_proposals: true,
   ai_action_events: true,
+  ai_member_limits: true,
+  ai_token_periods: true,
+  ai_member_cost_periods: true,
   audit_log: true,
   sessions: true,
   refresh_tokens: true,

@@ -60,6 +60,74 @@ export const aiQuotaExceeded = (axis: AiPeriodType, resetsAt: Date) => {
   );
 };
 
+/**
+ * The next model call would not fit in the company's or the member's token
+ * allowance (ADR-0002 D5). Says when it resets, never how many tokens.
+ */
+export const aiTokenQuotaExceeded = (axis: AiPeriodType, resetsAt: Date) => {
+  const code = axis === 'day' ? 'ai_daily_token_quota_exceeded' : 'ai_monthly_token_quota_exceeded';
+  return new ApiError(
+    429,
+    code,
+    axis === 'day'
+      ? 'Today’s assistant allowance is used up.'
+      : 'This month’s assistant allowance is used up.',
+    [
+      {
+        field: 'body.message',
+        code,
+        message: 'No allowance left.',
+        params: { resetsAt: resetsAt.toISOString() },
+      },
+    ],
+    { 'retry-after': String(Math.max(1, Math.ceil((resetsAt.getTime() - Date.now()) / 1000))) },
+  );
+};
+
+/**
+ * The member's own monthly dollar cap, set by the platform, is used up
+ * (ADR-0002 D7). The amount is never in the answer.
+ */
+export const aiMemberBudgetExceeded = (resetsAt: Date) =>
+  new ApiError(
+    429,
+    'ai_member_budget_exceeded',
+    'Your assistant allowance for this month is used up.',
+    [
+      {
+        field: 'body.message',
+        code: 'ai_member_budget_exceeded',
+        message: 'No allowance left this month.',
+        params: { resetsAt: resetsAt.toISOString() },
+      },
+    ],
+    { 'retry-after': String(Math.max(1, Math.ceil((resetsAt.getTime() - Date.now()) / 1000))) },
+  );
+
+/** A member's share or cap changed since it was read (ADR-0002 D6). */
+export const aiMemberLimitsChanged = (currentVersion: number | null) =>
+  new ApiError(
+    409,
+    'ai_member_limits_changed',
+    `This member's assistant share changed (now version ${String(currentVersion)}); read it again before saving.`,
+  );
+
+/** The company's shares would total more than 100% (ADR-0002 D6). */
+export const aiSharesOverTotal = (availablePercent: number) =>
+  new ApiError(
+    422,
+    'ai_shares_over_total',
+    `Only ${String(availablePercent)}% of the company's allowance is unassigned.`,
+    [
+      {
+        field: 'body.sharePercent',
+        code: 'ai_shares_over_total',
+        message: 'The shares would total more than 100%.',
+        params: { availablePercent: String(availablePercent) },
+      },
+    ],
+  );
+
 export const aiConcurrencyLimit = () =>
   new ApiError(
     429,

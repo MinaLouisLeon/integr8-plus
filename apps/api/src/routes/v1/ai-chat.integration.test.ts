@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { AI_POLICY_OFF, type AiPolicy } from '@integr8/core';
 import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { periodKeysAt } from '../../ai/periods.js';
 import { forgetAiPolicy } from '../../ai/policy.js';
 import type { RecordingAiProvider } from '../../ai/providers/index.js';
 import {
@@ -35,13 +36,28 @@ const HELP: AiPolicy = {
   quotaMode: 'daily_and_monthly',
   dailyLimit: 40,
   monthlyLimit: 100,
+  // Kept for an old-shape policy; members' shares decide now (ADR-0002 D6).
   perUserDailyLimit: 6,
+  dailyTokenLimit: 2_000_000,
+  monthlyTokenLimit: 20_000_000,
 };
+
+/** The owner's share: 10% of 40 messages a day is 4 (ADR-0002 D6). */
+const OWNER_SHARE = 10;
+const OWNER_DAILY = Math.floor((40 * OWNER_SHARE) / 100);
 
 interface Capabilities {
   level: string;
   blockedBy: string | null;
-  usage: { daily: { used: number; reserved: number; remaining: number } | null };
+  usage: {
+    allowance: { remainingPercent: number | null; resetsAt: string | null; exhausted: boolean };
+    sharePercent: number | null;
+  };
+}
+
+/** The company's own counters, as the platform sees them. */
+async function companyUsage() {
+  return getPlatformDataSource().ai.tenantUsage(api.tenantId, periodKeysAt(new Date()));
 }
 
 async function capabilities(token: string, app: 'web' | 'desktop' | 'mobile' = 'desktop') {
@@ -103,6 +119,21 @@ beforeAll(async () => {
   await withTenant(api.tenantId, (tx) =>
     tx.settings.update({ aiDesktopEnabled: true, aiWebEnabled: false, aiMobileEnabled: false }),
   );
+  // Each member's share of the company's allowance (ADR-0002 D6).
+  await withTenant(api.tenantId, async (tx) => {
+    await tx.aiMemberLimits.set({
+      userId: owner.userId,
+      sharePercent: OWNER_SHARE,
+      expectedVersion: null,
+      updatedBy: null,
+    });
+    await tx.aiMemberLimits.set({
+      userId: engineer.userId,
+      sharePercent: 80,
+      expectedVersion: null,
+      updatedBy: null,
+    });
+  });
 });
 
 afterAll(async () => {
@@ -188,8 +219,8 @@ describe('asking', () => {
   it('answers from the help library, cites it, stores both turns and charges one message', async () => {
     const token = await api.signIn(engineer);
     const conversationId = await startConversation(token);
-    const before = await capabilities(token);
-    const usedBefore = before.usage.daily?.used ?? 0;
+    const before = await companyUsage();
+    const usedBefore = before.day.used;
     provider.reset();
 
     const key = randomUUID();
@@ -197,15 +228,22 @@ describe('asking', () => {
     expect(asked.statusCode, asked.body).toBe(200);
     const answer = json<{
       message: { text: string; sources: { articleKey: string; label: string }[] };
-      usage: { daily: { used: number; reserved: number }; user: { daily: { used: number } } };
+      allowance: { remainingPercent: number | null; exhausted: boolean };
       replayed: boolean;
     }>(asked);
     expect(answer.replayed).toBe(false);
     expect(answer.message.sources.length).toBeGreaterThan(0);
     expect(answer.message.text).toContain(answer.message.sources[0]?.label ?? '!');
     expect(answer.message.text).not.toContain('[cite:');
-    expect(answer.usage.daily).toMatchObject({ used: usedBefore + 1, reserved: 0 });
-    expect(answer.usage.user.daily.used).toBeGreaterThanOrEqual(1);
+    // One message charged; the call's tokens held, then settled to what it used.
+    const after = await companyUsage();
+    expect(after.day).toEqual({ used: usedBefore + 1, reserved: 0 });
+    expect(after.tokens.day.used).toBeGreaterThan(before.tokens.day.used);
+    expect(after.tokens.day.reserved).toBe(0);
+    // The member is told a percentage, never a count (ADR-0002 D7).
+    expect(answer.allowance.exhausted).toBe(false);
+    expect(answer.allowance.remainingPercent).toBeGreaterThan(0);
+    expect(asked.body).not.toMatch(/"used"|"limit"/u);
 
     // The model was shown the help as reference data, never a secret.
     const shown = provider.calls[0]?.input;
@@ -218,11 +256,12 @@ describe('asking', () => {
     // layer answers from the reservation: both say so, neither charges.
     const again = await ask(token, conversationId, 'How do I create a work order?', { key });
     expect(again.statusCode, again.body).toBe(200);
-    const replayed = json<{ replayed: boolean; usage: { daily: { used: number } } }>(again);
+    const replayed = json<{ replayed: boolean }>(again);
     expect(again.headers['idempotent-replay'] === 'true' || replayed.replayed).toBe(true);
-    expect(replayed.usage.daily.used).toBe(usedBefore + 1);
     expect(provider.calls).toHaveLength(1);
-    expect((await capabilities(token)).usage.daily?.used).toBe(usedBefore + 1);
+    const afterReplay = await companyUsage();
+    expect(afterReplay.day.used).toBe(usedBefore + 1);
+    expect(afterReplay.tokens.day.used).toBe(after.tokens.day.used);
 
     const transcript = json<{ messages: { role: string; text: string }[] }>(
       await api.call(token, { method: 'GET', url: `/v1/ai/conversations/${conversationId}` }),
@@ -264,8 +303,8 @@ describe('asking', () => {
   it('refuses past the member’s own daily limit, with the reset time', async () => {
     const token = await api.signIn(owner);
     const conversationId = await startConversation(token);
-    // The owner has asked nothing yet today; the policy's per-member cap is theirs.
-    for (let index = 0; index < (HELP.perUserDailyLimit ?? 0); index += 1) {
+    // The owner has asked nothing yet today; their share is their cap.
+    for (let index = 0; index < OWNER_DAILY; index += 1) {
       const response = await ask(token, conversationId, `question ${String(index)}`);
       expect(response.statusCode, response.body).toBe(200);
     }
@@ -304,7 +343,7 @@ describe('asking', () => {
   it('gives the slot back when the model fails, and the member can ask again', async () => {
     const token = await api.signIn(engineer);
     const conversationId = await startConversation(token);
-    const before = (await capabilities(token)).usage.daily;
+    const before = await companyUsage();
     provider.enqueue({ text: '' });
     // A thrown provider error: simulate by a queued generation the orchestrator
     // cannot use is not a failure, so drive a real one through the fake's
@@ -324,12 +363,69 @@ describe('asking', () => {
     expect(failed.statusCode).toBe(503);
     expect(code(failed)).toBe('ai_provider_unavailable');
 
-    const after = (await capabilities(token)).usage.daily;
-    expect(after?.used).toBe(before?.used);
-    expect(after?.reserved).toBe(0);
+    // Nothing charged and nothing held: the slot and the call's tokens came back.
+    const after = await companyUsage();
+    expect(after.day).toEqual(before.day);
+    expect(after.tokens.day).toEqual(before.tokens.day);
 
     const retried = await ask(token, conversationId, 'anything');
     expect(retried.statusCode, retried.body).toBe(200);
+  });
+
+  it('closes for a member with no share, and says why (ADR-0002 D6)', async () => {
+    const newcomer = await api.member('dispatcher', 'chat-no-share');
+    const token = await api.signIn(newcomer);
+    expect(await capabilities(token)).toMatchObject({ level: 'off', blockedBy: 'no_share' });
+    const refused = await api.call(token, {
+      method: 'POST',
+      url: '/v1/ai/conversations',
+      headers: { 'idempotency-key': randomUUID(), 'x-client-app': 'desktop' },
+      payload: { locale: 'en' },
+    });
+    expect(refused.statusCode).toBe(403);
+    expect(code(refused)).toBe('ai_disabled');
+  });
+
+  it('refuses before asking the model when the call would not fit the token allowance', async () => {
+    const platform = getPlatformDataSource().ai;
+    const current = await platform.tenantPolicy(api.tenantId);
+    await platform.setTenantPolicy(api.tenantId, {
+      mode: 'custom',
+      // 80% of 500 tokens is far below one call's hold.
+      policy: { ...HELP, dailyTokenLimit: 500 },
+      companyDataToProvider: false,
+      reason: 'tiny token allowance',
+      expectedVersion: current?.version ?? null,
+      updatedBy: null,
+    });
+    forgetAiPolicy();
+    try {
+      const token = await api.signIn(engineer);
+      const conversationId = await startConversation(token);
+      const before = await companyUsage();
+      provider.reset();
+      const refused = await ask(token, conversationId, 'How do I create a work order?');
+      expect(refused.statusCode).toBe(429);
+      expect(code(refused)).toBe('ai_daily_token_quota_exceeded');
+      expect(refused.headers['retry-after']).toBeDefined();
+      expect(refused.body).not.toMatch(/500|tokens? left/u);
+      // No model was asked, no message charged, nothing left held.
+      expect(provider.calls).toHaveLength(0);
+      const after = await companyUsage();
+      expect(after.day).toEqual(before.day);
+      expect(after.tokens.day).toEqual(before.tokens.day);
+    } finally {
+      const now = await platform.tenantPolicy(api.tenantId);
+      await platform.setTenantPolicy(api.tenantId, {
+        mode: 'inherit',
+        policy: HELP,
+        companyDataToProvider: false,
+        reason: null,
+        expectedVersion: now?.version ?? null,
+        updatedBy: null,
+      });
+      forgetAiPolicy();
+    }
   });
 
   it('lets a member delete their own conversation, and nobody else', async () => {

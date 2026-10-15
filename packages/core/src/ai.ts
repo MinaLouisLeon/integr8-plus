@@ -90,6 +90,13 @@ export const aiPolicySchema = z
     perUserMonthlyLimit: positiveInt.nullable(),
     unlimitedMessages: z.boolean(),
     monthlyCostCapMicrousd: microusdSchema.positive().nullable(),
+    /**
+     * The company's pooled input-plus-output tokens per UTC day and month
+     * (ADR-0002 D5). Null: no token limit on that axis. Independent of the
+     * message quota mode; members get a percentage of each (D6).
+     */
+    dailyTokenLimit: positiveInt.nullable(),
+    monthlyTokenLimit: positiveInt.nullable(),
     maxInputTokens: positiveInt,
     maxOutputTokens: positiveInt,
     maxToolSteps: positiveInt,
@@ -162,6 +169,8 @@ export const AI_POLICY_OFF: AiPolicy = Object.freeze({
   perUserMonthlyLimit: null,
   unlimitedMessages: false,
   monthlyCostCapMicrousd: null,
+  dailyTokenLimit: null,
+  monthlyTokenLimit: null,
   maxInputTokens: 4000,
   maxOutputTokens: 600,
   maxToolSteps: 1,

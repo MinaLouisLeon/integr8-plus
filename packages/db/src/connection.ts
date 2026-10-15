@@ -85,6 +85,7 @@ import { DemoDataRepository } from './repositories/demo-data.js';
 import { AiUsageRepository } from './repositories/ai-usage.js';
 import { AiConversationsRepository } from './repositories/ai-conversations.js';
 import { AiActionsRepository } from './repositories/ai-actions.js';
+import { AiMemberLimitsRepository } from './repositories/ai-member-limits.js';
 import { AiPlatformRepository } from './repositories/ai-platform.js';
 import { SignupRepository } from './repositories/signup.js';
 import { TenantSettingsRepository, TenantSettingsWriter } from './repositories/tenant-settings.js';
@@ -197,6 +198,8 @@ export interface TenantTransaction {
   readonly aiConversations: AiConversationsRepository;
   /** Actions the assistant prepared, awaiting the member's confirmation. */
   readonly aiActions: AiActionsRepository;
+  /** Members' shares of the company's allowance, and their dollar caps (ADR-0002). */
+  readonly aiMemberLimits: AiMemberLimitsRepository;
 }
 
 /**
@@ -467,6 +470,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     aiUsage: new AiUsageRepository(scope),
     aiConversations: new AiConversationsRepository(scope),
     aiActions: new AiActionsRepository(scope),
+    aiMemberLimits: new AiMemberLimitsRepository(scope),
   };
 }
 

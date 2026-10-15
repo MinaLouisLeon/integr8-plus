@@ -201,7 +201,7 @@ export interface paths {
         };
         /**
          * How much of the assistant is left today and this month
-         * @description The company’s pooled counters and the member’s own, with the UTC instant each resets. Reserved slots are requests still being answered, and count against what is left.
+         * @description What is left of the member’s own share of the company’s allowance, as a percentage, with the UTC instant it resets; and, for those who assign shares, the company’s. Requests still being answered count against what is left. No count, token figure or price is ever returned (ADR-0002).
          */
         get: operations["getAiUsage"];
         put?: never;
@@ -271,6 +271,46 @@ export interface paths {
          * @description Needs an `Idempotency-Key`: the same key with the same question is answered once and replayed, never charged twice. One durably stored answer is one message against the company’s and the member’s allowance. Refused while the company is read-only for non-payment, like every other write.
          */
         post: operations["postAiMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How the company’s assistant allowance is divided among its people
+         * @description Every active member with their share, as a whole percentage of the company’s allowance, and what is left of it; and the company’s own. Percentages only (ADR-0002).
+         */
+        get: operations["listAiShares"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/shares/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Give a member a share of the company’s assistant allowance, or take it away
+         * @description `sharePercent` is a whole percentage, 1–100, of every company allowance, reserved for this member; null takes it away, and with it the assistant. The company’s shares total 100 or less (422 `ai_shares_over_total`, with what is still unassigned). `expectedVersion` is the version last read, or null for a member who never had a share (409 `ai_member_limits_changed` otherwise). Owners and admins set it, for members they outrank. Counters are never touched: lowering a share below what was used this period refuses further questions until it resets.
+         */
+        put: operations["setAiShare"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6480,6 +6520,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/platform/companies/{tenantId}/ai/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A company’s members: their assistant shares, use and spend
+         * @description Platform only: the numbers behind the percentages the company sees, and each member’s own dollar cap and spend this month (ADR-0002 D7).
+         */
+        get: operations["listCompanyAiMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/companies/{tenantId}/ai/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set a member’s assistant share or monthly dollar cap
+         * @description Either or both; a field left out keeps its value. The share follows the company’s rules (whole percent, 1–100, the company’s total 100 or less); the dollar cap, in USD micros, is the platform’s alone and never shown to the company. `expectedVersion` as for the company’s own route. Recorded in the platform audit log with before and after.
+         */
+        put: operations["setCompanyAiMember"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/platform/form-templates": {
         parameters: {
             query?: never;
@@ -7770,7 +7850,7 @@ export interface operations {
                         /** @enum {string} */
                         level: "off" | "help" | "insights" | "agent";
                         /** @enum {string|null} */
-                        blockedBy: "global_off" | "plan_off" | "custom_off" | "not_served" | "provider_unconfigured" | "channel_off" | "member_off" | null;
+                        blockedBy: "global_off" | "plan_off" | "custom_off" | "not_served" | "provider_unconfigured" | "channel_off" | "member_off" | "no_share" | null;
                         /** @enum {string} */
                         channel: "web" | "desktop" | "mobile";
                         tools: string[];
@@ -7779,41 +7859,22 @@ export interface operations {
                         historyTurns: number;
                         allowHistory: boolean;
                         usage: {
-                            daily: {
-                                used: number;
-                                reserved: number;
-                                limit: number | null;
-                                remaining: number | null;
+                            allowance: {
+                                remainingPercent: number | null;
                                 /** Format: date-time */
-                                resetsAt: string;
-                            } | null;
-                            monthly: {
-                                used: number;
-                                reserved: number;
-                                limit: number | null;
-                                remaining: number | null;
-                                /** Format: date-time */
-                                resetsAt: string;
-                            } | null;
-                            user: {
-                                daily: {
-                                    used: number;
-                                    reserved: number;
-                                    limit: number | null;
-                                    remaining: number | null;
-                                    /** Format: date-time */
-                                    resetsAt: string;
-                                };
-                                monthly: {
-                                    used: number;
-                                    reserved: number;
-                                    limit: number | null;
-                                    remaining: number | null;
-                                    /** Format: date-time */
-                                    resetsAt: string;
-                                };
+                                resetsAt: string | null;
+                                exhausted: boolean;
                             };
-                            unlimited: boolean;
+                            sharePercent: number | null;
+                            company: {
+                                allowance: {
+                                    remainingPercent: number | null;
+                                    /** Format: date-time */
+                                    resetsAt: string | null;
+                                    exhausted: boolean;
+                                };
+                                assignedPercent: number;
+                            } | null;
                         };
                     };
                 };
@@ -7890,41 +7951,22 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        daily: {
-                            used: number;
-                            reserved: number;
-                            limit: number | null;
-                            remaining: number | null;
+                        allowance: {
+                            remainingPercent: number | null;
                             /** Format: date-time */
-                            resetsAt: string;
-                        } | null;
-                        monthly: {
-                            used: number;
-                            reserved: number;
-                            limit: number | null;
-                            remaining: number | null;
-                            /** Format: date-time */
-                            resetsAt: string;
-                        } | null;
-                        user: {
-                            daily: {
-                                used: number;
-                                reserved: number;
-                                limit: number | null;
-                                remaining: number | null;
-                                /** Format: date-time */
-                                resetsAt: string;
-                            };
-                            monthly: {
-                                used: number;
-                                reserved: number;
-                                limit: number | null;
-                                remaining: number | null;
-                                /** Format: date-time */
-                                resetsAt: string;
-                            };
+                            resetsAt: string | null;
+                            exhausted: boolean;
                         };
-                        unlimited: boolean;
+                        sharePercent: number | null;
+                        company: {
+                            allowance: {
+                                remainingPercent: number | null;
+                                /** Format: date-time */
+                                resetsAt: string | null;
+                                exhausted: boolean;
+                            };
+                            assignedPercent: number;
+                        } | null;
                     };
                 };
             };
@@ -8473,42 +8515,11 @@ export interface operations {
                             /** Format: date-time */
                             createdAt: string;
                         };
-                        usage: {
-                            daily: {
-                                used: number;
-                                reserved: number;
-                                limit: number | null;
-                                remaining: number | null;
-                                /** Format: date-time */
-                                resetsAt: string;
-                            } | null;
-                            monthly: {
-                                used: number;
-                                reserved: number;
-                                limit: number | null;
-                                remaining: number | null;
-                                /** Format: date-time */
-                                resetsAt: string;
-                            } | null;
-                            user: {
-                                daily: {
-                                    used: number;
-                                    reserved: number;
-                                    limit: number | null;
-                                    remaining: number | null;
-                                    /** Format: date-time */
-                                    resetsAt: string;
-                                };
-                                monthly: {
-                                    used: number;
-                                    reserved: number;
-                                    limit: number | null;
-                                    remaining: number | null;
-                                    /** Format: date-time */
-                                    resetsAt: string;
-                                };
-                            };
-                            unlimited: boolean;
+                        allowance: {
+                            remainingPercent: number | null;
+                            /** Format: date-time */
+                            resetsAt: string | null;
+                            exhausted: boolean;
                         };
                         replayed: boolean;
                     };
@@ -8584,6 +8595,212 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    listAiShares: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The shares. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        company: {
+                            allowance: {
+                                remainingPercent: number | null;
+                                /** Format: date-time */
+                                resetsAt: string | null;
+                                exhausted: boolean;
+                            };
+                            assignedPercent: number;
+                        };
+                        items: {
+                            /** Format: uuid */
+                            userId: string;
+                            displayName: string;
+                            aiEnabled: boolean;
+                            sharePercent: number | null;
+                            version: number | null;
+                            allowance: {
+                                remainingPercent: number | null;
+                                /** Format: date-time */
+                                resetsAt: string | null;
+                                exhausted: boolean;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setAiShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    sharePercent: number | null;
+                    expectedVersion: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The member’s share as it now is. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        userId: string;
+                        displayName: string;
+                        aiEnabled: boolean;
+                        sharePercent: number | null;
+                        version: number | null;
+                        allowance: {
+                            remainingPercent: number | null;
+                            /** Format: date-time */
+                            resetsAt: string | null;
+                            exhausted: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such person in this company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Somebody changed it first (`ai_member_limits_changed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The shares would pass 100% (`ai_shares_over_total`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
         };
     };
@@ -65820,6 +66037,8 @@ export interface operations {
                             perUserMonthlyLimit: number | null;
                             unlimitedMessages: boolean;
                             monthlyCostCapMicrousd: number | null;
+                            dailyTokenLimit?: number | null;
+                            monthlyTokenLimit?: number | null;
                             maxInputTokens: number;
                             maxOutputTokens: number;
                             maxToolSteps: number;
@@ -65910,6 +66129,8 @@ export interface operations {
                         perUserMonthlyLimit: number | null;
                         unlimitedMessages: boolean;
                         monthlyCostCapMicrousd: number | null;
+                        dailyTokenLimit?: number | null;
+                        monthlyTokenLimit?: number | null;
                         maxInputTokens: number;
                         maxOutputTokens: number;
                         maxToolSteps: number;
@@ -65940,6 +66161,8 @@ export interface operations {
                         perUserMonthlyLimit: number | null;
                         unlimitedMessages: boolean;
                         monthlyCostCapMicrousd: number | null;
+                        dailyTokenLimit?: number | null;
+                        monthlyTokenLimit?: number | null;
                         maxInputTokens: number;
                         maxOutputTokens: number;
                         maxToolSteps: number;
@@ -66039,6 +66262,8 @@ export interface operations {
                             perUserMonthlyLimit: number | null;
                             unlimitedMessages: boolean;
                             monthlyCostCapMicrousd: number | null;
+                            dailyTokenLimit?: number | null;
+                            monthlyTokenLimit?: number | null;
                             maxInputTokens: number;
                             maxOutputTokens: number;
                             maxToolSteps: number;
@@ -66064,6 +66289,8 @@ export interface operations {
                             perUserMonthlyLimit: number | null;
                             unlimitedMessages: boolean;
                             monthlyCostCapMicrousd: number | null;
+                            dailyTokenLimit?: number | null;
+                            monthlyTokenLimit?: number | null;
                             maxInputTokens: number;
                             maxOutputTokens: number;
                             maxToolSteps: number;
@@ -66091,6 +66318,8 @@ export interface operations {
                             perUserMonthlyLimit: number | null;
                             unlimitedMessages: boolean;
                             monthlyCostCapMicrousd: number | null;
+                            dailyTokenLimit?: number | null;
+                            monthlyTokenLimit?: number | null;
                             maxInputTokens: number;
                             maxOutputTokens: number;
                             maxToolSteps: number;
@@ -66117,6 +66346,17 @@ export interface operations {
                                 used: number;
                                 reserved: number;
                             };
+                            tokens: {
+                                day: {
+                                    used: number;
+                                    reserved: number;
+                                };
+                                month: {
+                                    used: number;
+                                    reserved: number;
+                                };
+                            };
+                            assignedSharePercent: number;
                             cost: {
                                 spent: number;
                                 reserved: number;
@@ -66211,6 +66451,8 @@ export interface operations {
                         perUserMonthlyLimit: number | null;
                         unlimitedMessages: boolean;
                         monthlyCostCapMicrousd: number | null;
+                        dailyTokenLimit?: number | null;
+                        monthlyTokenLimit?: number | null;
                         maxInputTokens: number;
                         maxOutputTokens: number;
                         maxToolSteps: number;
@@ -66245,6 +66487,8 @@ export interface operations {
                             perUserMonthlyLimit: number | null;
                             unlimitedMessages: boolean;
                             monthlyCostCapMicrousd: number | null;
+                            dailyTokenLimit?: number | null;
+                            monthlyTokenLimit?: number | null;
                             maxInputTokens: number;
                             maxOutputTokens: number;
                             maxToolSteps: number;
@@ -66270,6 +66514,8 @@ export interface operations {
                             perUserMonthlyLimit: number | null;
                             unlimitedMessages: boolean;
                             monthlyCostCapMicrousd: number | null;
+                            dailyTokenLimit?: number | null;
+                            monthlyTokenLimit?: number | null;
                             maxInputTokens: number;
                             maxOutputTokens: number;
                             maxToolSteps: number;
@@ -66297,6 +66543,8 @@ export interface operations {
                             perUserMonthlyLimit: number | null;
                             unlimitedMessages: boolean;
                             monthlyCostCapMicrousd: number | null;
+                            dailyTokenLimit?: number | null;
+                            monthlyTokenLimit?: number | null;
                             maxInputTokens: number;
                             maxOutputTokens: number;
                             maxToolSteps: number;
@@ -66323,6 +66571,17 @@ export interface operations {
                                 used: number;
                                 reserved: number;
                             };
+                            tokens: {
+                                day: {
+                                    used: number;
+                                    reserved: number;
+                                };
+                                month: {
+                                    used: number;
+                                    reserved: number;
+                                };
+                            };
+                            assignedSharePercent: number;
                             cost: {
                                 spent: number;
                                 reserved: number;
@@ -66425,6 +66684,8 @@ export interface operations {
                             monthStart: string;
                             messagesUsed: number;
                             messagesReserved: number;
+                            tokensUsed: number;
+                            tokensReserved: number;
                             providerCalls: number;
                             failedCalls: number;
                             spentMicrousd: number;
@@ -66644,6 +66905,218 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listCompanyAiMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The members. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        assignedSharePercent: number;
+                        items: {
+                            /** Format: uuid */
+                            userId: string;
+                            displayName: string;
+                            email: string;
+                            status: string;
+                            aiEnabled: boolean;
+                            sharePercent: number | null;
+                            monthlyCostCapMicrousd: number | null;
+                            version: number | null;
+                            messages: {
+                                day: number;
+                                month: number;
+                            };
+                            tokens: {
+                                day: number;
+                                month: number;
+                            };
+                            cost: {
+                                spent: number;
+                                reserved: number;
+                                unknown: number;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setCompanyAiMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    sharePercent?: number | null;
+                    monthlyCostCapMicrousd?: number | null;
+                    expectedVersion: number | null;
+                    reason: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The member as they now are. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        userId: string;
+                        displayName: string;
+                        email: string;
+                        status: string;
+                        aiEnabled: boolean;
+                        sharePercent: number | null;
+                        monthlyCostCapMicrousd: number | null;
+                        version: number | null;
+                        messages: {
+                            day: number;
+                            month: number;
+                        };
+                        tokens: {
+                            day: number;
+                            month: number;
+                        };
+                        cost: {
+                            spent: number;
+                            reserved: number;
+                            unknown: number;
+                        };
+                    };
+                };
+            };
+            /** @description A platform session is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such company or member. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Somebody changed it first (`ai_member_limits_changed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The shares would pass 100% (`ai_shares_over_total`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Rate limit exceeded. */
             429: {

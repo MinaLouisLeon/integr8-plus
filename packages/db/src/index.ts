@@ -123,6 +123,9 @@ export type {
 export {
   AiQuotaExceededError,
   AiBudgetExceededError,
+  AiMemberBudgetExceededError,
+  AiTokenQuotaExceededError,
+  type AiTokenLimits,
   micros,
   dayKey,
   type AiMessageReservation,
@@ -147,6 +150,12 @@ export type {
   CreateAiActionProposalInput,
   AiActionsRepository,
 } from './repositories/ai-actions.js';
+export {
+  AiMemberLimitsVersionConflictError,
+  AiSharesOverTotalError,
+  type AiMemberLimits,
+  type AiMemberLimitsRepository,
+} from './repositories/ai-member-limits.js';
 export {
   AiPolicyVersionConflictError,
   type AiPolicyFields,
