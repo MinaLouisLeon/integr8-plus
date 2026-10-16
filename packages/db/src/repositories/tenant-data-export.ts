@@ -39,6 +39,10 @@ export const EXPORTED_TABLES = [
   'ai_action_proposals',
   'ai_action_events',
   'ai_usage_periods',
+  // Token counters are the company's own (0046; ADR-0002). Members' shares and
+  // spend are not exported: those rows carry the platform's dollar cap and
+  // the provider's cost, which the company is never shown (ADR-0002 D7).
+  'ai_token_periods',
   'tenant_users',
   'customers',
   'customer_contacts',

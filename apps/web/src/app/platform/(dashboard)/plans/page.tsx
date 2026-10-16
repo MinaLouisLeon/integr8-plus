@@ -2,7 +2,14 @@
 
 import { ApiRequestError } from '@integr8/api-client';
 import { aiLevelAtLeast } from '@integr8/core';
-import { formatCurrency, formatPercent, useTranslation } from '@integr8/i18n';
+import {
+  formatCurrency,
+  formatList,
+  formatNumber,
+  formatPercent,
+  type TFunction,
+  useTranslation,
+} from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import {
@@ -96,6 +103,8 @@ export default function PlansPage() {
         <p>{ai.globalEnabled ? t('platform.ai.globalOn') : t('platform.ai.globalOff')}</p>
         <p>{t('platform.ai.maxLevelServed', { level: levelLabel(t, ai.maxLevelServed) })}</p>
       </div>
+
+      <ProviderPanel />
 
       {plans.data.map((plan) => {
         const aiPolicy = ai.items.find((item) => item.plan === plan.plan);
@@ -473,6 +482,171 @@ function AiPlanRow({
       </form>
     </Panel>
   );
+}
+
+type ModelLevel = 'help' | 'insights' | 'agent';
+
+const MODEL_LEVELS: readonly ModelLevel[] = ['agent', 'insights', 'help'];
+
+/**
+ * Which AI provider answers, and whether it can (ADR-0002 D2, D3, D8).
+ *
+ * Here, beside the plans, because a plan that allows the assistant is worth
+ * nothing while the provider is not ready, and this is where somebody looks
+ * first when a company says it has gone. The problems are the server's own
+ * sentences, written for whoever holds the deployment's settings, so they are
+ * shown as they come. Provider and model names are for Integr8's eyes only;
+ * no company screen ever shows them.
+ */
+function ProviderPanel() {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language;
+  const providers = useQuery({
+    queryKey: ['platform', 'ai', 'providers'],
+    queryFn: async () => {
+      const { data } = await platformClient().GET('/v1/platform/ai/providers');
+      return data;
+    },
+  });
+
+  if (providers.isPending) {
+    return (
+      <Panel title={t('platform.ai.provider.title')}>
+        <LoadingState />
+      </Panel>
+    );
+  }
+  if (providers.isError || providers.data === undefined) {
+    return (
+      <Panel title={t('platform.ai.provider.title')}>
+        <ErrorState
+          requestId={
+            providers.error instanceof ApiRequestError ? providers.error.requestId : undefined
+          }
+          onRetry={() => void providers.refetch()}
+        />
+      </Panel>
+    );
+  }
+
+  const data = providers.data;
+  const yes = t('platform.ai.provider.yes');
+  const no = t('platform.ai.provider.no');
+
+  return (
+    <Panel
+      title={t('platform.ai.provider.title')}
+      description={t('platform.ai.provider.description')}
+    >
+      {data.creditPauseSeconds === null ? null : (
+        <p role="alert" className="rounded-md bg-danger-subtle px-3 py-2 text-sm text-danger">
+          {t('platform.ai.provider.creditPaused', {
+            seconds: formatNumber(data.creditPauseSeconds, { locale }),
+          })}
+        </p>
+      )}
+      <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+        <Fact label={t('platform.ai.provider.active')} value={providerLabel(t, data.active)} />
+        <div className="flex flex-col gap-0.5">
+          <dt className="text-content-muted">{t('platform.ai.provider.state')}</dt>
+          <dd>
+            <Badge tone={data.ready ? 'ok' : 'danger'}>
+              {data.ready ? t('platform.ai.provider.ready') : t('platform.ai.provider.notReady')}
+            </Badge>
+          </dd>
+        </div>
+        <Fact
+          label={t('platform.ai.provider.served')}
+          value={
+            data.servedLevels.length === 0
+              ? t('platform.ai.provider.servedNone')
+              : formatList(
+                  data.servedLevels.map((level) => levelLabel(t, level)),
+                  { locale },
+                )
+          }
+        />
+      </dl>
+
+      {data.problems.length === 0 ? null : (
+        <div className="flex flex-col gap-1 text-sm">
+          <h3 className="font-semibold text-content">{t('platform.ai.provider.problems')}</h3>
+          <ul className="flex list-disc flex-col gap-0.5 ps-5 text-content">
+            {data.problems.map((problem) => (
+              // The server's own words, in English: marked so a reader set to Arabic hears them right.
+              <li key={problem} lang="en" dir="ltr" className="text-start">
+                {problem}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-border-subtle text-content-muted">
+              <th scope="col" className="py-1 text-start">
+                {t('platform.ai.level')}
+              </th>
+              <th scope="col" className="py-1 text-start">
+                {t('platform.ai.provider.model')}
+              </th>
+              <th scope="col" className="py-1 text-start">
+                {t('platform.ai.provider.priceListed')}
+              </th>
+              <th scope="col" className="py-1 text-start">
+                {t('platform.ai.provider.cachedPriced')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {MODEL_LEVELS.map((level) => {
+              const price = data.prices[level];
+              const model = data.models[level];
+              return (
+                <tr key={level} className="border-b border-border-subtle">
+                  <td className="py-1">{levelLabel(t, level)}</td>
+                  <td className="py-1" dir="ltr">
+                    {model ?? t('platform.ai.provider.noModel')}
+                  </td>
+                  <td className="py-1">
+                    <Badge tone={price.listed ? 'ok' : model === null ? 'muted' : 'warning'}>
+                      {price.listed ? yes : no}
+                    </Badge>
+                  </td>
+                  <td className="py-1">
+                    <Badge tone={price.cachedInputPriced ? 'ok' : 'muted'}>
+                      {price.cachedInputPriced ? yes : no}
+                    </Badge>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-content-muted">{t('platform.ai.provider.pricesNote')}</p>
+    </Panel>
+  );
+}
+
+function providerLabel(
+  t: TFunction,
+  provider: 'recording' | 'groq' | 'gemini' | 'anthropic' | 'openai',
+): string {
+  switch (provider) {
+    case 'recording':
+      return t('platform.ai.provider.recording');
+    case 'groq':
+      return 'Groq';
+    case 'gemini':
+      return 'Gemini';
+    case 'anthropic':
+      return 'Anthropic';
+    case 'openai':
+      return 'OpenAI';
+  }
 }
 
 function Fact({ label, value }: { label: string; value: string }) {

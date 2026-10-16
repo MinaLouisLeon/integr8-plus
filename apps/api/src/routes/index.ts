@@ -2,6 +2,7 @@ import type { ApiConfig } from '../config.js';
 import type { AnyRoute } from '../http/routes.js';
 import { healthRoutes } from './health.js';
 import { aiRoutes } from './v1/ai.js';
+import { aiShareRoutes } from './v1/ai-shares.js';
 import { authRoutes } from './v1/auth.js';
 import { billingRoutes } from './v1/billing.js';
 import { memberRoutes } from './v1/members.js';
@@ -63,6 +64,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...healthRoutes(config.APP_ENV),
     ...authRoutes,
     ...aiRoutes,
+    ...aiShareRoutes,
     ...billingRoutes,
     ...memberRoutes,
     ...signupRoutes,

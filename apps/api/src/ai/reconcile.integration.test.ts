@@ -49,6 +49,7 @@ async function staleClaim(conversationId: string, clientRequestId: string, at: D
     clientRequestId,
     requestFingerprint: 'f'.repeat(64),
     policy: HELP,
+    sharePercent: 100,
     worstCaseCostMicrousd: 1_000,
     config: api.config,
     now: at,
@@ -128,6 +129,43 @@ describe('stale reservations', () => {
       0,
     );
     expect(again.failures).toEqual([]);
+  });
+});
+
+describe('tokens a crashed request still held (ADR-0002 D5)', () => {
+  it('are charged as used, once, and the hold released', async () => {
+    const at = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const conversationId = await conversation();
+    const claimed = await staleClaim(conversationId, 'stale-tokens', at);
+    await withTenant(api.tenantId, (tx) =>
+      tx.aiUsage.holdTokens({
+        reservationId: claimed.reservation.id,
+        tokens: 4_321,
+        limits: { tenantDaily: null, tenantMonthly: null, userDaily: null, userMonthly: null },
+      }),
+    );
+    const before = await withTenant(api.tenantId, (tx) =>
+      tx.aiUsage.tokenCounters(owner.userId, periodKeysAt(at)),
+    );
+
+    const report = await runAiReconciliation({ config: api.config, logger, workerId: 'test' });
+    expect(report.failures).toEqual([]);
+    await runAiReconciliation({ config: api.config, logger, workerId: 'test' });
+
+    const after = await withTenant(api.tenantId, (tx) =>
+      tx.aiUsage.tokenCounters(owner.userId, periodKeysAt(at)),
+    );
+    for (const row of after) {
+      const was = before.find(
+        (candidate) => candidate.subject === row.subject && candidate.period === row.period,
+      );
+      expect(row.used).toBe((was?.used ?? 0) + 4_321);
+      expect(row.reserved).toBe((was?.reserved ?? 0) - 4_321);
+    }
+    const reservation = await withTenant(api.tenantId, (tx) =>
+      tx.aiUsage.find(claimed.reservation.id),
+    );
+    expect(reservation).toMatchObject({ state: 'expired', reservedTokens: 0, usedTokens: 4_321 });
   });
 });
 

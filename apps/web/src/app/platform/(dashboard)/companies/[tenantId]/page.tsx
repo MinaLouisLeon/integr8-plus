@@ -8,7 +8,7 @@ import {
   type Role,
   ROLES,
 } from '@integr8/core';
-import { useTranslation } from '@integr8/i18n';
+import { formatNumber, formatPercent, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
 import { useId, useState } from 'react';
@@ -26,6 +26,13 @@ import {
 } from '~/components/ai-policy-editor';
 import { Badge, Panel, StatusBadge } from '~/components/platform-bits';
 import { Button, ErrorState, Field, LoadingState } from '~/components/ui';
+import {
+  formatMicrousdPrecise,
+  microsToUsdInput,
+  parseSharePercent,
+  parseUsdToMicros,
+  unassignedFromRefusal,
+} from '~/lib/ai-shares';
 import { messageForError } from '~/lib/errors';
 import { formatBytes, formatDate, formatDuration, formatWhen } from '~/lib/platform-format';
 import { platformClient } from '~/lib/platform-session';
@@ -120,6 +127,7 @@ export default function CompanyPage() {
       <InvitationsPanel tenantId={tenantId} invitations={detail.invitations} />
       <AppsPanel tenantId={tenantId} settings={detail.settings} />
       <AiPanel tenantId={tenantId} />
+      <AiMembersPanel tenantId={tenantId} />
       <BillingPanel billing={detail.billing} />
 
       <Panel title={t('platform.company.people')}>
@@ -655,7 +663,8 @@ interface CompanyAi {
   effective: AiPolicyFields & {
     source: 'plan' | 'custom';
     configuredLevel: AiPolicyFields['level'];
-    offReason: 'global_off' | 'plan_off' | 'custom_off' | 'not_served' | null;
+    offReason:
+      'global_off' | 'plan_off' | 'custom_off' | 'not_served' | 'provider_unconfigured' | null;
     companyDataToProvider: boolean;
   };
   maxLevelServed: AiPolicyFields['level'];
@@ -663,6 +672,13 @@ interface CompanyAi {
   usage: {
     day: { used: number; reserved: number };
     month: { used: number; reserved: number };
+    /** Input plus output tokens, company-wide (ADR-0002 D5). */
+    tokens: {
+      day: { used: number; reserved: number };
+      month: { used: number; reserved: number };
+    };
+    /** What the members' shares add up to, in percent (ADR-0002 D6). */
+    assignedSharePercent: number;
     cost: { spent: number; reserved: number; unknown: number };
     providerCalls: number;
     failedCalls: number;
@@ -756,7 +772,9 @@ function AiPanelForm({ tenantId, data }: { tenantId: string; data: CompanyAi }) 
           ? t('platform.ai.offPlan')
           : effective.offReason === 'custom_off'
             ? t('platform.ai.offCustom')
-            : t('platform.ai.offNotServed');
+            : effective.offReason === 'provider_unconfigured'
+              ? t('platform.ai.offProviderUnconfigured')
+              : t('platform.ai.offNotServed');
 
   const dayLimit =
     effective.unlimitedMessages || !quotaModeHasDaily(effective.quotaMode)
@@ -905,7 +923,25 @@ function AiPanelForm({ tenantId, data }: { tenantId: string; data: CompanyAi }) 
           limit={monthLimit}
           resetsAt={usage.monthResetsAt}
         />
+        <UsageBar
+          label={t('platform.ai.tokensToday')}
+          used={usage.tokens.day.used}
+          reserved={usage.tokens.day.reserved}
+          limit={effective.dailyTokenLimit ?? null}
+          resetsAt={usage.dayResetsAt}
+        />
+        <UsageBar
+          label={t('platform.ai.tokensThisMonth')}
+          used={usage.tokens.month.used}
+          reserved={usage.tokens.month.reserved}
+          limit={effective.monthlyTokenLimit ?? null}
+          resetsAt={usage.monthResetsAt}
+        />
         <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+          <Fact
+            label={t('platform.ai.assignedShares')}
+            value={formatPercent(usage.assignedSharePercent / 100, { locale })}
+          />
           <Fact label={t('platform.ai.spent')} value={formatMicrousd(usage.cost.spent, locale)} />
           <Fact
             label={t('platform.ai.reserved')}
@@ -946,8 +982,11 @@ function UsageBar({
   resetsAt: string;
 }) {
   const { t, i18n } = useTranslation();
+  const locale = i18n.language;
   const total = used + reserved;
   const fraction = limit === null || limit <= 0 ? 0 : Math.min(1, total / limit);
+  // Token counts run to millions: grouped digits, or nobody reads them right.
+  const n = (value: number) => formatNumber(value, { locale });
 
   return (
     <div className="flex flex-col gap-1 text-sm">
@@ -955,11 +994,11 @@ function UsageBar({
         <span className="font-medium text-content">{label}</span>
         <span className="text-content-muted">
           {limit === null
-            ? t('platform.ai.usedNoLimit', { used: total })
-            : t('platform.ai.usedOf', { used: total, limit })}
-          {reserved > 0 ? ` ${t('platform.ai.reservedNote', { reserved })}` : ''}
+            ? t('platform.ai.usedNoLimit', { used: n(total) })
+            : t('platform.ai.usedOf', { used: n(total), limit: n(limit) })}
+          {reserved > 0 ? ` ${t('platform.ai.reservedNote', { reserved: n(reserved) })}` : ''}
           {' · '}
-          {t('platform.ai.resetsAt', { when: formatWhen(resetsAt, i18n.language) })}
+          {t('platform.ai.resetsAt', { when: formatWhen(resetsAt, locale) })}
         </span>
       </div>
       {limit === null ? null : (
@@ -978,6 +1017,292 @@ function UsageBar({
         </div>
       )}
     </div>
+  );
+}
+
+interface AiMember {
+  userId: string;
+  displayName: string;
+  email: string;
+  status: string;
+  aiEnabled: boolean;
+  sharePercent: number | null;
+  monthlyCostCapMicrousd: number | null;
+  version: number | null;
+  messages: { day: number; month: number };
+  tokens: { day: number; month: number };
+  cost: { spent: number; reserved: number; unknown: number };
+}
+
+/**
+ * Each member's share of the company's assistant allowance, what they have
+ * used, and what they have cost (ADR-0002 D6, D7).
+ *
+ * The company sees only percentages; this is where the numbers behind them
+ * are, and the one place a member's monthly dollar cap is set. A share set
+ * here follows the company's own rules — whole percent, the total at most
+ * 100% — and the company sees it on its People page as if an owner had set
+ * it.
+ */
+function AiMembersPanel({ tenantId }: { tenantId: string }) {
+  const { t, i18n } = useTranslation();
+  const members = useQuery({
+    queryKey: ['platform', 'company', tenantId, 'ai', 'members'],
+    queryFn: async () => {
+      const { data } = await platformClient().GET('/v1/platform/companies/{tenantId}/ai/members', {
+        params: { path: { tenantId } },
+      });
+      return data;
+    },
+  });
+
+  if (members.isPending) {
+    return (
+      <Panel title={t('platform.ai.members.title')}>
+        <LoadingState />
+      </Panel>
+    );
+  }
+  if (members.isError || members.data === undefined) {
+    return (
+      <Panel title={t('platform.ai.members.title')}>
+        <ErrorState
+          requestId={members.error instanceof ApiRequestError ? members.error.requestId : undefined}
+          onRetry={() => void members.refetch()}
+        />
+      </Panel>
+    );
+  }
+
+  const assigned = members.data.assignedSharePercent;
+  return (
+    <Panel
+      title={t('platform.ai.members.title')}
+      description={t('platform.ai.members.description', {
+        assigned: formatPercent(assigned / 100, { locale: i18n.language }),
+        unassigned: formatPercent(Math.max(0, 100 - assigned) / 100, { locale: i18n.language }),
+      })}
+    >
+      {members.data.items.length === 0 ? (
+        <p className="text-sm text-content-muted">{t('platform.companies.empty')}</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {members.data.items.map((member) => (
+            // Keyed by version, so a save starts the next edit from what was stored.
+            <AiMemberRow
+              key={`${member.userId}:${String(member.version ?? 0)}`}
+              tenantId={tenantId}
+              member={member}
+            />
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+function AiMemberRow({ tenantId, member }: { tenantId: string; member: AiMember }) {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language;
+  const queries = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [share, setShare] = useState(
+    member.sharePercent === null ? '' : String(member.sharePercent),
+  );
+  const [cap, setCap] = useState(
+    member.monthlyCostCapMicrousd === null ? '' : microsToUsdInput(member.monthlyCostCapMicrousd),
+  );
+  const [reason, setReason] = useState('');
+
+  const parsedShare = parseSharePercent(share);
+  const parsedCap = parseUsdToMicros(cap);
+  const shareChanged = parsedShare !== member.sharePercent;
+  const capChanged = parsedCap !== member.monthlyCostCapMicrousd;
+
+  const save = useMutation({
+    mutationFn: async () => {
+      await platformClient().PUT('/v1/platform/companies/{tenantId}/ai/members/{userId}', {
+        params: { path: { tenantId, userId: member.userId } },
+        body: {
+          // Only what changed: a field left out keeps its value, so a new cap
+          // cannot trip over the share total and the other way round.
+          ...(shareChanged && parsedShare !== 'invalid' ? { sharePercent: parsedShare } : {}),
+          ...(capChanged && parsedCap !== 'invalid' ? { monthlyCostCapMicrousd: parsedCap } : {}),
+          expectedVersion: member.version,
+          reason: reason.trim() === '' ? null : reason.trim(),
+        },
+      });
+    },
+    onSuccess: () => {
+      setEditing(false);
+      void queries.invalidateQueries({ queryKey: ['platform', 'company', tenantId, 'ai'] });
+    },
+  });
+
+  const n = (value: number) => formatNumber(value, { locale });
+  const unassigned = save.isError ? unassignedFromRefusal(save.error) : null;
+  const failure = save.isError
+    ? [
+        messageForError(save.error, t),
+        unassigned === null
+          ? null
+          : t('platform.ai.members.unassignedNow', {
+              percent: formatPercent(unassigned / 100, { locale }),
+            }),
+      ]
+        .filter((part): part is string => part !== null)
+        .join(' ')
+    : undefined;
+
+  return (
+    <li className="flex flex-col gap-3 rounded-md border border-border-subtle px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-medium text-content">{member.displayName}</span>
+        <span className="text-content-muted">{member.email}</span>
+        {member.status === 'active' ? null : <Badge tone="warning">{member.status}</Badge>}
+        <Badge tone={member.aiEnabled ? 'ok' : 'muted'}>
+          {member.aiEnabled
+            ? t('platform.ai.members.switchOn')
+            : t('platform.ai.members.switchOff')}
+        </Badge>
+        {editing ? null : (
+          <span className="ms-auto">
+            <Button variant="secondary" onClick={() => setEditing(true)}>
+              {t('platform.ai.change')}
+            </Button>
+          </span>
+        )}
+      </div>
+
+      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <Fact
+          label={t('platform.ai.members.share')}
+          value={
+            member.sharePercent === null
+              ? t('platform.ai.members.noShare')
+              : formatPercent(member.sharePercent / 100, { locale })
+          }
+        />
+        <Fact
+          label={t('platform.ai.members.messages')}
+          value={t('platform.ai.members.dayMonth', {
+            day: n(member.messages.day),
+            month: n(member.messages.month),
+          })}
+        />
+        <Fact
+          label={t('platform.ai.members.tokens')}
+          value={t('platform.ai.members.dayMonth', {
+            day: n(member.tokens.day),
+            month: n(member.tokens.month),
+          })}
+        />
+        <Fact
+          label={t('platform.ai.members.spend')}
+          value={formatMicrousdPrecise(member.cost.spent, locale)}
+        />
+        <Fact
+          label={t('platform.ai.members.reservedUnknown')}
+          value={t('platform.ai.members.reservedUnknownValue', {
+            reserved: formatMicrousdPrecise(member.cost.reserved, locale),
+            unknown: formatMicrousdPrecise(member.cost.unknown, locale),
+          })}
+        />
+        <Fact
+          label={t('platform.ai.members.cap')}
+          value={
+            member.monthlyCostCapMicrousd === null
+              ? t('platform.ai.noCap')
+              : formatMicrousdPrecise(member.monthlyCostCapMicrousd, locale)
+          }
+        />
+      </dl>
+
+      {editing ? (
+        <form
+          noValidate
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save.mutate();
+          }}
+        >
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field
+              label={t('platform.ai.members.shareInput')}
+              hint={t('platform.ai.members.shareHint')}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={100}
+              step={1}
+              value={share}
+              disabled={save.isPending}
+              onChange={(event) => setShare(event.target.value)}
+              {...(parsedShare === 'invalid'
+                ? { error: t('platform.ai.members.shareInvalid') }
+                : {})}
+            />
+            <Field
+              label={t('platform.ai.members.capInput')}
+              hint={t('platform.ai.members.capHint')}
+              type="number"
+              inputMode="decimal"
+              min={0.01}
+              step="0.01"
+              value={cap}
+              disabled={save.isPending}
+              onChange={(event) => setCap(event.target.value)}
+              {...(parsedCap === 'invalid' ? { error: t('platform.ai.members.capInvalid') } : {})}
+            />
+            <Field
+              label={t('platform.ai.reason')}
+              hint={t('platform.ai.reasonHint')}
+              maxLength={500}
+              value={reason}
+              disabled={save.isPending}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="submit"
+              busy={save.isPending}
+              disabled={
+                parsedShare === 'invalid' ||
+                parsedCap === 'invalid' ||
+                (!shareChanged && !capChanged)
+              }
+            >
+              {t('platform.ai.save')}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={save.isPending}
+              onClick={() => {
+                setShare(member.sharePercent === null ? '' : String(member.sharePercent));
+                setCap(
+                  member.monthlyCostCapMicrousd === null
+                    ? ''
+                    : microsToUsdInput(member.monthlyCostCapMicrousd),
+                );
+                setReason('');
+                save.reset();
+                setEditing(false);
+              }}
+            >
+              {t('common.cancel')}
+            </Button>
+            {failure === undefined ? null : (
+              <span role="alert" className="text-sm text-danger">
+                {failure}
+              </span>
+            )}
+          </div>
+        </form>
+      ) : null}
+    </li>
   );
 }
 

@@ -10,14 +10,8 @@ const PROPOSAL = '00000000-0000-4000-8000-000000000a02';
 const CUSTOMER = '00000000-0000-4000-8000-000000000301';
 const RESET = '2026-10-16T00:00:00.000Z';
 
-function axis(used: number, limit: number | null) {
-  return {
-    used,
-    reserved: 0,
-    limit,
-    remaining: limit === null ? null : Math.max(0, limit - used),
-    resetsAt: RESET,
-  };
+function allowance(remainingPercent: number | null, exhausted = false) {
+  return { remainingPercent, resetsAt: remainingPercent === null ? null : RESET, exhausted };
 }
 
 function capabilities(overrides: Partial<AiCapabilities> = {}): AiCapabilities {
@@ -30,12 +24,7 @@ function capabilities(overrides: Partial<AiCapabilities> = {}): AiCapabilities {
     locales: ['en', 'ar'],
     historyTurns: 6,
     allowHistory: true,
-    usage: {
-      daily: axis(2, 50),
-      monthly: null,
-      user: { daily: axis(1, 10), monthly: axis(1, null) },
-      unlimited: false,
-    },
+    usage: { allowance: allowance(62), sharePercent: 20, company: null },
     ...overrides,
   };
 }
@@ -115,6 +104,72 @@ describe('AssistantScreen', () => {
     expect(await accessibilityViolations(container)).toEqual([]);
   });
 
+  it('says a member with no share has no assistant yet, and offers no composer', async () => {
+    const { client } = fakeApi({
+      'GET /v1/ai/capabilities': () => ({
+        body: capabilities({
+          level: 'off',
+          blockedBy: 'no_share',
+          usage: { allowance: allowance(null), sharePercent: null, company: null },
+        }),
+      }),
+    });
+    renderScreen(<AssistantScreen />, client);
+
+    expect(
+      await screen.findByText(/not been given a share of your company’s assistant allowance/u),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+  });
+
+  it('shows what is left as a percentage only, and no bar when nothing is limited', async () => {
+    const { client } = fakeApi({
+      'GET /v1/ai/capabilities': () => ({ body: capabilities() }),
+      'GET /v1/ai/conversations': () => ({ body: { items: [conversation] } }),
+    });
+    const { unmount } = renderScreen(<AssistantScreen />, client);
+
+    const bar = await screen.findByRole('progressbar', { name: 'Your assistant allowance' });
+    expect(bar).toHaveAttribute('aria-valuenow', '62');
+    expect(screen.getByText(/^62% of your allowance left · resets /u)).toBeInTheDocument();
+    unmount();
+
+    const { client: unlimited } = fakeApi({
+      'GET /v1/ai/capabilities': () => ({
+        body: capabilities({
+          usage: { allowance: allowance(null), sharePercent: 20, company: null },
+        }),
+      }),
+      'GET /v1/ai/conversations': () => ({ body: { items: [conversation] } }),
+    });
+    renderScreen(<AssistantScreen />, unlimited);
+    expect(await screen.findByRole('button', { name: /^Boiler forms/u })).toBeInTheDocument();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(screen.queryByText(/of your allowance left/u)).not.toBeInTheDocument();
+  });
+
+  it('closes the composer while the allowance is used up, saying when it resets', async () => {
+    const { client } = fakeApi({
+      'GET /v1/ai/capabilities': () => ({
+        body: capabilities({
+          usage: { allowance: allowance(0, true), sharePercent: 20, company: null },
+        }),
+      }),
+      'GET /v1/ai/conversations': () => ({ body: { items: [conversation] } }),
+      'GET /v1/ai/conversations/:id': () => ({ body: { conversation, messages: [] } }),
+    });
+    renderScreen(<AssistantScreen />, client);
+    await openConversation([]);
+
+    expect(screen.getByText(/^Allowance used up · resets /u)).toBeInTheDocument();
+    expect(screen.getByLabelText('Your question')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+    expect(
+      screen.getByText(/Your assistant allowance is used up\. It resets/u),
+    ).toBeInTheDocument();
+  });
+
   it('sends a question with an idempotency key, shows the answer and updates the meter', async () => {
     const { client, calls } = fakeApi({
       'GET /v1/ai/capabilities': () => ({ body: capabilities() }),
@@ -123,12 +178,7 @@ describe('AssistantScreen', () => {
       'POST /v1/ai/conversations/:id/messages': () => ({
         body: {
           message: message(),
-          usage: {
-            daily: axis(3, 50),
-            monthly: null,
-            user: { daily: axis(2, 10), monthly: axis(2, null) },
-            unlimited: false,
-          },
+          allowance: allowance(58),
           replayed: false,
         },
       }),
@@ -136,13 +186,13 @@ describe('AssistantScreen', () => {
     const { container, navigate } = renderScreen(<AssistantScreen />, client);
     const user = await openConversation([]);
 
-    expect(screen.getByText('1 of 10')).toBeInTheDocument();
+    expect(screen.getByText(/^62% of your allowance left/u)).toBeInTheDocument();
     await user.type(screen.getByLabelText('Your question'), 'How do I add a job?{Enter}');
 
     expect(await screen.findByText('Open Work orders and choose New.')).toBeInTheDocument();
     expect(screen.getByText('How do I add a job?')).toBeInTheDocument();
-    expect(screen.getByText('2 of 10')).toBeInTheDocument();
-    expect(screen.getByText('3 of 50')).toBeInTheDocument();
+    expect(screen.getByText(/^58% of your allowance left/u)).toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '58');
     expect(screen.getByLabelText('Your question')).toHaveValue('');
 
     const sent = calls.find((call) => call.method === 'POST');
@@ -201,10 +251,9 @@ describe('AssistantScreen', () => {
         return {
           body: capabilities({
             usage: {
-              daily: axis(asked === 1 ? 49 : 50, 50),
-              monthly: null,
-              user: { daily: axis(1, 10), monthly: axis(1, null) },
-              unlimited: false,
+              allowance: asked === 1 ? allowance(2) : allowance(0, true),
+              sharePercent: 20,
+              company: null,
             },
           }),
         };
@@ -232,6 +281,41 @@ describe('AssistantScreen', () => {
     await waitFor(() => expect(screen.getByLabelText('Your question')).toBeDisabled());
     expect(screen.getByLabelText('Your question')).toHaveValue('One more?');
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
-    expect(screen.getByText(/No messages left\. They reset/u)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Your assistant allowance is used up\. It resets/u),
+    ).toBeInTheDocument();
+  });
+
+  it('treats a refusal for tokens like one for messages: the composer stays closed until it resets', async () => {
+    const { client, calls } = fakeApi({
+      'GET /v1/ai/capabilities': () => ({ body: capabilities() }),
+      'GET /v1/ai/conversations': () => ({ body: { items: [conversation] } }),
+      'GET /v1/ai/conversations/:id': () => ({ body: { conversation, messages: [] } }),
+      'POST /v1/ai/conversations/:id/messages': () =>
+        apiError(429, 'ai_daily_token_quota_exceeded', 'Used up.', [
+          {
+            field: 'body.message',
+            code: 'ai_daily_token_quota_exceeded',
+            message: 'No tokens left.',
+            params: { resetsAt: RESET },
+          },
+        ]),
+    });
+    renderScreen(<AssistantScreen />, client);
+    const user = await openConversation([]);
+
+    await user.type(screen.getByLabelText('Your question'), 'A long report?{Enter}');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /Today’s assistant allowance is used up/u,
+    );
+    await waitFor(() => expect(screen.getByLabelText('Your question')).toBeDisabled());
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+    expect(
+      screen.getByText(/Your assistant allowance is used up\. It resets/u),
+    ).toBeInTheDocument();
+    // Nothing in the refusal's words or the screen's gives a count away.
+    expect(screen.queryByText(/token/iu)).not.toBeInTheDocument();
+    expect(calls.filter((call) => call.method === 'POST')).toHaveLength(1);
   });
 });

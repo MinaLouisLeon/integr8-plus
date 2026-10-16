@@ -8,11 +8,14 @@ import {
   toPlatformUserId,
 } from '@integr8/core';
 import {
+  AiMemberLimitsVersionConflictError,
   AiPolicyVersionConflictError,
+  AiSharesOverTotalError,
   getPlatformDataSource,
   TENANT_PLANS,
   type AiPlanPolicy,
   type AiTenantPolicy,
+  withTenant,
 } from '@integr8/db';
 import { z } from 'zod';
 import {
@@ -20,8 +23,11 @@ import {
   forgetAiPolicy,
   resolveEffectiveAiPolicy,
 } from '../../../ai/policy.js';
+import { aiConfiguration } from '../../../ai/configuration.js';
 import { periodKeysAt } from '../../../ai/periods.js';
 import { approvedDataClasses, providerStatus } from '../../../ai/providers/index.js';
+import { providerPausedFor } from '../../../ai/providers/pause.js';
+import { aiMemberLimitsChanged, aiSharesOverTotal } from '../../../ai/errors.js';
 import { conflict, notFound, unprocessable } from '../../../http/errors.js';
 import { defineRoute, noSchema } from '../../../http/routes.js';
 import { iso, isoOrNull } from '../schemas.js';
@@ -48,6 +54,13 @@ const policyFieldsSchema = z.object({
   perUserMonthlyLimit: z.number().int().nullable(),
   unlimitedMessages: z.boolean(),
   monthlyCostCapMicrousd: z.number().int().nullable(),
+  /**
+   * The company's pooled input-plus-output tokens per UTC day and month
+   * (ADR-0002 D5). Optional on a write so a dashboard from before token
+   * limits cannot clear them: left out means "keep what is stored".
+   */
+  dailyTokenLimit: z.number().int().nullable().optional(),
+  monthlyTokenLimit: z.number().int().nullable().optional(),
   maxInputTokens: z.number().int(),
   maxOutputTokens: z.number().int(),
   maxToolSteps: z.number().int(),
@@ -55,6 +68,24 @@ const policyFieldsSchema = z.object({
   allowHistory: z.boolean(),
   retentionDays: z.number().int(),
 });
+
+/** A written policy with any token limit left out taken from what is stored. */
+function keepingTokenLimits(
+  policy: z.infer<typeof policyFieldsSchema>,
+  stored: { dailyTokenLimit: number | null; monthlyTokenLimit: number | null } | undefined,
+) {
+  return {
+    ...policy,
+    dailyTokenLimit:
+      policy.dailyTokenLimit === undefined
+        ? (stored?.dailyTokenLimit ?? null)
+        : policy.dailyTokenLimit,
+    monthlyTokenLimit:
+      policy.monthlyTokenLimit === undefined
+        ? (stored?.monthlyTokenLimit ?? null)
+        : policy.monthlyTokenLimit,
+  };
+}
 
 const planPolicySchema = policyFieldsSchema.extend({
   plan: z.enum(TENANT_PLANS),
@@ -76,7 +107,9 @@ const effectivePolicySchema = policyFieldsSchema.extend({
   source: z.enum(['plan', 'custom']),
   /** The level before this build's cap: what the policy says, not what runs. */
   configuredLevel: z.enum(AI_LEVELS),
-  offReason: z.enum(['global_off', 'plan_off', 'custom_off', 'not_served']).nullable(),
+  offReason: z
+    .enum(['global_off', 'plan_off', 'custom_off', 'not_served', 'provider_unconfigured'])
+    .nullable(),
   companyDataToProvider: z.boolean(),
 });
 
@@ -93,6 +126,13 @@ const companyAiSchema = z.object({
   usage: z.object({
     day: usageAxisSchema,
     month: usageAxisSchema,
+    /** Input plus output tokens, company-wide (ADR-0002 D5). */
+    tokens: z.object({
+      day: z.object({ used: z.number().int(), reserved: z.number().int() }),
+      month: z.object({ used: z.number().int(), reserved: z.number().int() }),
+    }),
+    /** How much of the company's allowance its members' shares add up to, in percent. */
+    assignedSharePercent: z.number().int(),
     /** USD micros, this UTC month. */
     cost: z.object({
       spent: z.number().int(),
@@ -160,9 +200,9 @@ export const setAiPlanPolicyRoute = defineRoute({
     422: { description: 'The policy is inconsistent (`ai_policy_invalid`).' },
   },
   handler: async ({ params, body }, context) => {
-    const policy = parsePolicy(body.policy);
     const platform = getPlatformDataSource().ai;
     const before = await platform.planPolicy(params.plan);
+    const policy = parsePolicy(keepingTokenLimits(body.policy, before));
     let saved: AiPlanPolicy;
     try {
       saved = await platform.setPlanPolicy(params.plan, policy, {
@@ -244,8 +284,9 @@ export const setCompanyAiRoute = defineRoute({
     }
     // An inherited policy's fields are not the policy, so they are not held to
     // the policy's consistency rule; a custom one is.
-    const policy = body.mode === 'custom' ? parsePolicy(body.policy) : body.policy;
     const before = await platform.ai.tenantPolicy(tenant.id);
+    const written = keepingTokenLimits(body.policy, before);
+    const policy = body.mode === 'custom' ? parsePolicy(written) : written;
     let saved: AiTenantPolicy;
     try {
       saved = await platform.ai.setTenantPolicy(tenant.id, {
@@ -310,6 +351,8 @@ export const aiUsageReportRoute = defineRoute({
           monthStart: z.string(),
           messagesUsed: z.number().int(),
           messagesReserved: z.number().int(),
+          tokensUsed: z.number().int(),
+          tokensReserved: z.number().int(),
           providerCalls: z.number().int(),
           failedCalls: z.number().int(),
           spentMicrousd: z.number().int(),
@@ -372,6 +415,26 @@ export const aiProvidersRoute = defineRoute({
           insights: z.string().nullable(),
           agent: z.string().nullable(),
         }),
+        /**
+         * Whether the active provider can answer at all, and what is wrong
+         * when it cannot (ADR-0002 D2). Configuration never stops the
+         * server; it turns the assistant off and says so here.
+         */
+        ready: z.boolean(),
+        problems: z.array(z.string()),
+        /** The levels that have a model, highest first. */
+        servedLevels: z.array(z.enum(['agent', 'insights', 'help'])),
+        /** Per level: whether its model has its own price row, and a cached-input rate. */
+        prices: z.object({
+          help: z.object({ listed: z.boolean(), cachedInputPriced: z.boolean() }),
+          insights: z.object({ listed: z.boolean(), cachedInputPriced: z.boolean() }),
+          agent: z.object({ listed: z.boolean(), cachedInputPriced: z.boolean() }),
+        }),
+        /**
+         * Seconds this API process still waits before asking the provider
+         * again after it said the account's credit is spent (ADR-0002 D8).
+         */
+        creditPauseSeconds: z.number().int().nullable(),
         providers: z.array(
           z.object({
             id: z.enum(AI_PROVIDERS),
@@ -384,6 +447,14 @@ export const aiProvidersRoute = defineRoute({
   },
   handler: (_input, context) => {
     const config = context.config;
+    const configuration = aiConfiguration(config);
+    const priced = (model: string | null) => {
+      if (model === null) {
+        return { listed: false, cachedInputPriced: false };
+      }
+      const price = context.services.ai.prices.priceFor(config.AI_PROVIDER, model);
+      return { listed: price.listed, cachedInputPriced: price.cachedInputPerMillion !== null };
+    };
     return Promise.resolve({
       status: 200,
       body: {
@@ -395,6 +466,15 @@ export const aiProvidersRoute = defineRoute({
           insights: config.AI_MODEL_INSIGHTS ?? null,
           agent: config.AI_MODEL_AGENT ?? null,
         },
+        ready: configuration.ready,
+        problems: configuration.problems,
+        servedLevels: configuration.servedLevels,
+        prices: {
+          help: priced(configuration.models.help),
+          insights: priced(configuration.models.insights),
+          agent: priced(configuration.models.agent),
+        },
+        creditPauseSeconds: providerPausedFor(config.AI_PROVIDER),
         providers: AI_PROVIDERS.map((id) => ({
           id,
           configured: providerStatus(id, config),
@@ -402,6 +482,191 @@ export const aiProvidersRoute = defineRoute({
         })),
       },
     });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// A company's members: shares, numbers and dollar caps (ADR-0002 D6, D7)
+// ---------------------------------------------------------------------------
+
+const platformMemberSchema = z.object({
+  userId: z.uuid(),
+  displayName: z.string(),
+  email: z.string(),
+  status: z.string(),
+  aiEnabled: z.boolean(),
+  /** 1–100, or null: no share and so no assistant. */
+  sharePercent: z.number().int().nullable(),
+  /** USD micros per UTC month; null is no cap of the member's own. Platform only. */
+  monthlyCostCapMicrousd: z.number().int().nullable(),
+  version: z.number().int().nullable(),
+  messages: z.object({ day: z.number().int(), month: z.number().int() }),
+  tokens: z.object({ day: z.number().int(), month: z.number().int() }),
+  /** USD micros this UTC month, on the member's own ledger. */
+  cost: z.object({
+    spent: z.number().int(),
+    reserved: z.number().int(),
+    unknown: z.number().int(),
+  }),
+});
+
+async function companyMembers(tenantId: string) {
+  const periods = periodKeysAt(new Date());
+  return withTenant(tenantId, async (tx) => {
+    const [members, limits, counters, costs, assigned] = await Promise.all([
+      tx.tenantUsers.list(),
+      tx.aiMemberLimits.list(),
+      tx.aiUsage.memberCounters(periods),
+      tx.aiUsage.memberCostPeriods(periods.month),
+      tx.aiMemberLimits.assignedPercent(),
+    ]);
+    return {
+      assignedSharePercent: assigned,
+      items: members.map((member) => {
+        const limit = limits.find((row) => row.userId === member.userId);
+        const day = counters.find((row) => row.userId === member.userId && row.period === 'day');
+        const month = counters.find(
+          (row) => row.userId === member.userId && row.period === 'month',
+        );
+        const cost = costs.find((row) => row.userId === member.userId);
+        return {
+          userId: member.userId,
+          displayName: member.displayName,
+          email: member.email,
+          status: member.status,
+          aiEnabled: member.aiEnabled,
+          sharePercent: limit?.sharePercent ?? null,
+          monthlyCostCapMicrousd: limit?.monthlyCostCapMicrousd ?? null,
+          version: limit?.version ?? null,
+          messages: { day: day?.messagesUsed ?? 0, month: month?.messagesUsed ?? 0 },
+          tokens: { day: day?.tokensUsed ?? 0, month: month?.tokensUsed ?? 0 },
+          cost: {
+            spent: cost?.spent ?? 0,
+            reserved: cost?.reserved ?? 0,
+            unknown: cost?.unknown ?? 0,
+          },
+        };
+      }),
+    };
+  });
+}
+
+export const listCompanyAiMembersRoute = defineRoute({
+  method: 'get',
+  path: '/v1/platform/companies/:tenantId/ai/members',
+  operationId: 'listCompanyAiMembers',
+  summary: 'A company’s members: their assistant shares, use and spend',
+  description:
+    'Platform only: the numbers behind the percentages the company sees, and each member’s own dollar cap and spend this month (ADR-0002 D7).',
+  tags: TAGS,
+  security: 'platform',
+  params: z.object({ tenantId: z.uuid() }),
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: {
+      description: 'The members.',
+      schema: z.object({
+        assignedSharePercent: z.number().int(),
+        items: z.array(platformMemberSchema),
+      }),
+    },
+    404: { description: 'No such company.' },
+  },
+  handler: async ({ params }) => {
+    const tenant = await getPlatformDataSource().tenants.findById(params.tenantId);
+    if (tenant?.deletedAt !== null) {
+      throw notFound(`No company with id ${params.tenantId}`);
+    }
+    return { status: 200, body: await companyMembers(tenant.id) };
+  },
+});
+
+export const setCompanyAiMemberRoute = defineRoute({
+  method: 'put',
+  path: '/v1/platform/companies/:tenantId/ai/members/:userId',
+  operationId: 'setCompanyAiMember',
+  summary: 'Set a member’s assistant share or monthly dollar cap',
+  description:
+    'Either or both; a field left out keeps its value. The share follows the company’s rules (whole percent, 1–100, the company’s total 100 or less); the dollar cap, in USD micros, is the platform’s alone and never shown to the company. `expectedVersion` as for the company’s own route. Recorded in the platform audit log with before and after.',
+  tags: TAGS,
+  security: 'platform',
+  params: z.object({ tenantId: z.uuid(), userId: z.uuid() }),
+  query: noSchema,
+  body: z.object({
+    sharePercent: z.number().int().min(1).max(100).nullable().optional(),
+    monthlyCostCapMicrousd: z.number().int().positive().nullable().optional(),
+    expectedVersion: z.number().int().positive().nullable(),
+    reason: z.string().max(500).nullable(),
+  }),
+  responses: {
+    200: { description: 'The member as they now are.', schema: platformMemberSchema },
+    404: { description: 'No such company or member.' },
+    409: { description: 'Somebody changed it first (`ai_member_limits_changed`).' },
+    422: { description: 'The shares would pass 100% (`ai_shares_over_total`).' },
+  },
+  handler: async ({ params, body }, context) => {
+    const tenant = await getPlatformDataSource().tenants.findById(params.tenantId);
+    if (tenant?.deletedAt !== null) {
+      throw notFound(`No company with id ${params.tenantId}`);
+    }
+    const member = await withTenant(tenant.id, (tx) => tx.tenantUsers.findByUserId(params.userId));
+    if (member === undefined) {
+      throw notFound('No such person in this company.');
+    }
+    let before;
+    let after;
+    try {
+      [before, after] = await withTenant(tenant.id, async (tx) => {
+        const previous = await tx.aiMemberLimits.find(params.userId);
+        const saved = await tx.aiMemberLimits.set({
+          userId: params.userId,
+          ...(body.sharePercent === undefined ? {} : { sharePercent: body.sharePercent }),
+          ...(body.monthlyCostCapMicrousd === undefined
+            ? {}
+            : { monthlyCostCapMicrousd: body.monthlyCostCapMicrousd }),
+          expectedVersion: body.expectedVersion,
+          updatedBy: context.platform.platformUserId,
+        });
+        return [previous, saved] as const;
+      });
+    } catch (error) {
+      if (error instanceof AiMemberLimitsVersionConflictError) {
+        throw aiMemberLimitsChanged(error.currentVersion);
+      }
+      if (error instanceof AiSharesOverTotalError) {
+        throw aiSharesOverTotal(error.availablePercent);
+      }
+      throw error;
+    }
+    forgetAiPolicy(tenant.id);
+    await recordPlatformAction(context, {
+      action: 'ai.member_limits_changed',
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      targetKind: 'tenant_user',
+      targetId: params.userId,
+      reason: body.reason,
+      metadata: {
+        before:
+          before === undefined
+            ? null
+            : {
+                sharePercent: before.sharePercent,
+                monthlyCostCapMicrousd: before.monthlyCostCapMicrousd,
+              },
+        after: {
+          sharePercent: after.sharePercent,
+          monthlyCostCapMicrousd: after.monthlyCostCapMicrousd,
+        },
+      },
+    });
+    const members = await companyMembers(tenant.id);
+    const row = members.items.find((item) => item.userId === params.userId);
+    if (row === undefined) {
+      throw notFound('No such person in this company.');
+    }
+    return { status: 200, body: row };
   },
 });
 
@@ -424,6 +689,8 @@ export const aiHealthRoute = defineRoute({
           calls: z.number().int(),
           failed: z.number().int(),
           limited: z.number().int(),
+          /** Refused because the provider account's credit was spent (ADR-0002 D8). */
+          creditExhausted: z.number().int(),
           averageMs: z.number().int().nullable(),
         }),
         staleReservations: z.object({
@@ -473,6 +740,8 @@ export const platformAiRoutes = [
   aiUsageReportRoute,
   aiProvidersRoute,
   aiHealthRoute,
+  listCompanyAiMembersRoute,
+  setCompanyAiMemberRoute,
 ];
 
 // ---------------------------------------------------------------------------
@@ -499,6 +768,9 @@ async function companyAi(
   const now = new Date();
   const periods = periodKeysAt(now);
   const usage = await platform.ai.tenantUsage(tenant.id, periods);
+  const assignedSharePercent = await withTenant(tenant.id, (tx) =>
+    tx.aiMemberLimits.assignedPercent(),
+  );
   const { overrideVersion: _version, ...effectiveBody } = effective;
   void _version;
   return {
@@ -511,6 +783,8 @@ async function companyAi(
     usage: {
       day: usage.day,
       month: usage.month,
+      tokens: usage.tokens,
+      assignedSharePercent,
       cost: usage.cost,
       providerCalls: usage.providerCalls,
       failedCalls: usage.failedCalls,

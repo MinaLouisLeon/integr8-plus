@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { AI_POLICY_OFF, type AiPolicy } from '@integr8/core';
 import { getPlatformDataSource, withTenant } from '@integr8/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { periodKeysAt } from '../../ai/periods.js';
 import { forgetAiPolicy } from '../../ai/policy.js';
 import type { RecordingAiProvider } from '../../ai/providers/index.js';
 import { type ApiHarness, type Member, startApi } from '../../testing/api-harness.js';
@@ -99,6 +100,20 @@ beforeAll(async () => {
   forgetAiPolicy();
   await withTenant(api.tenantId, async (tx) => {
     await tx.settings.update({ aiDesktopEnabled: true });
+    // Each seat's share of the company's allowance (ADR-0002 D6); 1% is left
+    // for the member whose allowance runs out mid-answer, below.
+    for (const [member, sharePercent] of [
+      [owner, 40],
+      [engineer, 30],
+      [viewer, 29],
+    ] as const) {
+      await tx.aiMemberLimits.set({
+        userId: member.userId,
+        sharePercent,
+        expectedVersion: null,
+        updatedBy: null,
+      });
+    }
   });
   // Job types are Integr8's to manage: staff define the one the tests name.
   const type = await api.call(await api.staff(owner), {
@@ -112,6 +127,125 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await api.close();
+});
+
+describe('the model each level runs on (ADR-0002 D3)', () => {
+  it('is the level’s own model on every call, never the Help model for all', async () => {
+    const token = await api.signIn(owner);
+    const platform = getPlatformDataSource().ai;
+    const modelsAt = async (level: 'help' | 'insights' | 'agent') => {
+      const current = (await platform.tenantPolicy(api.tenantId))!;
+      await platform.setTenantPolicy(api.tenantId, {
+        mode: 'custom',
+        policy: { ...AGENT, level },
+        companyDataToProvider: true,
+        reason: `model for ${level}`,
+        expectedVersion: current.version,
+        updatedBy: null,
+      });
+      forgetAiPolicy();
+      const conversationId = await conversation(token);
+      provider.reset();
+      // A tool round at the higher levels, so more than one call is checked.
+      const asked = await ask(
+        token,
+        conversationId,
+        level === 'help' ? 'How do I create a work order?' : '/tool get_work_order_summary {}',
+      );
+      expect(asked.statusCode, asked.body).toBe(200);
+      return [...new Set(provider.calls.map((call) => call.input.model))];
+    };
+
+    expect(await modelsAt('help')).toEqual(['recording-help']);
+    expect(await modelsAt('insights')).toEqual(['recording-insights']);
+    expect(await modelsAt('agent')).toEqual(['recording-agent']);
+
+    const current = (await platform.tenantPolicy(api.tenantId))!;
+    await platform.setTenantPolicy(api.tenantId, {
+      mode: 'inherit',
+      policy: AGENT,
+      companyDataToProvider: true,
+      reason: null,
+      expectedVersion: current.version,
+      updatedBy: null,
+    });
+    forgetAiPolicy();
+  });
+});
+
+describe('a token allowance that runs out mid-answer (ADR-0002 D5)', () => {
+  it('stops before the next model call, answers, charges what was used, then refuses', async () => {
+    const member = await api.member('dispatcher', 'act-one-percent');
+    await withTenant(api.tenantId, (tx) =>
+      tx.aiMemberLimits.set({
+        userId: member.userId,
+        sharePercent: 1,
+        expectedVersion: null,
+        updatedBy: null,
+      }),
+    );
+    // 1% of five million is fifty thousand: room for the first call's hold,
+    // and not for a second once the first reports fifty thousand used.
+    const platform = getPlatformDataSource().ai;
+    const current = (await platform.tenantPolicy(api.tenantId))!;
+    await platform.setTenantPolicy(api.tenantId, {
+      mode: 'custom',
+      policy: { ...AGENT, dailyTokenLimit: 5_000_000 },
+      companyDataToProvider: true,
+      reason: 'token allowance',
+      expectedVersion: current.version,
+      updatedBy: null,
+    });
+    forgetAiPolicy();
+    try {
+      const token = await api.signIn(member);
+      const conversationId = await conversation(token);
+      provider.reset();
+      provider.enqueue({
+        text: '',
+        toolRequests: [{ id: 'call_1', name: 'get_work_order_summary', arguments: {} }],
+        usage: { inputTokens: 49_000, outputTokens: 1_000, estimated: false },
+        finishReason: 'tool',
+      });
+      const asked = await ask(token, conversationId, 'How many open jobs?');
+      expect(asked.statusCode, asked.body).toBe(200);
+      const answer = json<{
+        message: { text: string; toolSummaries: { tool: string }[] };
+        allowance: { exhausted: boolean; remainingPercent: number | null };
+      }>(asked);
+      // One call, its tool ran, and the model was not asked again.
+      expect(provider.calls).toHaveLength(1);
+      expect(answer.message.toolSummaries.map((summary) => summary.tool)).toContain(
+        'get_work_order_summary',
+      );
+      expect(answer.message.text).toMatch(/allowance ran out/u);
+      expect(answer.allowance).toMatchObject({ exhausted: true, remainingPercent: 0 });
+
+      const counters = await withTenant(api.tenantId, (tx) =>
+        tx.aiUsage.tokenCounters(member.userId, periodKeysAt(new Date())),
+      );
+      const own = counters.find((row) => row.subject === 'user' && row.period === 'day');
+      expect(own).toMatchObject({ used: 50_000, reserved: 0 });
+
+      // The next question is refused before any model is asked.
+      provider.reset();
+      const refused = await ask(token, conversationId, 'And overdue?');
+      expect(refused.statusCode).toBe(429);
+      expect(code(refused)).toBe('ai_daily_token_quota_exceeded');
+      expect(provider.calls).toHaveLength(0);
+    } finally {
+      const now = (await platform.tenantPolicy(api.tenantId))!;
+      await platform.setTenantPolicy(api.tenantId, {
+        mode: 'inherit',
+        policy: AGENT,
+        companyDataToProvider: true,
+        reason: null,
+        expectedVersion: now.version,
+        updatedBy: null,
+      });
+      forgetAiPolicy();
+    }
+  });
 });
 
 describe('what a seat is offered', () => {

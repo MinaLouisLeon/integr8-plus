@@ -45,7 +45,19 @@ export interface AiGenerateInput {
 export interface AiGeneration {
   text: string;
   toolRequests: AiToolRequest[];
-  usage: { inputTokens: number | null; outputTokens: number | null; estimated: boolean };
+  /**
+   * Tokens as the provider reported them, or estimated. `cachedTokens` is the
+   * part of `inputTokens` served from the provider's prompt cache and
+   * `reasoningTokens` the part of `outputTokens` spent reasoning: both are
+   * subsets, never added to the totals again (ADR-0002 D4, D5).
+   */
+  usage: {
+    inputTokens: number | null;
+    outputTokens: number | null;
+    cachedTokens?: number | null;
+    reasoningTokens?: number | null;
+    estimated: boolean;
+  };
   providerRequestId?: string;
   finishReason: 'stop' | 'tool' | 'length' | 'other';
 }
@@ -56,8 +68,13 @@ export interface AiProvider {
   generate(input: AiGenerateInput): Promise<AiGeneration>;
 }
 
+/**
+ * Why a call failed. `credit_exhausted` is the provider saying the account
+ * has no credit or spend left: not temporary like `rate_limited`, and not the
+ * company's allowance either (ADR-0002 D8).
+ */
 export type AiProviderFailureKind =
-  'rate_limited' | 'timeout' | 'unavailable' | 'bad_request' | 'unauthorised';
+  'rate_limited' | 'credit_exhausted' | 'timeout' | 'unavailable' | 'bad_request' | 'unauthorised';
 
 /** A provider refused or failed. Never carries the request or the key. */
 export class AiProviderError extends Error {
@@ -88,7 +105,10 @@ export function estimatePromptTokens(input: Pick<AiGenerateInput, 'system' | 'me
 
 /**
  * `fetch` with a deadline, mapped to the failure kinds above. The body is
- * JSON in and JSON out; the caller interprets the document.
+ * JSON in and JSON out; the caller interprets the document. `classify` lets
+ * an adapter read a refusal's structured body (never its message text) to
+ * tell failures apart that share a status, such as a billing stop and a rate
+ * limit, which are both 429.
  */
 export async function postJson(
   provider: AiProviderId,
@@ -96,6 +116,7 @@ export async function postJson(
   headers: Record<string, string>,
   body: unknown,
   timeoutMs: number,
+  classify?: (status: number, body: unknown) => AiProviderFailureKind | undefined,
 ): Promise<{ status: number; body: unknown; retryAfterSeconds?: number }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -116,6 +137,16 @@ export async function postJson(
     const retryAfter = response.headers.get('retry-after');
     const retryAfterSeconds =
       retryAfter === null || Number.isNaN(Number(retryAfter)) ? undefined : Number(retryAfter);
+    const classified = response.status >= 400 ? classify?.(response.status, parsed) : undefined;
+    if (classified === 'credit_exhausted') {
+      throw new AiProviderError(
+        provider,
+        'credit_exhausted',
+        "The provider says the account's credit is used up.",
+        undefined,
+        response.status,
+      );
+    }
     if (response.status === 429) {
       throw new AiProviderError(
         provider,

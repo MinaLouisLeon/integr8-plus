@@ -2,13 +2,14 @@
 
 import { ApiRequestError } from '@integr8/api-client';
 import type { Grant, Role } from '@integr8/core';
-import { type TFunction, useTranslation } from '@integr8/i18n';
+import { formatPercent, type TFunction, useTranslation } from '@integr8/i18n';
 import { MemberRolePicker } from '@integr8/operations-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { OperationsScreens } from '~/components/operations-screens';
 import { Button, ErrorState, Field, LoadingState } from '~/components/ui';
+import { parseSharePercent, unassignedFromRefusal } from '~/lib/ai-shares';
 import { messageForError } from '~/lib/errors';
 import {
   invitableRoles,
@@ -40,6 +41,10 @@ import { apiClient } from '~/lib/session';
  * Since ADR-0013 a member may hold one of the company's own roles instead of
  * a built-in one: the role picker offers both, and the company roles screen
  * is reached from here.
+ *
+ * Since ADR-0002 (D6) those who assign roles also divide the company's
+ * assistant allowance: each person a whole percentage of it, in percentages
+ * only, never the counts or money behind them.
  */
 
 type Status = 'invited' | 'active' | 'suspended';
@@ -184,6 +189,8 @@ export default function PeoplePage() {
           <p className="text-xs text-content-muted">{t('workspace.members.accessNote')}</p>
           <p className="text-xs text-content-muted">{t('workspace.members.grantsNote')}</p>
         </section>
+
+        {viewer.permissions.includes('member.update_role') ? <AssistantShares /> : null}
 
         {invitations.data === undefined || invitations.data.items.length === 0 ? null : (
           <section className="flex flex-col gap-3">
@@ -469,6 +476,195 @@ function MemberRow({
           {error}
         </p>
       )}
+    </li>
+  );
+}
+
+interface Allowance {
+  remainingPercent: number | null;
+  resetsAt: string | null;
+  exhausted: boolean;
+}
+
+interface ShareRow {
+  userId: string;
+  displayName: string;
+  aiEnabled: boolean;
+  sharePercent: number | null;
+  version: number | null;
+  allowance: Allowance;
+}
+
+/**
+ * How the company's assistant allowance is divided (ADR-0002 D6).
+ *
+ * Shares are reserved slices that add up to 100% or less, so the section
+ * leads with what is assigned and what is not: the number somebody needs
+ * before giving a new person a share. A person needs both their switch above
+ * and a share here; the line saying so is the one place that rule is said.
+ */
+function AssistantShares() {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language;
+  const shares = useQuery({
+    queryKey: ['ai', 'shares'],
+    queryFn: async () => {
+      const { data } = await apiClient().GET('/v1/ai/shares');
+      return data;
+    },
+  });
+
+  if (shares.isPending) {
+    return <LoadingState />;
+  }
+  if (shares.isError || shares.data === undefined) {
+    return (
+      <ErrorState
+        requestId={shares.error instanceof ApiRequestError ? shares.error.requestId : undefined}
+        onRetry={() => void shares.refetch()}
+      />
+    );
+  }
+
+  const { company, items } = shares.data;
+  const assigned = Math.min(100, Math.max(0, company.assignedPercent));
+  const percent = (value: number) => formatPercent(value / 100, { locale });
+
+  return (
+    <section className="flex flex-col gap-3" aria-labelledby="ai-shares-title">
+      <h2 id="ai-shares-title" className="text-base font-semibold text-content">
+        {t('workspace.members.ai.shares.title')}
+      </h2>
+      <p className="text-sm text-content-muted">{t('workspace.members.ai.shares.rule')}</p>
+      <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+        <div className="flex gap-1.5">
+          <dt className="text-content-muted">{t('workspace.members.ai.shares.companyLeft')}</dt>
+          <dd className="font-medium text-content">
+            {company.allowance.remainingPercent === null
+              ? t('workspace.members.ai.shares.unlimited')
+              : percent(company.allowance.remainingPercent)}
+          </dd>
+        </div>
+        <div className="flex gap-1.5">
+          <dt className="text-content-muted">{t('workspace.members.ai.shares.division')}</dt>
+          <dd className="font-medium text-content">
+            {t('workspace.members.ai.shares.assigned', {
+              assigned: percent(assigned),
+              unassigned: percent(100 - assigned),
+            })}
+          </dd>
+        </div>
+      </dl>
+      <ul className="flex flex-col gap-2">
+        {items.map((row) => (
+          // Keyed by version, so a saved share starts a fresh input from what was stored.
+          <ShareRowItem key={`${row.userId}:${String(row.version ?? 0)}`} row={row} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function ShareRowItem({ row }: { row: ShareRow }) {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language;
+  const queries = useQueryClient();
+  const [value, setValue] = useState(row.sharePercent === null ? '' : String(row.sharePercent));
+  const parsed = parseSharePercent(value);
+  const unchanged = parsed === row.sharePercent;
+
+  const save = useMutation({
+    mutationFn: async (sharePercent: number | null) => {
+      await apiClient().PUT('/v1/ai/shares/{userId}', {
+        params: { path: { userId: row.userId } },
+        body: { sharePercent, expectedVersion: row.version },
+      });
+    },
+    onSuccess: () => {
+      void queries.invalidateQueries({ queryKey: ['ai', 'shares'] });
+      // The viewer's own menu and meter follow their share.
+      void queries.invalidateQueries({ queryKey: ['ai', 'capabilities'] });
+    },
+  });
+
+  const unassigned = save.isError ? unassignedFromRefusal(save.error) : null;
+  const problem =
+    parsed === 'invalid'
+      ? t('workspace.members.ai.shares.invalid')
+      : save.isError
+        ? [
+            messageForError(save.error, t),
+            unassigned === null
+              ? null
+              : t('workspace.members.ai.shares.unassignedNow', {
+                  percent: formatPercent(unassigned / 100, { locale }),
+                }),
+          ]
+            .filter((part): part is string => part !== null)
+            .join(' ')
+        : undefined;
+
+  const left =
+    row.sharePercent === null
+      ? t('workspace.members.ai.shares.none')
+      : row.allowance.remainingPercent === null
+        ? t('workspace.members.ai.shares.memberUnlimited')
+        : row.allowance.exhausted
+          ? t('workspace.members.ai.shares.memberUsedUp')
+          : t('workspace.members.ai.shares.memberLeft', {
+              percent: formatPercent(row.allowance.remainingPercent / 100, { locale }),
+            });
+
+  return (
+    <li className="flex flex-col gap-1 rounded-md border border-border-subtle bg-surface px-3 py-2">
+      <form
+        noValidate
+        className="flex flex-wrap items-end gap-3 text-sm"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (parsed !== 'invalid' && !unchanged) {
+            save.mutate(parsed);
+          }
+        }}
+      >
+        <div className="flex min-w-48 flex-1 flex-col gap-0.5">
+          <span className="font-medium text-content">{row.displayName}</span>
+          <span
+            className={
+              row.allowance.exhausted ? 'text-xs text-danger' : 'text-xs text-content-muted'
+            }
+          >
+            {left}
+            {row.aiEnabled ? '' : ` · ${t('workspace.members.ai.off')}`}
+          </span>
+        </div>
+        <div className="w-36">
+          <Field
+            label={t('workspace.members.ai.shares.input', { name: row.displayName })}
+            hint={t('workspace.members.ai.shares.inputHint')}
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={100}
+            step={1}
+            value={value}
+            disabled={save.isPending}
+            onChange={(event) => {
+              setValue(event.target.value);
+              save.reset();
+            }}
+            {...(problem === undefined ? {} : { error: problem })}
+          />
+        </div>
+        <Button
+          type="submit"
+          variant="secondary"
+          busy={save.isPending}
+          disabled={parsed === 'invalid' || unchanged}
+        >
+          {t('workspace.members.ai.shares.save')}
+        </Button>
+      </form>
     </li>
   );
 }

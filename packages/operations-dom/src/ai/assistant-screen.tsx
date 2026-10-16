@@ -3,6 +3,7 @@ import { formatDateTime, formatNumber, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
 import {
+  type AiAllowance,
   type AiBlockedBy,
   type AiCapabilities,
   type AiConversation,
@@ -14,7 +15,7 @@ import {
 } from '../api.js';
 import { buttonClass, cardClass, DashboardBackLink, Failure, InlineError, Loading } from '../ui.js';
 import { MessageItem } from './message-parts.js';
-import { exhaustedAxis, UsageMeter } from './usage-meter.js';
+import { UsageMeter } from './usage-meter.js';
 
 /**
  * The Integr8 Plus assistant (docs/ai §10.1; ADR-0001).
@@ -25,9 +26,10 @@ import { exhaustedAxis, UsageMeter } from './usage-meter.js';
  * company's own settings. Otherwise it is two panes — the member's private
  * conversations, and the one open — stacked on a phone.
  *
- * Every answer carries the usage left, so the meter is updated from the
- * answer and the capabilities are asked again only after a refusal for
- * quota, when the server knows better than the screen.
+ * Every answer carries what is left of the member's share, as a percentage,
+ * so the meter is updated from the answer and the capabilities are asked
+ * again only after a refusal for quota, when the server knows better than the
+ * screen.
  */
 
 /** What the server accepts in one message; a longer one is refused with 422. */
@@ -140,7 +142,7 @@ function Assistant({ capabilities }: { capabilities: AiCapabilities }) {
         {level !== 'help' && !capabilities.companyDataToProvider ? (
           <p className="max-w-prose text-sm text-content-muted">{t('ai.level.noCompanyData')}</p>
         ) : null}
-        <UsageMeter usage={capabilities.usage} />
+        <UsageMeter allowance={capabilities.usage.allowance} />
       </header>
 
       <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
@@ -190,7 +192,7 @@ function Assistant({ capabilities }: { capabilities: AiCapabilities }) {
             key={selectedId}
             conversationId={selectedId}
             locale={locale}
-            usage={capabilities.usage}
+            allowance={capabilities.usage.allowance}
           />
         )}
       </div>
@@ -252,7 +254,13 @@ interface Attempt {
   text: string;
 }
 
-/** The quota-refusal's own reset time, when the refusal names one. */
+/**
+ * The quota-refusal's own reset time, when the refusal names one. Every
+ * refusal for an allowance names it — messages or tokens, the company's or
+ * the member's, day or month, and the member's dollar cap
+ * (`ai_member_budget_exceeded`), whose amount is never said — so they all
+ * close the composer the same way.
+ */
 function resetFromRefusal(error: unknown): string | null {
   if (!(error instanceof ApiRequestError) || error.status !== 429) {
     return null;
@@ -264,11 +272,11 @@ function resetFromRefusal(error: unknown): string | null {
 function Thread({
   conversationId,
   locale,
-  usage,
+  allowance,
 }: {
   conversationId: string;
   locale: Locale;
-  usage: AiCapabilities['usage'];
+  allowance: AiAllowance;
 }) {
   const { t } = useTranslation();
   const { client, locale: displayLocale } = useOperations();
@@ -311,7 +319,7 @@ function Thread({
         old === undefined ? old : { ...old, messages: [...old.messages, asked, answer.message] },
       );
       queries.setQueryData<AiCapabilities>(keys.aiCapabilities, (old) =>
-        old === undefined ? old : { ...old, usage: answer.usage },
+        old === undefined ? old : { ...old, usage: { ...old.usage, allowance: answer.allowance } },
       );
       setDraft('');
       setAttempt(null);
@@ -338,9 +346,8 @@ function Thread({
     return () => clearTimeout(timer);
   }, [lockedUntil]);
 
-  const exhausted = exhaustedAxis(usage);
-  const locked = exhausted !== undefined || lockedUntil !== null;
-  const resetsAt = exhausted?.resetsAt ?? lockedUntil;
+  const locked = allowance.exhausted || lockedUntil !== null;
+  const resetsAt = lockedUntil ?? (allowance.exhausted ? allowance.resetsAt : null);
   const text = draft.trim();
   const tooLong = draft.length > MAX_MESSAGE_CHARS;
   const canSend = !send.isPending && !locked && text !== '' && !tooLong;
@@ -418,9 +425,13 @@ function Thread({
 
       {send.isError ? <Failure error={send.error} onRetry={canSend ? submit : undefined} /> : null}
 
-      {locked && resetsAt !== null ? (
+      {locked ? (
         <p role="status" className="text-sm text-danger">
-          {t('ai.usage.exhausted', { time: formatDateTime(resetsAt, { locale: displayLocale }) })}
+          {resetsAt === null
+            ? t('ai.allowance.usedUp')
+            : t('ai.allowance.usedUpResets', {
+                time: formatDateTime(resetsAt, { locale: displayLocale }),
+              })}
         </p>
       ) : null}
 

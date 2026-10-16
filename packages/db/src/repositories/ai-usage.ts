@@ -55,6 +55,25 @@ export class AiBudgetExceededError extends Error {
   }
 }
 
+/** A member's own monthly dollar cap, set by the platform, is used up (ADR-0002 D7). */
+export class AiMemberBudgetExceededError extends Error {
+  constructor() {
+    super("The member's monthly assistant budget is used up.");
+    this.name = 'AiMemberBudgetExceededError';
+  }
+}
+
+/** The next model call's tokens would not fit in a company's or member's allowance (ADR-0002 D5). */
+export class AiTokenQuotaExceededError extends Error {
+  constructor(
+    readonly axis: AiPeriodType,
+    readonly subject: AiUsageSubjectType,
+  ) {
+    super(`The ${subject}'s ${axis} token allowance would be exceeded.`);
+    this.name = 'AiTokenQuotaExceededError';
+  }
+}
+
 export interface AiMessageReservation {
   id: string;
   tenantId: TenantId;
@@ -71,6 +90,9 @@ export interface AiMessageReservation {
   createdAt: Date;
   expiresAt: Date;
   settledAt: Date | null;
+  /** Tokens held for the call in flight, and used by the request's calls so far. */
+  reservedTokens: number;
+  usedTokens: number;
 }
 
 /** One counter: what a subject has used and has in flight in one period. */
@@ -106,7 +128,20 @@ export interface ReserveAiMessageInput {
   costMicrousd: number;
   /** Null means no company ceiling; the platform's own is checked elsewhere. */
   costCapMicrousd: number | null;
+  /**
+   * The member's own monthly ceiling, set by the platform (ADR-0002 D7).
+   * Null means none. Their spend is attributed either way.
+   */
+  memberCostCapMicrousd?: number | null;
   expiresAt: Date;
+}
+
+/** The token limits a call is held against; null on an axis means not limited. */
+export interface AiTokenLimits {
+  tenantDaily: number | null;
+  tenantMonthly: number | null;
+  userDaily: number | null;
+  userMonthly: number | null;
 }
 
 export type ReserveAiMessageOutcome =
@@ -304,6 +339,39 @@ export class AiUsageRepository extends TenantScopedRepository {
       .where('period_start_utc', '=', input.periods.month)
       .execute();
 
+    // The member's share of the same money, after the company's: attributed
+    // always, capped only when the platform set a cap (ADR-0002 D7).
+    const member = await this.db
+      .insertInto('ai_member_cost_periods')
+      .values({ tenant_id: this.tenantId, user_id: userId, period_start_utc: input.periods.month })
+      .onConflict((oc) =>
+        oc
+          .columns(['tenant_id', 'user_id', 'period_start_utc'])
+          .doUpdateSet({ updated_at: sql`now()` }),
+      )
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    const memberCap = input.memberCostCapMicrousd ?? null;
+    if (memberCap !== null) {
+      const committed =
+        micros(member.reserved_microusd) +
+        micros(member.spent_microusd) +
+        micros(member.unknown_microusd);
+      if (committed + input.costMicrousd > memberCap) {
+        throw new AiMemberBudgetExceededError();
+      }
+    }
+    await this.db
+      .updateTable('ai_member_cost_periods')
+      .set({
+        reserved_microusd: sql`reserved_microusd + ${input.costMicrousd}`,
+        updated_at: sql`now()`,
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('user_id', '=', userId)
+      .where('period_start_utc', '=', input.periods.month)
+      .execute();
+
     return { outcome: 'claimed', reservation: toReservation(inserted) };
   }
 
@@ -392,6 +460,35 @@ export class AiUsageRepository extends TenantScopedRepository {
       .where('period_start_utc', '=', periods.month)
       .execute();
 
+    // The same figures on the member's own ledger: one charge, attributed.
+    await this.db
+      .insertInto('ai_member_cost_periods')
+      .values({
+        tenant_id: this.tenantId,
+        user_id: current.user_id,
+        period_start_utc: periods.month,
+      })
+      .onConflict((oc) =>
+        oc
+          .columns(['tenant_id', 'user_id', 'period_start_utc'])
+          .doUpdateSet({ updated_at: sql`now()` }),
+      )
+      .execute();
+    await this.db
+      .updateTable('ai_member_cost_periods')
+      .set({
+        reserved_microusd: sql`greatest(0, reserved_microusd - ${reserved})`,
+        spent_microusd: sql`spent_microusd + ${input.spentMicrousd}`,
+        unknown_microusd: sql`greatest(0, unknown_microusd + ${unknown}${
+          current.state === 'uncertain' ? sql` - ${micros(current.reserved_cost_microusd)}` : sql``
+        })`,
+        updated_at: sql`now()`,
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('user_id', '=', current.user_id)
+      .where('period_start_utc', '=', periods.month)
+      .execute();
+
     const row = await this.db
       .updateTable('ai_message_reservations')
       .set({
@@ -407,6 +504,293 @@ export class AiUsageRepository extends TenantScopedRepository {
       .executeTakeFirstOrThrow();
 
     return toReservation(row);
+  }
+
+  // -------------------------------------------------------------------------
+  // Tokens, held per model call (ADR-0002 D5)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Holds `tokens` for the next model call of an admitted request, against
+   * the company's and the member's day and month, or throws
+   * `AiTokenQuotaExceededError` and holds nothing.
+   *
+   * The four token counters are locked in the same order as the message
+   * counters, so a hold can never wait on another in a cycle. Used plus held
+   * plus this hold must fit every limited axis: two members asking at once
+   * can never together pass the company's pool.
+   */
+  async holdTokens(input: {
+    reservationId: string;
+    tokens: number;
+    limits: AiTokenLimits;
+  }): Promise<void> {
+    const reservation = await this.db
+      .selectFrom('ai_message_reservations')
+      .select(['user_id', 'period_day', 'period_month', 'state'])
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', input.reservationId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (reservation?.state !== 'reserved') {
+      throw new Error('ai_message_reservations: no open reservation to hold tokens on');
+    }
+    const periods = {
+      day: dayKey(reservation.period_day),
+      month: dayKey(reservation.period_month),
+    };
+    const limitFor = {
+      'tenant:day': input.limits.tenantDaily,
+      'tenant:month': input.limits.tenantMonthly,
+      'user:day': input.limits.userDaily,
+      'user:month': input.limits.userMonthly,
+    } as const;
+
+    for (const key of counterKeys(this.tenantId, reservation.user_id, periods)) {
+      const row = await this.db
+        .insertInto('ai_token_periods')
+        .values({
+          tenant_id: this.tenantId,
+          subject_type: key.subject,
+          subject_id: key.subjectId,
+          period_type: key.period,
+          period_start_utc: key.start,
+        })
+        .onConflict((oc) =>
+          oc
+            .columns(['tenant_id', 'subject_type', 'subject_id', 'period_type', 'period_start_utc'])
+            .doUpdateSet({ updated_at: sql`now()` }),
+        )
+        .returningAll()
+        .executeTakeFirstOrThrow();
+
+      const limit = limitFor[`${key.subject}:${key.period}`];
+      if (
+        limit !== null &&
+        micros(row.used_tokens) + micros(row.reserved_tokens) + input.tokens > limit
+      ) {
+        throw new AiTokenQuotaExceededError(key.period, key.subject);
+      }
+      await this.db
+        .updateTable('ai_token_periods')
+        .set({
+          reserved_tokens: sql`reserved_tokens + ${input.tokens}`,
+          updated_at: sql`now()`,
+        })
+        .where('id', '=', row.id)
+        .where('tenant_id', '=', this.tenantId)
+        .execute();
+    }
+
+    await this.db
+      .updateTable('ai_message_reservations')
+      .set({ reserved_tokens: sql`reserved_tokens + ${input.tokens}` })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', input.reservationId)
+      .execute();
+  }
+
+  /**
+   * Ends a call's hold: `held` comes off what is reserved, `used` goes on what
+   * is used, on the four counters and the request alike. `used` may exceed
+   * `held` when the provider reports more than was estimated; counters then
+   * pass their limit and the next hold is refused, which is the honest
+   * outcome. Never more is released than the request still holds.
+   */
+  async settleTokens(input: { reservationId: string; held: number; used: number }): Promise<void> {
+    const reservation = await this.db
+      .selectFrom('ai_message_reservations')
+      .select(['user_id', 'period_day', 'period_month', 'reserved_tokens'])
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', input.reservationId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (reservation === undefined) {
+      return;
+    }
+    const held = Math.min(Math.max(0, input.held), micros(reservation.reserved_tokens));
+    const used = Math.max(0, input.used);
+    if (held === 0 && used === 0) {
+      return;
+    }
+    const periods = {
+      day: dayKey(reservation.period_day),
+      month: dayKey(reservation.period_month),
+    };
+    for (const key of counterKeys(this.tenantId, reservation.user_id, periods)) {
+      await this.db
+        .insertInto('ai_token_periods')
+        .values({
+          tenant_id: this.tenantId,
+          subject_type: key.subject,
+          subject_id: key.subjectId,
+          period_type: key.period,
+          period_start_utc: key.start,
+          // A counter made here held nothing, so only the use lands on it.
+          used_tokens: used,
+        })
+        .onConflict((oc) =>
+          oc
+            .columns(['tenant_id', 'subject_type', 'subject_id', 'period_type', 'period_start_utc'])
+            .doUpdateSet({
+              reserved_tokens: sql`greatest(0, ai_token_periods.reserved_tokens - ${held})`,
+              used_tokens: sql`ai_token_periods.used_tokens + ${used}`,
+              updated_at: sql`now()`,
+            }),
+        )
+        .execute();
+    }
+    await this.db
+      .updateTable('ai_message_reservations')
+      .set({
+        reserved_tokens: sql`greatest(0, reserved_tokens - ${held})`,
+        used_tokens: sql`used_tokens + ${used}`,
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', input.reservationId)
+      .execute();
+  }
+
+  /** The company's and one member's token counters for the periods given. Missing counters are zero. */
+  async tokenCounters(userId: UserId | string, periods: AiPeriodKeys): Promise<AiUsageCounter[]> {
+    const keys = counterKeys(this.tenantId, toUserId(userId), periods);
+    const rows = await this.db
+      .selectFrom('ai_token_periods')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('period_start_utc', 'in', [periods.day, periods.month])
+      .where('subject_id', 'in', [this.tenantId, toUserId(userId)])
+      .execute();
+    return keys.map((key) => {
+      const row = rows.find(
+        (candidate) =>
+          candidate.subject_type === key.subject &&
+          candidate.subject_id === key.subjectId &&
+          candidate.period_type === key.period &&
+          dayKey(candidate.period_start_utc) === key.start,
+      );
+      return {
+        subject: key.subject,
+        period: key.period,
+        periodStart: key.start,
+        used: row === undefined ? 0 : micros(row.used_tokens),
+        reserved: row === undefined ? 0 : micros(row.reserved_tokens),
+      };
+    });
+  }
+
+  /** Every member's token and message counters in the periods given, for the company's own view. */
+  async memberCounters(periods: AiPeriodKeys): Promise<
+    {
+      userId: UserId;
+      period: AiPeriodType;
+      messagesUsed: number;
+      messagesReserved: number;
+      tokensUsed: number;
+      tokensReserved: number;
+    }[]
+  > {
+    const messages = await this.db
+      .selectFrom('ai_usage_periods')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('subject_type', '=', 'user')
+      .where('period_start_utc', 'in', [periods.day, periods.month])
+      .execute();
+    const tokens = await this.db
+      .selectFrom('ai_token_periods')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('subject_type', '=', 'user')
+      .where('period_start_utc', 'in', [periods.day, periods.month])
+      .execute();
+    const keyOf = (row: {
+      subject_id: string;
+      period_type: AiPeriodType;
+      period_start_utc: string | Date;
+    }) => `${row.subject_id}:${row.period_type}:${dayKey(row.period_start_utc)}`;
+    const wanted = (row: { period_type: AiPeriodType; period_start_utc: string | Date }) =>
+      dayKey(row.period_start_utc) === (row.period_type === 'day' ? periods.day : periods.month);
+    const out = new Map<
+      string,
+      {
+        userId: UserId;
+        period: AiPeriodType;
+        messagesUsed: number;
+        messagesReserved: number;
+        tokensUsed: number;
+        tokensReserved: number;
+      }
+    >();
+    const entry = (row: {
+      subject_id: string;
+      period_type: AiPeriodType;
+      period_start_utc: string | Date;
+    }) => {
+      const key = keyOf(row);
+      const existing = out.get(key);
+      if (existing !== undefined) {
+        return existing;
+      }
+      const created = {
+        userId: toUserId(row.subject_id),
+        period: row.period_type,
+        messagesUsed: 0,
+        messagesReserved: 0,
+        tokensUsed: 0,
+        tokensReserved: 0,
+      };
+      out.set(key, created);
+      return created;
+    };
+    for (const row of messages.filter(wanted)) {
+      const target = entry(row);
+      target.messagesUsed = row.used_messages;
+      target.messagesReserved = row.reserved_messages;
+    }
+    for (const row of tokens.filter(wanted)) {
+      const target = entry(row);
+      target.tokensUsed = micros(row.used_tokens);
+      target.tokensReserved = micros(row.reserved_tokens);
+    }
+    return [...out.values()];
+  }
+
+  /** One member's month on their own ledger, in USD micros: for the platform only. */
+  async memberCostPeriod(
+    userId: UserId | string,
+    monthStart: string,
+  ): Promise<{ reserved: number; spent: number; unknown: number }> {
+    const row = await this.db
+      .selectFrom('ai_member_cost_periods')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('user_id', '=', toUserId(userId))
+      .where('period_start_utc', '=', monthStart)
+      .executeTakeFirst();
+    return {
+      reserved: micros(row?.reserved_microusd ?? 0),
+      spent: micros(row?.spent_microusd ?? 0),
+      unknown: micros(row?.unknown_microusd ?? 0),
+    };
+  }
+
+  /** Every member's month on their own ledger: for the platform only. */
+  async memberCostPeriods(
+    monthStart: string,
+  ): Promise<{ userId: UserId; reserved: number; spent: number; unknown: number }[]> {
+    const rows = await this.db
+      .selectFrom('ai_member_cost_periods')
+      .selectAll()
+      .where('tenant_id', '=', this.tenantId)
+      .where('period_start_utc', '=', monthStart)
+      .execute();
+    return rows.map((row) => ({
+      userId: toUserId(row.user_id),
+      reserved: micros(row.reserved_microusd),
+      spent: micros(row.spent_microusd),
+      unknown: micros(row.unknown_microusd),
+    }));
   }
 
   /** Counts a provider attempt against the reservation, for diagnostics and the reconciler. */
@@ -594,6 +978,8 @@ function toReservation(row: Selectable<AiMessageReservationsTable>): AiMessageRe
     createdAt: row.created_at,
     expiresAt: row.expires_at,
     settledAt: row.settled_at,
+    reservedTokens: micros(row.reserved_tokens),
+    usedTokens: micros(row.used_tokens),
   };
 }
 

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
+  aiPeriodOf,
   type AiCallPurpose,
   type AiLevel,
   type AiSourceRef,
@@ -11,22 +12,30 @@ import {
   MODULE_FEATURES,
   type Principal,
 } from '@integr8/core';
-import { type AiHelpArticle, type AiMessage, withTenant } from '@integr8/db';
+import {
+  type AiHelpArticle,
+  type AiMessage,
+  AiTokenQuotaExceededError,
+  withTenant,
+} from '@integr8/db';
 import type { ApiConfig } from '../config.js';
 import type { Logger } from '../http/logger.js';
 import type { ClientApp } from '../http/routes.js';
 import { acquireSlot, admitMessage, settleMessage } from './admission.js';
+import { type AiModelLevel, modelFor } from './configuration.js';
 import {
   aiConversationNotFound,
   aiDisabled,
   aiProviderUnavailable,
+  aiTokenQuotaExceeded,
   aiValidationFailed,
 } from './errors.js';
 import type { HelpLibrary } from './help/library.js';
-import { periodKeysAt, usageView, type AiUsageView } from './periods.js';
+import { type AiAllowance, memberAllowance, periodKeysAt, tokenLimitsOf } from './periods.js';
 import { resolveAiAccess, type AiAccess } from './policy.js';
 import { costOf, estimateTokens, type PriceTable, worstCaseCost } from './pricing.js';
 import { type AiChatMessage, type AiProvider, AiProviderError } from './providers/index.js';
+import { pauseProvider, providerPausedFor } from './providers/pause.js';
 import { estimatePromptTokens } from './providers/provider.js';
 import { ACTION_CATALOGUE } from './actions/catalogue.js';
 import {
@@ -89,7 +98,8 @@ export interface AnswerOutput {
     actionProposal: ProposalView | null;
     createdAt: string;
   };
-  usage: AiUsageView;
+  /** What is left of the member's own allowance, as a percentage (ADR-0002 D7). */
+  allowance: AiAllowance;
   replayed: boolean;
 }
 
@@ -126,7 +136,20 @@ export async function answerMessage(input: AnswerInput): Promise<AnswerOutput> {
     throw aiConversationNotFound();
   }
 
-  const model = config.AI_MODEL_HELP ?? 'recording-help';
+  // The model of the level this member actually has, after every gate
+  // (ADR-0002 D3). The level was already lowered to one the server has a
+  // model for, so a missing one here is a configuration that changed under
+  // us: refuse rather than borrow another level's model.
+  const model = modelFor(access.level as AiModelLevel, config);
+  if (model === null) {
+    throw aiDisabled('provider_unconfigured');
+  }
+  // A provider that said its credit is spent is not asked again until the
+  // pause ends; nothing is reserved meanwhile (ADR-0002 D8).
+  const paused = providerPausedFor(services.provider.id);
+  if (paused !== null) {
+    throw aiProviderUnavailable(paused);
+  }
   const price = services.prices.priceFor(services.provider.id, model);
   const policy = access.policy;
   const worstCase = worstCaseCost(price, {
@@ -146,6 +169,8 @@ export async function answerMessage(input: AnswerInput): Promise<AnswerOutput> {
       clientRequestId: input.clientRequestId,
       requestFingerprint: fingerprint,
       policy,
+      sharePercent: access.sharePercent,
+      memberCostCapMicrousd: access.memberCostCapMicrousd,
       worstCaseCostMicrousd: worstCase,
       config,
     });
@@ -168,7 +193,7 @@ export async function answerMessage(input: AnswerInput): Promise<AnswerOutput> {
           toOutputMessage(stored),
           stored.actionProposalId,
         ),
-        usage: await usageFor(input, access, now),
+        allowance: await allowanceFor(input, access, now),
         replayed: true,
       };
     }
@@ -299,7 +324,7 @@ export async function answerMessage(input: AnswerInput): Promise<AnswerOutput> {
 
     return {
       message: { ...toOutputMessage(stored), actionProposal: proposal },
-      usage: await usageFor(input, access, new Date()),
+      allowance: await allowanceFor(input, access, new Date()),
       replayed: false,
     };
   } finally {
@@ -334,7 +359,11 @@ async function generateWithTools(args: {
 }> {
   const { input, reservation, model, price, system, offered } = args;
   const { principal, config, services } = input;
-  const policy = (await resolveAiAccess({ principal, clientApp: input.clientApp, config })).policy;
+  // Read again, not trusted from admission: a share lowered or a level
+  // dropped mid-question narrows what the next call may use.
+  const access = await resolveAiAccess({ principal, clientApp: input.clientApp, config });
+  const policy = access.policy;
+  const tokenLimits = tokenLimitsOf(policy, access.sharePercent);
   const messages = [...args.messages];
   const toolSummaries: AiToolSummary[] = [];
   let spent = 0;
@@ -343,6 +372,47 @@ async function generateWithTools(args: {
   let steps = 0;
 
   for (let attempt = 1; attempt <= policy.maxProviderCalls; attempt += 1) {
+    // Hold this call's tokens before asking (ADR-0002 D5): the prompt as it
+    // stands, estimated, and the output bound. When they do not fit, stop:
+    // refuse if nothing was asked yet, else answer from what was gathered.
+    const held = estimatePromptTokens({ system, messages }) + policy.maxOutputTokens;
+    try {
+      await withTenant(principal.tenantId, (tx) =>
+        tx.aiUsage.holdTokens({ reservationId: reservation.id, tokens: held, limits: tokenLimits }),
+      );
+    } catch (error) {
+      if (!(error instanceof AiTokenQuotaExceededError)) {
+        throw error;
+      }
+      input.logger.info('ai.request.token_allowance_reached', {
+        tenantId: principal.tenantId,
+        reservationId: reservation.id,
+        attempt,
+        axis: error.axis,
+        subject: error.subject,
+      });
+      if (attempt === 1) {
+        await settleMessage({
+          tenantId: principal.tenantId,
+          reservationId: reservation.id,
+          outcome: 'released',
+          spentMicrousd: 0,
+          errorCode: 'token_quota',
+        });
+        throw aiTokenQuotaExceeded(error.axis, aiPeriodOf(error.axis, new Date()).resetsAt);
+      }
+      const last = [...messages].reverse().find((turn) => turn.role === 'assistant');
+      return {
+        text:
+          last === undefined || last.content.trim() === ''
+            ? allowanceRanOut(input.locale)
+            : last.content,
+        spent,
+        tokens: { inputTokens, outputTokens },
+        toolSummaries,
+      };
+    }
+
     const startedAt = new Date();
     let generation;
     try {
@@ -360,6 +430,15 @@ async function generateWithTools(args: {
     } catch (error) {
       const failure = error instanceof AiProviderError ? error : null;
       const errorCode = failure === null ? 'provider_error' : failure.kind;
+      if (failure?.kind === 'credit_exhausted') {
+        // The deployment's provider account is out of credit: pause this
+        // process's calls and tell the platform, never the company, why.
+        pauseProvider(services.provider.id, config.AI_CREDIT_EXHAUSTED_PAUSE_SECONDS);
+        input.logger.error('ai.provider.credit_exhausted', {
+          provider: services.provider.id,
+          pauseSeconds: config.AI_CREDIT_EXHAUSTED_PAUSE_SECONDS,
+        });
+      }
       // Nothing came back, so nothing is known about the bill: a timeout may
       // still have been served and charged, the rest certainly were not.
       const maybeSpent =
@@ -387,6 +466,15 @@ async function generateWithTools(args: {
           endedAt: new Date(),
         }),
       );
+      // A timed-out call may have been billed, so its hold is kept as used;
+      // any other failure was refused before any work and gives it back.
+      await withTenant(principal.tenantId, (tx) =>
+        tx.aiUsage.settleTokens({
+          reservationId: reservation.id,
+          held,
+          used: failure?.kind === 'timeout' ? held : 0,
+        }),
+      );
       await settleMessage({
         tenantId: principal.tenantId,
         reservationId: reservation.id,
@@ -403,17 +491,32 @@ async function generateWithTools(args: {
         errorCode,
         status: failure?.status ?? null,
       });
-      throw aiProviderUnavailable(failure?.retryAfterSeconds ?? 30);
+      throw aiProviderUnavailable(
+        failure?.kind === 'credit_exhausted'
+          ? config.AI_CREDIT_EXHAUSTED_PAUSE_SECONDS
+          : (failure?.retryAfterSeconds ?? 30),
+      );
     }
 
     const callTokens = {
       inputTokens: generation.usage.inputTokens ?? estimatePromptTokens({ system, messages }),
       outputTokens: generation.usage.outputTokens ?? estimateTokens(generation.text),
+      cachedTokens: generation.usage.cachedTokens ?? null,
+      reasoningTokens: generation.usage.reasoningTokens ?? null,
     };
     const callCost = costOf(price, callTokens);
     spent += callCost;
     inputTokens += callTokens.inputTokens;
     outputTokens += callTokens.outputTokens;
+    // The hold becomes what the provider reported: input plus output. Cached
+    // and reasoning tokens are inside those already and are not added again.
+    await withTenant(principal.tenantId, (tx) =>
+      tx.aiUsage.settleTokens({
+        reservationId: reservation.id,
+        held,
+        used: callTokens.inputTokens + callTokens.outputTokens,
+      }),
+    );
     await withTenant(principal.tenantId, (tx) =>
       tx.aiUsage.recordProviderCall({
         reservationId: reservation.id,
@@ -423,6 +526,8 @@ async function generateWithTools(args: {
         purpose: args.purpose,
         inputTokens: callTokens.inputTokens,
         outputTokens: callTokens.outputTokens,
+        cachedTokens: callTokens.cachedTokens,
+        reasoningTokens: callTokens.reasoningTokens,
         tokensEstimated: generation.usage.estimated || !price.listed,
         costMicrousd: callCost,
         priceVersion: price.version,
@@ -508,11 +613,26 @@ async function generateWithTools(args: {
   };
 }
 
-async function usageFor(input: AnswerInput, access: AiAccess, now: Date): Promise<AiUsageView> {
-  const counters = await withTenant(input.principal.tenantId, (tx) =>
-    tx.aiUsage.counters(input.principal.userId, periodKeysAt(now)),
-  );
-  return usageView(access.policy, counters, now);
+/** What the member is told when their allowance ran out between two model calls. */
+function allowanceRanOut(locale: 'en' | 'ar'): string {
+  return locale === 'ar'
+    ? 'نفد رصيد المساعد قبل أن أُكمل هذه الإجابة. يُرجى المحاولة مرة أخرى بعد إعادة تعيينه.'
+    : 'The assistant allowance ran out before I could finish this answer. Please try again after it resets.';
+}
+
+async function allowanceFor(input: AnswerInput, access: AiAccess, now: Date): Promise<AiAllowance> {
+  const periods = periodKeysAt(now);
+  const { messages, tokens } = await withTenant(input.principal.tenantId, async (tx) => ({
+    messages: await tx.aiUsage.counters(input.principal.userId, periods),
+    tokens: await tx.aiUsage.tokenCounters(input.principal.userId, periods),
+  }));
+  return memberAllowance({
+    policy: access.policy,
+    sharePercent: access.sharePercent,
+    messages,
+    tokens,
+    now,
+  });
 }
 
 export function toOutputMessage(stored: AiMessage): AnswerOutput['message'] {

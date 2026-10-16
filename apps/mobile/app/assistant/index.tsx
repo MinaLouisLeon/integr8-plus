@@ -3,7 +3,7 @@ import { spacing } from '@integr8/tokens';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
-import { AssistantOffline, UsageLine } from '~/components/assistant';
+import { AllowanceLine, AssistantOffline } from '~/components/assistant';
 import { onlineFailureMessage, OnlineStatus } from '~/components/online';
 import {
   BackButton,
@@ -100,7 +100,7 @@ export default function AssistantScreen() {
           <View style={styles.level}>
             <Badge label={t(`mobile.ai.level.${state.data.capabilities.level}`)} tone="accent" />
           </View>
-          <UsageLine usage={state.data.capabilities.usage} />
+          <AllowanceLine allowance={state.data.capabilities.usage.allowance} />
           {problem === null ? null : <ErrorState message={problem} />}
           <Button label={t('mobile.ai.newConversation')} busy={starting} onPress={start} />
           {state.data.conversations.filter((c) => !removed.includes(c.id)).length === 0 ? (

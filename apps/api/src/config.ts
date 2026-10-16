@@ -240,18 +240,36 @@ export const apiConfigSchema = z.object({
     .transform((value) => value === 'true'),
   /**
    * Who answers. `recording` is a deterministic fake for development and
-   * tests; `groq`, `gemini` and `anthropic` are live, each needing its key.
-   * Production refuses `recording` only when AI_ENABLED is true: an assistant
-   * nobody can reach needs no provider.
+   * tests; `groq`, `gemini`, `anthropic` and `openai` are live, each needing
+   * its key. Only the one named here is ever called: there is no fallback.
+   * A missing key or model never stops the server (ADR-0002 D2): it turns
+   * the assistant off and the platform AI screen says why.
    */
-  AI_PROVIDER: z.enum(['recording', 'groq', 'gemini', 'anthropic']).default('recording'),
+  AI_PROVIDER: z.enum(['recording', 'groq', 'gemini', 'anthropic', 'openai']).default('recording'),
   AI_GROQ_API_KEY: z.string().optional(),
   AI_GEMINI_API_KEY: z.string().optional(),
   AI_ANTHROPIC_API_KEY: z.string().optional(),
+  AI_OPENAI_API_KEY: z.string().optional(),
   /** Overrides each provider's default endpoint, for a proxy or a regional host. */
   AI_GROQ_BASE_URL: z.url().default('https://api.groq.com/openai/v1'),
   AI_GEMINI_BASE_URL: z.url().default('https://generativelanguage.googleapis.com/v1beta'),
   AI_ANTHROPIC_BASE_URL: z.url().default('https://api.anthropic.com/v1'),
+  /** OpenAI's endpoint. Production accepts only HTTPS here (ADR-0002 D2). */
+  AI_OPENAI_BASE_URL: z.url().default('https://api.openai.com/v1'),
+  /**
+   * Sent to OpenAI as `reasoning_effort` when set, and not sent when unset,
+   * because models that do not reason refuse the parameter. Reasoning models
+   * may need `none` for tool calling through Chat Completions (ADR-0002).
+   */
+  AI_OPENAI_REASONING_EFFORT: z
+    .enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
+    .optional(),
+  /**
+   * How long this process stops asking the provider after it said the
+   * account's credit is spent (ADR-0002 D8). Members see the assistant as
+   * temporarily unavailable meanwhile; nothing else is affected.
+   */
+  AI_CREDIT_EXHAUSTED_PAUSE_SECONDS: positiveInt(300),
   /**
    * The model ids, one per level, as the provider names them today. No
    * defaults for a live provider: model names change without a deployment,
@@ -441,11 +459,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     );
   }
   if (result.success) {
-    const billing = [
-      ...billingProblems(result.data),
-      ...emailProblems(result.data),
-      ...aiProblems(result.data),
-    ];
+    const billing = [...billingProblems(result.data), ...emailProblems(result.data)];
     if (billing.length > 0) {
       throw new Error(
         [
@@ -508,29 +522,45 @@ export function emailProblems(config: ApiConfig): string[] {
 }
 
 /**
- * What is missing for the configured assistant provider, if anything (ADR-0001).
+ * What keeps the configured assistant provider from answering, if anything
+ * (ADR-0001; ADR-0002 D2).
  *
- * Checked at load, like billing and email: the first live question is a
- * customer's, and finding out then means finding out from them. A deployment
- * with AI_ENABLED off is not checked, because nothing would call the provider.
+ * Never a reason to stop the server: the assistant is turned off while any of
+ * these holds, the platform AI screen lists them, and the process logs them at
+ * startup. A deployment with AI_ENABLED off has none, because nothing would
+ * call the provider. A missing Insights or Agent model is not here: it only
+ * lowers the level served (see `ai/configuration.ts`).
  */
 export function aiProblems(config: ApiConfig): string[] {
-  if (!config.AI_ENABLED || config.AI_PROVIDER === 'recording') {
+  if (!config.AI_ENABLED) {
     return [];
+  }
+  if (config.AI_PROVIDER === 'recording') {
+    return config.APP_ENV === 'production'
+      ? ['AI_PROVIDER is recording in production: every answer would be a canned one.']
+      : [];
   }
   const problems: string[] = [];
   const key = {
     groq: config.AI_GROQ_API_KEY,
     gemini: config.AI_GEMINI_API_KEY,
     anthropic: config.AI_ANTHROPIC_API_KEY,
+    openai: config.AI_OPENAI_API_KEY,
   }[config.AI_PROVIDER];
-  if (key === undefined || key === '') {
+  if (key === undefined || key.trim() === '') {
     problems.push(
       `AI_PROVIDER is ${config.AI_PROVIDER} but AI_${config.AI_PROVIDER.toUpperCase()}_API_KEY is not set.`,
     );
   }
   if (config.AI_MODEL_HELP === undefined) {
     problems.push(`AI_PROVIDER is ${config.AI_PROVIDER} but AI_MODEL_HELP is not set.`);
+  }
+  if (
+    config.AI_PROVIDER === 'openai' &&
+    config.APP_ENV === 'production' &&
+    !config.AI_OPENAI_BASE_URL.startsWith('https://')
+  ) {
+    problems.push('AI_OPENAI_BASE_URL must be an https:// address in production.');
   }
   return problems;
 }
@@ -578,11 +608,6 @@ export function assertProductionReady(config: ApiConfig): void {
   if (config.EMAIL_SENDER === 'recording') {
     problems.push(
       'EMAIL_SENDER is recording: no invitation, signup confirmation or payment warning would leave the building.',
-    );
-  }
-  if (config.AI_ENABLED && config.AI_PROVIDER === 'recording') {
-    problems.push(
-      'AI_PROVIDER is recording while AI_ENABLED is true: every answer would be a canned one.',
     );
   }
   if (config.WEB_APP_URL === undefined) {

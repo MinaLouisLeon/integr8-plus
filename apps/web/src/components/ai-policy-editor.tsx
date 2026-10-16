@@ -9,7 +9,7 @@ import {
   type AiPolicy,
   type AiQuotaMode,
 } from '@integr8/core';
-import { formatCurrency, useTranslation, type TFunction } from '@integr8/i18n';
+import { formatCurrency, formatNumber, useTranslation, type TFunction } from '@integr8/i18n';
 import { useId } from 'react';
 import { Field } from '~/components/ui';
 
@@ -17,7 +17,7 @@ import { Field } from '~/components/ui';
  * The assistant policy editor, shared by the plans page and a company's page
  * (ADR-0001 D1/D6).
  *
- * The same fourteen fields are set in two places — once per plan, once per
+ * The same sixteen fields are set in two places — once per plan, once per
  * company that departs from its plan — and the consistency rule between them
  * (an enabled level needs a quota mode and the limits that mode names, or
  * unlimited messages with a cost cap) is the API's. It is checked here too, so
@@ -26,9 +26,21 @@ import { Field } from '~/components/ui';
  * Money is edited in whole dollars and sent in micros. The one conversion is
  * `Math.round(Number(usd) * 1_000_000)`; nothing else here does arithmetic on
  * an amount.
+ *
+ * Since ADR-0002 the company's allowance is also counted in tokens, a day and
+ * a month, and members get their share's percentage of every limit (D5, D6).
+ * The plan's per-person message defaults no longer decide anything, since
+ * shares replaced them: they have no field here, but travel back unchanged in
+ * every save so nothing stored is lost.
  */
 
-export type AiPolicyFields = AiPolicy;
+type TokenLimitKey = 'dailyTokenLimit' | 'monthlyTokenLimit';
+
+/**
+ * A policy as the API returns it. The token limits are optional there, because
+ * the same schema takes a write in which leaving them out keeps what is stored.
+ */
+export type AiPolicyFields = Omit<AiPolicy, TokenLimitKey> & Partial<Pick<AiPolicy, TokenLimitKey>>;
 
 const SELECT_CLASS = 'rounded-md border border-border-subtle bg-surface px-3 py-2 text-content';
 
@@ -38,8 +50,11 @@ export interface AiPolicyDraft {
   quotaMode: AiQuotaMode;
   dailyLimit: string;
   monthlyLimit: string;
-  perUserDailyLimit: string;
-  perUserMonthlyLimit: string;
+  /** Kept as read and sent back unchanged: shares replaced them (ADR-0002 D6). */
+  perUserDailyLimit: number | null;
+  perUserMonthlyLimit: number | null;
+  dailyTokenLimit: string;
+  monthlyTokenLimit: string;
   unlimitedMessages: boolean;
   monthlyCostCapUsd: string;
   maxInputTokens: string;
@@ -56,9 +71,10 @@ export function draftFromPolicy(policy: AiPolicyFields): AiPolicyDraft {
     quotaMode: policy.quotaMode ?? 'monthly',
     dailyLimit: policy.dailyLimit === null ? '' : String(policy.dailyLimit),
     monthlyLimit: policy.monthlyLimit === null ? '' : String(policy.monthlyLimit),
-    perUserDailyLimit: policy.perUserDailyLimit === null ? '' : String(policy.perUserDailyLimit),
-    perUserMonthlyLimit:
-      policy.perUserMonthlyLimit === null ? '' : String(policy.perUserMonthlyLimit),
+    perUserDailyLimit: policy.perUserDailyLimit,
+    perUserMonthlyLimit: policy.perUserMonthlyLimit,
+    dailyTokenLimit: policy.dailyTokenLimit == null ? '' : String(policy.dailyTokenLimit),
+    monthlyTokenLimit: policy.monthlyTokenLimit == null ? '' : String(policy.monthlyTokenLimit),
     unlimitedMessages: policy.unlimitedMessages,
     monthlyCostCapUsd:
       policy.monthlyCostCapMicrousd === null
@@ -73,9 +89,17 @@ export function draftFromPolicy(policy: AiPolicyFields): AiPolicyDraft {
   };
 }
 
-/** Only the policy's own fields, from a record that carries more (a version, a source). */
+/**
+ * Only the policy's own fields, from a record that carries more (a version, a
+ * source). A token limit the record does not carry is left out, which the API
+ * reads as "keep what is stored".
+ */
 export function pickPolicyFields(policy: AiPolicyFields): AiPolicyFields {
   return {
+    ...(policy.dailyTokenLimit === undefined ? {} : { dailyTokenLimit: policy.dailyTokenLimit }),
+    ...(policy.monthlyTokenLimit === undefined
+      ? {}
+      : { monthlyTokenLimit: policy.monthlyTokenLimit }),
     level: policy.level,
     quotaMode: policy.quotaMode,
     dailyLimit: policy.dailyLimit,
@@ -98,7 +122,7 @@ function intOrNull(value: string): number | null {
 }
 
 /** The policy as the API takes it. The quota mode is only sent when it applies. */
-export function policyFromDraft(draft: AiPolicyDraft): AiPolicyFields {
+export function policyFromDraft(draft: AiPolicyDraft): AiPolicy {
   const quotaApplies = draft.level !== 'off' && !draft.unlimitedMessages;
   const quotaMode = quotaApplies ? draft.quotaMode : null;
   return {
@@ -106,8 +130,10 @@ export function policyFromDraft(draft: AiPolicyDraft): AiPolicyFields {
     quotaMode,
     dailyLimit: quotaModeHasDaily(quotaMode) ? intOrNull(draft.dailyLimit) : null,
     monthlyLimit: quotaModeHasMonthly(quotaMode) ? intOrNull(draft.monthlyLimit) : null,
-    perUserDailyLimit: intOrNull(draft.perUserDailyLimit),
-    perUserMonthlyLimit: intOrNull(draft.perUserMonthlyLimit),
+    perUserDailyLimit: draft.perUserDailyLimit,
+    perUserMonthlyLimit: draft.perUserMonthlyLimit,
+    dailyTokenLimit: intOrNull(draft.dailyTokenLimit),
+    monthlyTokenLimit: intOrNull(draft.monthlyTokenLimit),
     unlimitedMessages: draft.unlimitedMessages,
     monthlyCostCapMicrousd:
       draft.monthlyCostCapUsd.trim() === ''
@@ -123,8 +149,14 @@ export function policyFromDraft(draft: AiPolicyDraft): AiPolicyFields {
 }
 
 export type AiDraftProblems = Partial<
-  Record<'quotaMode' | 'dailyLimit' | 'monthlyLimit' | 'monthlyCostCapUsd', string>
+  Record<'quotaMode' | 'dailyLimit' | 'monthlyLimit' | 'monthlyCostCapUsd' | TokenLimitKey, string>
 >;
+
+/** Empty, or a whole number above zero: what a token limit may be. */
+function isTokenLimit(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed === '' || (/^\d+$/u.test(trimmed) && Number(trimmed) > 0);
+}
 
 /**
  * The consistency rule, as words beside the field that breaks it.
@@ -137,12 +169,19 @@ export function draftProblems(draft: AiPolicyDraft, t: TFunction): AiDraftProble
   if (draft.level === 'off') {
     return {};
   }
-  if (draft.unlimitedMessages) {
-    return draft.monthlyCostCapUsd.trim() === ''
-      ? { monthlyCostCapUsd: t('platform.ai.capRequired') }
-      : {};
-  }
   const problems: AiDraftProblems = {};
+  if (!isTokenLimit(draft.dailyTokenLimit)) {
+    problems.dailyTokenLimit = t('platform.ai.tokenLimitInvalid');
+  }
+  if (!isTokenLimit(draft.monthlyTokenLimit)) {
+    problems.monthlyTokenLimit = t('platform.ai.tokenLimitInvalid');
+  }
+  if (draft.unlimitedMessages) {
+    if (draft.monthlyCostCapUsd.trim() === '') {
+      problems.monthlyCostCapUsd = t('platform.ai.capRequired');
+    }
+    return problems;
+  }
   if (quotaModeHasDaily(draft.quotaMode) && draft.dailyLimit.trim() === '') {
     problems.dailyLimit = t('platform.ai.limitRequired');
   }
@@ -193,14 +232,18 @@ export function AiPolicySummary({ policy }: { policy: AiPolicyFields }) {
   const locale = i18n.language;
   const none = t('platform.ai.noLimit');
 
-  const perUserParts: string[] = [];
-  if (policy.perUserDailyLimit !== null) {
-    perUserParts.push(t('platform.ai.perDay', { n: policy.perUserDailyLimit }));
+  const tokenParts: string[] = [];
+  if (policy.dailyTokenLimit != null) {
+    tokenParts.push(
+      t('platform.ai.perDay', { n: formatNumber(policy.dailyTokenLimit, { locale }) }),
+    );
   }
-  if (policy.perUserMonthlyLimit !== null) {
-    perUserParts.push(t('platform.ai.perMonth', { n: policy.perUserMonthlyLimit }));
+  if (policy.monthlyTokenLimit != null) {
+    tokenParts.push(
+      t('platform.ai.perMonth', { n: formatNumber(policy.monthlyTokenLimit, { locale }) }),
+    );
   }
-  const perUser = perUserParts.length === 0 ? none : perUserParts.join(' · ');
+  const tokenLimits = tokenParts.length === 0 ? none : tokenParts.join(' · ');
 
   const quotaParts: string[] = [];
   if (!policy.unlimitedMessages && policy.quotaMode !== null) {
@@ -222,7 +265,7 @@ export function AiPolicySummary({ policy }: { policy: AiPolicyFields }) {
     <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
       <SummaryFact label={t('platform.ai.level')} value={levelLabel(t, policy.level)} />
       <SummaryFact label={t('platform.ai.quota')} value={quota} />
-      <SummaryFact label={t('platform.ai.perUser')} value={perUser} />
+      <SummaryFact label={t('platform.ai.tokenAllowance')} value={tokenLimits} />
       <SummaryFact
         label={t('platform.ai.monthlyCostCap')}
         value={
@@ -377,23 +420,30 @@ export function AiPolicyEditor({
 
         {enabled ? (
           <>
+            <p className="text-xs text-content-muted sm:col-span-2">
+              {t('platform.ai.tokenLimitsNote')}
+            </p>
             <Field
-              label={t('platform.ai.perUserDailyLimit')}
-              hint={t('platform.ai.perUserHint')}
+              label={t('platform.ai.dailyTokenLimit')}
+              hint={t('platform.ai.tokenLimitHint')}
               type="number"
               min={1}
+              step={1}
               disabled={disabled}
-              value={draft.perUserDailyLimit}
-              onChange={(event) => set('perUserDailyLimit', event.target.value)}
+              value={draft.dailyTokenLimit}
+              onChange={(event) => set('dailyTokenLimit', event.target.value)}
+              error={problems.dailyTokenLimit}
             />
             <Field
-              label={t('platform.ai.perUserMonthlyLimit')}
-              hint={t('platform.ai.perUserHint')}
+              label={t('platform.ai.monthlyTokenLimit')}
+              hint={t('platform.ai.tokenLimitHint')}
               type="number"
               min={1}
+              step={1}
               disabled={disabled}
-              value={draft.perUserMonthlyLimit}
-              onChange={(event) => set('perUserMonthlyLimit', event.target.value)}
+              value={draft.monthlyTokenLimit}
+              onChange={(event) => set('monthlyTokenLimit', event.target.value)}
+              error={problems.monthlyTokenLimit}
             />
           </>
         ) : null}

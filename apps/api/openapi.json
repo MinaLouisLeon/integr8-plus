@@ -1710,8 +1710,10 @@
                         "plan_off",
                         "custom_off",
                         "not_served",
+                        "provider_unconfigured",
                         "channel_off",
-                        "member_off"
+                        "member_off",
+                        "no_share"
                       ]
                     },
                     "channel": {
@@ -1752,187 +1754,85 @@
                     "usage": {
                       "type": "object",
                       "properties": {
-                        "daily": {
-                          "nullable": true,
+                        "allowance": {
                           "type": "object",
                           "properties": {
-                            "used": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "reserved": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "limit": {
-                              "nullable": true,
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "remaining": {
+                            "remainingPercent": {
                               "nullable": true,
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
                             },
                             "resetsAt": {
+                              "nullable": true,
                               "type": "string",
                               "format": "date-time",
                               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "exhausted": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
-                            "used",
-                            "reserved",
-                            "limit",
-                            "remaining",
-                            "resetsAt"
+                            "remainingPercent",
+                            "resetsAt",
+                            "exhausted"
                           ],
                           "additionalProperties": false
                         },
-                        "monthly": {
+                        "sharePercent": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "company": {
                           "nullable": true,
                           "type": "object",
                           "properties": {
-                            "used": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "reserved": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "limit": {
-                              "nullable": true,
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "remaining": {
-                              "nullable": true,
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "resetsAt": {
-                              "type": "string",
-                              "format": "date-time",
-                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                            }
-                          },
-                          "required": [
-                            "used",
-                            "reserved",
-                            "limit",
-                            "remaining",
-                            "resetsAt"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "user": {
-                          "type": "object",
-                          "properties": {
-                            "daily": {
+                            "allowance": {
                               "type": "object",
                               "properties": {
-                                "used": {
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "reserved": {
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "limit": {
-                                  "nullable": true,
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "remaining": {
+                                "remainingPercent": {
                                   "nullable": true,
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991
                                 },
                                 "resetsAt": {
+                                  "nullable": true,
                                   "type": "string",
                                   "format": "date-time",
                                   "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "exhausted": {
+                                  "type": "boolean"
                                 }
                               },
                               "required": [
-                                "used",
-                                "reserved",
-                                "limit",
-                                "remaining",
-                                "resetsAt"
+                                "remainingPercent",
+                                "resetsAt",
+                                "exhausted"
                               ],
                               "additionalProperties": false
                             },
-                            "monthly": {
-                              "type": "object",
-                              "properties": {
-                                "used": {
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "reserved": {
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "limit": {
-                                  "nullable": true,
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "remaining": {
-                                  "nullable": true,
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "resetsAt": {
-                                  "type": "string",
-                                  "format": "date-time",
-                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                                }
-                              },
-                              "required": [
-                                "used",
-                                "reserved",
-                                "limit",
-                                "remaining",
-                                "resetsAt"
-                              ],
-                              "additionalProperties": false
+                            "assignedPercent": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
-                            "daily",
-                            "monthly"
+                            "allowance",
+                            "assignedPercent"
                           ],
                           "additionalProperties": false
-                        },
-                        "unlimited": {
-                          "type": "boolean"
                         }
                       },
                       "required": [
-                        "daily",
-                        "monthly",
-                        "user",
-                        "unlimited"
+                        "allowance",
+                        "sharePercent",
+                        "company"
                       ],
                       "additionalProperties": false
                     }
@@ -2025,7 +1925,7 @@
       "get": {
         "operationId": "getAiUsage",
         "summary": "How much of the assistant is left today and this month",
-        "description": "The company’s pooled counters and the member’s own, with the UTC instant each resets. Reserved slots are requests still being answered, and count against what is left.",
+        "description": "What is left of the member’s own share of the company’s allowance, as a percentage, with the UTC instant it resets; and, for those who assign shares, the company’s. Requests still being answered count against what is left. No count, token figure or price is ever returned (ADR-0002).",
         "tags": [
           "ai"
         ],
@@ -2037,187 +1937,85 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "daily": {
-                      "nullable": true,
+                    "allowance": {
                       "type": "object",
                       "properties": {
-                        "used": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "reserved": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "limit": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "remaining": {
+                        "remainingPercent": {
                           "nullable": true,
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
                         "resetsAt": {
+                          "nullable": true,
                           "type": "string",
                           "format": "date-time",
                           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "exhausted": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
-                        "used",
-                        "reserved",
-                        "limit",
-                        "remaining",
-                        "resetsAt"
+                        "remainingPercent",
+                        "resetsAt",
+                        "exhausted"
                       ],
                       "additionalProperties": false
                     },
-                    "monthly": {
+                    "sharePercent": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "company": {
                       "nullable": true,
                       "type": "object",
                       "properties": {
-                        "used": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "reserved": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "limit": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "remaining": {
-                          "nullable": true,
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "resetsAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        }
-                      },
-                      "required": [
-                        "used",
-                        "reserved",
-                        "limit",
-                        "remaining",
-                        "resetsAt"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "user": {
-                      "type": "object",
-                      "properties": {
-                        "daily": {
+                        "allowance": {
                           "type": "object",
                           "properties": {
-                            "used": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "reserved": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "limit": {
-                              "nullable": true,
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "remaining": {
+                            "remainingPercent": {
                               "nullable": true,
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
                             },
                             "resetsAt": {
+                              "nullable": true,
                               "type": "string",
                               "format": "date-time",
                               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "exhausted": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
-                            "used",
-                            "reserved",
-                            "limit",
-                            "remaining",
-                            "resetsAt"
+                            "remainingPercent",
+                            "resetsAt",
+                            "exhausted"
                           ],
                           "additionalProperties": false
                         },
-                        "monthly": {
-                          "type": "object",
-                          "properties": {
-                            "used": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "reserved": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "limit": {
-                              "nullable": true,
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "remaining": {
-                              "nullable": true,
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "resetsAt": {
-                              "type": "string",
-                              "format": "date-time",
-                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                            }
-                          },
-                          "required": [
-                            "used",
-                            "reserved",
-                            "limit",
-                            "remaining",
-                            "resetsAt"
-                          ],
-                          "additionalProperties": false
+                        "assignedPercent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
                         }
                       },
                       "required": [
-                        "daily",
-                        "monthly"
+                        "allowance",
+                        "assignedPercent"
                       ],
                       "additionalProperties": false
-                    },
-                    "unlimited": {
-                      "type": "boolean"
                     }
                   },
                   "required": [
-                    "daily",
-                    "monthly",
-                    "user",
-                    "unlimited"
+                    "allowance",
+                    "sharePercent",
+                    "company"
                   ],
                   "additionalProperties": false
                 }
@@ -3338,190 +3136,29 @@
                       ],
                       "additionalProperties": false
                     },
-                    "usage": {
+                    "allowance": {
                       "type": "object",
                       "properties": {
-                        "daily": {
+                        "remainingPercent": {
                           "nullable": true,
-                          "type": "object",
-                          "properties": {
-                            "used": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "reserved": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "limit": {
-                              "nullable": true,
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "remaining": {
-                              "nullable": true,
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "resetsAt": {
-                              "type": "string",
-                              "format": "date-time",
-                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                            }
-                          },
-                          "required": [
-                            "used",
-                            "reserved",
-                            "limit",
-                            "remaining",
-                            "resetsAt"
-                          ],
-                          "additionalProperties": false
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
                         },
-                        "monthly": {
+                        "resetsAt": {
                           "nullable": true,
-                          "type": "object",
-                          "properties": {
-                            "used": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "reserved": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "limit": {
-                              "nullable": true,
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "remaining": {
-                              "nullable": true,
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991
-                            },
-                            "resetsAt": {
-                              "type": "string",
-                              "format": "date-time",
-                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                            }
-                          },
-                          "required": [
-                            "used",
-                            "reserved",
-                            "limit",
-                            "remaining",
-                            "resetsAt"
-                          ],
-                          "additionalProperties": false
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                         },
-                        "user": {
-                          "type": "object",
-                          "properties": {
-                            "daily": {
-                              "type": "object",
-                              "properties": {
-                                "used": {
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "reserved": {
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "limit": {
-                                  "nullable": true,
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "remaining": {
-                                  "nullable": true,
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "resetsAt": {
-                                  "type": "string",
-                                  "format": "date-time",
-                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                                }
-                              },
-                              "required": [
-                                "used",
-                                "reserved",
-                                "limit",
-                                "remaining",
-                                "resetsAt"
-                              ],
-                              "additionalProperties": false
-                            },
-                            "monthly": {
-                              "type": "object",
-                              "properties": {
-                                "used": {
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "reserved": {
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "limit": {
-                                  "nullable": true,
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "remaining": {
-                                  "nullable": true,
-                                  "type": "integer",
-                                  "minimum": -9007199254740991,
-                                  "maximum": 9007199254740991
-                                },
-                                "resetsAt": {
-                                  "type": "string",
-                                  "format": "date-time",
-                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                                }
-                              },
-                              "required": [
-                                "used",
-                                "reserved",
-                                "limit",
-                                "remaining",
-                                "resetsAt"
-                              ],
-                              "additionalProperties": false
-                            }
-                          },
-                          "required": [
-                            "daily",
-                            "monthly"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "unlimited": {
+                        "exhausted": {
                           "type": "boolean"
                         }
                       },
                       "required": [
-                        "daily",
-                        "monthly",
-                        "user",
-                        "unlimited"
+                        "remainingPercent",
+                        "resetsAt",
+                        "exhausted"
                       ],
                       "additionalProperties": false
                     },
@@ -3531,7 +3168,7 @@
                   },
                   "required": [
                     "message",
-                    "usage",
+                    "allowance",
                     "replayed"
                   ],
                   "additionalProperties": false
@@ -3593,6 +3230,394 @@
           },
           "503": {
             "description": "The model could not be reached (`ai_provider_unavailable`), or the assistant is paused (`ai_budget_unavailable`)."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/ai/shares": {
+      "get": {
+        "operationId": "listAiShares",
+        "summary": "How the company’s assistant allowance is divided among its people",
+        "description": "Every active member with their share, as a whole percentage of the company’s allowance, and what is left of it; and the company’s own. Percentages only (ADR-0002).",
+        "tags": [
+          "ai"
+        ],
+        "responses": {
+          "200": {
+            "description": "The shares.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "company": {
+                      "type": "object",
+                      "properties": {
+                        "allowance": {
+                          "type": "object",
+                          "properties": {
+                            "remainingPercent": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "resetsAt": {
+                              "nullable": true,
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "exhausted": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "remainingPercent",
+                            "resetsAt",
+                            "exhausted"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "assignedPercent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "allowance",
+                        "assignedPercent"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "aiEnabled": {
+                            "type": "boolean"
+                          },
+                          "sharePercent": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "version": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "allowance": {
+                            "type": "object",
+                            "properties": {
+                              "remainingPercent": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "resetsAt": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "exhausted": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "remainingPercent",
+                              "resetsAt",
+                              "exhausted"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "displayName",
+                          "aiEnabled",
+                          "sharePercent",
+                          "version",
+                          "allowance"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "company",
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/ai/shares/{userId}": {
+      "put": {
+        "operationId": "setAiShare",
+        "summary": "Give a member a share of the company’s assistant allowance, or take it away",
+        "description": "`sharePercent` is a whole percentage, 1–100, of every company allowance, reserved for this member; null takes it away, and with it the assistant. The company’s shares total 100 or less (422 `ai_shares_over_total`, with what is still unassigned). `expectedVersion` is the version last read, or null for a member who never had a share (409 `ai_member_limits_changed` otherwise). Owners and admins set it, for members they outrank. Counters are never touched: lowering a share below what was used this period refuses further questions until it resets.",
+        "tags": [
+          "ai"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sharePercent": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "expectedVersion": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "sharePercent",
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The member’s share as it now is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "aiEnabled": {
+                      "type": "boolean"
+                    },
+                    "sharePercent": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "version": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "allowance": {
+                      "type": "object",
+                      "properties": {
+                        "remainingPercent": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "resetsAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "exhausted": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "remainingPercent",
+                        "resetsAt",
+                        "exhausted"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "userId",
+                    "displayName",
+                    "aiEnabled",
+                    "sharePercent",
+                    "version",
+                    "allowance"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such person in this company."
+          },
+          "409": {
+            "description": "Somebody changed it first (`ai_member_limits_changed`)."
+          },
+          "422": {
+            "description": "The shares would pass 100% (`ai_shares_over_total`)."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -153599,6 +153624,18 @@
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
                           },
+                          "dailyTokenLimit": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "monthlyTokenLimit": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
                           "maxInputTokens": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -153842,6 +153879,18 @@
                         "minimum": -9007199254740991,
                         "maximum": 9007199254740991
                       },
+                      "dailyTokenLimit": {
+                        "nullable": true,
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "monthlyTokenLimit": {
+                        "nullable": true,
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
                       "maxInputTokens": {
                         "type": "integer",
                         "minimum": -9007199254740991,
@@ -153962,6 +154011,18 @@
                       "type": "boolean"
                     },
                     "monthlyCostCapMicrousd": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "dailyTokenLimit": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "monthlyTokenLimit": {
                       "nullable": true,
                       "type": "integer",
                       "minimum": -9007199254740991,
@@ -154190,6 +154251,18 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
+                        "dailyTokenLimit": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "monthlyTokenLimit": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
                         "maxInputTokens": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -154316,6 +154389,18 @@
                           "type": "boolean"
                         },
                         "monthlyCostCapMicrousd": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "dailyTokenLimit": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "monthlyTokenLimit": {
                           "nullable": true,
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -154458,6 +154543,18 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
+                        "dailyTokenLimit": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "monthlyTokenLimit": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
                         "maxInputTokens": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -154509,7 +154606,8 @@
                             "global_off",
                             "plan_off",
                             "custom_off",
-                            "not_served"
+                            "not_served",
+                            "provider_unconfigured"
                           ]
                         },
                         "companyDataToProvider": {
@@ -154593,6 +154691,61 @@
                           ],
                           "additionalProperties": false
                         },
+                        "tokens": {
+                          "type": "object",
+                          "properties": {
+                            "day": {
+                              "type": "object",
+                              "properties": {
+                                "used": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "reserved": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "used",
+                                "reserved"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "month": {
+                              "type": "object",
+                              "properties": {
+                                "used": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "reserved": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "used",
+                                "reserved"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "day",
+                            "month"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "assignedSharePercent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
                         "cost": {
                           "type": "object",
                           "properties": {
@@ -154643,6 +154796,8 @@
                       "required": [
                         "day",
                         "month",
+                        "tokens",
+                        "assignedSharePercent",
                         "cost",
                         "providerCalls",
                         "failedCalls",
@@ -154813,6 +154968,18 @@
                         "minimum": -9007199254740991,
                         "maximum": 9007199254740991
                       },
+                      "dailyTokenLimit": {
+                        "nullable": true,
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "monthlyTokenLimit": {
+                        "nullable": true,
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
                       "maxInputTokens": {
                         "type": "integer",
                         "minimum": -9007199254740991,
@@ -154957,6 +155124,18 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
+                        "dailyTokenLimit": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "monthlyTokenLimit": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
                         "maxInputTokens": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -155083,6 +155262,18 @@
                           "type": "boolean"
                         },
                         "monthlyCostCapMicrousd": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "dailyTokenLimit": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "monthlyTokenLimit": {
                           "nullable": true,
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -155225,6 +155416,18 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
+                        "dailyTokenLimit": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "monthlyTokenLimit": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
                         "maxInputTokens": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -155276,7 +155479,8 @@
                             "global_off",
                             "plan_off",
                             "custom_off",
-                            "not_served"
+                            "not_served",
+                            "provider_unconfigured"
                           ]
                         },
                         "companyDataToProvider": {
@@ -155360,6 +155564,61 @@
                           ],
                           "additionalProperties": false
                         },
+                        "tokens": {
+                          "type": "object",
+                          "properties": {
+                            "day": {
+                              "type": "object",
+                              "properties": {
+                                "used": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "reserved": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "used",
+                                "reserved"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "month": {
+                              "type": "object",
+                              "properties": {
+                                "used": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "reserved": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "used",
+                                "reserved"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "day",
+                            "month"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "assignedSharePercent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
                         "cost": {
                           "type": "object",
                           "properties": {
@@ -155410,6 +155669,8 @@
                       "required": [
                         "day",
                         "month",
+                        "tokens",
+                        "assignedSharePercent",
                         "cost",
                         "providerCalls",
                         "failedCalls",
@@ -155554,6 +155815,16 @@
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
                           },
+                          "tokensUsed": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "tokensReserved": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
                           "providerCalls": {
                             "type": "integer",
                             "minimum": -9007199254740991,
@@ -155588,6 +155859,8 @@
                           "monthStart",
                           "messagesUsed",
                           "messagesReserved",
+                          "tokensUsed",
+                          "tokensReserved",
                           "providerCalls",
                           "failedCalls",
                           "spentMicrousd",
@@ -155723,7 +155996,8 @@
                         "recording",
                         "groq",
                         "gemini",
-                        "anthropic"
+                        "anthropic",
+                        "openai"
                       ]
                     },
                     "globalEnabled": {
@@ -155761,6 +156035,91 @@
                       ],
                       "additionalProperties": false
                     },
+                    "ready": {
+                      "type": "boolean"
+                    },
+                    "problems": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "servedLevels": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "agent",
+                          "insights",
+                          "help"
+                        ]
+                      }
+                    },
+                    "prices": {
+                      "type": "object",
+                      "properties": {
+                        "help": {
+                          "type": "object",
+                          "properties": {
+                            "listed": {
+                              "type": "boolean"
+                            },
+                            "cachedInputPriced": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "listed",
+                            "cachedInputPriced"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "insights": {
+                          "type": "object",
+                          "properties": {
+                            "listed": {
+                              "type": "boolean"
+                            },
+                            "cachedInputPriced": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "listed",
+                            "cachedInputPriced"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "agent": {
+                          "type": "object",
+                          "properties": {
+                            "listed": {
+                              "type": "boolean"
+                            },
+                            "cachedInputPriced": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "listed",
+                            "cachedInputPriced"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "help",
+                        "insights",
+                        "agent"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "creditPauseSeconds": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
                     "providers": {
                       "type": "array",
                       "items": {
@@ -155772,7 +156131,8 @@
                               "recording",
                               "groq",
                               "gemini",
-                              "anthropic"
+                              "anthropic",
+                              "openai"
                             ]
                           },
                           "configured": {
@@ -155805,6 +156165,11 @@
                     "globalEnabled",
                     "maxLevelServed",
                     "models",
+                    "ready",
+                    "problems",
+                    "servedLevels",
+                    "prices",
+                    "creditPauseSeconds",
                     "providers"
                   ],
                   "additionalProperties": false
@@ -155908,6 +156273,11 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
+                        "creditExhausted": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
                         "averageMs": {
                           "nullable": true,
                           "type": "integer",
@@ -155920,6 +156290,7 @@
                         "calls",
                         "failed",
                         "limited",
+                        "creditExhausted",
                         "averageMs"
                       ],
                       "additionalProperties": false
@@ -156011,6 +156382,489 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/platform/companies/{tenantId}/ai/members": {
+      "get": {
+        "operationId": "listCompanyAiMembers",
+        "summary": "A company’s members: their assistant shares, use and spend",
+        "description": "Platform only: the numbers behind the percentages the company sees, and each member’s own dollar cap and spend this month (ADR-0002 D7).",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The members.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "assignedSharePercent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "email": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "aiEnabled": {
+                            "type": "boolean"
+                          },
+                          "sharePercent": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "monthlyCostCapMicrousd": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "version": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "messages": {
+                            "type": "object",
+                            "properties": {
+                              "day": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "month": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "day",
+                              "month"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "tokens": {
+                            "type": "object",
+                            "properties": {
+                              "day": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "month": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "day",
+                              "month"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "cost": {
+                            "type": "object",
+                            "properties": {
+                              "spent": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "reserved": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unknown": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "spent",
+                              "reserved",
+                              "unknown"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "displayName",
+                          "email",
+                          "status",
+                          "aiEnabled",
+                          "sharePercent",
+                          "monthlyCostCapMicrousd",
+                          "version",
+                          "messages",
+                          "tokens",
+                          "cost"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "assignedSharePercent",
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such company."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/platform/companies/{tenantId}/ai/members/{userId}": {
+      "put": {
+        "operationId": "setCompanyAiMember",
+        "summary": "Set a member’s assistant share or monthly dollar cap",
+        "description": "Either or both; a field left out keeps its value. The share follows the company’s rules (whole percent, 1–100, the company’s total 100 or less); the dollar cap, in USD micros, is the platform’s alone and never shown to the company. `expectedVersion` as for the company’s own route. Recorded in the platform audit log with before and after.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sharePercent": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "monthlyCostCapMicrousd": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "expectedVersion": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "reason": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "expectedVersion",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The member as they now are.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "aiEnabled": {
+                      "type": "boolean"
+                    },
+                    "sharePercent": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "monthlyCostCapMicrousd": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "version": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "messages": {
+                      "type": "object",
+                      "properties": {
+                        "day": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "month": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "day",
+                        "month"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "tokens": {
+                      "type": "object",
+                      "properties": {
+                        "day": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "month": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "day",
+                        "month"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "cost": {
+                      "type": "object",
+                      "properties": {
+                        "spent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "reserved": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "unknown": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "spent",
+                        "reserved",
+                        "unknown"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "userId",
+                    "displayName",
+                    "email",
+                    "status",
+                    "aiEnabled",
+                    "sharePercent",
+                    "monthlyCostCapMicrousd",
+                    "version",
+                    "messages",
+                    "tokens",
+                    "cost"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A platform session is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such company or member."
+          },
+          "409": {
+            "description": "Somebody changed it first (`ai_member_limits_changed`)."
+          },
+          "422": {
+            "description": "The shares would pass 100% (`ai_shares_over_total`)."
           },
           "429": {
             "description": "Rate limit exceeded.",

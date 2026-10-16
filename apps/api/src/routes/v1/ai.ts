@@ -4,6 +4,8 @@ import {
   AI_PROPOSAL_STATES,
   aiSourceRefSchema,
   aiToolSummarySchema,
+  holds,
+  type Principal,
 } from '@integr8/core';
 import { withTenant } from '@integr8/db';
 import { z } from 'zod';
@@ -18,8 +20,8 @@ import {
 import { ACTION_CATALOGUE } from '../../ai/actions/catalogue.js';
 import { confirmProposal, getProposal, rejectProposal } from '../../ai/actions/service.js';
 import { aiConversationNotFound } from '../../ai/errors.js';
-import { periodKeysAt, usageView } from '../../ai/periods.js';
-import { resolveAiAccess } from '../../ai/policy.js';
+import { companyAllowance, memberAllowance, periodKeysAt } from '../../ai/periods.js';
+import { type AiAccess, resolveAiAccess } from '../../ai/policy.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { iso } from './schemas.js';
 
@@ -34,29 +36,74 @@ import { iso } from './schemas.js';
 
 const TAGS = ['ai'];
 
-const usageAxisSchema = z.object({
-  used: z.number().int(),
-  reserved: z.number().int(),
-  limit: z.number().int().nullable(),
-  remaining: z.number().int().nullable(),
-  resetsAt: z.iso.datetime(),
+/**
+ * How much of an allowance is left, as a company or a member is shown it
+ * (ADR-0002 D7): a whole percentage of the tightest limited axis, messages
+ * and tokens, day and month, and when that axis resets. Never the counts or
+ * the money behind it.
+ */
+export const aiAllowanceSchema = z.object({
+  /** 0–100; null when nothing is limited. */
+  remainingPercent: z.number().int().nullable(),
+  resetsAt: z.iso.datetime().nullable(),
+  /** True when a question would be refused now. */
+  exhausted: z.boolean(),
 });
 
 export const aiUsageSchema = z.object({
-  /** The company's pooled counters; null on an axis the policy does not limit. */
-  daily: usageAxisSchema.nullable(),
-  monthly: usageAxisSchema.nullable(),
-  /** This member's own counters, limited only when the policy says so. */
-  user: z.object({ daily: usageAxisSchema, monthly: usageAxisSchema }),
-  unlimited: z.boolean(),
+  /** What is left of this member's own share. */
+  allowance: aiAllowanceSchema,
+  /** This member's percentage of the company's allowance; null is none (no assistant). */
+  sharePercent: z.number().int().nullable(),
+  /**
+   * The whole company's allowance and how much of it is assigned: for those
+   * who assign shares (`member.update_role`) only; null for everybody else.
+   */
+  company: z.object({ allowance: aiAllowanceSchema, assignedPercent: z.number().int() }).nullable(),
 });
+
+/** What a member, and an owner, is told about what is left (ADR-0002 D6, D7). */
+async function usageOf(principal: Principal, access: AiAccess, now: Date) {
+  const periods = periodKeysAt(now);
+  const owner = holds(principal, 'member.update_role');
+  const { messages, tokens, assigned } = await withTenant(principal.tenantId, async (tx) => ({
+    messages: await tx.aiUsage.counters(principal.userId, periods),
+    tokens: await tx.aiUsage.tokenCounters(principal.userId, periods),
+    assigned: owner ? await tx.aiMemberLimits.assignedPercent() : 0,
+  }));
+  return {
+    allowance: memberAllowance({
+      policy: access.policy,
+      sharePercent: access.sharePercent,
+      messages,
+      tokens,
+      now,
+    }),
+    sharePercent: access.sharePercent,
+    company: owner
+      ? {
+          allowance: companyAllowance({ policy: access.policy, messages, tokens, now }),
+          assignedPercent: assigned,
+        }
+      : null,
+  };
+}
 
 export const aiCapabilitiesSchema = z.object({
   /** What this member may use now, after every switch. `off` means show nothing interactive. */
   level: z.enum(AI_LEVELS),
   /** Which switch closed, when `level` is off: for the screen to say why. */
   blockedBy: z
-    .enum(['global_off', 'plan_off', 'custom_off', 'not_served', 'channel_off', 'member_off'])
+    .enum([
+      'global_off',
+      'plan_off',
+      'custom_off',
+      'not_served',
+      'provider_unconfigured',
+      'channel_off',
+      'member_off',
+      'no_share',
+    ])
     .nullable(),
   channel: z.enum(AI_CHANNELS),
   /** The tools this member may use at this level: insight tools and prepare-only actions. */
@@ -90,10 +137,9 @@ export const aiCapabilitiesRoute = defineRoute({
       config: context.config,
     });
     const now = new Date();
-    const { counters, features } = await withTenant(context.principal.tenantId, async (tx) => ({
-      counters: await tx.aiUsage.counters(context.principal.userId, periodKeysAt(now)),
-      features: await tx.featureFlags.resolved(),
-    }));
+    const features = await withTenant(context.principal.tenantId, (tx) =>
+      tx.featureFlags.resolved(),
+    );
     return {
       status: 200,
       body: {
@@ -111,7 +157,7 @@ export const aiCapabilitiesRoute = defineRoute({
         locales: ['en', 'ar'],
         historyTurns: context.config.AI_HISTORY_TURNS,
         allowHistory: access.policy.allowHistory,
-        usage: usageView(access.policy, counters, now),
+        usage: await usageOf(context.principal, access, now),
       },
     };
   },
@@ -123,7 +169,7 @@ export const aiUsageRoute = defineRoute({
   operationId: 'getAiUsage',
   summary: 'How much of the assistant is left today and this month',
   description:
-    'The company’s pooled counters and the member’s own, with the UTC instant each resets. Reserved slots are requests still being answered, and count against what is left.',
+    'What is left of the member’s own share of the company’s allowance, as a percentage, with the UTC instant it resets; and, for those who assign shares, the company’s. Requests still being answered count against what is left. No count, token figure or price is ever returned (ADR-0002).',
   tags: TAGS,
   security: 'authenticated',
   params: noSchema,
@@ -136,11 +182,7 @@ export const aiUsageRoute = defineRoute({
       clientApp: context.clientApp,
       config: context.config,
     });
-    const now = new Date();
-    const counters = await withTenant(context.principal.tenantId, (tx) =>
-      tx.aiUsage.counters(context.principal.userId, periodKeysAt(now)),
-    );
-    return { status: 200, body: usageView(access.policy, counters, now) };
+    return { status: 200, body: await usageOf(context.principal, access, new Date()) };
   },
 });
 
@@ -196,7 +238,8 @@ const messageSchema = z.object({
 
 const answerSchema = z.object({
   message: messageSchema,
-  usage: aiUsageSchema,
+  /** What is left of the member's own share after this answer. */
+  allowance: aiAllowanceSchema,
   /** True when this answer was stored by an earlier request with the same Idempotency-Key. */
   replayed: z.boolean(),
 });
