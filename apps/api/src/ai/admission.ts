@@ -15,7 +15,7 @@ import {
   aiQuotaExceeded,
   aiRequestInProgress,
 } from './errors.js';
-import { limitsOf, periodKeysAt } from './periods.js';
+import { companyLimitsOf, limitsOf, periodKeysAt } from './periods.js';
 import { ApiError } from '../http/errors.js';
 
 /**
@@ -29,6 +29,10 @@ import { ApiError } from '../http/errors.js';
  * In-flight concurrency is counted in this process: a cap of a few requests
  * per company and per member against runaway clients, not a cross-instance
  * guarantee (the counters are that).
+ *
+ * A library answer (ADR-0002 D10) spends nothing: it skips the deployment's
+ * budget, carries no cost and no cost cap, and is held to the company's
+ * message limits only, so a member needs no share for it.
  */
 
 export interface Admission {
@@ -92,10 +96,14 @@ export async function admitMessage(input: {
   /** The member's own monthly dollar cap, set by the platform (D7). */
   memberCostCapMicrousd?: number | null;
   worstCaseCostMicrousd: number;
+  /** Answered from the help library: no money, no share (D10). */
+  library?: boolean;
   config: ApiConfig;
   now?: Date;
 }): Promise<Admission> {
   const now = input.now ?? new Date();
+  const library = input.library === true;
+  const cost = library ? 0 : input.worstCaseCostMicrousd;
   const periods = periodKeysAt(now);
   const platform = getPlatformDataSource().ai;
 
@@ -118,14 +126,21 @@ export async function admitMessage(input: {
     throw aiRequestInProgress();
   }
 
-  const globalOk = await platform.reserveGlobalBudget(
-    periods.month,
-    input.worstCaseCostMicrousd,
-    input.config.AI_GLOBAL_MONTHLY_BUDGET_MICROUSD,
-  );
+  const globalOk =
+    library ||
+    (await platform.reserveGlobalBudget(
+      periods.month,
+      cost,
+      input.config.AI_GLOBAL_MONTHLY_BUDGET_MICROUSD,
+    ));
   if (!globalOk) {
     throw aiBudgetUnavailable();
   }
+  const giveBackGlobal = async () => {
+    if (cost > 0) {
+      await platform.settleGlobalBudget(periods.month, { reserved: cost, spent: 0, unknown: 0 });
+    }
+  };
 
   try {
     const outcome = await withTenant(input.principal.tenantId, (tx) =>
@@ -135,10 +150,12 @@ export async function admitMessage(input: {
         clientRequestId: input.clientRequestId,
         requestFingerprint: input.requestFingerprint,
         periods,
-        limits: limitsOf(input.policy, input.sharePercent),
-        costMicrousd: input.worstCaseCostMicrousd,
-        costCapMicrousd: input.policy.monthlyCostCapMicrousd,
-        memberCostCapMicrousd: input.memberCostCapMicrousd ?? null,
+        limits: library
+          ? companyLimitsOf(input.policy)
+          : limitsOf(input.policy, input.sharePercent),
+        costMicrousd: cost,
+        costCapMicrousd: library ? null : input.policy.monthlyCostCapMicrousd,
+        memberCostCapMicrousd: library ? null : (input.memberCostCapMicrousd ?? null),
         expiresAt: new Date(now.getTime() + input.config.AI_RESERVATION_TTL_SECONDS * 1000),
       }),
     );
@@ -148,14 +165,10 @@ export async function admitMessage(input: {
           reservation: outcome.reservation,
           outcome: 'claimed',
           periods,
-          reservedCostMicrousd: input.worstCaseCostMicrousd,
+          reservedCostMicrousd: cost,
         };
       case 'replay':
-        await platform.settleGlobalBudget(periods.month, {
-          reserved: input.worstCaseCostMicrousd,
-          spent: 0,
-          unknown: 0,
-        });
+        await giveBackGlobal();
         return {
           reservation: outcome.reservation,
           outcome: 'replay',
@@ -164,11 +177,7 @@ export async function admitMessage(input: {
         };
       case 'in_progress':
       case 'fingerprint_mismatch':
-        await platform.settleGlobalBudget(periods.month, {
-          reserved: input.worstCaseCostMicrousd,
-          spent: 0,
-          unknown: 0,
-        });
+        await giveBackGlobal();
         throw aiRequestInProgress();
       default:
         throw new Error('unreachable reservation outcome');
@@ -179,11 +188,7 @@ export async function admitMessage(input: {
       error instanceof AiBudgetExceededError ||
       error instanceof AiMemberBudgetExceededError
     ) {
-      await platform.settleGlobalBudget(periods.month, {
-        reserved: input.worstCaseCostMicrousd,
-        spent: 0,
-        unknown: 0,
-      });
+      await giveBackGlobal();
     }
     if (error instanceof AiQuotaExceededError) {
       throw aiQuotaExceeded(error.axis, aiPeriodOf(error.axis, now).resetsAt);
@@ -230,13 +235,17 @@ export async function settleMessage(input: {
     // Nothing moved: already settled, or an uncertain row told uncertain again.
     return settled;
   }
-  const month = aiPeriodOf('month', before.createdAt).start;
-  await getPlatformDataSource().ai.settleGlobalBudget(month, {
+  const change = {
     reserved: before.state === 'reserved' ? before.reservedCostMicrousd : 0,
     spent: input.spentMicrousd,
     unknown:
       (input.unknownMicrousd ?? 0) -
       (before.state === 'uncertain' ? before.reservedCostMicrousd : 0),
-  });
+  };
+  // A library answer moved no money, so the deployment's ledger is not touched.
+  if (change.reserved !== 0 || change.spent !== 0 || change.unknown !== 0) {
+    const month = aiPeriodOf('month', before.createdAt).start;
+    await getPlatformDataSource().ai.settleGlobalBudget(month, change);
+  }
   return settled;
 }

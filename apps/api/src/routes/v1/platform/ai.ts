@@ -1,4 +1,5 @@
 import {
+  AI_ANSWER_SOURCES,
   AI_DATA_CLASSES,
   AI_LEVELS,
   AI_POLICY_MODES,
@@ -47,6 +48,12 @@ const TAGS = ['platform'];
 
 const policyFieldsSchema = z.object({
   level: z.enum(AI_LEVELS),
+  /**
+   * Where answers come from: a model, or the help library with no provider
+   * (ADR-0002 D9, D10). Optional on a write so an older dashboard cannot
+   * change it: left out means "keep what is stored", and `model` for a new row.
+   */
+  answerSource: z.enum(AI_ANSWER_SOURCES).optional(),
   quotaMode: z.enum(AI_QUOTA_MODES).nullable(),
   dailyLimit: z.number().int().nullable(),
   monthlyLimit: z.number().int().nullable(),
@@ -69,13 +76,23 @@ const policyFieldsSchema = z.object({
   retentionDays: z.number().int(),
 });
 
-/** A written policy with any token limit left out taken from what is stored. */
-function keepingTokenLimits(
+/**
+ * A written policy with any field newer than the writing dashboard (token
+ * limits, the answer source) taken from what is stored.
+ */
+function keepingNewerFields(
   policy: z.infer<typeof policyFieldsSchema>,
-  stored: { dailyTokenLimit: number | null; monthlyTokenLimit: number | null } | undefined,
+  stored:
+    | {
+        dailyTokenLimit: number | null;
+        monthlyTokenLimit: number | null;
+        answerSource: 'model' | 'library';
+      }
+    | undefined,
 ) {
   return {
     ...policy,
+    answerSource: policy.answerSource ?? stored?.answerSource ?? 'model',
     dailyTokenLimit:
       policy.dailyTokenLimit === undefined
         ? (stored?.dailyTokenLimit ?? null)
@@ -110,6 +127,14 @@ const effectivePolicySchema = policyFieldsSchema.extend({
   offReason: z
     .enum(['global_off', 'plan_off', 'custom_off', 'not_served', 'provider_unconfigured'])
     .nullable(),
+  /** Where the company's answers actually come from now (ADR-0002 D9–D12). */
+  answersFrom: z.enum(AI_ANSWER_SOURCES),
+  /**
+   * Why they come from the library, when they do: the policy says so, the
+   * server has no provider (`AI_PROVIDER=none`), or its AI settings are
+   * incomplete.
+   */
+  libraryReason: z.enum(['policy', 'no_provider', 'provider_unconfigured']).nullable(),
   companyDataToProvider: z.boolean(),
 });
 
@@ -202,7 +227,7 @@ export const setAiPlanPolicyRoute = defineRoute({
   handler: async ({ params, body }, context) => {
     const platform = getPlatformDataSource().ai;
     const before = await platform.planPolicy(params.plan);
-    const policy = parsePolicy(keepingTokenLimits(body.policy, before));
+    const policy = parsePolicy(keepingNewerFields(body.policy, before));
     let saved: AiPlanPolicy;
     try {
       saved = await platform.setPlanPolicy(params.plan, policy, {
@@ -285,7 +310,7 @@ export const setCompanyAiRoute = defineRoute({
     // An inherited policy's fields are not the policy, so they are not held to
     // the policy's consistency rule; a custom one is.
     const before = await platform.ai.tenantPolicy(tenant.id);
-    const written = keepingTokenLimits(body.policy, before);
+    const written = keepingNewerFields(body.policy, before);
     const policy = body.mode === 'custom' ? parsePolicy(written) : written;
     let saved: AiTenantPolicy;
     try {
@@ -421,6 +446,11 @@ export const aiProvidersRoute = defineRoute({
          * server; it turns the assistant off and says so here.
          */
         ready: z.boolean(),
+        /**
+         * `AI_PROVIDER=none`: no provider by choice. Every company is answered
+         * from the help library, and nothing needs fixing (ADR-0002 D12).
+         */
+        libraryOnly: z.boolean(),
         problems: z.array(z.string()),
         /** The levels that have a model, highest first. */
         servedLevels: z.array(z.enum(['agent', 'insights', 'help'])),
@@ -467,6 +497,7 @@ export const aiProvidersRoute = defineRoute({
           agent: config.AI_MODEL_AGENT ?? null,
         },
         ready: configuration.ready,
+        libraryOnly: configuration.libraryOnly,
         problems: configuration.problems,
         servedLevels: configuration.servedLevels,
         prices: {
@@ -475,7 +506,8 @@ export const aiProvidersRoute = defineRoute({
           agent: priced(configuration.models.agent),
         },
         creditPauseSeconds: providerPausedFor(config.AI_PROVIDER),
-        providers: AI_PROVIDERS.map((id) => ({
+        // `none` is the absence of a provider, not one to list.
+        providers: AI_PROVIDERS.filter((id) => id !== 'none').map((id) => ({
           id,
           configured: providerStatus(id, config),
           approvedDataClasses: approvedDataClasses(id, config),

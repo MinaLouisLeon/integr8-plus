@@ -1,4 +1,4 @@
-import { roleRank, toUserId } from '@integr8/core';
+import { AI_ANSWER_SOURCES, roleRank, toUserId } from '@integr8/core';
 import {
   AiMemberLimitsVersionConflictError,
   AiSharesOverTotalError,
@@ -7,7 +7,12 @@ import {
 import { z } from 'zod';
 import { aiMemberLimitsChanged, aiSharesOverTotal } from '../../ai/errors.js';
 import { forgetAiPolicy, resolveEffectiveAiPolicy } from '../../ai/policy.js';
-import { companyAllowance, memberAllowance, periodKeysAt } from '../../ai/periods.js';
+import {
+  companyAllowance,
+  libraryAllowance,
+  memberAllowance,
+  periodKeysAt,
+} from '../../ai/periods.js';
 import { forbidden, notFound } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { aiAllowanceSchema } from './ai.js';
@@ -18,7 +23,9 @@ import { aiAllowanceSchema } from './ai.js';
  *
  * Owners and admins (`member.update_role`) give each member a whole
  * percentage of the company's allowance; the shares are reserved slices and
- * total 100 or less. A member with no share has no assistant. Nothing here
+ * total 100 or less. A member with no share has no model answers; library
+ * answers need no share, so while a company is answered from the library
+ * every allowance shown is the company's (ADR-0002 D10). Nothing here
  * carries a token count, a message count or a price: the company sees
  * percentages, and the platform alone sees the numbers behind them.
  */
@@ -39,7 +46,15 @@ const shareRowSchema = z.object({
 });
 
 const sharesSchema = z.object({
-  company: z.object({ allowance: aiAllowanceSchema, assignedPercent: z.number().int() }),
+  company: z.object({
+    allowance: aiAllowanceSchema,
+    assignedPercent: z.number().int(),
+    /**
+     * Where the company's answers come from now. Under `library` shares are
+     * kept but decide nothing until answers come from a model again.
+     */
+    answerSource: z.enum(AI_ANSWER_SOURCES),
+  }),
   items: z.array(shareRowSchema),
 });
 
@@ -72,6 +87,10 @@ export const listAiSharesRoute = defineRoute({
         assigned: await tx.aiMemberLimits.assignedPercent(),
       }));
 
+    const library = policy.answersFrom === 'library';
+    const companyLeft = library
+      ? libraryAllowance({ policy, messages: companyMessages, now })
+      : companyAllowance({ policy, messages: companyMessages, tokens: companyTokens, now });
     const items = members
       .filter((member) => member.status === 'active')
       .map((member) => {
@@ -91,13 +110,15 @@ export const listAiSharesRoute = defineRoute({
           aiEnabled: member.aiEnabled,
           sharePercent: limit?.sharePercent ?? null,
           version: limit?.version ?? null,
-          allowance: memberAllowance({
-            policy,
-            sharePercent: limit?.sharePercent ?? null,
-            messages: asCounters('messages'),
-            tokens: asCounters('tokens'),
-            now,
-          }),
+          allowance: library
+            ? companyLeft
+            : memberAllowance({
+                policy,
+                sharePercent: limit?.sharePercent ?? null,
+                messages: asCounters('messages'),
+                tokens: asCounters('tokens'),
+                now,
+              }),
         };
       });
 
@@ -105,13 +126,9 @@ export const listAiSharesRoute = defineRoute({
       status: 200,
       body: {
         company: {
-          allowance: companyAllowance({
-            policy,
-            messages: companyMessages,
-            tokens: companyTokens,
-            now,
-          }),
+          allowance: companyLeft,
           assignedPercent: assigned,
+          answerSource: policy.answersFrom,
         },
         items,
       },
@@ -211,13 +228,16 @@ export const setAiShareRoute = defineRoute({
         aiEnabled: target.aiEnabled,
         sharePercent: saved.sharePercent,
         version: saved.version,
-        allowance: memberAllowance({
-          policy,
-          sharePercent: saved.sharePercent,
-          messages,
-          tokens,
-          now,
-        }),
+        allowance:
+          policy.answersFrom === 'library'
+            ? libraryAllowance({ policy, messages, now })
+            : memberAllowance({
+                policy,
+                sharePercent: saved.sharePercent,
+                messages,
+                tokens,
+                now,
+              }),
       },
     };
   },

@@ -1,6 +1,7 @@
 import type { PlatformUserId } from '@integr8/core';
 import { type Kysely, type Selectable, sql } from 'kysely';
 import type {
+  AiAnswerSource,
   AiHelpArticlesTable,
   AiHelpArticleStatus,
   AiLevel,
@@ -23,6 +24,8 @@ import { dayKey, micros } from './ai-usage.js';
 /** The policy fields a plan and a company override share. Money in USD micros. */
 export interface AiPolicyFields {
   level: AiLevel;
+  /** A model, or the help library with no provider (ADR-0002 D9, D10). */
+  answerSource: AiAnswerSource;
   quotaMode: AiQuotaMode | null;
   dailyLimit: number | null;
   monthlyLimit: number | null;
@@ -610,6 +613,7 @@ export class AiPlatformRepository {
 function policyColumns(policy: AiPolicyFields) {
   return {
     level: policy.level,
+    answer_source: policy.answerSource,
     quota_mode: policy.quotaMode,
     daily_limit: policy.dailyLimit,
     monthly_limit: policy.monthlyLimit,
@@ -631,6 +635,7 @@ function policyColumns(policy: AiPolicyFields) {
 function fields(row: Selectable<AiPlanPoliciesTable> | Selectable<AiTenantPoliciesTable>) {
   return {
     level: row.level,
+    answerSource: row.answer_source,
     quotaMode: row.quota_mode,
     dailyLimit: row.daily_limit,
     monthlyLimit: row.monthly_limit,

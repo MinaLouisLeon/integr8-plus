@@ -38,6 +38,36 @@ describe('loading the settings', () => {
     expect(aiConfiguration(config).ready).toBe(true);
   });
 
+  it('takes AI_PROVIDER=none as no provider by choice: library answers, nothing to fix (D12)', () => {
+    for (const env of ['staging', 'production'] as const) {
+      const config = loadApiConfig({
+        APP_ENV: env,
+        AI_ENABLED: 'true',
+        AI_PROVIDER: 'none',
+        // Model names left over from a provider are not used.
+        AI_MODEL_HELP: 'gpt-6-luna',
+      });
+      expect(aiConfiguration(config)).toMatchObject({
+        ready: false,
+        libraryOnly: true,
+        problems: [],
+        servedLevels: [],
+      });
+      expect(modelFor('help', config)).toBeNull();
+      expect(servableLevel('agent', config)).toBe('off');
+    }
+  });
+
+  it('still flags the fake provider in production: it is not a way to run without AI', () => {
+    const config = loadApiConfig({
+      APP_ENV: 'production',
+      AI_ENABLED: 'true',
+      AI_PROVIDER: 'recording',
+    });
+    expect(aiConfiguration(config)).toMatchObject({ ready: false, libraryOnly: false });
+    expect(aiConfiguration(config).problems.join('\n')).toMatch(/recording in production/u);
+  });
+
   it('asks nothing of a deployment with the assistant off', () => {
     const config = loadApiConfig({ APP_ENV: 'staging', AI_PROVIDER: 'openai' });
     expect(aiConfiguration(config)).toMatchObject({ ready: false, problems: [] });

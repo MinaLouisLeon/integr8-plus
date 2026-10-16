@@ -62,9 +62,22 @@ export const AI_DATA_CLASSES = [
 export const aiDataClassSchema = z.enum(AI_DATA_CLASSES);
 export type AiDataClass = z.infer<typeof aiDataClassSchema>;
 
-export const AI_PROVIDERS = ['recording', 'groq', 'gemini', 'anthropic', 'openai'] as const;
+/**
+ * Who answers with a model. `none` is a server with no AI provider at all:
+ * every company is answered from the help library (ADR-0002 D12).
+ */
+export const AI_PROVIDERS = ['none', 'recording', 'groq', 'gemini', 'anthropic', 'openai'] as const;
 export const aiProviderSchema = z.enum(AI_PROVIDERS);
 export type AiProviderId = z.infer<typeof aiProviderSchema>;
+
+/**
+ * Where a policy's answers come from (ADR-0002 D9, D10): a model, or the help
+ * library itself, which needs no provider, no tokens and no money, and serves
+ * Help only.
+ */
+export const AI_ANSWER_SOURCES = ['model', 'library'] as const;
+export const aiAnswerSourceSchema = z.enum(AI_ANSWER_SOURCES);
+export type AiAnswerSource = z.infer<typeof aiAnswerSourceSchema>;
 
 const positiveInt = z.number().int().positive();
 /** Integer USD micros, within what a JavaScript number represents exactly. */
@@ -83,6 +96,7 @@ export const microusdSchema = z.number().int().min(0).max(Number.MAX_SAFE_INTEGE
 export const aiPolicySchema = z
   .object({
     level: aiLevelSchema,
+    answerSource: aiAnswerSourceSchema,
     quotaMode: aiQuotaModeSchema.nullable(),
     dailyLimit: positiveInt.nullable(),
     monthlyLimit: positiveInt.nullable(),
@@ -116,7 +130,8 @@ export const aiPolicySchema = z
           message: 'Unlimited messages has no quota mode.',
         });
       }
-      if (policy.monthlyCostCapMicrousd === null) {
+      // Library answers cost nothing, so unlimited needs no ceiling there (D10).
+      if (policy.monthlyCostCapMicrousd === null && policy.answerSource === 'model') {
         context.addIssue({
           code: 'custom',
           path: ['monthlyCostCapMicrousd'],
@@ -162,6 +177,7 @@ export function quotaModeHasMonthly(mode: AiQuotaMode | null): boolean {
 /** The policy every plan starts with, and what "Reset" means: nothing, until an admin decides. */
 export const AI_POLICY_OFF: AiPolicy = Object.freeze({
   level: 'off',
+  answerSource: 'model',
   quotaMode: null,
   dailyLimit: null,
   monthlyLimit: null,

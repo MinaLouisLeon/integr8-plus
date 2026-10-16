@@ -58,6 +58,15 @@ export function tokenise(text: string): string[] {
     .filter((token) => token.length >= 2);
 }
 
+/**
+ * Every term a text holds, with the stems a clitic or a plural could hide:
+ * the same reading the index gives an article, for comparing a question with
+ * one paragraph of it.
+ */
+export function termsOf(text: string): Set<string> {
+  return new Set(tokenise(text).flatMap(variants));
+}
+
 interface IndexedArticle {
   article: AiHelpArticle;
   /** Term → weighted frequency across the fields. */

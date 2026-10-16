@@ -4,6 +4,7 @@ import type { AiProvider } from './provider.js';
 import { AnthropicAiProvider } from './anthropic.js';
 import { GeminiAiProvider } from './gemini.js';
 import { GroqAiProvider } from './groq.js';
+import { NoneAiProvider } from './none.js';
 import { OpenAiProvider } from './openai.js';
 import { RecordingAiProvider } from './recording.js';
 
@@ -14,9 +15,14 @@ import { RecordingAiProvider } from './recording.js';
  * no key or part of one in any answer.
  */
 
-/** True when the provider could be called: the fake always, a live one with its key. */
+/**
+ * True when the provider could be called: the fake always, a live one with
+ * its key, `none` never.
+ */
 export function providerStatus(id: AiProviderId, config: ApiConfig): boolean {
   switch (id) {
+    case 'none':
+      return false;
     case 'recording':
       return true;
     case 'groq':
@@ -61,6 +67,8 @@ export function approvedDataClasses(id: AiProviderId, config: ApiConfig): AiData
  */
 export function buildAiProvider(config: ApiConfig): AiProvider {
   switch (config.AI_PROVIDER) {
+    case 'none':
+      return new NoneAiProvider();
     case 'recording':
       return new RecordingAiProvider();
     case 'groq':

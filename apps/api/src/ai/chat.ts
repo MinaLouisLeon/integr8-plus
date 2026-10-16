@@ -21,7 +21,7 @@ import {
 import type { ApiConfig } from '../config.js';
 import type { Logger } from '../http/logger.js';
 import type { ClientApp } from '../http/routes.js';
-import { acquireSlot, admitMessage, settleMessage } from './admission.js';
+import { acquireSlot, type Admission, admitMessage, settleMessage } from './admission.js';
 import { type AiModelLevel, modelFor } from './configuration.js';
 import {
   aiConversationNotFound,
@@ -30,8 +30,15 @@ import {
   aiTokenQuotaExceeded,
   aiValidationFailed,
 } from './errors.js';
+import { libraryAnswer } from './help/answer.js';
 import type { HelpLibrary } from './help/library.js';
-import { type AiAllowance, memberAllowance, periodKeysAt, tokenLimitsOf } from './periods.js';
+import {
+  type AiAllowance,
+  libraryAllowance,
+  memberAllowance,
+  periodKeysAt,
+  tokenLimitsOf,
+} from './periods.js';
 import { resolveAiAccess, type AiAccess } from './policy.js';
 import { costOf, estimateTokens, type PriceTable, worstCaseCost } from './pricing.js';
 import { type AiChatMessage, type AiProvider, AiProviderError } from './providers/index.js';
@@ -65,6 +72,12 @@ import {
  *
  * Nothing here is held across the model call: the admission transaction has
  * committed before the provider is reached, and the settlement is its own.
+ *
+ * Some answers need no model at all (ADR-0002 D9–D12): a company whose policy
+ * says `library`, one this server cannot give model answers to, and every
+ * question while the provider is paused after a billing stop. Those are
+ * answered from the help library with the same admission, storage and
+ * settlement, but no money, no tokens and no share.
  */
 
 export interface AiServices {
@@ -139,16 +152,16 @@ export async function answerMessage(input: AnswerInput): Promise<AnswerOutput> {
   // The model of the level this member actually has, after every gate
   // (ADR-0002 D3). The level was already lowered to one the server has a
   // model for, so a missing one here is a configuration that changed under
-  // us: refuse rather than borrow another level's model.
-  const model = modelFor(access.level as AiModelLevel, config);
-  if (model === null) {
-    throw aiDisabled('provider_unconfigured');
-  }
+  // us: answer from the library rather than borrow another level's model.
   // A provider that said its credit is spent is not asked again until the
-  // pause ends; nothing is reserved meanwhile (ADR-0002 D8).
-  const paused = providerPausedFor(services.provider.id);
-  if (paused !== null) {
-    throw aiProviderUnavailable(paused);
+  // pause ends; the library answers meanwhile (D8, D11).
+  const model =
+    access.policy.answersFrom === 'model' ? modelFor(access.level as AiModelLevel, config) : null;
+  const paused = model === null ? null : providerPausedFor(services.provider.id);
+  if (model === null || paused !== null) {
+    return answerFromLibrary(input, access, message, {
+      guideOnlyForNow: access.policy.answersFrom === 'model',
+    });
   }
   const price = services.prices.priceFor(services.provider.id, model);
   const policy = access.policy;
@@ -157,9 +170,7 @@ export async function answerMessage(input: AnswerInput): Promise<AnswerOutput> {
     maxOutputTokens: policy.maxOutputTokens,
     maxProviderCalls: policy.maxProviderCalls,
   });
-  const fingerprint = createHash('sha256')
-    .update([principal.userId, input.conversationId, input.locale, message].join('\n'))
-    .digest('hex');
+  const fingerprint = fingerprintOf(input, message);
 
   const release = acquireSlot(principal, config);
   try {
@@ -177,25 +188,7 @@ export async function answerMessage(input: AnswerInput): Promise<AnswerOutput> {
     const now = new Date();
 
     if (admission.outcome === 'replay') {
-      const stored =
-        admission.reservation.responseMessageId === null
-          ? undefined
-          : await withTenant(principal.tenantId, (tx) =>
-              tx.aiConversations.findMessage(admission.reservation.responseMessageId ?? ''),
-            );
-      if (stored === undefined) {
-        throw aiProviderUnavailable();
-      }
-      return {
-        message: await withProposal(
-          principal.tenantId,
-          principal.userId,
-          toOutputMessage(stored),
-          stored.actionProposalId,
-        ),
-        allowance: await allowanceFor(input, access, now),
-        replayed: true,
-      };
+      return await replayAnswer(input, access, admission, now);
     }
 
     const reservation = admission.reservation;
@@ -330,6 +323,129 @@ export async function answerMessage(input: AnswerInput): Promise<AnswerOutput> {
   } finally {
     release();
   }
+}
+
+/**
+ * An answer from the help library, with no model (ADR-0002 D10). Admitted
+ * against the company's message limits only, with no cost and no share;
+ * stored and settled like any answer, so a retry replays it and the counters
+ * stay honest. `guideOnlyForNow` says so when the company would normally get
+ * model answers.
+ */
+async function answerFromLibrary(
+  input: AnswerInput,
+  access: AiAccess,
+  message: string,
+  options: { guideOnlyForNow: boolean },
+): Promise<AnswerOutput> {
+  const { principal, config, services } = input;
+  const release = acquireSlot(principal, config);
+  try {
+    const admission = await admitMessage({
+      principal,
+      conversationId: input.conversationId,
+      clientRequestId: input.clientRequestId,
+      requestFingerprint: fingerprintOf(input, message),
+      policy: access.policy,
+      sharePercent: access.sharePercent,
+      worstCaseCostMicrousd: 0,
+      library: true,
+      config,
+    });
+    if (admission.outcome === 'replay') {
+      return await replayAnswer(input, access, admission, new Date());
+    }
+    const reservation = admission.reservation;
+    const startedAt = Date.now();
+    await withTenant(principal.tenantId, async (tx) => {
+      await tx.aiConversations.appendMessage({
+        conversationId: input.conversationId,
+        userId: principal.userId,
+        role: 'user',
+        content: message,
+        usageReservationId: reservation.id,
+      });
+      await tx.aiConversations.setTitle(input.conversationId, message.slice(0, 80));
+    });
+
+    const features = await withTenant(principal.tenantId, (tx) => tx.featureFlags.resolved());
+    const references = await retrieveReferences(services.help, message, input.locale, {
+      principal,
+      features,
+    });
+    const { text, sources } = libraryAnswer(message, references, input.locale, options);
+    const stored = await withTenant(principal.tenantId, async (tx) => {
+      const answer = await tx.aiConversations.appendMessage({
+        conversationId: input.conversationId,
+        userId: null,
+        role: 'assistant',
+        content: text,
+        sourceRefs: sources,
+        toolSummaries: [],
+        actionProposalId: null,
+        usageReservationId: reservation.id,
+      });
+      await tx.aiConversations.touch(input.conversationId);
+      return answer;
+    });
+    await settleMessage({
+      tenantId: principal.tenantId,
+      reservationId: reservation.id,
+      outcome: 'completed',
+      responseMessageId: stored.id,
+      spentMicrousd: 0,
+    });
+    input.logger.info('ai.request.completed', {
+      tenantId: principal.tenantId,
+      reservationId: reservation.id,
+      answeredFrom: 'library',
+      durationMs: Date.now() - startedAt,
+      sources: sources.length,
+    });
+    return {
+      message: toOutputMessage(stored),
+      allowance: await allowanceFor(input, access, new Date()),
+      replayed: false,
+    };
+  } finally {
+    release();
+  }
+}
+
+/** A retried request whose answer is already stored: the same answer again, charged once. */
+async function replayAnswer(
+  input: AnswerInput,
+  access: AiAccess,
+  admission: Admission,
+  now: Date,
+): Promise<AnswerOutput> {
+  const { principal } = input;
+  const stored =
+    admission.reservation.responseMessageId === null
+      ? undefined
+      : await withTenant(principal.tenantId, (tx) =>
+          tx.aiConversations.findMessage(admission.reservation.responseMessageId ?? ''),
+        );
+  if (stored === undefined) {
+    throw aiProviderUnavailable();
+  }
+  return {
+    message: await withProposal(
+      principal.tenantId,
+      principal.userId,
+      toOutputMessage(stored),
+      stored.actionProposalId,
+    ),
+    allowance: await allowanceFor(input, access, now),
+    replayed: true,
+  };
+}
+
+/** Ties a client request to the question it asked, so a key reused for another question is refused. */
+function fingerprintOf(input: AnswerInput, message: string): string {
+  return createHash('sha256')
+    .update([input.principal.userId, input.conversationId, input.locale, message].join('\n'))
+    .digest('hex');
 }
 
 /**
@@ -626,6 +742,9 @@ async function allowanceFor(input: AnswerInput, access: AiAccess, now: Date): Pr
     messages: await tx.aiUsage.counters(input.principal.userId, periods),
     tokens: await tx.aiUsage.tokenCounters(input.principal.userId, periods),
   }));
+  if (access.policy.answersFrom === 'library') {
+    return libraryAllowance({ policy: access.policy, messages, now });
+  }
   return memberAllowance({
     policy: access.policy,
     sharePercent: access.sharePercent,
