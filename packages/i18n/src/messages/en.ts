@@ -6026,6 +6026,23 @@ export const en = {
       you: 'You',
       assistant: 'Assistant',
       sources: 'Sources',
+      // Voice (docs/ai §10.5): the phone's own recogniser and voices.
+      voice: {
+        speak: 'Speak your question',
+        stopListening: 'Stop listening',
+        listening: 'Listening…',
+        micBlocked:
+          'Allow the microphone and speech recognition in the phone’s settings to speak your question.',
+        unavailable: 'Voice is not available on this phone right now. Type your question instead.',
+        readAloud: 'Read answers aloud',
+        on: 'On',
+        off: 'Off',
+        stopReading: 'Stop reading',
+        readThis: 'Read this answer aloud',
+        hint: 'Answers can be read aloud. Turn it on here, and mute it again any time.',
+        turnOn: 'Turn on',
+        dismiss: 'Not now',
+      },
       proposal: {
         title: 'Proposed action',
         pending: 'Nothing happens until you confirm.',
@@ -6120,6 +6137,28 @@ export const en = {
       hint: 'Enter sends. Shift+Enter starts a new line.',
       counter: '{{used}} / {{max}}',
       send: 'Send',
+    },
+    // Voice (docs/ai §10.5; ADR-0002 D13–D14): the device's own recognition and
+    // voices. A spoken question reaches the server as text; audio never does.
+    voice: {
+      speak: 'Speak your question',
+      stopListening: 'Stop listening',
+      listening: 'Listening…',
+      micBlocked:
+        'The microphone is blocked for this site. Allow it from the address bar, then try again.',
+      unavailable: 'Voice is not available in this browser right now. Type your question instead.',
+      dictation: {
+        windows: 'Press Win+H and speak. Your words appear in the box.',
+        macos: 'Press the microphone key (or fn twice) and speak. Your words appear in the box.',
+      },
+      readAloud: 'Read answers aloud',
+      on: 'On',
+      off: 'Off',
+      stopReading: 'Stop reading',
+      readThis: 'Read this answer aloud',
+      hint: 'Answers can be read aloud. Turn it on here, and mute it again any time.',
+      turnOn: 'Turn on',
+      dismiss: 'Not now',
     },
     proposal: {
       title: 'A change the assistant prepared',

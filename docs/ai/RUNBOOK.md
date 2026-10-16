@@ -286,7 +286,43 @@ Arabic. Editing an article and deploying re-seeds it by content hash on API
 start; an article removed from the file is disabled, never cited again. No
 company data is ever indexed.
 
-## 9. Rolling back
+## 9. Voice
+
+Voice needs nothing on the server: no environment variable, no migration, no
+setting on a plan or a company (ADR-0002 D13–D14).
+
+- **Speaking a question** is offered to members of a company whose answers come
+  from a model. A company on the help library has no microphone button.
+- **Reading answers aloud** is offered to every company. It is off until the
+  member turns it on; a banner on their first visit says so.
+- **Where the audio goes.** Only text reaches Integr8 Plus. The spoken audio is
+  handled by the device's own recogniser: Google on Chrome and Android,
+  Microsoft on Edge and Windows dictation, Apple on iOS, Safari and macOS
+  dictation. Chrome 139 and later keeps recognition on the device for the
+  languages it has a model for. Tell a company that asks.
+- **Desktop app.** Its web view has no recogniser, so the button points at the
+  operating system's dictation: **Win+H** on Windows, the **microphone key** (or
+  fn twice) on macOS. Linux has none and shows no microphone. Arabic dictation on
+  Windows needs the Arabic language pack installed.
+- **Phone.** The first tap asks for the microphone and, on iOS, speech
+  recognition. A phone must run a build that includes the feature: rebuild and
+  reinstall each company's phone app (setup checklist, Stage 8).
+
+**Checking it by hand** (CI uses fake recognisers and voices, so no automated
+test hears a real microphone). On a company answered by a model:
+
+1. Website in Chrome: tap **Speak your question**, say a question, see the words
+   appear in the box, send. Block the microphone in the address bar and see the
+   message that says so.
+2. Website in Firefox: no microphone button, the text box works.
+3. Desktop app on Windows and on a Mac: **Speak your question** focuses the box
+   and shows the key to press; the key types what you say.
+4. Phone: allow the permissions, speak, see the words, send. Repeat in Arabic.
+5. Every app: turn **Read answers aloud** on, ask, hear the answer; mute and see
+   it stop; reopen the screen and see the choice kept.
+6. A library company: no microphone, but **Read answers aloud** works.
+
+## 10. Rolling back
 
 - **The provider**: set `AI_PROVIDER` back (for example to `groq`) with that
   provider's key and models, and restart the API and the worker. Nothing else
@@ -299,3 +335,5 @@ company data is ever indexed.
   ignores the column, and every policy keeps its meaning.
 - **No AI at all**: `AI_PROVIDER=none` and restart; companies keep a working
   assistant on the help library while you sort the provider out.
+- **Voice**: nothing to undo on the server. Deploying the previous release
+  removes the buttons; the stored choice on each device is ignored.

@@ -1,10 +1,11 @@
 import { useTranslation } from '@integr8/i18n';
-import { spacing } from '@integr8/tokens';
+import { radii, spacing } from '@integr8/tokens';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AllowanceLine, AssistantOffline, MessageBubble } from '~/components/assistant';
+import { useReadAloud, useSpokenQuestion } from '~/components/voice';
 import { onlineFailureMessage, OnlineStatus } from '~/components/online';
 import {
   BackButton,
@@ -25,6 +26,7 @@ import {
 } from '~/lib/assistant';
 import { formatWhen } from '~/lib/format';
 import { useNow } from '~/lib/use-now';
+import { canSpeakQuestions, speechLanguage } from '~/lib/voice';
 import {
   type AiMessage,
   type AiProposal,
@@ -66,6 +68,16 @@ export default function ConversationScreen() {
   const [refusedUntil, setRefusedUntil] = useState<string | null>(null);
   const now = useNow(30_000);
   const list = useRef<FlatList<AiMessage>>(null);
+  // The assistant speaks and listens in the app's language (docs/ai §10.5).
+  const lang = speechLanguage(assistantLocale(i18n.language));
+  const readAloud = useReadAloud({ lang });
+  const spoken = useSpokenQuestion({
+    lang,
+    text,
+    // Only where a model answers; the library's companies keep the text box alone.
+    enabled: state.status === 'ready' && canSpeakQuestions(state.data.capabilities.answerSource),
+    onText: setText,
+  });
 
   const onProposalChange = useCallback((proposal: AiProposal) => {
     setLocal((current) => ({
@@ -157,6 +169,8 @@ export default function ConversationScreen() {
     // The same question again is the same request: one key, one answer, one charge.
     const key = attempt !== null && attempt.text === question ? attempt.key : newIdempotencyKey();
     setAttempt({ key, text: question });
+    spoken.stop();
+    readAloud.stop();
     setSending(true);
     setSendError(null);
     sendAiMessage({
@@ -173,6 +187,9 @@ export default function ConversationScreen() {
         }));
         setText('');
         setAttempt(null);
+        if (readAloud.enabled) {
+          readAloud.speak(answer.message.id, answer.message.text);
+        }
       })
       .catch((error: unknown) => {
         const resetsAt = quotaResetsAt(error);
@@ -197,12 +214,59 @@ export default function ConversationScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {header(conversation.title, capabilities.level, allowance)}
+      {readAloud.supported ? (
+        <View
+          style={[
+            styles.voiceBar,
+            { backgroundColor: theme.surface, borderBottomColor: theme.border },
+          ]}
+        >
+          {readAloud.hintShown ? (
+            <View
+              accessibilityRole="summary"
+              style={[
+                styles.hint,
+                { borderColor: theme.accent, backgroundColor: theme.surfaceMuted },
+              ]}
+            >
+              <Body>{t('mobile.ai.voice.hint')}</Body>
+              <View style={styles.voiceRow}>
+                <Button
+                  label={t('mobile.ai.voice.turnOn')}
+                  onPress={() => readAloud.setEnabled(true)}
+                />
+                <Button
+                  label={t('mobile.ai.voice.dismiss')}
+                  variant="secondary"
+                  onPress={() => readAloud.dismissHint()}
+                />
+              </View>
+            </View>
+          ) : null}
+          <View style={styles.voiceRow}>
+            <Button
+              label={`${t('mobile.ai.voice.readAloud')}: ${
+                readAloud.enabled ? t('mobile.ai.voice.on') : t('mobile.ai.voice.off')
+              }`}
+              variant="secondary"
+              onPress={() => readAloud.setEnabled(!readAloud.enabled)}
+            />
+            {readAloud.speakingId === null ? null : (
+              <Button
+                label={t('mobile.ai.voice.stopReading')}
+                variant="secondary"
+                onPress={() => readAloud.stop()}
+              />
+            )}
+          </View>
+        </View>
+      ) : null}
       <FlatList
         ref={list}
         data={shown}
         keyExtractor={(message) => message.id}
         renderItem={({ item }) => (
-          <MessageBubble message={item} onProposalChange={onProposalChange} />
+          <MessageBubble message={item} onProposalChange={onProposalChange} readAloud={readAloud} />
         )}
         style={styles.grow}
         contentContainerStyle={styles.thread}
@@ -237,6 +301,14 @@ export default function ConversationScreen() {
           editable={!sending && blocked === null}
           error={sendError ?? undefined}
         />
+        {spoken.listening ? <Body muted>{t('mobile.ai.voice.listening')}</Body> : null}
+        {spoken.problem === null ? null : (
+          <Body muted>
+            {spoken.problem === 'blocked'
+              ? t('mobile.ai.voice.micBlocked')
+              : t('mobile.ai.voice.unavailable')}
+          </Body>
+        )}
         <View style={styles.sendRow}>
           <Body muted>
             {t('mobile.ai.counter', {
@@ -244,6 +316,16 @@ export default function ConversationScreen() {
               max: number.format(MAX_QUESTION_CHARS),
             })}
           </Body>
+          {spoken.supported ? (
+            <Button
+              label={
+                spoken.listening ? t('mobile.ai.voice.stopListening') : t('mobile.ai.voice.speak')
+              }
+              variant="secondary"
+              disabled={sending || blocked !== null}
+              onPress={() => (spoken.listening ? spoken.stop() : spoken.start())}
+            />
+          ) : null}
           <Button
             label={sending ? t('mobile.ai.sending') : t('mobile.ai.send')}
             busy={sending}
@@ -296,5 +378,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3],
   },
-  sendRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sendRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing[2],
+  },
+  voiceBar: {
+    gap: spacing[2],
+    borderBottomWidth: 1,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+  },
+  voiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
+  hint: {
+    gap: spacing[2],
+    borderWidth: 2,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[3],
+  },
 });

@@ -8,6 +8,7 @@ import { onlineFailureMessage } from '~/components/online';
 import { Badge, Body, Button, Detail, EmptyState, useTheme } from '~/components/ui';
 import { type Allowance, allowanceLine, screenForAppRoute } from '~/lib/assistant';
 import { formatDuration, formatWhen } from '~/lib/format';
+import type { ReadAloud } from '~/components/voice';
 import { useNow } from '~/lib/use-now';
 import {
   confirmAiAction,
@@ -67,9 +68,12 @@ export function AllowanceLine({ allowance }: { allowance: Allowance }) {
 export function MessageBubble({
   message,
   onProposalChange,
+  readAloud,
 }: {
   message: AiMessage;
   onProposalChange: (proposal: AiProposal) => void;
+  /** Reading aloud, when the phone can; an answer then offers to be read on demand. */
+  readAloud?: ReadAloud | undefined;
 }) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -98,6 +102,24 @@ export function MessageBubble({
     >
       {message.text === '' ? null : (
         <Text style={[styles.text, { color: theme.text }]}>{message.text}</Text>
+      )}
+      {readAloud?.supported !== true || message.text === '' ? null : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: readAloud.speakingId === message.id }}
+          onPress={() =>
+            readAloud.speakingId === message.id
+              ? readAloud.stop()
+              : readAloud.speak(message.id, message.text)
+          }
+          style={({ pressed }) => [styles.readThis, { opacity: pressed ? 0.7 : 1 }]}
+        >
+          <Text style={[styles.chipLabel, { color: theme.accent }]}>
+            {readAloud.speakingId === message.id
+              ? t('mobile.ai.voice.stopReading')
+              : t('mobile.ai.voice.readThis')}
+          </Text>
+        </Pressable>
       )}
       {message.toolSummaries.map((summary, index) => (
         <Text key={index} style={[styles.toolSummary, { color: theme.textMuted }]}>
@@ -343,6 +365,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[1],
   },
   chipLabel: { fontSize: fontSize.xs, fontWeight: '600' },
+  readThis: { alignSelf: 'flex-start', paddingVertical: spacing[1] },
   proposal: {
     gap: spacing[2],
     borderWidth: 1,

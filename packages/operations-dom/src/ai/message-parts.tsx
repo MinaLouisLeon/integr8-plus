@@ -1,9 +1,10 @@
 import { apiErrorCodeMessage, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { type AiMessage, type AiProposal, type AiProposalState, useOperations } from '../api.js';
 import { buttonClass, Failure } from '../ui.js';
 import { appRoutePath, recordPath } from './routes.js';
+import { ReadAloudContext } from './voice.js';
 
 /**
  * One message of a conversation, as the person reads it (docs/ai §10.1).
@@ -22,6 +23,7 @@ export function MessageItem({
   onProposalChange: (proposal: AiProposal) => void;
 }) {
   const { t } = useTranslation();
+  const readAloud = useContext(ReadAloudContext);
   if (message.role === 'tool_summary') {
     return (
       <li className="self-start text-xs text-content-muted italic" dir="auto">
@@ -30,6 +32,9 @@ export function MessageItem({
     );
   }
   const mine = message.role === 'user';
+  // An answer can be read aloud on demand, whatever the switch says (docs/ai §10.5).
+  const readable = !mine && readAloud?.supported === true && message.text.trim() !== '';
+  const reading = readAloud?.speakingId === message.id;
   return (
     <li
       className={`flex max-w-[85%] flex-col gap-2 ${mine ? 'self-end items-end' : 'self-start items-start'}`}
@@ -43,6 +48,16 @@ export function MessageItem({
       >
         {message.text}
       </div>
+      {readable ? (
+        <button
+          type="button"
+          className={`${buttonClass.ghost} text-xs`}
+          aria-pressed={reading}
+          onClick={() => (reading ? readAloud.stop() : readAloud.speak(message.id, message.text))}
+        >
+          {reading ? t('ai.voice.stopReading') : t('ai.voice.readThis')}
+        </button>
+      ) : null}
       {message.toolSummaries.length > 0 ? <ToolSummaries message={message} /> : null}
       {message.sources.length > 0 ? <Sources message={message} /> : null}
       {message.actionProposal === null ? null : (

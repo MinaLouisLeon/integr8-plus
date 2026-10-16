@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AiCapabilities, AiConversation, AiMessage, AiProposal } from '../api.js';
 import { accessibilityViolations, apiError, fakeApi, renderScreen } from '../testing/render.js';
 import { AssistantScreen } from './assistant-screen.js';
@@ -341,5 +341,268 @@ describe('AssistantScreen', () => {
     // Nothing in the refusal's words or the screen's gives a count away.
     expect(screen.queryByText(/token/iu)).not.toBeInTheDocument();
     expect(calls.filter((call) => call.method === 'POST')).toHaveLength(1);
+  });
+});
+
+/* ------------------------------------------------------------------------ */
+/* Voice (docs/ai §10.5): the device's own recogniser and voices, faked here. */
+/* ------------------------------------------------------------------------ */
+
+class FakeRecognition {
+  static last: FakeRecognition | null = null;
+  lang = '';
+  interimResults = false;
+  continuous = false;
+  onresult: ((event: unknown) => void) | null = null;
+  onerror: ((event: { error?: string }) => void) | null = null;
+  onend: (() => void) | null = null;
+  started = false;
+  constructor() {
+    FakeRecognition.last = this;
+  }
+  start() {
+    this.started = true;
+  }
+  stop() {
+    this.onend?.();
+  }
+  abort() {
+    this.onend?.();
+  }
+  hear(text: string, isFinal: boolean) {
+    this.onresult?.({
+      resultIndex: 0,
+      results: [Object.assign([{ transcript: text }], { isFinal })],
+    });
+  }
+}
+
+class FakeUtterance {
+  lang = '';
+  onend: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  constructor(public text: string) {}
+}
+
+function installVoice(options: { recognition?: boolean; synthesis?: boolean } = {}) {
+  const spoken: FakeUtterance[] = [];
+  const cancel = vi.fn();
+  const scope = window as unknown as Record<string, unknown>;
+  if (options.recognition !== false) {
+    scope.SpeechRecognition = FakeRecognition;
+  }
+  if (options.synthesis !== false) {
+    scope.speechSynthesis = { speak: (u: FakeUtterance) => spoken.push(u), cancel };
+    scope.SpeechSynthesisUtterance = FakeUtterance;
+  }
+  return { spoken, cancel };
+}
+
+function removeVoice() {
+  const scope = window as unknown as Record<string, unknown>;
+  delete scope.SpeechRecognition;
+  delete scope.webkitSpeechRecognition;
+  delete scope.speechSynthesis;
+  delete scope.SpeechSynthesisUtterance;
+  FakeRecognition.last = null;
+  try {
+    window.localStorage.clear();
+  } catch {
+    // jsdom without storage: nothing to clear.
+  }
+}
+
+describe('AssistantScreen voice', () => {
+  beforeEach(removeVoice);
+  afterEach(removeVoice);
+
+  function modelApi(answerSource: 'model' | 'library' = 'model') {
+    return fakeApi({
+      'GET /v1/ai/capabilities': () => ({ body: capabilities({ answerSource }) }),
+      'GET /v1/ai/conversations': () => ({ body: { items: [conversation] } }),
+      'GET /v1/ai/conversations/:id': () => ({ body: { conversation, messages: [] } }),
+      'POST /v1/ai/conversations/:id/messages': () => ({
+        body: { message: message(), allowance: allowance(58), replayed: false },
+      }),
+    });
+  }
+
+  it('puts the spoken words in the box and leaves sending to the person', async () => {
+    installVoice();
+    const { client, calls } = modelApi();
+    renderScreen(<AssistantScreen />, client);
+    const user = await openConversation([]);
+
+    await user.click(screen.getByRole('button', { name: 'Speak your question' }));
+    expect(FakeRecognition.last?.started).toBe(true);
+    expect(FakeRecognition.last?.lang).toBe('en-GB');
+    expect(await screen.findByText('Listening…')).toBeInTheDocument();
+
+    FakeRecognition.last!.hear('How do I', false);
+    await waitFor(() => expect(screen.getByLabelText('Your question')).toHaveValue('How do I'));
+    FakeRecognition.last!.hear('How do I add a job', true);
+    await waitFor(() =>
+      expect(screen.getByLabelText('Your question')).toHaveValue('How do I add a job'),
+    );
+    // Nothing was sent by speaking.
+    expect(calls.some((call) => call.method === 'POST')).toBe(false);
+  });
+
+  it('keeps what was already typed and adds the spoken words after it', async () => {
+    installVoice();
+    const { client } = modelApi();
+    renderScreen(<AssistantScreen />, client);
+    const user = await openConversation([]);
+
+    await user.type(screen.getByLabelText('Your question'), 'Quick one:');
+    await user.click(screen.getByRole('button', { name: 'Speak your question' }));
+    FakeRecognition.last!.hear('count the boilers', true);
+    await waitFor(() =>
+      expect(screen.getByLabelText('Your question')).toHaveValue('Quick one: count the boilers'),
+    );
+  });
+
+  it('says so, in words, when the microphone is blocked', async () => {
+    installVoice();
+    const { client } = modelApi();
+    renderScreen(<AssistantScreen />, client);
+    const user = await openConversation([]);
+
+    await user.click(screen.getByRole('button', { name: 'Speak your question' }));
+    FakeRecognition.last!.onerror?.({ error: 'not-allowed' });
+    expect(await screen.findByRole('alert')).toHaveTextContent(/microphone is blocked/u);
+  });
+
+  it('shows no microphone to a company answered from the library, or where the browser has none', async () => {
+    installVoice();
+    const { client } = modelApi('library');
+    const { unmount } = renderScreen(<AssistantScreen />, client);
+    await openConversation([]);
+    expect(screen.queryByRole('button', { name: 'Speak your question' })).not.toBeInTheDocument();
+    unmount();
+
+    removeVoice();
+    installVoice({ recognition: false });
+    const { client: model } = modelApi('model');
+    renderScreen(<AssistantScreen />, model);
+    await openConversation([]);
+    expect(screen.queryByRole('button', { name: 'Speak your question' })).not.toBeInTheDocument();
+  });
+
+  it('points the desktop app at the operating system’s dictation instead of listening itself', async () => {
+    installVoice();
+    const { client } = modelApi();
+    renderScreen(<AssistantScreen />, client, { voiceInput: { kind: 'dictation', os: 'windows' } });
+    const user = await openConversation([]);
+
+    await user.click(screen.getByRole('button', { name: 'Speak your question' }));
+    expect(FakeRecognition.last).toBeNull();
+    expect(screen.getByLabelText('Your question')).toHaveFocus();
+    expect(screen.getByText(/Press Win\+H and speak/u)).toBeInTheDocument();
+  });
+
+  it('offers no microphone on a desktop with no dictation (Linux)', async () => {
+    installVoice();
+    const { client } = modelApi();
+    renderScreen(<AssistantScreen />, client, { voiceInput: { kind: 'none' } });
+    await openConversation([]);
+    expect(screen.queryByRole('button', { name: 'Speak your question' })).not.toBeInTheDocument();
+  });
+
+  it('starts with reading aloud off, says so loudly, and reads nothing until it is turned on', async () => {
+    const { spoken } = installVoice();
+    const { client } = modelApi();
+    renderScreen(<AssistantScreen />, client);
+    const user = await openConversation([]);
+
+    expect(screen.getByRole('note')).toHaveTextContent(/Answers can be read aloud/u);
+    const toggle = screen.getByRole('button', { name: /^Read answers aloud/u });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    await user.type(screen.getByLabelText('Your question'), 'How do I add a job?{Enter}');
+    await screen.findByText('Open Work orders and choose New.');
+    expect(spoken).toHaveLength(0);
+  });
+
+  it('reads each answer as it arrives once turned on, remembers the choice, and the mute stops it', async () => {
+    const { spoken, cancel } = installVoice();
+    const { client } = modelApi();
+    const { unmount } = renderScreen(<AssistantScreen />, client);
+    const user = await openConversation([]);
+
+    await user.click(screen.getByRole('button', { name: 'Turn on' }));
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Read answers aloud/u })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await user.type(screen.getByLabelText('Your question'), 'How do I add a job?{Enter}');
+    await screen.findByText('Open Work orders and choose New.');
+    expect(spoken).toHaveLength(1);
+    expect(spoken[0]?.text).toBe('Open Work orders and choose New.');
+    expect(spoken[0]?.lang).toBe('en-GB');
+    // One stop in the header and one under the answer being read.
+    expect(screen.getAllByRole('button', { name: 'Stop reading' })).toHaveLength(2);
+
+    // The mute silences what is being read and turns the switch off.
+    await user.click(screen.getByRole('button', { name: /^Read answers aloud/u }));
+    expect(cancel).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /^Read answers aloud/u })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    unmount();
+
+    // Muted stays muted on the next visit, and the hint has been dealt with.
+    renderScreen(<AssistantScreen />, client);
+    await openConversation([]);
+    expect(screen.getByRole('button', { name: /^Read answers aloud/u })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
+  });
+
+  it('reads an answer on demand even while muted, for a library company too', async () => {
+    const { spoken } = installVoice();
+    const answered = message();
+    const { client } = fakeApi({
+      'GET /v1/ai/capabilities': () => ({ body: capabilities({ answerSource: 'library' }) }),
+      'GET /v1/ai/conversations': () => ({ body: { items: [conversation] } }),
+      'GET /v1/ai/conversations/:id': () => ({
+        body: { conversation, messages: [answered] },
+      }),
+    });
+    renderScreen(<AssistantScreen />, client);
+    const user = await openConversation([answered]);
+
+    expect(screen.queryByRole('button', { name: 'Speak your question' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Read this answer aloud' }));
+    expect(spoken).toHaveLength(1);
+    expect(spoken[0]?.text).toBe('Open Work orders and choose New.');
+  });
+
+  it('speaks Arabic to an Arabic member', async () => {
+    const { spoken } = installVoice();
+    const answered = message({ text: 'افتح أوامر العمل.' });
+    const { client } = fakeApi({
+      'GET /v1/ai/capabilities': () => ({ body: capabilities() }),
+      'GET /v1/ai/conversations': () => ({ body: { items: [conversation] } }),
+      'GET /v1/ai/conversations/:id': () => ({ body: { conversation, messages: [answered] } }),
+    });
+    renderScreen(<AssistantScreen />, client, { locale: 'ar' });
+    const user = await openConversation([answered]);
+    await user.click(screen.getByRole('button', { name: 'قراءة هذه الإجابة بصوت عالٍ' }));
+    expect(spoken[0]?.lang).toBe('ar-EG');
+  });
+
+  it('shows nothing about reading where the machine has no voices', async () => {
+    installVoice({ synthesis: false });
+    const { client } = modelApi();
+    renderScreen(<AssistantScreen />, client);
+    await openConversation([]);
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Read answers aloud/u })).not.toBeInTheDocument();
   });
 });

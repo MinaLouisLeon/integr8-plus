@@ -98,3 +98,4 @@ export { MyPayslipsScreen } from './payroll/my-payslips.js';
 export { PayslipDocument } from './payroll/payslip.js';
 export { PayTermsSection } from './payroll/pay-terms.js';
 export { AssistantScreen } from './ai/assistant-screen.js';
+export type { VoiceInput } from './ai/voice.js';

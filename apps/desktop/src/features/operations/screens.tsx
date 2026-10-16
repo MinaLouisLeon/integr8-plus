@@ -88,6 +88,7 @@ import { useContextMenu } from '~/components/context-menu';
 import { useCustomerChrome, useSiteChrome, useWorkOrderChrome } from '~/components/record-chrome';
 import { MAP_TILES } from '~/lib/env';
 import { session } from '~/lib/session';
+import { desktopVoiceInput } from '~/lib/voice';
 
 /**
  * Customers, sites, job types, work orders and imports, hosted by the desktop
@@ -196,6 +197,9 @@ function OperationsScreens({ children }: { children: ReactNode }) {
       },
       download: saveFile,
       ...(MAP_TILES === undefined ? {} : { mapTiles: MAP_TILES }),
+      // In the Tauri window a spoken question comes from the operating
+      // system's dictation; a browser tab keeps the browser's recogniser.
+      ...(VOICE_INPUT === undefined ? {} : { voiceInput: VOICE_INPUT }),
       // Right-click on a row offers that row's own actions, in the desktop
       // window only; a browser tab keeps its own menu.
       ...(menu.enabled
@@ -212,6 +216,9 @@ function OperationsScreens({ children }: { children: ReactNode }) {
     </OperationsContext.Provider>
   );
 }
+
+/** Fixed for the life of the window: which dictation, if any, types a spoken question. */
+const VOICE_INPUT = desktopVoiceInput();
 
 function saveFile(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
