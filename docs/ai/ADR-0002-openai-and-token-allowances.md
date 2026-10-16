@@ -163,3 +163,58 @@ no automatic switch to another provider, and every other module keeps working.
   counts are replaced by percentages. The web, desktop and mobile clients in this
   repository move with them.
 - After deployment, staff need a percentage before the assistant works for them.
+
+## Addendum, 16 October 2026: answers without a model
+
+Decided with the owner on 16 October 2026, after the OpenAI work merged.
+Plan and status: [`HELP_LIBRARY_MODE_PLAN.md`](./HELP_LIBRARY_MODE_PLAN.md).
+
+### D9. Each policy says where answers come from
+
+Plan and company policies gain one field, `answerSource`: `model` (the default,
+and what every existing policy means) or `library`. Only the platform sets it,
+on a plan or on a company's custom policy, with the same audit, version check
+and thirty-second refresh as every other policy field. A write that leaves the
+field out keeps what is stored, so an older dashboard cannot change it.
+
+### D10. A library answer is the help library itself, with no model
+
+A `library` answer is built in the API from the articles the existing lexical
+retrieval finds for the question: the best article's title and summary, the
+paragraph of its body that shares most words with the question, and the
+articles found as sources with their screen links. No provider is called, so
+there are no tokens, no cost, no deployment budget, no company cost cap and no
+member dollar cap; the credit pause never applies. The question still counts
+against the company's message limits, which are the plan's to set. Library
+answers serve Help only: a policy at Insights or Agent with `library` runs at
+Help. Members need only their own switch: **no share is required**, because
+shares divide something that costs money, and a member's share is ignored
+while answers come from the library. Unlimited messages need no cost cap
+under `library`, since nothing is spent.
+
+### D11. Model answers fall back to the library rather than fail
+
+A company whose policy says `model` gets library answers whenever the server
+cannot give it model answers: no provider (D12), a missing key or Help model,
+or the fake provider in production. It then runs at Help, the platform sees
+why, and members are not told "temporarily unavailable". While the provider is
+paused after a billing stop (D8), every question is answered from the library
+with a line saying only the help guide can answer for now; the company keeps
+its level, and model answers resume when the pause ends.
+
+### D12. `AI_PROVIDER=none`
+
+A sixth value for a server with no AI provider at all. It is valid in
+production and raises no problem; every company is answered from the library
+whatever its policy says, and the platform's provider panel says "None (help
+library only)". `recording` keeps its production warning: it is a test double,
+not a way to run without AI. `AI_ENABLED` remains the switch that shows the
+assistant at all.
+
+### Consequences of D9–D12
+
+- One additive migration (`0047_ai_answer_source`): the column on both policy
+  tables, defaulting to `model`, and the policy consistency checks relaxed for
+  unlimited messages under `library`.
+- The capabilities response gains `answerSource`; the platform's effective
+  policy says where answers come from and why.
