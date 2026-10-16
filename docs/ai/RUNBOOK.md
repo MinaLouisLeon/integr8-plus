@@ -98,6 +98,18 @@ call after the pause, or a restart, resumes model answers.
 the configured prices: it is not the OpenAI balance, and either can run out
 first.
 
+#### 2.1a Anthropic (Claude)
+
+The adapter sends no sampling parameter, so the current Claude models
+(`claude-haiku-5-5`, `claude-sonnet-5-5`, `claude-opus-5-5`) and the older
+ones (`claude-haiku-4-5`, `claude-sonnet-4-6`) all work. The 5.x models think
+by default, and their thinking counts against the policy's **Max output
+tokens**: set `AI_ANTHROPIC_EFFORT=low` and give the plan room, for example
+1,500 output tokens. Leave the effort unset for Claude Haiku 4.5, which refuses
+it. A turn that asked for tools is sent back exactly as Claude returned it,
+thinking blocks included, which the API requires. Check the model ids and the
+prices on Anthropic's own pages before writing `AI_MODEL_PRICES`.
+
 #### 2.2 Without AI: the help library
 
 The assistant can answer with no model at all (ADR-0002 D9–D12). A **library

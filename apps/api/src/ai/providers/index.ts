@@ -85,6 +85,7 @@ export function buildAiProvider(config: ApiConfig): AiProvider {
       return new AnthropicAiProvider({
         apiKey: config.AI_ANTHROPIC_API_KEY ?? '',
         baseUrl: config.AI_ANTHROPIC_BASE_URL,
+        effort: config.AI_ANTHROPIC_EFFORT,
       });
     case 'openai':
       return new OpenAiProvider({

@@ -269,6 +269,13 @@ export const apiConfigSchema = z.object({
     .enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
     .optional(),
   /**
+   * Sent to Anthropic as `output_config.effort` when set, and not sent when
+   * unset. Claude's 5.x models think by default and their thinking counts
+   * against the output bound, so `low` keeps answers inside it; the older
+   * models that refuse the parameter (Haiku 4.5) need it left unset.
+   */
+  AI_ANTHROPIC_EFFORT: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(),
+  /**
    * How long this process stops asking the provider after it said the
    * account's credit is spent (ADR-0002 D8). Questions are answered from the
    * help library meanwhile (D11); nothing else is affected.
