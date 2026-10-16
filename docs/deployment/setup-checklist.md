@@ -9,6 +9,9 @@ Stage 0 creates every account and collects every key and secret before anything 
 > [!WARNING]
 > **Destroying the Oracle machine and building a new one?** Start at [Stage 14](#stage-14--destroy-the-oracle-machine-or-empty-it-and-keep-it): it says what to save before the machine goes, which stages to redo on the new one, and which of Stage 0's accounts and keys carry over unchanged.
 
+> [!NOTE]
+> **New: the AI assistant, with or without AI.** It is off until you turn it on. Each company answers either with an **AI model** from the one provider the server uses (OpenAI, Groq, Google Gemini or Anthropic) or from the **help library**, with no AI, no key and no cost; you choose per plan or per company. The steps are spread through the stages where they belong: [Stage 0, Part M](#m-the-ai-assistant-a-provider-or-none) (choosing a provider, or none, and its key), [Stage 3](#stage-3--the-env-file-filled-once-from-the-key-sheet) (the server's settings), [Stage 5](#the-ai-assistant-is-the-server-ready-and-what-does-each-plan-allow) (what each plan allows, and where answers come from), [Stage 7](#the-ai-assistant-for-this-company) (a company's apps, and each person's percentage share) and [Stage 12](#j-this-update-bringing-the-ai-assistant-to-a-machine-that-runs-110) (getting it onto a running machine and into the apps). AI answers need a **share** per person; help-library answers do not. **Voice** needs nothing on the server: members can speak a question (AI-model companies) and have answers read aloud (every company), with the device's own speech tools; the steps are in Stage 7 (try it) and Stage 8 (the phone apps need a rebuild).
+
 > [!TIP]
 > GitHub shows the boxes below but does not let you tick them in a file. To track your progress, copy a stage into an issue (checkboxes there can be ticked), or open the interactive page described in the [last section](#about-this-page).
 
@@ -170,7 +173,7 @@ The phone app is built by Expo's build service, told to start by GitHub. Nothing
 
 GitHub builds the server images, the desktop installers and (through Expo) the phone app. Three things to do, all on the website. The repository is public, so the build minutes are free, including macOS.
 
-- [ ] **Nothing to merge.** Every branch this guide used to ask for is in `main`, and `main` is version **1.1.0**: the dashboard shell and Arabic, staff sign-in, company branding and per-company app builds, the CRM, sales, finance, general ledger, inventory and purchasing, assets, HR and payroll, manufacturing, company roles, and serial and batch tracking. Use `main` as it is.
+- [ ] **Nothing to merge.** Every branch this guide used to ask for is in `main`, and `main` is version **1.1.0**: the dashboard shell and Arabic, staff sign-in, company branding and per-company app builds, the CRM, sales, finance, general ledger, inventory and purchasing, assets, HR and payroll, manufacturing, company roles, serial and batch tracking, and the **AI assistant** (pull requests 94 and 96: Help, Insights and Agent levels, the OpenAI provider, token allowances and each person's percentage share). Use `main` as it is. The assistant arrived without a version bump, so the `v1.1.0` installers do not have it; the next version (Stage 12, [part J](#j-this-update-bringing-the-ai-assistant-to-a-machine-that-runs-110)) puts it into the apps.
 - [ ] **Put the Expo Project ID into the repository.** Open `apps/mobile/app.config.ts` on GitHub, click the pencil, replace the placeholder id in **both** places shown below (the file is TypeScript now, the two values look the same), choose "Create a new branch and start a pull request", and merge it to `main`.
 
 ```text
@@ -197,34 +200,90 @@ GitHub builds the server images, the desktop installers and (through Expo) the p
 - [ ] **A second set of generated secrets** (Part B again): three passwords and four keys. A token minted by the test box must not be valid on production, which is what sharing the signing keys would allow.
 - [ ] **A Cloudflare Tunnel**: Cloudflare → **Zero Trust** (free) → Networks → **Tunnels** → Create a tunnel → Cloudflared → name `integr8-test` → on the install step choose **Docker** and copy the token from the command shown. Add two public hostnames: `test.integr8-media.com` → HTTP `localhost:3001`, `api-test.integr8-media.com` → HTTP `localhost:3000`. Cloudflare creates the DNS records. Key sheet: tunnel token.
 
+### M. The AI assistant: a provider, or none
+
+The assistant answers inside the web, desktop and phone apps at three levels: **Help** (how to use Integr8 Plus), **Insights** (Help, plus reading the company's own records, such as "how many open jobs?") and **Agent** (Insights, plus preparing a change, such as a new customer, that a person confirms before it is made). The server talks to **at most one** AI provider, the one named in `AI_PROVIDER`; there is no automatic switch to another. Pick one of the five below and do only its part. Skip all of this if you are not turning the assistant on yet: everything else works without it.
+
+| Choice                  | Setting     | What you need                                 | Good for                                                                                            |
+| ----------------------- | ----------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| No AI: the help library | `none`      | Nothing: no account, key, model or price list | Starting out, or companies that pay for no AI. Help only; answers are the help guide's own articles |
+| OpenAI                  | `openai`    | Part M2                                       | All three levels; the guide's default example (`gpt-6-luna`)                                        |
+| Groq                    | `groq`      | Part M3                                       | Very fast, low-cost open models; has a free tier                                                    |
+| Google Gemini           | `gemini`    | Part M4                                       | Low-cost Flash models; has a free tier                                                              |
+| Anthropic (Claude)      | `anthropic` | Part M5                                       | Careful answers and tool use; works with the current Claude 5.x models (M5)                         |
+
+> [!NOTE]
+> **Whichever you pick**, you will write down the same four things for the key sheet: the provider's **API key**; a **model id** for each level (the same one three times is fine; a level with no model is not served, and companies above it get the highest level that has one); each model's **price per million tokens** for input and output (and cached input, where the provider has one); and Integr8's own **monthly ceiling** for the deployment in US dollars (`AI_GLOBAL_MONTHLY_BUDGET_MICROUSD`, written in micros: dollars × 1,000,000, so 5 dollars is `5000000`). The example model ids and prices below come from the providers' pages and third-party price lists in October 2026; model names and prices change without notice, so copy the exact id and today's price from the provider's own **Models** and **Pricing** pages.
+
+#### M1. No AI: the help library only
+
+- [ ] **Nothing to sign up for.** In Stage 3 the server gets `AI_ENABLED=true` and `AI_PROVIDER=none`, and every company is answered from the help library whatever its plan says: the best-matching help article's title, summary and closest paragraph, with links to up to three articles. No tokens, no money, no shares; the company's message limits still count. You can add a real provider later without changing anything for the companies, then move plans to AI answers one by one (Stage 5).
+
+#### M2. OpenAI
+
+- [ ] **Create the account** at `platform.openai.com` with `info@integr8-media.com`, as an organisation (Integr8 Media). This is the developer platform, billed separately from any ChatGPT subscription.
+- [ ] **A project for this deployment**: the project picker (top left) → **Create project**, named `integr8-production`. Keys, limits and usage are then this deployment's alone.
+- [ ] **Prepaid credit**: Settings → **Billing** → add a payment method and buy credit (start small, for example $10). Turn **auto recharge** off while you learn how much the companies use. When the credit runs out the assistant pauses on its own (Stage 5) and nothing else in the product is affected.
+- [ ] **Limits and alerts**: Settings → **Limits** (organisation and the project): a monthly budget and an email alert at, say, 50% and 80%. Integr8 cannot read your OpenAI balance; these emails are how you hear it is low.
+- [ ] **Create the API key**: the project → **API keys** → **Create new secret key**, named `integr8-production`, owned by the project, permissions **All**. Copy it (`sk-proj-…`, shown once). Key sheet: `AI_OPENAI_API_KEY`.
+- [ ] **Model and prices**: the example is `gpt-6-luna` for all three levels at $0.10 input, $0.01 cached input and $0.50 output per million tokens (search results, 15 October 2026; confirm on OpenAI's Models and Pricing pages, including that the model supports tool calling). It is a reasoning model: Stage 3 sets `AI_OPENAI_REASONING_EFFORT=none`.
+- [ ] **Read OpenAI's data terms** (Settings → **Data controls**) before letting companies' own records reach it at Insights and Agent. The assistant asks OpenAI not to store its requests.
+
+#### M3. Groq
+
+- [ ] **Create the account** at `console.groq.com` with `info@integr8-media.com`. The free tier works for trying it, with low rate limits; before customers depend on it, add a payment method under **Settings → Billing** to move to the paid (Developer) tier and its higher limits.
+- [ ] **Create the API key**: **API Keys** → **Create API Key**, named `integr8-production`. Copy it (`gsk_…`, shown once). Key sheet: `AI_GROQ_API_KEY`.
+- [ ] **Models and prices**: the **Models** page lists the ids exactly as the API takes them, and which support **tool use** (Insights and Agent need it). Example: `openai/gpt-oss-20b` for Help ($0.075 in, $0.30 out per million) and `openai/gpt-oss-120b` for Insights and Agent ($0.15 in, $0.60 out). Groq's cached input is half price; leave it out of the price list unless you want to model that.
+- [ ] **Spend limits and data**: set a spend limit under Billing if your plan offers one, and read Groq's data and privacy terms before allowing company records (Insights, Agent).
+
+#### M4. Google Gemini
+
+- [ ] **Create the key** at `aistudio.google.com`, signed in as the Integr8 Media Google account: **Get API key** → **Create API key**, in a Google Cloud project named `integr8-production` (AI Studio offers to create it). Copy it (`AIza…`). Key sheet: `AI_GEMINI_API_KEY`.
+- [ ] **Turn on billing for that project** (AI Studio → the key's project → **Set up billing**) before customers use it. The free tier is rate-limited, and its terms let Google use what is sent to improve its products; on the paid tier they do not. Check the current Gemini API terms before allowing company records.
+- [ ] **A budget alert**: Google Cloud console → **Billing** → **Budgets & alerts** → a monthly budget for the project with email alerts at 50% and 80%.
+- [ ] **Models and prices** (ai.google.dev → Models and Pricing): example `gemini-2.5-flash-lite` for Help ($0.10 in, $0.40 out per million) and `gemini-2.5-flash` for Insights and Agent ($0.30 in, $2.50 out). Newer Flash models exist at other prices; any model that supports function calling works.
+
+#### M5. Anthropic (Claude)
+
+- [ ] **Create the account** in the Claude Console (`platform.claude.com`) with `info@integr8-media.com`, as an organisation. **Billing** → add a payment method and buy prepaid credits; **Limits** → a monthly spend limit, and an email notification threshold.
+- [ ] **Create the API key**: **Settings → API keys → Create key**, named `integr8-production`, in its own workspace if you use workspaces. Copy it (`sk-ant-…`, shown once). Key sheet: `AI_ANTHROPIC_API_KEY`.
+- [ ] **Models and prices.** Every current Claude model works: `claude-haiku-5-5` for Help ($0.10 in, $0.50 out per million, for prompts up to 100,000 tokens) and `claude-sonnet-5-5` for Insights and Agent ($2 in, $10 out). These models think before answering, and the thinking counts against the plan's **Max output tokens**: Stage 3 sets `AI_ANTHROPIC_EFFORT=low`, and give the plan about 1,500 output tokens (Stage 5). The older `claude-haiku-4-5` ($1 / $5) and `claude-sonnet-4-6` ($3 / $15) also still work, without the effort line. Check the ids and prices on Anthropic's Models and Pricing pages.
+- [ ] **Read Anthropic's commercial terms on data** before allowing company records (Insights, Agent).
+
+> [!NOTE]
+> **Changing provider later** is only settings: a different `AI_PROVIDER`, that provider's key line, its `AI_MODEL_*` ids and its price rows, then a restart (Stage 3). Usage and spend history stay; companies notice nothing but the answers. A missing key or Help model never stops the server: companies get help-library answers until it is fixed.
+
 ### The key sheet
 
 Every value, where it came from, and where it goes. `deploy/.env` is the one file on the machine (Stage 3); "GitHub" means Actions variables and secrets (Part K); "dashboard" means the product's own platform dashboard (Stage 5).
 
-| Value                                                                                      | From                                | Goes to                                                                                   |
-| ------------------------------------------------------------------------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------- |
-| `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`                       | Part B, generated                   | `deploy/.env`, each twice (Stage 3)                                                       |
-| `AUTH_SIGNING_KEY_ID`, `AUTH_SIGNING_KEY`, `AUTH_VERIFICATION_KEYS`, `PLATFORM_SECRET_KEY` | Part B, generated                   | `deploy/.env`                                                                             |
-| `HR_DATA_KEY`                                                                              | Part B, generated                   | `deploy/.env`; also with the database backups. Never regenerated for an existing database |
-| `BUILD_TOKEN`                                                                              | Part B, generated                   | `deploy/.env` (Stage 3) **and** GitHub secret (Part K), the same value                    |
-| SSH public key                                                                             | Part A                              | Oracle's instance form (Stage 1)                                                          |
-| `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`                        | Part D                              | `deploy/.env`                                                                             |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`                                                | Part E                              | `deploy/.env`                                                                             |
-| Supabase database password                                                                 | Part E                              | Stage 10 only                                                                             |
-| `RESEND_API_KEY`, `EMAIL_FROM`                                                             | Part F                              | `deploy/.env`                                                                             |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                                               | Part G (test mode; live in Stage 9) | `deploy/.env`                                                                             |
-| Stripe price IDs                                                                           | Part G                              | Dashboard → Plans (Stage 5)                                                               |
-| `MAPBOX_ACCESS_TOKEN`                                                                      | Part H                              | `deploy/.env`                                                                             |
-| `SENTRY_DSN`, `WEB_SENTRY_DSN`, `WEB_PUBLIC_SENTRY_DSN`                                    | Part I                              | `deploy/.env`; the public one also GitHub                                                 |
-| `DESKTOP_PUBLIC_SENTRY_DSN`                                                                | Part I                              | GitHub variable                                                                           |
-| Expo Project ID                                                                            | Part J                              | `apps/mobile/app.config.ts`, two places (Part K)                                          |
-| `EXPO_TOKEN`                                                                               | Part J                              | GitHub secret                                                                             |
-| `PUBLIC_API_URL`, `STAGING_PUBLIC_API_URL`, `CONTACT_EMAIL`, `PUBLIC_SIGNUP`, `EAS_BUILDS` | Part K, chosen                      | GitHub variables                                                                          |
-| Play Console and Apple developer accounts, their keys                                      | Stage 8, later                      | GitHub (`STORE_SUBMIT` and the store secrets), only when the apps go to the stores        |
-| Second Supabase project, second secrets, tunnel token                                      | Part L, optional                    | The test box's env file and its `cloudflared` container (Stage 11)                        |
+| Value                                                                                                                                          | From                                | Goes to                                                                                               |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`                                                                           | Part B, generated                   | `deploy/.env`, each twice (Stage 3)                                                                   |
+| `AUTH_SIGNING_KEY_ID`, `AUTH_SIGNING_KEY`, `AUTH_VERIFICATION_KEYS`, `PLATFORM_SECRET_KEY`                                                     | Part B, generated                   | `deploy/.env`                                                                                         |
+| `HR_DATA_KEY`                                                                                                                                  | Part B, generated                   | `deploy/.env`; also with the database backups. Never regenerated for an existing database             |
+| `BUILD_TOKEN`                                                                                                                                  | Part B, generated                   | `deploy/.env` (Stage 3) **and** GitHub secret (Part K), the same value                                |
+| SSH public key                                                                                                                                 | Part A                              | Oracle's instance form (Stage 1)                                                                      |
+| `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`                                                                            | Part D                              | `deploy/.env`                                                                                         |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`                                                                                                    | Part E                              | `deploy/.env`                                                                                         |
+| Supabase database password                                                                                                                     | Part E                              | Stage 10 only                                                                                         |
+| `RESEND_API_KEY`, `EMAIL_FROM`                                                                                                                 | Part F                              | `deploy/.env`                                                                                         |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                                                                                                   | Part G (test mode; live in Stage 9) | `deploy/.env`                                                                                         |
+| Stripe price IDs                                                                                                                               | Part G                              | Dashboard → Plans (Stage 5)                                                                           |
+| `MAPBOX_ACCESS_TOKEN`                                                                                                                          | Part H                              | `deploy/.env`                                                                                         |
+| `SENTRY_DSN`, `WEB_SENTRY_DSN`, `WEB_PUBLIC_SENTRY_DSN`                                                                                        | Part I                              | `deploy/.env`; the public one also GitHub                                                             |
+| `DESKTOP_PUBLIC_SENTRY_DSN`                                                                                                                    | Part I                              | GitHub variable                                                                                       |
+| Expo Project ID                                                                                                                                | Part J                              | `apps/mobile/app.config.ts`, two places (Part K)                                                      |
+| `EXPO_TOKEN`                                                                                                                                   | Part J                              | GitHub secret                                                                                         |
+| `PUBLIC_API_URL`, `STAGING_PUBLIC_API_URL`, `CONTACT_EMAIL`, `PUBLIC_SIGNUP`, `EAS_BUILDS`                                                     | Part K, chosen                      | GitHub variables                                                                                      |
+| Play Console and Apple developer accounts, their keys                                                                                          | Stage 8, later                      | GitHub (`STORE_SUBMIT` and the store secrets), only when the apps go to the stores                    |
+| Second Supabase project, second secrets, tunnel token                                                                                          | Part L, optional                    | The test box's env file and its `cloudflared` container (Stage 11)                                    |
+| The chosen provider's key: `AI_OPENAI_API_KEY`, `AI_GROQ_API_KEY`, `AI_GEMINI_API_KEY` or `AI_ANTHROPIC_API_KEY` (none for `AI_PROVIDER=none`) | Part M                              | `deploy/.env` only. Never a GitHub variable, never anything starting `NEXT_PUBLIC_` or `EXPO_PUBLIC_` |
+| Model ids and their prices; `AI_GLOBAL_MONTHLY_BUDGET_MICROUSD`                                                                                | Part M, chosen                      | `deploy/.env` (`AI_MODEL_*`, `AI_MODEL_PRICES`, the ceiling)                                          |
+| Plan AI limits and where answers come from, company AI settings, each person's share and dollar cap                                            | Chosen                              | Dashboard (Stage 5 and 7); shares also by the company's owner                                         |
 
 > [!WARNING]
-> Three of these can read or change every customer's data or money: the Supabase service role key, the R2 secret access key and the Stripe secret key. They exist only in `deploy/.env` on the machine and in your password manager. If one is ever pasted anywhere else, rotate it the same day.
+> Four of these can read or change every customer's data or spend real money: the Supabase service role key, the R2 secret access key, the Stripe secret key and the AI provider's API key. They exist only in `deploy/.env` on the machine and in your password manager. If one is ever pasted anywhere else, rotate it the same day.
 
 ---
 
@@ -429,14 +488,90 @@ RESEND_API_KEY=re_7Kd9…
 EMAIL_FROM=Integr8 Plus <info@integr8-media.com>
 ```
 
+- [ ] **The AI assistant** (skip it to leave the assistant off; nothing else depends on it). The block headed `# The AI assistant`, just before the limits: `AI_ENABLED=false` becomes `true`, and `AI_PROVIDER=recording` becomes the choice from Part M: `none`, `openai`, `groq`, `gemini` or `anthropic`. Then the lines for that choice only, from the blocks below and the key sheet. Each price is in **micros per million tokens**: dollars × 1,000,000, so $0.10 is `100000`, $0.075 is `75000` and $2.50 is `2500000`. The `provider` in each price row is the same word as `AI_PROVIDER`, and the whole price list stays on one line.
+
+**No AI**: two lines, nothing else.
+
+```text
+AI_ENABLED=true
+AI_PROVIDER=none
+```
+
+**OpenAI**:
+
+```text
+AI_ENABLED=true
+AI_PROVIDER=openai
+AI_OPENAI_API_KEY=sk-proj-…
+AI_OPENAI_REASONING_EFFORT=none
+AI_MODEL_HELP=gpt-6-luna
+AI_MODEL_INSIGHTS=gpt-6-luna
+AI_MODEL_AGENT=gpt-6-luna
+AI_MODEL_PRICES=[{"provider":"openai","model":"gpt-6-luna","inputPerMillion":100000,"cachedInputPerMillion":10000,"outputPerMillion":500000}]
+AI_GLOBAL_MONTHLY_BUDGET_MICROUSD=5000000
+```
+
+**Groq** (the key line is `# AI_GROQ_API_KEY=` in the template; take the `#` off):
+
+```text
+AI_ENABLED=true
+AI_PROVIDER=groq
+AI_GROQ_API_KEY=gsk_…
+AI_MODEL_HELP=openai/gpt-oss-20b
+AI_MODEL_INSIGHTS=openai/gpt-oss-120b
+AI_MODEL_AGENT=openai/gpt-oss-120b
+AI_MODEL_PRICES=[{"provider":"groq","model":"openai/gpt-oss-20b","inputPerMillion":75000,"outputPerMillion":300000},{"provider":"groq","model":"openai/gpt-oss-120b","inputPerMillion":150000,"outputPerMillion":600000}]
+AI_GLOBAL_MONTHLY_BUDGET_MICROUSD=5000000
+```
+
+**Google Gemini**:
+
+```text
+AI_ENABLED=true
+AI_PROVIDER=gemini
+AI_GEMINI_API_KEY=AIza…
+AI_MODEL_HELP=gemini-2.5-flash-lite
+AI_MODEL_INSIGHTS=gemini-2.5-flash
+AI_MODEL_AGENT=gemini-2.5-flash
+AI_MODEL_PRICES=[{"provider":"gemini","model":"gemini-2.5-flash-lite","inputPerMillion":100000,"outputPerMillion":400000},{"provider":"gemini","model":"gemini-2.5-flash","inputPerMillion":300000,"outputPerMillion":2500000}]
+AI_GLOBAL_MONTHLY_BUDGET_MICROUSD=5000000
+```
+
+**Anthropic**, the current models (Part M5; `AI_ANTHROPIC_EFFORT` is in the template as a commented line, so take the `# ` off it):
+
+```text
+AI_ENABLED=true
+AI_PROVIDER=anthropic
+AI_ANTHROPIC_API_KEY=sk-ant-…
+AI_ANTHROPIC_EFFORT=low
+AI_MODEL_HELP=claude-haiku-5-5
+AI_MODEL_INSIGHTS=claude-sonnet-5-5
+AI_MODEL_AGENT=claude-sonnet-5-5
+AI_MODEL_PRICES=[{"provider":"anthropic","model":"claude-haiku-5-5","inputPerMillion":100000,"outputPerMillion":500000},{"provider":"anthropic","model":"claude-sonnet-5-5","inputPerMillion":2000000,"outputPerMillion":10000000}]
+AI_GLOBAL_MONTHLY_BUDGET_MICROUSD=5000000
+```
+
+To use the older Claude 4.x models instead (they cost more, and take no effort line):
+
+```text
+AI_MODEL_HELP=claude-haiku-4-5
+AI_MODEL_INSIGHTS=claude-sonnet-4-6
+AI_MODEL_AGENT=claude-sonnet-4-6
+AI_MODEL_PRICES=[{"provider":"anthropic","model":"claude-haiku-4-5","inputPerMillion":1000000,"outputPerMillion":5000000},{"provider":"anthropic","model":"claude-sonnet-4-6","inputPerMillion":3000000,"outputPerMillion":15000000}]
+```
+
+- [ ] **Only if companies' own records may go to the provider** (the Insights and Agent levels): add one new line under the block naming the provider, for example `AI_PROVIDER_APPROVED_DATA_CLASSES=openai:company_operational` (or `groq:`, `gemini:`, `anthropic:`), once you have read that provider's data terms (Part M). Not needed for `none`: the help library sends nothing anywhere. It is not in the template. Without it, a company on Insights or Agent gets Help answers and a note that company data is not enabled; each company must also agree on its own page (Stage 7).
+- [ ] **Know what a mistake here does.** A **missing** value never stops the server: no key or no Help model, or the fake `recording` provider once `APP_ENV=production`, gives every company help-library answers instead; a missing Insights or Agent model only lowers that level; a model with no price row is charged at cautious default rates and marked as estimated. The API, the apps and every other module start and run regardless, and the dashboard's **Plans** page, panel **AI provider** (Stage 5), lists what needs fixing. A **mistyped** value is different: a word that is not one of the allowed ones (`AI_ENABLED=yes`, `AI_PROVIDER=OpenAI` with capitals, a reasoning value other than `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`), an address that is not a URL, or a broken `AI_MODEL_PRICES` list (a missing bracket or quote, a line break inside it) makes the API refuse to start, and its log names the line (`Invalid API configuration` or `AI_MODEL_PRICES is not a list of prices`). Fix the line, or put a `# ` back in front of it, and start again. OpenAI only: two optional lines keep their defaults unless you have a reason, `AI_OPENAI_BASE_URL=https://api.openai.com/v1` and `AI_CREDIT_EXHAUSTED_PAUSE_SECONDS=300`; leave `AI_OPENAI_REASONING_EFFORT` out for a model that does not reason, which refuses it. Each provider also has an address line (`AI_GROQ_BASE_URL`, `AI_GEMINI_BASE_URL`, `AI_ANTHROPIC_BASE_URL`) that is right as it is.
+
 - [ ] **The two lines at the very end.** `API_MIN_SUPPORTED_CLIENT=0.1.0` stays. `API_UPDATE_URL` was already changed in step 2 to `https://app.integr8-media.com/download`; check it no longer says `your-domain.example`.
-- [ ] **Check before saving.** Each database password appears on exactly two lines, no `change-me` or `example` remains, and the only key line still commented out is `EXPO_ACCESS_TOKEN`:
+- [ ] **Check before saving.** Each database password appears on exactly two lines, no `change-me` or `example` remains, and the only key line still commented out is `EXPO_ACCESS_TOKEN` (plus the commented `AI_` lines you did not need):
 
 ```bash
 # machine (SSH session)
 grep -n 'PASSWORD=\|DATABASE_URL' deploy/.env
 grep -n 'change-me\|example' deploy/.env      # should print nothing
-grep -n '^# [A-Z_]*=' deploy/.env               # should print only EXPO_ACCESS_TOKEN
+grep -n '^# [A-Z_]*=' deploy/.env               # should print only EXPO_ACCESS_TOKEN (and AI_ lines if the assistant stays off)
+grep -n '^AI_' deploy/.env                      # the assistant's lines, as you set them
 ```
 
 > [!WARNING]
@@ -455,11 +590,12 @@ docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 docker compose -f deploy/compose.yml --env-file deploy/.env logs -f bootstrap migrate api
 ```
 
-The first run builds two images on the machine, ten to fifteen minutes on the ARM cores. Then in order: Postgres starts, `bootstrap` creates the two database roles, `migrate` applies all 43 migrations and exits, the API starts, then the worker and the web app. Ctrl-C leaves the logs; the containers keep running and restart themselves after a reboot.
+The first run builds two images on the machine, ten to fifteen minutes on the ARM cores. Then in order: Postgres starts, `bootstrap` creates the two database roles, `migrate` applies all 46 migrations and exits, the API starts, then the worker and the web app. Ctrl-C leaves the logs; the containers keep running and restart themselves after a reboot.
 
 - [ ] **The API is ready**: `curl -s https://api.integr8-media.com/health/ready` answers `"status":"ready"`. If `degraded`, the body names the failing check.
 - [ ] **The web app answers**: `https://app.integr8-media.com` shows the landing page with a padlock. Its buttons say "Talk to us" and lead to `/contact` with `info@integr8-media.com`; `/sign-up` shows a notice rather than a form.
 - [ ] **Storage buckets exist**: new companies get theirs automatically; this makes sure the worker can reach R2 at all. It should print nothing alarming and finish: `docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/media/storage-cli.js provision --all`
+- [ ] **The assistant's settings were read**, if you turned it on in Stage 3: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api | grep Assistant:` prints nothing when the AI settings are complete (and always nothing with `AI_PROVIDER=none`). Each line it prints is one thing to fix (for example `Assistant: AI_PROVIDER is openai but AI_MODEL_HELP is not set.`); the rest of the stack runs either way. Stage 5 shows the same list on the dashboard.
 
 > [!NOTE]
 > If the API refuses to start, its log says exactly which variable is wrong or missing: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api`. Fix the env file and run the same `up -d` command again. Throughout this guide, "restart" means exactly that command; it recreates only the containers whose settings changed.
@@ -518,6 +654,20 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 > [!WARNING]
 > **Keep at least two staff managers.** If the only one loses their phone, the fix is `admin-cli create` with the same address on the machine, which resets them. That works, but only for somebody who can SSH in. Every account that existed before the Staff page arrived (version 0.1.4) is a staff manager automatically.
 
+### The AI assistant: is the server ready, and what does each plan allow
+
+Turning the assistant on takes four switches, each of which can be undone on its own: the server (Stage 3), the **plan** (here), the **company** (its apps and, if you like, its own limits; Stage 7) and, for AI answers, each **person's share** (Stage 7). Every plan starts at **Off**, so nothing changes for any company until you set a plan. Skip this part while the assistant stays off.
+
+- [ ] **Check the server is ready.** Dashboard → **Plans** → the **AI provider** panel. With a provider it should say **Active provider** (OpenAI, Groq, Gemini or Anthropic), **State** Ready, **Levels served** Help, Insights and Agent, the model beside each level, and **Has a price row** Yes (**Cached-input price** only matters for OpenAI). With `AI_PROVIDER=none` it says **None (help library only)**, that every company is answered from the help library, and lists nothing to fix. Anything under **What needs fixing** is a line in `deploy/.env` (Stage 3); fix it and restart with the usual `up -d`.
+- [ ] **Give each plan its AI policy.** Still on **Plans**, each plan has an **AI assistant** section → **Change**. Fields: **Level** (Off, Help, Insights, Agent); **Answers come from**: **An AI model** or **The help library (no AI)** — under the library the token limits, cost cap and model ceilings are hidden and do not apply, the level runs at Help, nobody needs a share, and **Unlimited messages** needs no cost cap; **Quota mode** (daily, monthly, both) with **Messages per day** and **per month** for the whole company; **Tokens per day** and **Tokens per month** (input plus output, company-wide, empty for no limit); **Monthly cost cap (USD)**, the company's own ceiling (required if you tick **Unlimited messages**); the per-message token and call ceilings (leave as they are); whether conversation history is kept and for how many days. A **Reason** goes into the audit log. Saving reaches every company on the plan within thirty seconds.
+- [ ] **A starting point**, to adjust once you see real use: Starter at Help, daily and monthly, 50 messages a day and 1,000 a month, 200,000 tokens a day and 2,000,000 a month, cost cap $2. Standard at Insights with twice that and $5; Enterprise at Agent with four times and $10. At the example prices, 2,000,000 tokens cost well under a dollar, so the cost cap is a safety net, not the usual limit. Leave the trial plan at Off, or at Help from the help library, which costs nothing. With `AI_PROVIDER=none`, every plan answers from the help library anyway; set the levels you will sell, so moving a plan to AI answers later is one switch.
+
+> [!NOTE]
+> **Who sees what.** The dashboard shows numbers: messages, tokens, dollars. A company's owner sees only percentages: how much of the company's allowance is left, how much is handed out in shares, and when it resets. A member sees their own percentage left. Nobody in a company ever sees a token count, a price or a dollar figure.
+
+> [!WARNING]
+> **When the OpenAI credit runs out**, OpenAI refuses calls with a billing error. The assistant tells that apart from a busy moment and stops asking OpenAI for five minutes (`AI_CREDIT_EXHAUSTED_PAUSE_SECONDS`); the **AI provider** panel shows the pause and the API log says `ai.provider.credit_exhausted`. The question that met the billing stop gets "temporarily unavailable" and costs nothing; during the pause every question is answered from the help library, with a first line saying only the help guide can answer for now. Nothing else in the product is affected. Top the credit up in OpenAI; model answers come back after the pause. With the other providers, an empty balance shows as a failed call: top up and ask again. There is no automatic switch to another provider. `AI_GLOBAL_MONTHLY_BUDGET_MICROUSD` is a separate stop of your own: when the month's spend reaches it, every company is refused until the month ends or you raise it and restart.
+
 ---
 
 ## Stage 6 — The staff desktop app, built by GitHub
@@ -551,14 +701,30 @@ Everything exists now: the stack, the dashboard, both apps, real email. This sta
 - [ ] **Create a customer, a site and a job** from the office screens (web app or desktop app, as the owner), load the sample data if you want the screens populated, and assign the engineer. Watch the site get a map pin within a minute: that is Mapbox.
 - [ ] **Build the company's own apps.** Dashboard → the company's page → **Website and apps** → tick **Build apps for this company** → Save. Then repository → **Actions** → **Build company apps** → **Run workflow** → type the company's short name, leave the other boxes empty, run. About 25 minutes later the Releases page has `company-<short name>-v1.1.0` with the company's desktop installers and its Android app. Stage 8 explains everything this run did and how it repeats at every release.
 - [ ] **Install the company's apps.** From that release: the Windows installer (named after the company) on your laptop, beside the staff app, and the `.apk` on the phone (open the release page on the phone, download, allow installing from this source when Android asks). The phone opens on the company's website with a **Login** button in the header; the desktop app opens on a sign-in screen in the company's colours with only the company door.
-- [ ] **Know that the assistant's voice needs a rebuilt phone app.** The spoken-question button on the phone asks for the microphone and, on iOS, speech recognition, and those permissions are part of the build. A company's phone app built before this feature does not show the button until you run **Build company apps** for that company again and its people reinstall. The website needs nothing, and the desktop app shows the button after the next release is installed (it points at Win+H on Windows or the microphone key on a Mac). Only companies answered by a model get the microphone; every company gets Read answers aloud, off until a person turns it on.
 - [ ] **Complete the job on the phone, offline.** Press Login in the company's phone app and sign in as the engineer, pull the jobs down, turn on aeroplane mode, complete the job with a photo and a signature, turn aeroplane mode off, and watch it arrive in the office. The photo lands in the company's R2 bucket. `docs/mobile/device-checklist.md` in the repository is the full list of what to try.
 - [ ] **Try in-app payment once**, in test mode: on the company's dashboard page → Plan and billing → Billing: Pays in the app → Save. As the owner, Billing → choose a plan → Stripe's checkout → card `4242 4242 4242 4242`, any future date. The plan shows as active within seconds; dashboard → Health → Billing deliveries lists the webhook events as applied. Then switch the company back to Invoiced.
 - [ ] **Walk the business modules once**, as the owner, on the web app: a lead converted to a customer and an opportunity dragged across the pipeline board; a quote accepted through its link, turned into a sales order and delivered; an invoice issued and a payment allocated; an item received into a warehouse, transferred to the engineer's van and used on the job from the phone (a serial-numbered item asks which serial); an asset with a printed QR label; a person given a company role under Settings → People → Company roles. Each screen is in the side menu under its group.
+
+### The AI assistant for this company
+
+Only once Stage 3 and the plan's AI policy (Stage 5) are done. For a company answered from the **help library**, two things open it: the company shows it in its apps, and the person's own switch is on (it is, by default). For **AI answers** there is a third: the person needs a **share**, a whole percentage of everything the company is allowed (messages and tokens, per day and per month), kept for that person alone; the shares of a company add up to 100% or less. Nobody starts with a share, so AI answers are closed to everybody until somebody hands them out.
+
+- [ ] **Choose which apps show it.** Dashboard → the company → **Website and apps**: **Assistant in web app**, **in desktop app**, **in mobile app**, all off by default (the same three boxes are on the onboarding form for new companies). The company's owner can change them too: web app → Settings → **Company** → **Assistant**. They choose where it appears, never whether the plan includes it.
+- [ ] **Check the company's AI settings.** Dashboard → the company → **AI assistant**: **Policy comes from** The plan (leave it), the **Effective level**, **Answers come from now** (an AI model, or the help library and why: the configuration says so, the server has no AI provider, or its AI settings are incomplete), and today's and this month's use. To give this one company AI answers or the help library regardless of its plan, use **Custom configuration** → **Answers come from**. For a company that needs different limits, **Custom configuration** takes the same fields as a plan and stays when its plan changes; **Reset to plan** goes back. For Insights or Agent to read the company's records, tick **Company data may be sent to the AI provider** (it goes into the audit log) and make sure Stage 3's `AI_PROVIDER_APPROVED_DATA_CLASSES` line is there; otherwise the company gets Help answers.
+- [ ] **Hand out the shares, as the owner.** Web app → Settings → **People**: each person has an **Assistant share**; type a percentage and press **Save share**. The heading shows how much is handed out and how much is left; a share that would pass 100% is refused and says how much remains. In the company's desktop app the same list is under **Assistant settings**. Owners and admins can set shares, for people they outrank and for themselves; engineers and viewers cannot. For this test: the owner 50%, the engineer 50%. A company answered from the help library needs none: the People page says so, and shares already set are kept for when it moves to AI answers.
+- [ ] **Or set them for the company**, from the dashboard → the company → **AI assistant: members**. It lists every person with their share, their messages and tokens today and this month, their spend, and a **Monthly dollar cap** that only Integr8 can set and the company never sees (empty for no cap). A person who reaches their cap is told their allowance is used up and when it resets, never the amount.
+- [ ] **Try it**, as the engineer in the web app (side menu → **Assistant**). A Help question: _How do I create a work order?_ From the help library the answer is the best-matching help article's own words, with links to it and up to two more, and the screen's header says answers come from the help guide. On Insights or Agent, with company data allowed: _How many open jobs?_ On Agent: _Add a customer called Test Ltd_; the assistant prepares it and shows **A change the assistant prepared**, and nothing happens until you press confirm. Then open the company's phone app (once it is built with the assistant, Stage 12, part J): online only, one line with the percentage left.
+- [ ] **Try voice** (nothing to set up on the server; it works for every company). **Reading answers aloud** is in every company's assistant, off until a person turns it on: the first visit shows a banner with a **Turn on** button, a switch in the header mutes it again, and each answer has its own **Read this answer aloud** button. **Speaking a question** is only for companies answered by an AI model; a help-library company has no microphone button. Try it as the engineer: web app in Chrome or Edge → **Assistant** → **Speak your question** (allow the microphone when the browser asks), say a question, and the words appear in the box; nothing is sent until you press Send. Firefox has no recogniser, so it shows no button. In the company's desktop app the same button puts the cursor in the box and shows which key to press: **Win+H** on Windows, the microphone key (or fn twice) on a Mac; Linux has none and shows no microphone. On the phone the first tap asks for the microphone and, on iOS, speech recognition; that needs the rebuilt phone app (Stage 8, step 7). Arabic works in each, if the device has Arabic voices and dictation installed.
+- [ ] **Know where the audio goes**, in case a company asks. Only text reaches Integr8 Plus. The spoken audio is handled by the device's own recogniser: Google for Chrome and Android, Microsoft for Edge and Windows dictation, Apple for iPhone, Safari and Mac dictation, and never by the company's AI provider. Chrome 139 and later keeps recognition on the device for the languages it has a model for. A spoken question costs the same as a typed one.
+- [ ] **See the result on the dashboard**: the company's **AI assistant** panel shows the messages, tokens and spend; **AI assistant: members** shows them per person. The owner, in the web app, sees only a bar with the percentage of the company's allowance left; the engineer sees their own.
+
+> [!NOTE]
+> **"The assistant is not available"** always says why: not in the subscription (the plan's level, Stage 5), switched off for the company or for this app (the company's switches), switched off for this person (People → their Assistant switch), **no share** (People → Assistant share; AI answers only), or "temporarily unavailable" (the provider refused the call that was being answered; the **AI provider** panel). Answers that are help articles rather than conversation mean the company is on the help library: the company page's **Answers come from now** says why. "Allowance used up" means the company's or the person's share ran out for the day or month; raise the limit or the share, or wait for the reset shown.
+
 - [ ] **Check the dashboard**: Companies lists the company with its billing mode; its page shows the owner, your impersonation in the history and the storage used; Health stays empty; Sentry shows no errors.
 
 > [!NOTE]
-> **Where things live.** Forms, job types, logo, icon, colours and theme: the staff desktop app, acting as the company. Plan, billing mode, modules (Features), website, the "build apps" switch and inviting the owner: the dashboard, the company's page. Company roles (a built-in role with permissions added or taken away): the company's owner, Settings → People. The company's owner changes timezone, currency and working hours in Settings → Company, and nothing about the look. Who may sign up: nobody; `/contact` shows `info@integr8-media.com`.
+> **Where things live.** Forms, job types, logo, icon, colours and theme: the staff desktop app, acting as the company. Plan, billing mode, modules (Features), website, the "build apps" switch and inviting the owner: the dashboard, the company's page. Company roles (a built-in role with permissions added or taken away): the company's owner, Settings → People. The AI assistant: its level, limits and whether answers come from AI or the help library, on the dashboard (Plans, or the company's **AI assistant** panel); which apps show it, in the company's switches; each person's share, by the owner under Settings → People or by you on the dashboard; dollar caps, on the dashboard only. The company's owner changes timezone, currency and working hours in Settings → Company, and nothing about the look. Who may sign up: nobody; `/contact` shows `info@integr8-media.com`.
 
 ---
 
@@ -578,6 +744,7 @@ The workflow `Build company apps` reads the company's brand from the API with no
 - [ ] **Or build every company.** Same workflow, **company** = `all`. GitHub asks the API for the list using the `BUILD_TOKEN` secret, which has to equal `BUILD_TOKEN` in the machine's env file (Stage 3); if they differ the run stops in its first minute and says so.
 - [ ] **Every new version does this by itself.** Merging a version bump into `main` runs the version release, which builds the staff app, the images, and then every switched-on company's apps at the same version, each as its own release. Set the GitHub variable `COMPANY_APPS` = `disabled` if you ever want a release without them.
 - [ ] **Hand the apps over.** Give the company the link to the installer for their system and, for phones, the `.apk` from the release (open on the phone, download, allow installing from this source). Android keeps the app's signing key on Expo, so the next version installs over the old one; the app also receives the JavaScript side over the air on its channel `production-<short name>`. If the owner has not been invited yet, this is the moment: the company's page → **Invitations** → **Send invitation**.
+- [ ] **Rebuild the phone apps once to give them voice.** The microphone button on the phone needs new permissions (the microphone, and speech recognition on iOS), and permissions are part of the build, so they cannot arrive over the air. A company's phone app built before voice shows no microphone button until you run **Build company apps** for that company again (step 3, or every company at the next version release) and its people install the new `.apk`. Nothing breaks on an older phone build: it simply has no microphone. The website needs nothing, and the desktop app shows its voice button after the next release's installer is installed.
 
 ### B. The stores, when you are ready
 
@@ -643,10 +810,17 @@ curl -s https://api.integr8-media.com/health/ready
 
 - [ ] **Walk Stage 7 again** with the real company and the billing mode you agreed with them, their real owner and engineer, their real forms, their real logo and icon; then Stage 8 to build and hand over their apps. Watch Health while you do it.
 - [ ] **If any company pays in the app, pay with a real card once** on a test company in live mode, confirm the invoice in Billing and the webhook in Health, then refund it in Stripe. It is the only way to know live billing works end to end.
-- [ ] **Weekly, five minutes**: dashboard → Health, a glance at Sentry, last night's backup file exists, `df -h` on the machine.
+- [ ] **Weekly, five minutes**: dashboard → Health, a glance at Sentry, last night's backup file exists, `df -h` on the machine; with the assistant on, the **AI provider** panel (Ready, no credit pause) and OpenAI's own usage page.
+
+### F. The AI assistant, for real
+
+- [ ] **Production mode keeps the assistant honest.** With `APP_ENV=production` the fake `recording` provider never answers: if the env file still says `AI_PROVIDER=recording`, companies get help-library answers and the **AI provider** panel says why. To run without AI on purpose, say `AI_PROVIDER=none`, which raises no warning. An OpenAI address must be `https://`.
+- [ ] **Prices checked against the provider's pricing page today**, and `AI_MODEL_PRICES` matching them; the dashboard's spend figures, the company cost caps and the monthly ceiling are all computed from these numbers, not read from the provider.
+- [ ] **The provider's credit or billing, spend limits and alerts** sized for real use (Part M), and `AI_GLOBAL_MONTHLY_BUDGET_MICROUSD` raised to match. Decide whether auto recharge stays off; if it does, somebody watches the alert emails.
+- [ ] **Each paying company's plan level** and answer source are what they bought, and each company on AI answers has had its shares set (Stage 7) before you tell them the assistant is there.
 
 > [!WARNING]
-> Three secrets are now live and can move real money or read every customer's data: the Stripe live key, the Supabase service role key, and the R2 secret. They exist only in `deploy/.env` on the machine and in your password manager. If one is ever pasted anywhere else, rotate it the same day: Stripe → roll the key; Supabase → new service role key; Cloudflare → delete and recreate the R2 token. Then edit the env file and `up -d`.
+> Four secrets are now live and can move real money or read every customer's data: the Stripe live key, the Supabase service role key, the R2 secret and the AI provider's API key. They exist only in `deploy/.env` on the machine and in your password manager. If one is ever pasted anywhere else, rotate it the same day: Stripe → roll the key; Supabase → new service role key; Cloudflare → delete and recreate the R2 token; the AI provider → its API keys page → revoke and create a new one. Then edit the env file and `up -d`.
 
 ---
 
@@ -658,7 +832,7 @@ The compose Postgres is the only copy of your data and lives on one machine's di
 
 - [ ] **Collect the connection strings** in the Supabase project: the **Connect** button → **Direct connection** (port 5432, user `postgres`, the database password from Stage 0 Part E) is `DATABASE_URL_ADMIN`; the **Transaction pooler** string (port 6543, host `aws-0-REGION.pooler.supabase.com`) is the shape of the other two.
 - [ ] **Change the three strings** in `deploy/.env`: `DATABASE_URL_ADMIN` = the direct string; `DATABASE_URL=postgres://integr8_app.PROJECT_REF:APP_PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres`; `DATABASE_URL_AUTH` the same with `integr8_auth.PROJECT_REF` and the auth password. The username really is `role.projectref`. Keep the two `INTEGR8_*_PASSWORD` lines as they are.
-- [ ] **Create the roles and schema in Supabase**: `docker compose … run --rm api node node_modules/@integr8/db/dist/migrator/cli.js deploy`. It prints the two roles and the forty-three migrations.
+- [ ] **Create the roles and schema in Supabase**: `docker compose … run --rm api node node_modules/@integr8/db/dist/migrator/cli.js deploy`. It prints the two roles and the forty-six migrations.
 - [ ] **Move the data**, if there is any to keep: `pg_dump` from the container and `psql` into Supabase as the owner, per the runbook. Then in `deploy/compose.yml` remove the `postgres` service and the `depends_on: postgres` under `bootstrap`, and `up -d`.
 - [ ] **Turn on backups** in Supabase (Database → Backups) and rehearse a restore once.
 
@@ -677,7 +851,7 @@ The Oracle machine is production. This is a second machine that is allowed to br
 - [ ] **Turn on SSH** in ZimaOS Settings and connect from the laptop: `ssh YOUR-ZIMA-USER@BOX-IP`. Docker and Compose are already there (`docker compose version`). ZimaOS has a read-only system and no package manager, so the Stage 1 setup script is **not** used; nothing it installs is needed here.
 - [ ] **Get the deployment files** (only `deploy/` is needed, since the box pulls images):
 
-```text
+```bash
 # box (SSH session) — with git
 mkdir -p /DATA/integr8 && git clone -b staging https://github.com/MinaLouisLeon/integr8-plus.git /DATA/integr8
 
@@ -690,7 +864,7 @@ curl -fsSL https://github.com/MinaLouisLeon/integr8-plus/archive/refs/heads/stag
 - [ ] **The env file**, as Stage 3 but from Part L's values: `APP_ENV=staging`; `API_IMAGE=ghcr.io/minalouisleon/integr8-api:staging` and `WEB_IMAGE=ghcr.io/minalouisleon/integr8-web:staging`; the test names (`https://api-test.integr8-media.com` for the three API addresses, `https://test.integr8-media.com` for the two web ones, `API_CORS_ORIGINS=https://test.integr8-media.com,tauri://localhost,http://tauri.localhost`); the **second** set of passwords and signing keys; the **second** Supabase project; and every fake on: `MEDIA_STORAGE=local`, `GEOCODER=fake`, `PUSH_SENDER=recording`, `BILLING_PROVIDER=recording`, `EMAIL_SENDER=recording`. The box can then never email a real person or charge a card; invitation links are read from the API log (`docker compose … logs api | grep -o 'https://test[^" ]*accept-invitation[^" ]*' | tail -1`).
 - [ ] **Run the Cloudflare Tunnel connector** with the token from Part L. This replaces Caddy and port forwarding: ZimaOS's own interface uses port 80, your router opens nothing, and the web app's sign-in cookies are only sent over HTTPS, so a plain `http://BOX-IP:3001` could never sign in. Cloudflare terminates HTTPS at its edge for the two test names.
 
-```text
+```bash
 # box (SSH session). Paste the token in place of TUNNEL-TOKEN.
 docker run -d --name cloudflared --restart unless-stopped --network host \
   cloudflare/cloudflared:latest tunnel --no-autoupdate run --token TUNNEL-TOKEN
@@ -861,6 +1035,18 @@ git checkout main && git pull
 - [ ] **Undoing one migration**, only when the release notes or the error say it is the cause, after reading its `.down.sql` file in `packages/db/migrations/`: `docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node node_modules/@integr8/db/dist/migrator/cli.js down --steps 1`.
 - [ ] **Restoring part B's backup** replaces the whole database with how it was before the update, losing anything done since. Stop the API and worker first (`docker compose … stop api worker`), restore with the command at the top of `deploy/vps/backup-postgres.sh` (the backup replaces each table as it goes, so nothing has to be emptied first), then start the older version as above.
 
+### J. This update: bringing the AI assistant to a machine that runs 1.1.0
+
+The assistant reached `main` in pull requests 94 and 96, and grew in 97 (answers from the help library), 98 (the Anthropic fix) and 99 (voice), all without a version bump. A machine set up from this guide before 16 October 2026 has none of it, and neither do the `v1.1.0` installers and phone apps. This is the one-time path; parts A to E above are the order, these are the extra details.
+
+- [ ] **Release a new version** (part A): raise the root `package.json` to `1.2.0` in a pull request and bring it to `main`. Until this is merged, the version release refuses to run (`v1.1.0` is already released), so no app on anybody's device has the assistant. When it is green, Releases has `v1.2.0` (the staff app) and `company-<short name>-v1.2.0` for each switched-on company.
+- [ ] **Machine: parts B to E as usual**, with `1.2.0` in the version line. The `comm` check in part C prints `AI_ENABLED=`, `AI_PROVIDER=` and `AI_GLOBAL_MONTHLY_BUDGET_MICROUSD=`. None is required (left out, the assistant is simply off), but add the block so the file matches the template: either as the template has it (`AI_ENABLED=false`, `AI_PROVIDER=recording`) to update first and switch on later, or straight away as Stage 3's AI step. `migrate` applies the new migrations, `0044_ai_assistant`, `0045_ai_retention_grants`, `0046_ai_token_quotas` and `0047_ai_answer_source`, all of them additions; no existing data changes, and every plan keeps AI answers until you change it.
+- [ ] **Nothing changes for any company yet**: every plan's AI level is Off, every company's app switches are off, and nobody has a share. Switching it on is Stage 5 (the AI provider panel and each plan) and then Stage 7's AI part for each company. For AI answers, tell each company's owner before you switch their plan on that they will be asked to hand out shares under Settings → People, or set the shares for them from the dashboard; for help-library answers there is nothing for them to do.
+- [ ] **The apps** (part G): the web app has the assistant as soon as part D has run. Install the `1.2.0` staff app and send each company its new desktop installer; on phones install the company's new `.apk` from its `1.2.0` release, since a phone that keeps an older native app may not pick the assistant up over the air. Voice on the phone needs the new native build for the same reason (Stage 8, step 7).
+
+> [!WARNING]
+> **Rolling back with the assistant.** To switch the assistant off without touching the code: `AI_ENABLED=false` in `deploy/.env` and `up -d`; every company loses it at once and nothing else changes. To change provider: set `AI_PROVIDER` to the other one (`openai`, `groq`, `gemini`, `anthropic`) with its own key, model and price lines (Stage 3), then `up -d`. To drop AI but keep a working assistant: `AI_PROVIDER=none` and `up -d`; every company gets help-library answers. To go back to the previous code (part I): leave migrations 0044 to 0047 applied, because the older version ignores their tables, and undoing 0046 would lose every person's share and the token counts. Its `.down.sql` file is for development databases only.
+
 > [!NOTE]
 > **The test box (Stage 11)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout and `pull` its `:staging` images. Updating it first, the day before, is the cheapest rehearsal there is.
 
@@ -991,7 +1177,7 @@ cp ~/integr8.env.keep deploy/.env
 chmod 600 deploy/.env
 ```
 
-- [ ] **Look for settings the new version added.** The command lists every setting in the new template that your kept file does not have. Nothing printed means nothing to add. Anything printed (for example `HR_DATA_KEY=`, added with the HR module) goes into `deploy/.env` with `nano deploy/.env`, with its value from the key sheet; the template's comments beside each line say what it is.
+- [ ] **Look for settings the new version added.** The command lists every setting in the new template that your kept file does not have. Nothing printed means nothing to add. Anything printed (for example `HR_DATA_KEY=`, added with the HR module, or the `AI_` lines of the assistant) goes into `deploy/.env` with `nano deploy/.env`, with its value from the key sheet; the template's comments beside each line say what it is.
 
 ```bash
 # machine (SSH session), in /opt/integr8
@@ -1242,6 +1428,6 @@ df -h /                                   # most of the disk is free again
 
 ## About this page
 
-Written against the repository's `main` branch at version **1.1.0** (12 October 2026, after the ninth round merged in pull request 81): `deploy/compose.yml`, `deploy/.env.example`, `deploy/vps/`, `.github/workflows/`, `docs/deployment/README.md` and `docs/database/runbook-supabase-setup.md`. New since the previous edition: the business modules switched on per company (Stage 7), the HR data key (Stage 0, Part B and Stage 3), 43 database migrations, and Stage 14 for rebuilding the machine. Service dashboards move things around; when a menu is not where this says, search the service's own docs for the setting name. Ticks on this page are saved in your browser only.
+Written against the repository's `main` branch at version **1.1.0** (16 October 2026, after the AI assistant merged in pull requests 94 and 96): `deploy/compose.yml`, `deploy/.env.example`, `deploy/vps/`, `.github/workflows/`, `docs/deployment/README.md`, `docs/database/runbook-supabase-setup.md` and `docs/ai/RUNBOOK.md`. New since the previous edition: all four AI providers side by side, answers from the help library with no AI, and `AI_PROVIDER=none` (pull request 97, merged 16 October 2026), the Anthropic adapter fix for the current Claude models (pull request 98, merged 16 October 2026) and voice for the assistant (pull request 99, merged 16 October 2026), on top of the AI assistant with token allowances and percentage shares (Stage 0, Part M; Stages 3, 4, 5, 7 and 9; Stage 12, part J). Example model ids and prices come from the providers' pages and third-party price lists in October 2026 and were not checked on every provider's own site: confirm them there. Service dashboards move things around; when a menu is not where this says, search the service's own docs for the setting name.
 
-The same guide exists as a page with tick boxes that remember your progress in the browser: the hosted Integr8 Plus Setup Checklist page, or its downloadable HTML copy.
+The same guide exists as a page with tick boxes that remember your progress in the browser. In this folder it is `setup-checklist.html`, with `setup-checklist.css` and `setup-checklist.js` beside it: download the three files into one folder and open the `.html` in a browser; nothing is installed and nothing leaves your computer. The same page is also published as the hosted Integr8 Plus Setup Checklist. The Markdown, the HTML, the CSS, the JavaScript and the hosted page are one document and are changed together (`pnpm guide:check` compares them).

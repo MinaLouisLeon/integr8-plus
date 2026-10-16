@@ -43,6 +43,11 @@ jobs:
       - name: Dependency licences
         run: pnpm licences:check
 
+      # The setup guide is kept as Markdown and as HTML, CSS and JavaScript;
+      # they must say the same thing (AGENTS.md, "The setup guide").
+      - name: Setup guide copies agree
+        run: pnpm guide:check
+
       - name: Lint
         run: pnpm lint
 

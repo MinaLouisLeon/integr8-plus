@@ -6,7 +6,10 @@ configuration.
 
 **Following along?** [The setup checklist](./setup-checklist.md) walks every
 step in order, from creating the accounts and keys to a running stack, going
-live, updating, and wiping or rebuilding the machine.
+live, updating, and wiping or rebuilding the machine. The same guide is a page
+with tick boxes that remember your progress: download
+[`setup-checklist.html`](./setup-checklist.html), `setup-checklist.css` and
+`setup-checklist.js` into one folder and open the `.html` in a browser.
 
 ```
                       ┌──────────────────────────┐

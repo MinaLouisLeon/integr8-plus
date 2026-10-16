@@ -15,3 +15,10 @@ packages/tokens/theme.css
 
 # Written by `next build`; formatting it is undone on the next build.
 apps/web/next-env.d.ts
+
+# The setup guide's page, with its stylesheet and script: one hand-kept document
+# that is also published as a page. Reflowing it would make the copies differ in
+# layout only, and `pnpm guide:check` is what keeps them in step.
+docs/deployment/setup-checklist.html
+docs/deployment/setup-checklist.css
+docs/deployment/setup-checklist.js
