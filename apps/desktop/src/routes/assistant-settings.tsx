@@ -235,6 +235,12 @@ function MemberSwitches({ viewer }: { viewer: Me }) {
         {mayToggle ? (
           <p className="text-sm text-content-muted">{t('workspace.settings.ai.bothNeeded')}</p>
         ) : null}
+        {mayToggle && shares.data?.company.answerSource === 'library' ? (
+          // Answers from the help guide need no share (ADR-0002 D10).
+          <p className="rounded-md bg-surface-muted px-3 py-2 text-sm text-content">
+            {t('workspace.settings.ai.libraryNote')}
+          </p>
+        ) : null}
       </div>
       {!mayToggle ? null : shares.isError ? (
         <ErrorState

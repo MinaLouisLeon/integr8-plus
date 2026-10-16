@@ -8,7 +8,12 @@ import { AssistantScreen } from './assistant-screen.js';
 const CONVERSATION = '00000000-0000-4000-8000-000000000a01';
 const PROPOSAL = '00000000-0000-4000-8000-000000000a02';
 const CUSTOMER = '00000000-0000-4000-8000-000000000301';
-const RESET = '2026-10-16T00:00:00.000Z';
+// The next UTC midnight, so the reset is still to come whenever the suite runs:
+// a fixed date turned into one in the past and reopened the composer.
+const NOW = new Date();
+const RESET = new Date(
+  Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), NOW.getUTCDate() + 1),
+).toISOString();
 
 function allowance(remainingPercent: number | null, exhausted = false) {
   return { remainingPercent, resetsAt: remainingPercent === null ? null : RESET, exhausted };
@@ -19,6 +24,7 @@ function capabilities(overrides: Partial<AiCapabilities> = {}): AiCapabilities {
     level: 'help',
     blockedBy: null,
     channel: 'web',
+    answerSource: 'model',
     tools: [],
     companyDataToProvider: false,
     locales: ['en', 'ar'],
@@ -121,6 +127,24 @@ describe('AssistantScreen', () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+  });
+
+  it('says when answers come from the help guide rather than a model (ADR-0002 D10)', async () => {
+    const { client } = fakeApi({
+      'GET /v1/ai/capabilities': () => ({
+        body: capabilities({
+          answerSource: 'library',
+          usage: { allowance: allowance(80), sharePercent: null, company: null },
+        }),
+      }),
+      'GET /v1/ai/conversations': () => ({ body: { items: [] } }),
+    });
+    renderScreen(<AssistantScreen />, client);
+
+    expect(await screen.findByText(/help guide’s own articles/u)).toBeInTheDocument();
+    expect(screen.queryByText(/^Answers from the help library only\./u)).not.toBeInTheDocument();
+    // No share is needed, and nothing says one is.
+    expect(screen.queryByText(/not been given a share/u)).not.toBeInTheDocument();
   });
 
   it('shows what is left as a percentage only, and no bar when nothing is limited', async () => {

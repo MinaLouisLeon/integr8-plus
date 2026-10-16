@@ -496,7 +496,9 @@ const MODEL_LEVELS: readonly ModelLevel[] = ['agent', 'insights', 'help'];
  * first when a company says it has gone. The problems are the server's own
  * sentences, written for whoever holds the deployment's settings, so they are
  * shown as they come. Provider and model names are for Integr8's eyes only;
- * no company screen ever shows them.
+ * no company screen ever shows them. `AI_PROVIDER=none` is no provider by
+ * choice: every company is answered from the help library (ADR-0002 D12), so
+ * the panel says so instead of listing models.
  */
 function ProviderPanel() {
   const { t, i18n } = useTranslation();
@@ -545,16 +547,21 @@ function ProviderPanel() {
           })}
         </p>
       )}
+      {data.libraryOnly ? (
+        <p className="text-sm text-content">{t('platform.ai.provider.libraryOnly')}</p>
+      ) : null}
       <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
         <Fact label={t('platform.ai.provider.active')} value={providerLabel(t, data.active)} />
-        <div className="flex flex-col gap-0.5">
-          <dt className="text-content-muted">{t('platform.ai.provider.state')}</dt>
-          <dd>
-            <Badge tone={data.ready ? 'ok' : 'danger'}>
-              {data.ready ? t('platform.ai.provider.ready') : t('platform.ai.provider.notReady')}
-            </Badge>
-          </dd>
-        </div>
+        {data.libraryOnly ? null : (
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-content-muted">{t('platform.ai.provider.state')}</dt>
+            <dd>
+              <Badge tone={data.ready ? 'ok' : 'danger'}>
+                {data.ready ? t('platform.ai.provider.ready') : t('platform.ai.provider.notReady')}
+              </Badge>
+            </dd>
+          </div>
+        )}
         <Fact
           label={t('platform.ai.provider.served')}
           value={
@@ -582,60 +589,66 @@ function ProviderPanel() {
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-border-subtle text-content-muted">
-              <th scope="col" className="py-1 text-start">
-                {t('platform.ai.level')}
-              </th>
-              <th scope="col" className="py-1 text-start">
-                {t('platform.ai.provider.model')}
-              </th>
-              <th scope="col" className="py-1 text-start">
-                {t('platform.ai.provider.priceListed')}
-              </th>
-              <th scope="col" className="py-1 text-start">
-                {t('platform.ai.provider.cachedPriced')}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {MODEL_LEVELS.map((level) => {
-              const price = data.prices[level];
-              const model = data.models[level];
-              return (
-                <tr key={level} className="border-b border-border-subtle">
-                  <td className="py-1">{levelLabel(t, level)}</td>
-                  <td className="py-1" dir="ltr">
-                    {model ?? t('platform.ai.provider.noModel')}
-                  </td>
-                  <td className="py-1">
-                    <Badge tone={price.listed ? 'ok' : model === null ? 'muted' : 'warning'}>
-                      {price.listed ? yes : no}
-                    </Badge>
-                  </td>
-                  <td className="py-1">
-                    <Badge tone={price.cachedInputPriced ? 'ok' : 'muted'}>
-                      {price.cachedInputPriced ? yes : no}
-                    </Badge>
-                  </td>
+      {data.libraryOnly ? null : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border-subtle text-content-muted">
+                  <th scope="col" className="py-1 text-start">
+                    {t('platform.ai.level')}
+                  </th>
+                  <th scope="col" className="py-1 text-start">
+                    {t('platform.ai.provider.model')}
+                  </th>
+                  <th scope="col" className="py-1 text-start">
+                    {t('platform.ai.provider.priceListed')}
+                  </th>
+                  <th scope="col" className="py-1 text-start">
+                    {t('platform.ai.provider.cachedPriced')}
+                  </th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-xs text-content-muted">{t('platform.ai.provider.pricesNote')}</p>
+              </thead>
+              <tbody>
+                {MODEL_LEVELS.map((level) => {
+                  const price = data.prices[level];
+                  const model = data.models[level];
+                  return (
+                    <tr key={level} className="border-b border-border-subtle">
+                      <td className="py-1">{levelLabel(t, level)}</td>
+                      <td className="py-1" dir="ltr">
+                        {model ?? t('platform.ai.provider.noModel')}
+                      </td>
+                      <td className="py-1">
+                        <Badge tone={price.listed ? 'ok' : model === null ? 'muted' : 'warning'}>
+                          {price.listed ? yes : no}
+                        </Badge>
+                      </td>
+                      <td className="py-1">
+                        <Badge tone={price.cachedInputPriced ? 'ok' : 'muted'}>
+                          {price.cachedInputPriced ? yes : no}
+                        </Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-content-muted">{t('platform.ai.provider.pricesNote')}</p>
+        </>
+      )}
     </Panel>
   );
 }
 
 function providerLabel(
   t: TFunction,
-  provider: 'recording' | 'groq' | 'gemini' | 'anthropic' | 'openai',
+  provider: 'none' | 'recording' | 'groq' | 'gemini' | 'anthropic' | 'openai',
 ): string {
   switch (provider) {
+    case 'none':
+      return t('platform.ai.provider.none');
     case 'recording':
       return t('platform.ai.provider.recording');
     case 'groq':

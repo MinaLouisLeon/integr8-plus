@@ -383,6 +383,8 @@ export const en = {
           memberLeft: '{{percent}} of their share left',
           memberUnlimited: 'Share not limited',
           memberUsedUp: 'Share used up for now',
+          libraryNote:
+            'Your assistant answers from the help guide for now, which needs no shares: everyone with the assistant switched on can use it. Shares apply once your subscription includes AI answers.',
         },
       },
       invite: 'Invite somebody',
@@ -529,6 +531,8 @@ export const en = {
         failed: 'Could not save. Try again.',
         bothNeeded:
           'To use the assistant, a person needs their switch on and a share of the company’s allowance.',
+        libraryNote:
+          'Your assistant answers from the help guide for now, which needs no shares: everyone with the assistant switched on can use it. Shares apply once your subscription includes AI answers.',
         // The desktop's share management (ADR-0002 D6, D7): percentages only,
         // never a count or an amount.
         memberShares: {
@@ -6061,6 +6065,8 @@ export const en = {
           'Answers from the help library, and can look up company records your seat may see.',
         agent:
           'Answers from the help library, can look up company records your seat may see, and can prepare changes for you to confirm.',
+        library:
+          'Answers with the help guide’s own articles, and links to the screens they describe.',
       },
       noCompanyData: 'Your company’s records are not sent outside Integr8 Plus.',
     },
@@ -6749,6 +6755,13 @@ export const en = {
       levelAgent: 'Agent',
       levelHint:
         'Help answers questions about the product. Insights also reads company data. Agent also proposes actions for somebody to approve.',
+      answerSource: 'Answers come from',
+      answerSourceModel: 'An AI model',
+      answerSourceLibrary: 'The help library (no AI)',
+      answerSourceHint:
+        'The help library answers with its own articles, at Help only: no AI provider, no tokens, no cost, and members need no share.',
+      libraryNote:
+        'Answers from the help library use no model, so token limits, the cost cap and the model ceilings do not apply. They are kept for when answers come from a model again.',
       quota: 'Message quota',
       quotaMode: 'Quota mode',
       quotaDaily: 'Daily',
@@ -6821,6 +6834,13 @@ export const en = {
       companyData: 'Company data may be sent to the AI provider',
       companyDataHint:
         'Off by default. Applies to insights and actions; help never sends the company’s records.',
+      answersFrom: 'Answers come from now',
+      answersFromModel: 'An AI model',
+      answersFromLibrary: 'The help library',
+      libraryReasonPolicy: 'Because the configuration says so.',
+      libraryReasonNoProvider: 'Because this server has no AI provider (AI_PROVIDER=none).',
+      libraryReasonUnconfigured:
+        'Because the server’s AI settings are incomplete: see the AI provider panel on Plans.',
       resetToPlan: 'Reset to plan',
       usage: 'Usage',
       today: 'Today',
@@ -6857,6 +6877,8 @@ export const en = {
         capHint: 'This member’s own provider spend per UTC month. Empty for no cap.',
         capInvalid: 'An amount above zero with at most six decimals, or empty for no cap.',
         unassignedNow: '{{percent}} of the allowance is unassigned now.',
+        libraryNote:
+          'Answers come from the help library now, so shares and dollar caps decide nothing until the company is answered by a model again.',
       },
       provider: {
         title: 'AI provider',
@@ -6880,6 +6902,9 @@ export const en = {
           'A model with no price row is charged at the server’s default rates, and its spend is marked as estimated. Without a cached-input price, cached input is charged in full.',
         creditPaused:
           'The provider says the account’s credit is used up; the assistant is paused for {{seconds}} s on this server.',
+        none: 'None (help library only)',
+        libraryOnly:
+          'This server has no AI provider. Every company is answered from the help library, whatever its configuration says.',
       },
     },
     plans: {

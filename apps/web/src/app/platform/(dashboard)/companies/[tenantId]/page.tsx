@@ -665,6 +665,9 @@ interface CompanyAi {
     configuredLevel: AiPolicyFields['level'];
     offReason:
       'global_off' | 'plan_off' | 'custom_off' | 'not_served' | 'provider_unconfigured' | null;
+    /** Where the answers come from now, and why the library when it is (ADR-0002 D9–D12). */
+    answersFrom: 'model' | 'library';
+    libraryReason: 'policy' | 'no_provider' | 'provider_unconfigured' | null;
     companyDataToProvider: boolean;
   };
   maxLevelServed: AiPolicyFields['level'];
@@ -776,6 +779,15 @@ function AiPanelForm({ tenantId, data }: { tenantId: string; data: CompanyAi }) 
               ? t('platform.ai.offProviderUnconfigured')
               : t('platform.ai.offNotServed');
 
+  const libraryReason =
+    effective.libraryReason === 'policy'
+      ? t('platform.ai.libraryReasonPolicy')
+      : effective.libraryReason === 'no_provider'
+        ? t('platform.ai.libraryReasonNoProvider')
+        : effective.libraryReason === 'provider_unconfigured'
+          ? t('platform.ai.libraryReasonUnconfigured')
+          : null;
+
   const dayLimit =
     effective.unlimitedMessages || !quotaModeHasDaily(effective.quotaMode)
       ? null
@@ -822,7 +834,20 @@ function AiPanelForm({ tenantId, data }: { tenantId: string; data: CompanyAi }) 
           value={levelLabel(t, effective.configuredLevel)}
         />
         {offReason === null ? null : <Fact label={t('platform.ai.offReason')} value={offReason} />}
+        {effective.level === 'off' ? null : (
+          <Fact
+            label={t('platform.ai.answersFrom')}
+            value={
+              effective.answersFrom === 'library'
+                ? t('platform.ai.answersFromLibrary')
+                : t('platform.ai.answersFromModel')
+            }
+          />
+        )}
       </dl>
+      {effective.level === 'off' || libraryReason === null ? null : (
+        <p className="text-sm text-content-muted">{libraryReason}</p>
+      )}
 
       <form
         className="flex flex-col gap-4"
@@ -1046,6 +1071,17 @@ interface AiMember {
  */
 function AiMembersPanel({ tenantId }: { tenantId: string }) {
   const { t, i18n } = useTranslation();
+  // The same query as the assistant panel above, so it is read once: under
+  // library answers shares and dollar caps decide nothing (ADR-0002 D10).
+  const ai = useQuery({
+    queryKey: ['platform', 'company', tenantId, 'ai'],
+    queryFn: async () => {
+      const { data } = await platformClient().GET('/v1/platform/companies/{tenantId}/ai', {
+        params: { path: { tenantId } },
+      });
+      return data;
+    },
+  });
   const members = useQuery({
     queryKey: ['platform', 'company', tenantId, 'ai', 'members'],
     queryFn: async () => {
@@ -1083,6 +1119,11 @@ function AiMembersPanel({ tenantId }: { tenantId: string }) {
         unassigned: formatPercent(Math.max(0, 100 - assigned) / 100, { locale: i18n.language }),
       })}
     >
+      {ai.data?.effective.answersFrom === 'library' && ai.data.effective.level !== 'off' ? (
+        <p className="rounded-md bg-surface-muted px-3 py-2 text-sm text-content">
+          {t('platform.ai.members.libraryNote')}
+        </p>
+      ) : null}
       {members.data.items.length === 0 ? (
         <p className="text-sm text-content-muted">{t('platform.companies.empty')}</p>
       ) : (
