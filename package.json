@@ -20,6 +20,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "licences:check": "node scripts/licences/check.mjs && node --test scripts/licences/check.test.mjs",
+    "guide:check": "node scripts/guide/check.mjs",
     "clean": "turbo run clean",
     "prepare": "husky"
   },

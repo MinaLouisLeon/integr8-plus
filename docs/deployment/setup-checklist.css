@@ -1,0 +1,118 @@
+/* Integr8 Plus Setup Checklist: styles.
+   Kept in step with setup-checklist.md and the published page (see AGENTS.md).
+   The first rules are the base reset the page was published with. */
+:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}
+img{max-width:100%}
+[hidden]:not([hidden=until-found i]){display:none!important}
+
+  /* Layout: a sticky stage rail at desk width, one column on a phone. The stage
+     numbers are real: each stage depends on the ones before it. */
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --fg: #16202b;
+    --muted: #5b6977;
+    --line: #d9dee5;
+    --accent: #1f6f8b;
+    --accent-ink: #ffffff;
+    --warn-bg: #fff4dc;
+    --warn-fg: #7a4b00;
+    --ok-bg: #e4f3ea;
+    --ok-fg: #1d5b36;
+    --code-bg: #0f1a22;
+    --code-fg: #e6edf3;
+    --display: 'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif;
+    --body: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f151b; --surface: #16202a; --fg: #e8edf2; --muted: #9aa8b5; --line: #2b3844;
+      --accent: #5fb3cf; --accent-ink: #0b161c; --warn-bg: #3a2a0a; --warn-fg: #ffd58a;
+      --ok-bg: #12301f; --ok-fg: #9fdcb5; --code-bg: #0a1016; --code-fg: #e6edf3; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f151b; --surface: #16202a; --fg: #e8edf2; --muted: #9aa8b5; --line: #2b3844;
+    --accent: #5fb3cf; --accent-ink: #0b161c; --warn-bg: #3a2a0a; --warn-fg: #ffd58a;
+    --ok-bg: #12301f; --ok-fg: #9fdcb5; --code-bg: #0a1016; --code-fg: #e6edf3; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.55; }
+  .wrap { max-width: 1140px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.12; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.1rem, 4.5vw, 3.2rem); letter-spacing: -0.015em; }
+  h2 { font-size: 1.55rem; }
+  h3 { font-size: 1.1rem; margin-block: 20px 6px; }
+  h4 { font-family: var(--display); font-weight: 500; font-size: 0.98rem; margin: 22px 0 6px; color: var(--accent); text-wrap: balance; }
+  p { margin: 0 0 12px; max-width: 70ch; }
+  .eyebrow { font-family: var(--display); font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78rem; color: var(--accent); }
+  header.hero { display: grid; gap: 14px; margin-bottom: 32px; max-width: 78ch; }
+  header.hero p.lede { font-size: 1.2rem; color: var(--muted); }
+
+  .grid { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 36px; align-items: start; }
+  nav.rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); display: grid; gap: 2px; font-size: 0.95rem; }
+  nav.rail a { color: var(--muted); text-decoration: none; padding: 6px 10px; border-inline-start: 2px solid var(--line); }
+  nav.rail a:hover, nav.rail a:focus-visible { color: var(--fg); border-color: var(--accent); outline: none; }
+  nav.rail .n { font-family: var(--mono); font-size: 0.8rem; color: var(--accent); margin-inline-end: 8px; }
+  nav.rail .later { opacity: 0.75; }
+  main { display: grid; gap: 44px; min-width: 0; }
+  section { min-width: 0; }
+  section > .head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+  .num { font-family: var(--mono); font-weight: 600; color: var(--accent); font-size: 1.05rem; }
+  .time { font-size: 0.85rem; color: var(--muted); }
+
+  pre { background: var(--code-bg); color: var(--code-fg); font-family: var(--mono); font-size: 0.86rem; line-height: 1.5; padding: 14px 16px; border-radius: 6px; overflow-x: auto; margin: 10px 0 14px; position: relative; }
+  code { font-family: var(--mono); font-size: 0.9em; background: color-mix(in srgb, var(--line) 55%, transparent); padding: 0.05em 0.35em; border-radius: 4px; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  :not(pre) > code { overflow-wrap: anywhere; }
+  .copy { position: absolute; top: 8px; inset-inline-end: 8px; font: 600 0.72rem var(--body); letter-spacing: 0.04em; text-transform: uppercase; background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+  .copy:focus-visible { outline: 2px solid var(--code-fg); outline-offset: 2px; }
+
+  .note { border-inline-start: 3px solid var(--accent); padding: 10px 14px; background: var(--surface); margin: 12px 0; max-width: 74ch; }
+  .note.warn { border-color: var(--warn-fg); background: var(--warn-bg); color: var(--warn-fg); }
+  .note.warn code { background: rgba(0,0,0,0.08); }
+  .note p:last-child { margin-bottom: 0; }
+
+  .tablewrap { overflow-x: auto; margin: 10px 0 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+  th, td { text-align: start; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--display); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  td code { white-space: nowrap; }
+
+  .pill { display: inline-block; font: 600 0.72rem var(--body); letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+  .pill.now { background: var(--ok-bg); color: var(--ok-fg); }
+  .pill.later { background: var(--warn-bg); color: var(--warn-fg); }
+
+  ul, ol { padding-inline-start: 1.3em; margin: 0 0 12px; max-width: 72ch; }
+  li { margin-bottom: 5px; }
+
+  /* The checklist. Ticks are remembered in this browser only. */
+  .check { list-style: none; padding: 0; display: grid; gap: 6px; max-width: 76ch; }
+  .check li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; margin: 0; }
+  .check input { width: 18px; height: 18px; margin-top: 4px; accent-color: var(--accent); cursor: pointer; }
+  .check label { cursor: pointer; }
+  .check li.done label { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+
+  .progress { display: flex; align-items: center; gap: 12px; font-size: 0.95rem; color: var(--muted); margin-top: 6px; }
+  .bar { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; max-width: 320px; }
+  .bar span { display: block; height: 100%; background: var(--accent); width: 0; }
+  .progress { flex-wrap: wrap; }
+  .clear { font: 600 0.85rem var(--body); color: var(--ink, inherit); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  .clear:hover:not(:disabled) { border-color: var(--accent); }
+  .clear:disabled { opacity: 0.45; cursor: not-allowed; }
+  .clear.armed { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .clear-cancel { font: 600 0.85rem var(--body); color: var(--muted); background: transparent; border: 0; padding: 6px 4px; cursor: pointer; text-decoration: underline; }
+  .clear-cancel[hidden] { display: none; }
+
+  footer { margin-top: 48px; color: var(--muted); font-size: 0.9rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    nav.rail { position: static; display: flex; flex-wrap: wrap; gap: 6px; }
+    nav.rail a { border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; }
+    body { font-size: 16px; }
+  }
