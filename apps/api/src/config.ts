@@ -270,8 +270,8 @@ export const apiConfigSchema = z.object({
     .optional(),
   /**
    * How long this process stops asking the provider after it said the
-   * account's credit is spent (ADR-0002 D8). Members see the assistant as
-   * temporarily unavailable meanwhile; nothing else is affected.
+   * account's credit is spent (ADR-0002 D8). Questions are answered from the
+   * help library meanwhile (D11); nothing else is affected.
    */
   AI_CREDIT_EXHAUSTED_PAUSE_SECONDS: positiveInt(300),
   /**
