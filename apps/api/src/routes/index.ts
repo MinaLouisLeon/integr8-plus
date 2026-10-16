@@ -48,6 +48,8 @@ import { mediaRoutes } from './v1/media.js';
 import { platformRoutes } from './v1/platform/index.js';
 import { publicBrandRoutes } from './v1/public-brand.js';
 import { submissionRoutes } from './v1/submissions.js';
+import { documentRoutes } from './v1/documents.js';
+import { documentPublicRoutes } from './v1/documents-public.js';
 import { syncRoutes } from './v1/sync.js';
 import { timeRoutes } from './v1/time.js';
 import { workspaceRoutes } from './v1/workspace.js';
@@ -74,6 +76,8 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...workspaceRoutes,
     ...formRoutes,
     ...submissionRoutes,
+    ...documentRoutes,
+    ...documentPublicRoutes,
     ...mediaRoutes,
     ...customerRoutes,
     ...crmRoutes,

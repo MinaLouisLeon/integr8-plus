@@ -51,7 +51,7 @@ export class DocumentTemplatesRepository extends TenantScopedRepository {
   }
 
   async list(
-    options: { formId?: string; includeArchived?: boolean } = {},
+    options: { formId?: string | undefined; includeArchived?: boolean | undefined } = {},
   ): Promise<DocumentTemplate[]> {
     let query = this.#templates().selectAll();
     if (options.formId !== undefined) {

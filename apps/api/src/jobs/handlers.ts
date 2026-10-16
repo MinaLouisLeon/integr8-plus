@@ -1,5 +1,7 @@
 import { withTenant } from '@integr8/db';
 import type { Services } from '../composition.js';
+import type { ApiConfig } from '../config.js';
+import { DOCUMENT_RENDER_QUEUE, renderDocument } from '../documents/render.js';
 import { GEOCODE_QUEUE, geocodeSite } from '../geo/geocode-site.js';
 import { IMPORT_QUEUE, runImport } from '../imports/run-import.js';
 import { makeThumbnail, THUMBNAIL_QUEUE } from '../media/thumbnails.js';
@@ -25,7 +27,8 @@ import type { JobHandlers } from './worker.js';
  * this process a handler it does not have.
  */
 export const buildJobHandlers = (
-  services: Pick<Services, 'media' | 'geocoder' | 'push'>,
+  services: Pick<Services, 'media' | 'geocoder' | 'push' | 'pdf'>,
+  config: ApiConfig,
 ): JobHandlers => ({
   [WORK_ORDER_PUSH_QUEUE]: async (payload, context) => {
     const eventId = text(payload, 'eventId');
@@ -136,6 +139,24 @@ export const buildJobHandlers = (
       media: services.media,
       logger: context.logger,
     });
+  },
+
+  [DOCUMENT_RENDER_QUEUE]: async (payload, context) => {
+    const documentId = text(payload, 'documentId');
+    if (documentId === null) {
+      context.logger.warn('Document job without a document id', { jobId: context.jobId });
+      return;
+    }
+    const outcome = await renderDocument(
+      { media: services.media, pdf: services.pdf, config, logger: context.logger },
+      {
+        tenantId: context.tenantId,
+        documentId,
+        attempt: context.attempt,
+        design: payload.design,
+      },
+    );
+    context.logger.info('Document job finished', { jobId: context.jobId, documentId, ...outcome });
   },
 
   [PURGE_QUEUE]: async (_payload, context) => {

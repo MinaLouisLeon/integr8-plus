@@ -818,7 +818,7 @@ describe('carrying answers over from an asset’s last visit', () => {
 
 describe('importing assets from CSV', () => {
   async function runImports() {
-    const handlers = buildJobHandlers(api.services);
+    const handlers = buildJobHandlers(api.services, api.config);
     const logger = createLogger({ level: 'error', write: () => undefined });
     for (;;) {
       const claimed = await getPlatformDataSource().jobs.claim({ workerId: 'test', limit: 50 });

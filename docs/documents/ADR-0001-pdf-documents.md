@@ -131,3 +131,26 @@ startup log and on the document, and every other feature runs as before.
 - The worker's lease must outlast a render; renders are capped well below it.
 - One more public door, `/d/<code>`, and one key-protected endpoint. Both answer
   one document per correct key and nothing else.
+
+## Addendum: decided while building (16 October 2026)
+
+- **The document's language is the template's.** A template prints in English
+  or Arabic, or follows the company's language when it says neither. Labels,
+  yes and no, dates and the page direction all follow it.
+- **The first page may have its own top margin**, for a letterhead taller than
+  the band on the other pages.
+- **Whoever made a document can open it.** Reading the register needs
+  `document.read`; a seat with only `document.create`, such as an engineer, can
+  still open and download the documents it made itself.
+- **A document's title** is the template's name, followed by the value of its
+  lookup field when it has one: `Gas certificate · GS-2026-0042`.
+- **The design travels with the render job**, so a template saved while a
+  document waits to be printed does not change what was asked for.
+- **Printing is bounded.** Chromium runs with scripts off and the network shut;
+  pictures are resized before they are placed; at most 120 photos and
+  signatures go into one document; one render may take 30 seconds and is tried
+  three times at most before the document is marked failed.
+- **The website lookup** answers `found: false` rather than 404, returns the
+  document's fields with it, and gives five-minute links to view and download
+  the PDF besides the stable `/d/<code>` page. Keys look like `i8wk_…` and are
+  limited to 60 lookups a minute each by default.

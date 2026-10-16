@@ -57,9 +57,21 @@ export const pageSchema = z.object({
    * plain first page. Absent when the first page is like the others.
    */
   firstPage: z
-    .object({ background: z.object({ fileId }).nullable() })
+    .object({
+      background: z.object({ fileId }).nullable(),
+      /**
+       * The first page's own top margin, for a letterhead taller than the
+       * band on the other pages. `null` keeps the template's.
+       */
+      topMargin: millimetres(0, 120).nullable().default(null),
+    })
     .nullable()
     .default(null),
+  /**
+   * The language the document is printed in: its labels, yes and no, dates,
+   * the page direction. `null` follows the company's own language.
+   */
+  language: z.enum(['en', 'ar']).nullable().default(null),
   /** Base text size in points. */
   fontSize: z.number().min(7).max(16).default(10),
   footer: z
@@ -320,6 +332,7 @@ export function emptyDesign(): TemplateDesign {
       margins: { top: 20, end: 15, bottom: 20, start: 15 },
       background: null,
       firstPage: null,
+      language: null,
       fontSize: 10,
       footer: { pageNumbers: true },
     },

@@ -23,7 +23,7 @@ key that only the terminal-created platform account can issue.
 | A     | Complete    | This plan; ADR-0001.                                                                                                                                   |
 | B     | Complete    | Permissions, the `documents` module flag, navigation, migration 0048 (templates, documents, field values, website keys), repositories, retention rule. |
 | C     | Complete    | `@integr8/document-render`: the template schema and the HTML renderer shared by the designer's preview and the server.                                 |
-| D     | Not started | The PDF pipeline (Chromium, backgrounds), the render job, routes for templates, documents, the public link, the website lookup and website keys.       |
+| D     | Complete    | The PDF pipeline (Chromium, backgrounds), the render job, routes for templates, documents, the public link, the website lookup and website keys.       |
 | E     | Not started | The desktop designer, the Documents register and export in the apps, the `/d/<code>` page, the dashboard's website-key panel, the phone's list.        |
 | F     | Not started | Runbook, the website developer's guide, the setup guide (every copy), full checks, the pull request.                                                   |
 
@@ -31,5 +31,11 @@ key that only the terminal-created platform account can issue.
 
 Commands actually run, with their outcome. "Not run" means not run.
 
-| When | Command | Result |
-| ---- | ------- | ------ |
+| When    | Command                                                             | Result                                                                                 |
+| ------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Phase C | `pnpm --filter @integr8/document-render test`, `lint`, `typecheck`  | 19 tests pass; clean.                                                                  |
+| Phase D | `pnpm --filter @integr8/api test`                                   | 28 files, 227 tests pass, including the Chromium printer printing English and Arabic.  |
+| Phase D | `pnpm --filter @integr8/api test:integration` (fresh test database) | 48 files pass, 1 skipped (R2, needs credentials); 500 tests, 19 of them for documents. |
+| Phase D | `pnpm --filter @integr8/db test:integration`                        | 33 files, 384 tests pass.                                                              |
+| Phase D | `pnpm turbo run typecheck`                                          | 28 tasks pass.                                                                         |
+| Phase D | `pnpm licences:check`                                               | Passes with `playwright-core` and `pdf-lib` added.                                     |

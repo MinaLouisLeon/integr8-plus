@@ -414,6 +414,9 @@ function css(
   const start = direction === 'rtl' ? 'right' : 'left';
   const end = direction === 'rtl' ? 'left' : 'right';
   const page = `@page { size: A4 portrait; margin: ${String(margins.top)}mm ${String(direction === 'rtl' ? margins.start : margins.end)}mm ${String(margins.bottom)}mm ${String(direction === 'rtl' ? margins.end : margins.start)}mm; }`;
+  const firstTop = design.page.firstPage?.topMargin ?? null;
+  const firstPageRule =
+    firstTop === null ? '' : `@page :first { margin-top: ${String(firstTop)}mm; }`;
   let sheet = '';
   if (mode === 'preview') {
     const rest =
@@ -451,7 +454,7 @@ function css(
       body { margin: 0; padding: 8mm 0; }
       .sheet {
         width: 210mm; min-height: 297mm; margin: 0 auto; box-sizing: border-box;
-        padding: ${String(margins.top)}mm ${String(margins.end)}mm ${String(margins.bottom)}mm ${String(margins.start)}mm;
+        padding: ${String(firstTop ?? margins.top)}mm ${String(margins.end)}mm ${String(margins.bottom)}mm ${String(margins.start)}mm;
         padding-inline-start: ${String(margins.start)}mm; padding-inline-end: ${String(margins.end)}mm;
         background-color: #ffffff; background-image: ${layers.join(', ')};
         background-size: ${layers.map(() => '210mm 297mm').join(', ')};
@@ -461,6 +464,7 @@ function css(
   }
   return `
     ${page}
+    ${firstPageRule}
     *, *::before, *::after { box-sizing: border-box; }
     html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body { margin: 0; font-family: ${FONT_STACK}; font-size: ${String(fontSize)}pt; line-height: 1.4; color: #111418; ${mode === 'pdf' ? 'background: transparent;' : ''} }
@@ -489,7 +493,7 @@ function css(
     table.t thead { display: table-header-group; }
     table.t tr { break-inside: avoid; }
     table.kv th { width: 38%; font-weight: 600; background: #f6f7f9; }
-    td.num, th.num { width: 9mm; text-align: center; }
+    td.num, th.num { width: 11mm; text-align: center; white-space: nowrap; }
     figure { margin: 0 0 3mm; break-inside: avoid; }
     figure img, .images img { max-width: 100%; height: auto; }
     .images { display: flex; flex-wrap: wrap; gap: 1.5mm; }
@@ -522,7 +526,7 @@ export function renderDocumentHtml(input: RenderInput): RenderedDocument {
     : '';
   const hasFooter = footer.pageNumbers || footerText !== '';
   const footerHtml = hasFooter
-    ? `<div dir="${direction}" style="width:100%;font-family:${FONT_STACK};font-size:8pt;color:#3b4450;padding:0 ${String(input.design.page.margins.start)}mm 0 ${String(input.design.page.margins.end)}mm;display:flex;justify-content:space-between;gap:4mm;"><span>${escapeHtml(fill(footerText, {}))}</span><span>${pages}</span></div>`
+    ? `<div dir="${direction}" style="width:100%;font-family:${FONT_STACK};font-size:8pt;color:#3b4450;padding-inline-start:${String(input.design.page.margins.start)}mm;padding-inline-end:${String(input.design.page.margins.end)}mm;box-sizing:border-box;display:flex;justify-content:space-between;gap:4mm;margin-bottom:${String(Math.max(0, input.design.page.margins.bottom - 10))}mm;"><span>${escapeHtml(fill(footerText, {}))}</span><span>${pages}</span></div>`
     : '<span></span>';
   return { html, footerHtml, margins: input.design.page.margins, hasFooter };
 }

@@ -240,12 +240,23 @@ describe('parseDesign', () => {
       ...emptyDesign(),
       page: { ...emptyDesign().page, firstPage: { background: { fileId: PHOTO } } },
     });
-    expect(own.page.firstPage).toEqual({ background: { fileId: PHOTO } });
+    expect(own.page.firstPage).toEqual({ background: { fileId: PHOTO }, topMargin: null });
     const plain = parsed({
       ...emptyDesign(),
       page: { ...emptyDesign().page, firstPage: { background: null } },
     });
-    expect(plain.page.firstPage).toEqual({ background: null });
+    expect(plain.page.firstPage).toEqual({ background: null, topMargin: null });
+    const taller = parsed({
+      ...emptyDesign(),
+      page: { ...emptyDesign().page, firstPage: { background: null, topMargin: 45 } },
+    });
+    expect(taller.page.firstPage?.topMargin).toBe(45);
+    expect(() =>
+      parsed({
+        ...emptyDesign(),
+        page: { ...emptyDesign().page, firstPage: { background: null, topMargin: 200 } },
+      }),
+    ).toThrow();
   });
 });
 
@@ -385,6 +396,18 @@ describe('renderDocumentHtml', () => {
     expect(margins).toEqual({ top: 20, end: 15, bottom: 20, start: 15 });
     expect(hasFooter).toBe(true);
     expect(footerHtml).toContain('<span class="pageNumber"></span>');
+  });
+
+  it('gives the first page its own top margin when the template asks', () => {
+    const base = design();
+    const { html } = render({
+      design: {
+        ...base,
+        page: { ...base.page, firstPage: { background: null, topMargin: 45 } },
+      },
+    });
+    expect(html).toContain('@page :first { margin-top: 45mm; }');
+    expect(render().html).not.toContain('@page :first');
   });
 
   it('writes Arabic right to left, in Arabic words', () => {

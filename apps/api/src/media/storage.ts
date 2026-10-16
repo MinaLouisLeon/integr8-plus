@@ -97,12 +97,14 @@ export interface ObjectStore {
   /** Removes objects. Keys that do not exist are not an error. */
   delete(keys: readonly string[]): Promise<void>;
 
-  /** A short-lived link to read the object. Nothing in a bucket is ever public. */
-  createDownload(input: {
-    key: string;
-    contentType: string;
-    expiresInSeconds: number;
-  }): Promise<{ url: string; expiresAt: Date }>;
+  /**
+   * A short-lived link to read the object. Nothing in a bucket is ever public.
+   *
+   * Images open in the browser and everything else downloads, unless the
+   * caller says otherwise: a generated PDF is shown in the browser for "View"
+   * and saved under its own name for "Download".
+   */
+  createDownload(input: DownloadRequest): Promise<{ url: string; expiresAt: Date }>;
 
   /** Every complete object in the bucket, for reconciliation and teardown. */
   list(): AsyncIterable<{ key: string; byteSize: number }>;
@@ -112,6 +114,45 @@ export interface ObjectStore {
    * occupy the bucket without being objects. Returns how many were aborted.
    */
   abortIncompleteUploads(startedBefore: Date): Promise<number>;
+}
+
+export interface DownloadRequest {
+  key: string;
+  contentType: string;
+  expiresInSeconds: number;
+  /** Shown in the browser or saved. Default: inline for images, attachment otherwise. */
+  disposition?: 'inline' | 'attachment';
+  /** The name a saved copy gets. */
+  filename?: string;
+}
+
+/**
+ * The `Content-Disposition` a download link asks storage to answer with.
+ *
+ * The file name goes twice: a plain ASCII copy for old clients, and the UTF-8
+ * one (RFC 6266) for everyone else, so an Arabic title survives. Quotes,
+ * backslashes and control characters never reach the header.
+ */
+export function contentDisposition(input: DownloadRequest): string {
+  const kind =
+    input.disposition ?? (input.contentType.startsWith('image/') ? 'inline' : 'attachment');
+  const name = Array.from(input.filename ?? '')
+    .filter((char) => {
+      const code = char.charCodeAt(0);
+      return code > 0x1f && code !== 0x7f && char !== '"' && char !== '\\' && char !== '/';
+    })
+    .join('')
+    .trim()
+    .slice(0, 150);
+  if (name === '') {
+    return kind;
+  }
+  const ascii = Array.from(name, (char) => (char.charCodeAt(0) > 0x7e ? '_' : char)).join('');
+  const encoded = encodeURIComponent(name).replace(
+    /['()*]/gu,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `${kind}; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }
 
 /** Buckets: one per company. */

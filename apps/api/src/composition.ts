@@ -32,6 +32,7 @@ import { HelpLibrary } from './ai/help/library.js';
 import { PriceTable } from './ai/pricing.js';
 import { buildAiProvider } from './ai/providers/index.js';
 import { INSIGHT_TOOLS } from './ai/tools/insights.js';
+import { buildPdfPrinter, type PdfPrinter } from './documents/printer.js';
 
 /**
  * The composition root.
@@ -84,6 +85,11 @@ export interface Services {
    * missing service.
    */
   ai: AiServices;
+  /**
+   * Prints PDF documents (docs/documents; ADR-0001). Used by the worker,
+   * never in a request. Chromium starts on the first document, not here.
+   */
+  pdf: PdfPrinter;
 }
 
 export interface BuildServicesOptions {
@@ -142,6 +148,7 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
       help: new HelpLibrary(options.config.API_RELEASE),
       tools: INSIGHT_TOOLS,
     },
+    pdf: buildPdfPrinter(options.config),
   };
 }
 

@@ -7,6 +7,8 @@ import type { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import {
   BUCKET_PATTERN,
+  contentDisposition,
+  type DownloadRequest,
   type MediaStorage,
   OBJECT_KEY_PATTERN,
   type ObjectStore,
@@ -184,13 +186,15 @@ export class LocalDiskStorage implements MediaStorage {
         if (link === undefined || found === undefined) {
           return reply.status(404).send();
         }
-        const inline = found.contentType.startsWith('image/');
         return reply
           .header('content-type', found.contentType)
           .header('content-length', String(found.byteSize))
           .header('cache-control', 'private, max-age=300')
           .header('x-content-type-options', 'nosniff')
-          .header('content-disposition', inline ? 'inline' : 'attachment')
+          .header(
+            'content-disposition',
+            link.disposition ?? (found.contentType.startsWith('image/') ? 'inline' : 'attachment'),
+          )
           .send(createReadStream(this.paths(link.bucket, link.key).file));
       });
 
@@ -231,13 +235,22 @@ export class LocalDiskStorage implements MediaStorage {
     contentType: string,
     byteSize: number,
     expiresAt: Date,
+    disposition?: string,
   ) {
     const expires = Math.floor(expiresAt.getTime() / 1000);
     const query = new URLSearchParams({
       type: contentType,
       size: String(byteSize),
       expires: String(expires),
-      signature: this.#signature(method, bucket, key, contentType, byteSize, expires),
+      ...(disposition === undefined ? {} : { disposition }),
+      signature: this.#signature(
+        disposition === undefined ? method : `${method} ${disposition}`,
+        bucket,
+        key,
+        contentType,
+        byteSize,
+        expires,
+      ),
     });
     return `${this.#baseUrl}${LOCAL_MEDIA_PREFIX}/${bucket}/${key}?${query.toString()}`;
   }
@@ -353,6 +366,8 @@ export class LocalDiskStorage implements MediaStorage {
     const contentType = parsed.searchParams.get('type') ?? '';
     const byteSize = Number(parsed.searchParams.get('size'));
     const expires = Number(parsed.searchParams.get('expires'));
+    const disposition =
+      method === 'GET' ? (parsed.searchParams.get('disposition') ?? undefined) : undefined;
     const given = Buffer.from(parsed.searchParams.get('signature') ?? '', 'utf8');
     if (
       slash < 0 ||
@@ -367,13 +382,20 @@ export class LocalDiskStorage implements MediaStorage {
       return undefined;
     }
     const expected = Buffer.from(
-      this.#signature(method, bucket, key, contentType, byteSize, expires),
+      this.#signature(
+        disposition === undefined ? method : `${method} ${disposition}`,
+        bucket,
+        key,
+        contentType,
+        byteSize,
+        expires,
+      ),
       'utf8',
     );
     if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
       return undefined;
     }
-    return { bucket, key, contentType, byteSize };
+    return { bucket, key, contentType, byteSize, disposition };
   }
 }
 
@@ -542,10 +564,22 @@ class LocalBucket implements ObjectStore {
     }
   }
 
-  createDownload(input: { key: string; contentType: string; expiresInSeconds: number }) {
+  createDownload(input: DownloadRequest) {
     const expiresAt = new Date(Date.now() + input.expiresInSeconds * 1000);
+    const disposition =
+      input.disposition === undefined && input.filename === undefined
+        ? undefined
+        : contentDisposition(input);
     return Promise.resolve({
-      url: this.storage.signedUrl('GET', this.bucket, input.key, input.contentType, 0, expiresAt),
+      url: this.storage.signedUrl(
+        'GET',
+        this.bucket,
+        input.key,
+        input.contentType,
+        0,
+        expiresAt,
+        disposition,
+      ),
       expiresAt,
     });
   }

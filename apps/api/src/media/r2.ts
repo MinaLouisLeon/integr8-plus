@@ -21,6 +21,8 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import {
   BUCKET_PATTERN,
+  contentDisposition,
+  type DownloadRequest,
   type MediaStorage,
   type ObjectStore,
   type PartUploadTarget,
@@ -373,14 +375,13 @@ class R2Bucket implements ObjectStore {
     }
   }
 
-  async createDownload(input: { key: string; contentType: string; expiresInSeconds: number }) {
-    const inline = input.contentType.startsWith('image/');
+  async createDownload(input: DownloadRequest) {
     const url = await getSignedUrl(
       this.client,
       new GetObjectCommand({
         Bucket: this.bucket,
         Key: input.key,
-        ResponseContentDisposition: inline ? 'inline' : 'attachment',
+        ResponseContentDisposition: contentDisposition(input),
       }),
       { expiresIn: input.expiresInSeconds },
     );

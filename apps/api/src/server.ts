@@ -6,7 +6,6 @@ import {
   type Principal,
 } from '@integr8/core';
 import { AuthError, InvalidTokenError, SessionRevokedError } from '@integr8/auth';
-import { getAuthDataSource } from '@integr8/db';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import type { Services } from './composition.js';
@@ -21,12 +20,12 @@ import {
   internal,
   isClientError,
   notFound,
-  tooManyRequests,
   unauthorised,
   validationError,
 } from './http/errors.js';
 import { withIdempotency } from './http/idempotency.js';
 import { createLogger, type Logger, principalContext } from './http/logger.js';
+import { createRateLimiter } from './http/rate-limit.js';
 import { assertTenantServable, assertTenantWritable } from './http/suspension.js';
 import { assertFeatureEnabled } from './http/features.js';
 import type { AnyRoute, ClientApp, PublicRequestContext, RequestContext } from './http/routes.js';
@@ -597,77 +596,6 @@ function contextTags(context: PublicRequestContext): Record<string, string> {
     ...(context.principal === null
       ? {}
       : { tenantId: context.principal.tenantId, userId: context.principal.userId }),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Rate limiting
-// ---------------------------------------------------------------------------
-
-interface ConsumeOptions {
-  bucketKey: string;
-  limit: number;
-  windowMs: number;
-  logger: Logger;
-}
-
-/**
- * Postgres-backed fixed windows, with an in-memory short circuit.
- *
- * The counter has to be shared, or the effective limit multiplies by the number
- * of containers. But an upsert per request is also a write per request an
- * attacker can force, so once a bucket is known to be over its limit the
- * decision is served from memory until that window ends. The common case costs
- * one cheap upsert; the abusive case costs nothing.
- *
- * If this becomes a contention point, the answer is Redis and it is a P19
- * conversation. It is one class and one interface, which is what makes that
- * swap small.
- */
-function createRateLimiter() {
-  const blockedUntil = new Map<string, number>();
-
-  return {
-    async consume(options: ConsumeOptions): Promise<void> {
-      const now = Date.now();
-      const blocked = blockedUntil.get(options.bucketKey);
-
-      if (blocked !== undefined) {
-        if (blocked > now) {
-          throw tooManyRequests(
-            'Too many requests. Slow down and try again shortly.',
-            (blocked - now) / 1000,
-          );
-        }
-        blockedUntil.delete(options.bucketKey);
-      }
-
-      let decision;
-      try {
-        const auth = await getAuthDataSource();
-        decision = await auth.rateLimits.consume({
-          bucketKey: options.bucketKey,
-          limit: options.limit,
-          windowMs: options.windowMs,
-        });
-      } catch (error) {
-        // Fail open. A rate limiter that rejects everything when its store is
-        // unreachable turns a degraded dependency into a full outage, and the
-        // thing it protects against is abuse rather than correctness.
-        options.logger.warn('Rate limiter unavailable; allowing the request', {
-          error: error instanceof Error ? error.message : String(error),
-        });
-        return;
-      }
-
-      if (!decision.allowed) {
-        blockedUntil.set(options.bucketKey, decision.resetsAt.getTime());
-        throw tooManyRequests(
-          'Too many requests. Slow down and try again shortly.',
-          (decision.resetsAt.getTime() - now) / 1000,
-        );
-      }
-    },
   };
 }
 
