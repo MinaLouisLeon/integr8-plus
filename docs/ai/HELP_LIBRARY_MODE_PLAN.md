@@ -32,14 +32,21 @@ Later, if wanted: a menu of fixed Insights questions as buttons in library mode.
 | Phase | Status   | What it covers                                                                                                            |
 | ----- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
 | A     | Complete | This plan; ADR-0002 D9–D12.                                                                                               |
-| B     | Pending  | `answerSource` in `@integr8/core`, migration 0047, repositories; `AI_PROVIDER=none`.                                      |
-| C     | Pending  | Library answers in the chat, the fallback, admission without money or shares, capabilities and the platform's view of it. |
-| D     | Pending  | Plan and company editors, provider panel, share editors' note, assistant screens, EN/AR, client regeneration, runbook.    |
-| E     | Pending  | Full checks, commit, push.                                                                                                |
+| B     | Complete | `answerSource` in `@integr8/core`, migration 0047, repositories; `AI_PROVIDER=none`.                                      |
+| C     | Complete | Library answers in the chat, the fallback, admission without money or shares, capabilities and the platform's view of it. |
+| D     | Complete | Plan and company editors, provider panel, share editors' note, assistant screens, EN/AR, client regeneration, runbook.    |
+| E     | Complete | Full checks, commit, push.                                                                                                |
 
 ## Verification log
 
 Commands actually run, with their outcome.
 
-| When | Command | Result |
-| ---- | ------- | ------ |
+| When       | Command                                                                                                                                                                                                                                      | Result                                                                                                   |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 2026-10-16 | `pnpm --filter @integr8/db db up`, then `db down --steps 1` and `db up` on the test database                                                                                                                                                 | 0047 applies, rolls back and applies again; every plan reads `model`                                     |
+| 2026-10-16 | `vitest run --project integration` on ai-library, ai-no-provider, ai-chat                                                                                                                                                                    | pass: 21                                                                                                 |
+| 2026-10-16 | `pnpm format:check`, `pnpm licences:check`, `pnpm typecheck` (26 tasks), `pnpm lint` (27 tasks), `pnpm test` (26 packages: api 215, operations-dom 272, core 166, desktop 98, mobile 66, web 67, i18n 52, db 38, …), `pnpm build` (15 tasks) | pass                                                                                                     |
+| 2026-10-16 | `pnpm --filter @integr8/api openapi && pnpm --filter @integr8/api-client generate`                                                                                                                                                           | no diff                                                                                                  |
+| 2026-10-16 | gitleaks 8.24.3 over `origin/main..HEAD`                                                                                                                                                                                                     | no leaks                                                                                                 |
+| 2026-10-16 | Integration, one package after another on a freshly created database, as CI runs them                                                                                                                                                        | pass: db 384, auth 72, api 480 + 1 skipped                                                               |
+| 2026-10-16 | Live provider call                                                                                                                                                                                                                           | not needed: library answers call none; the model path is unchanged and covered by the recording provider |
