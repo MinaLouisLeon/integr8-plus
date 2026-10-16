@@ -1,7 +1,7 @@
 import { ApiRequestError } from '@integr8/api-client';
 import { formatDateTime, formatNumber, useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useContext, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import {
   type AiAllowance,
   type AiBlockedBy,
@@ -16,6 +16,13 @@ import {
 import { buttonClass, cardClass, DashboardBackLink, Failure, InlineError, Loading } from '../ui.js';
 import { MessageItem } from './message-parts.js';
 import { UsageMeter } from './usage-meter.js';
+import {
+  ReadAloudContext,
+  speechLanguage,
+  useReadAloud,
+  useSpeechInput,
+  type ReadAloud,
+} from './voice.js';
 
 /**
  * The Integr8 Plus assistant (docs/ai §10.1; ADR-0001).
@@ -30,6 +37,10 @@ import { UsageMeter } from './usage-meter.js';
  * so the meter is updated from the answer and the capabilities are asked
  * again only after a refusal for quota, when the server knows better than the
  * screen.
+ *
+ * Voice (docs/ai §10.5) uses the device's own tools: a microphone button when
+ * answers come from a model and the app has a recogniser, and answers read
+ * aloud for every company once the person turns it on.
  */
 
 /** What the server accepts in one message; a longer one is refused with 422. */
@@ -128,15 +139,17 @@ function Assistant({ capabilities }: { capabilities: AiCapabilities }) {
   });
 
   const level = capabilities.level === 'off' ? 'help' : capabilities.level;
+  const readAloud = useReadAloud({ lang: speechLanguage(locale) });
 
   return (
-    <>
+    <ReadAloudContext.Provider value={readAloud}>
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-semibold text-content">{t('ai.title')}</h1>
           <span className="inline-flex items-center rounded-full border border-accent px-2 py-0.5 text-xs font-medium text-content">
             {t(`ai.level.${level}`)}
           </span>
+          {readAloud.supported ? <ReadAloudControls readAloud={readAloud} /> : null}
         </div>
         <p className="max-w-prose text-sm text-content-muted">
           {capabilities.answerSource === 'library'
@@ -147,6 +160,7 @@ function Assistant({ capabilities }: { capabilities: AiCapabilities }) {
           <p className="max-w-prose text-sm text-content-muted">{t('ai.level.noCompanyData')}</p>
         ) : null}
         <UsageMeter allowance={capabilities.usage.allowance} />
+        {readAloud.hintShown ? <ReadAloudHint readAloud={readAloud} /> : null}
       </header>
 
       <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
@@ -197,10 +211,105 @@ function Assistant({ capabilities }: { capabilities: AiCapabilities }) {
             conversationId={selectedId}
             locale={locale}
             allowance={capabilities.usage.allowance}
+            spokenQuestions={capabilities.answerSource === 'model'}
           />
         )}
       </div>
-    </>
+    </ReadAloudContext.Provider>
+  );
+}
+
+/**
+ * Whether answers are read aloud, as a switch in the header, and a way to stop
+ * the one being read. Off until the person turns it on; the choice stays on
+ * this device.
+ */
+function ReadAloudControls({ readAloud }: { readAloud: ReadAloud }) {
+  const { t } = useTranslation();
+  return (
+    <span className="ms-auto inline-flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        className={buttonClass.secondary}
+        aria-pressed={readAloud.enabled}
+        onClick={() => readAloud.setEnabled(!readAloud.enabled)}
+      >
+        <SpeakerIcon muted={!readAloud.enabled} />
+        {t('ai.voice.readAloud')}
+        <span className="text-xs text-content-muted">
+          {readAloud.enabled ? t('ai.voice.on') : t('ai.voice.off')}
+        </span>
+      </button>
+      {readAloud.speakingId === null ? null : (
+        <button type="button" className={buttonClass.ghost} onClick={() => readAloud.stop()}>
+          {t('ai.voice.stopReading')}
+        </button>
+      )}
+    </span>
+  );
+}
+
+/** The first visit's pointer to the switch above: answers can be read aloud. */
+function ReadAloudHint({ readAloud }: { readAloud: ReadAloud }) {
+  const { t } = useTranslation();
+  return (
+    <div
+      role="note"
+      className="flex flex-wrap items-center gap-3 rounded-lg border-2 border-accent bg-surface-muted px-4 py-3 text-sm text-content"
+    >
+      <SpeakerIcon muted={false} />
+      <span className="flex-1">{t('ai.voice.hint')}</span>
+      <button
+        type="button"
+        className={buttonClass.primary}
+        onClick={() => readAloud.setEnabled(true)}
+      >
+        {t('ai.voice.turnOn')}
+      </button>
+      <button type="button" className={buttonClass.ghost} onClick={() => readAloud.dismissHint()}>
+        {t('ai.voice.dismiss')}
+      </button>
+    </div>
+  );
+}
+
+function SpeakerIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4 shrink-0 rtl:-scale-x-100"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M11 5 6 9H3v6h3l5 4z" />
+      {muted ? (
+        <path d="m22 9-6 6m0-6 6 6" />
+      ) : (
+        <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
+      )}
+    </svg>
+  );
+}
+
+function MicrophoneIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8" />
+    </svg>
   );
 }
 
@@ -277,17 +386,33 @@ function Thread({
   conversationId,
   locale,
   allowance,
+  spokenQuestions,
 }: {
   conversationId: string;
   locale: Locale;
   allowance: AiAllowance;
+  /** Whether a question may be spoken here: only when a model answers (docs/ai §10.5). */
+  spokenQuestions: boolean;
 }) {
   const { t } = useTranslation();
-  const { client, locale: displayLocale } = useOperations();
+  const { client, locale: displayLocale, voiceInput = { kind: 'browser' } } = useOperations();
   const queries = useQueryClient();
+  const readAloud = useContext(ReadAloudContext);
   const [draft, setDraft] = useState('');
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
+  /** What was in the box when listening began; the spoken words follow it. */
+  const typedBeforeSpeaking = useRef('');
+  const [dictationHint, setDictationHint] = useState(false);
+  const speech = useSpeechInput({
+    lang: speechLanguage(locale),
+    enabled: spokenQuestions && voiceInput.kind === 'browser',
+    onTranscript: (text) => {
+      const before = typedBeforeSpeaking.current;
+      setDraft(before === '' || text === '' ? `${before}${text}` : `${before} ${text}`);
+    },
+  });
 
   const detail = useQuery({
     queryKey: keys.aiConversation(conversationId),
@@ -328,6 +453,9 @@ function Thread({
       setDraft('');
       setAttempt(null);
       setLockedUntil(null);
+      if (readAloud?.enabled === true) {
+        readAloud.speak(answer.message.id, answer.message.text);
+      }
       await queries.invalidateQueries({ queryKey: keys.aiConversations });
     },
     onError: async (error) => {
@@ -364,9 +492,31 @@ function Thread({
     // the server answered is replayed rather than charged twice.
     const next: Attempt =
       attempt !== null && attempt.text === text ? attempt : { key: crypto.randomUUID(), text };
+    // A new question ends the listening and the reading before it.
+    speech.stop();
+    readAloud?.stop();
     setAttempt(next);
     send.mutate(next);
   };
+
+  const speak = () => {
+    if (voiceInput.kind === 'dictation') {
+      composer.current?.focus();
+      setDictationHint(true);
+      return;
+    }
+    if (speech.listening) {
+      speech.stop();
+      return;
+    }
+    typedBeforeSpeaking.current = draft.trimEnd();
+    speech.start();
+  };
+
+  const microphone =
+    spokenQuestions && (voiceInput.kind === 'dictation' || speech.supported)
+      ? voiceInput.kind
+      : null;
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -445,6 +595,7 @@ function Thread({
         </label>
         <textarea
           id="ai-composer"
+          ref={composer}
           rows={3}
           dir="auto"
           value={draft}
@@ -455,6 +606,21 @@ function Thread({
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={onKeyDown}
         />
+        {microphone === 'dictation' && dictationHint && voiceInput.kind === 'dictation' ? (
+          <p role="status" className="text-sm text-content">
+            {t(`ai.voice.dictation.${voiceInput.os}`)}
+          </p>
+        ) : null}
+        {speech.listening ? (
+          <p role="status" className="text-sm text-content">
+            {t('ai.voice.listening')}
+          </p>
+        ) : null}
+        {speech.error === null ? null : (
+          <p role="alert" className="text-sm text-danger">
+            {speech.error === 'blocked' ? t('ai.voice.micBlocked') : t('ai.voice.unavailable')}
+          </p>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span id="ai-composer-hint" className="text-xs text-content-muted">
             {t('ai.composer.hint')}
@@ -467,9 +633,23 @@ function Thread({
               max: formatNumber(MAX_MESSAGE_CHARS, { locale: displayLocale }),
             })}
           </span>
-          <button type="submit" className={buttonClass.primary} disabled={!canSend}>
-            {t('ai.composer.send')}
-          </button>
+          <span className="inline-flex items-center gap-2">
+            {microphone === null ? null : (
+              <button
+                type="button"
+                className={buttonClass.secondary}
+                aria-pressed={microphone === 'browser' ? speech.listening : undefined}
+                disabled={send.isPending || locked}
+                onClick={speak}
+              >
+                <MicrophoneIcon />
+                {speech.listening ? t('ai.voice.stopListening') : t('ai.voice.speak')}
+              </button>
+            )}
+            <button type="submit" className={buttonClass.primary} disabled={!canSend}>
+              {t('ai.composer.send')}
+            </button>
+          </span>
         </div>
       </form>
     </section>

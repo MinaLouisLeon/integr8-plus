@@ -218,3 +218,50 @@ assistant at all.
   unlimited messages under `library`.
 - The capabilities response gains `answerSource`; the platform's effective
   policy says where answers come from and why.
+
+## Addendum, 16 October 2026: voice
+
+### D13. Voice uses the device's own tools, and nothing is sent to a provider
+
+A spoken question is turned into text on the device by the browser's or the
+phone's own speech recognition, and the server receives text exactly as if it
+had been typed. No audio is uploaded, no provider is asked to transcribe, and a
+spoken question costs the same as a typed one. Answers are read aloud by the
+voices installed on the device. There is no new secret, no new route, no new
+column and no platform setting: voice is there for everyone the rules below
+allow. The audio does go to whoever runs the device's recogniser (Google for
+Chrome and Android, Microsoft for Edge, Apple for iOS and Safari), and the
+runbook says so.
+
+### D14. Who gets which half
+
+- **Speaking a question** is offered only when the company's answers come from a
+  model (`answerSource` is `model`). A company on the help library keeps the
+  text box alone.
+- **Reading answers aloud** is offered to every company, library or model: a
+  library answer is plain text and reading it costs nothing.
+- Reading aloud is **off until the person turns it on**. The first visit shows a
+  hint with a button to turn it on; the choice, and putting the hint away, stay
+  on that device only. When on, each answer is read as it arrives; a button on
+  each answer reads that one on demand even when it is off, and a stop button
+  silences whatever is being read.
+- On the **website** a microphone button uses the browser's recogniser (Chrome
+  and Edge; elsewhere there is no button), keeping recognition on the device
+  where Chrome offers it. On the **desktop app** the embedded web view has no
+  recognition service, so the button focuses the box and points at the operating
+  system's own dictation (Win+H on Windows, the microphone key on macOS); Linux
+  has none and shows no microphone. On the **phone** a button listens through the
+  phone's recogniser after asking for the microphone and, on iOS, speech
+  recognition. That changes every company's phone build: the permission
+  texts are new, and a phone running an earlier build does not show the button
+  until its company's app is rebuilt and reinstalled.
+
+### Consequences of D13–D14
+
+- `expo-speech-recognition` and `expo-speech` join the phone app. The image
+  picker and camera plugins no longer pass `microphonePermission: false`: the
+  image picker's `false` blocked `RECORD_AUDIO` for every package on Android.
+- The apps read `capabilities.answerSource`, which they already received.
+- Nothing about voice is tested against a real microphone in CI: the tests use
+  fake recognisers and voices, and the first check on real devices is manual
+  (runbook §9).

@@ -26,6 +26,10 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const EAS_PROJECT_ID = 'b950cc9e-9e26-477a-905f-4c216767fde4';
 
+/** Why the phone may use the microphone: the assistant's spoken questions, and nothing else. */
+const VOICE_MICROPHONE =
+  'Integr8 Plus uses the microphone, only when you tap it, to hear a question you speak to the assistant.';
+
 function readCompany(): CompanyBuild | undefined {
   const file = join(here, 'company.json');
   if (!existsSync(file)) {
@@ -88,7 +92,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         {
           cameraPermission:
             'Integr8 Plus uses the camera to photograph work and to scan barcodes into forms.',
-          microphonePermission: false,
+          // The camera never records sound, but the plugin that asks for the
+          // microphone must not be the one that removes it: see VOICE below.
+          microphonePermission: VOICE_MICROPHONE,
           recordAudioAndroid: false,
           barcodeScannerEnabled: true,
         },
@@ -98,7 +104,24 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         {
           photosPermission: 'Integr8 Plus lets you add photos from this phone to a form.',
           cameraPermission: 'Integr8 Plus uses the camera to photograph work for a form.',
-          microphonePermission: false,
+          // `false` here would block RECORD_AUDIO for every package on Android,
+          // the assistant's spoken questions included.
+          microphonePermission: VOICE_MICROPHONE,
+        },
+      ],
+      [
+        // The assistant's spoken questions (docs/ai §10.5): the phone's own
+        // recogniser, so the app asks for the microphone and, on iOS, speech
+        // recognition. Audio goes to the phone's speech service, never to us.
+        'expo-speech-recognition',
+        {
+          microphonePermission: VOICE_MICROPHONE,
+          speechRecognitionPermission:
+            'Integr8 Plus uses speech recognition, only when you tap the microphone, to turn your spoken question for the assistant into text.',
+          androidSpeechServicePackages: [
+            'com.google.android.tts',
+            'com.google.android.googlequicksearchbox',
+          ],
         },
       ],
       [

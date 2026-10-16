@@ -1,5 +1,6 @@
 import type { Integr8Client, paths } from '@integr8/api-client';
 import { createContext, useContext } from 'react';
+import type { VoiceInput } from './ai/voice.js';
 
 /**
  * What the operational screens need from the app that hosts them.
@@ -157,6 +158,12 @@ export interface OperationsConfig {
    * the browser's menu.
    */
   rowActions?: RowActionsHandler;
+  /**
+   * Where a spoken question to the assistant can come from here. The browser's
+   * own recognition when not set; the desktop app says the operating system's
+   * dictation does it instead, because its web view has no recogniser.
+   */
+  voiceInput?: VoiceInput;
 }
 
 /** What a row is about, for a row menu. */
