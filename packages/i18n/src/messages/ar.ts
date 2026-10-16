@@ -6258,6 +6258,27 @@ export const ar: Catalogue<Messages> = {
     },
   },
 
+  // مستندات PDF المُنشأة من الإرساليات (docs/documents/ADR-0001).
+  documents: {
+    // كلمات داخل ملف PDF المُنشأ، بلغة المستند.
+    render: {
+      yes: 'نعم',
+      no: 'لا',
+      notApplicable: 'لا ينطبق',
+      ticked: 'محدَّد',
+      notTicked: 'غير محدَّد',
+      unanswered: '—',
+      rating: '{{value}} من {{scale}}',
+      location: '{{latitude}}، {{longitude}}',
+      locationWithin: '{{latitude}}، {{longitude}} (ضمن {{accuracy}} م)',
+      files: 'الملفات: {{count}}',
+      page: 'صفحة {{page}} من {{pages}}',
+      number: 'رقم',
+      qrPlaceholder: 'رمز QR',
+      imagePlaceholder: 'صورة',
+    },
+  },
+
   nav: {
     menu: 'القائمة',
     openMenu: 'فتح القائمة',

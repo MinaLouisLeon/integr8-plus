@@ -6188,6 +6188,27 @@ export const en = {
     },
   },
 
+  // PDF documents made from submissions (docs/documents/ADR-0001).
+  documents: {
+    // Words inside a generated PDF, in the document's language.
+    render: {
+      yes: 'Yes',
+      no: 'No',
+      notApplicable: 'Not applicable',
+      ticked: 'Ticked',
+      notTicked: 'Not ticked',
+      unanswered: '—',
+      rating: '{{value}} of {{scale}}',
+      location: '{{latitude}}, {{longitude}}',
+      locationWithin: '{{latitude}}, {{longitude}} (within {{accuracy}} m)',
+      files: 'Files: {{count}}',
+      page: 'Page {{page}} of {{pages}}',
+      number: 'No.',
+      qrPlaceholder: 'QR code',
+      imagePlaceholder: 'Image',
+    },
+  },
+
   nav: {
     menu: 'Menu',
     openMenu: 'Open the menu',

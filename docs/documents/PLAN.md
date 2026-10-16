@@ -21,8 +21,8 @@ key that only the terminal-created platform account can issue.
 | Phase | Status      | What it covers                                                                                                                                         |
 | ----- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | A     | Complete    | This plan; ADR-0001.                                                                                                                                   |
-| B     | In progress | Permissions, the `documents` module flag, navigation, migration 0048 (templates, documents, field values, website keys), repositories, retention rule. |
-| C     | Not started | `@integr8/document-render`: the template schema and the HTML renderer shared by the designer's preview and the server.                                 |
+| B     | Complete    | Permissions, the `documents` module flag, navigation, migration 0048 (templates, documents, field values, website keys), repositories, retention rule. |
+| C     | Complete    | `@integr8/document-render`: the template schema and the HTML renderer shared by the designer's preview and the server.                                 |
 | D     | Not started | The PDF pipeline (Chromium, backgrounds), the render job, routes for templates, documents, the public link, the website lookup and website keys.       |
 | E     | Not started | The desktop designer, the Documents register and export in the apps, the `/d/<code>` page, the dashboard's website-key panel, the phone's list.        |
 | F     | Not started | Runbook, the website developer's guide, the setup guide (every copy), full checks, the pull request.                                                   |
