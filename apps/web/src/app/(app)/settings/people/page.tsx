@@ -536,6 +536,13 @@ function AssistantShares() {
         {t('workspace.members.ai.shares.title')}
       </h2>
       <p className="text-sm text-content-muted">{t('workspace.members.ai.shares.rule')}</p>
+      {company.answerSource === 'library' ? (
+        // Answers from the help guide need no share (ADR-0002 D10): say so,
+        // rather than let an owner hand out percentages that decide nothing.
+        <p className="rounded-md bg-surface-muted px-3 py-2 text-sm text-content">
+          {t('workspace.members.ai.shares.libraryNote')}
+        </p>
+      ) : null}
       <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         <div className="flex gap-1.5">
           <dt className="text-content-muted">{t('workspace.members.ai.shares.companyLeft')}</dt>

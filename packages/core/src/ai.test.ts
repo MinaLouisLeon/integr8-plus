@@ -95,6 +95,19 @@ describe('a policy', () => {
     ).toBe(false);
   });
 
+  it('needs no cost ceiling for unlimited library answers, which spend nothing (ADR-0002 D10)', () => {
+    const base = {
+      ...AI_POLICY_OFF,
+      level: 'help' as const,
+      unlimitedMessages: true,
+      answerSource: 'library' as const,
+    };
+    expect(aiPolicySchema.safeParse(base).success).toBe(true);
+    expect(aiPolicySchema.safeParse({ ...base, quotaMode: 'daily' }).success).toBe(false);
+    expect(aiPolicySchema.safeParse({ ...base, answerSource: 'model' }).success).toBe(false);
+    expect(aiPolicySchema.safeParse({ ...base, answerSource: 'oracle' }).success).toBe(false);
+  });
+
   it('refuses zero and negative limits', () => {
     expect(
       aiPolicySchema.safeParse({

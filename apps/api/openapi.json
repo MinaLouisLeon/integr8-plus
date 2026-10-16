@@ -1724,6 +1724,13 @@
                         "mobile"
                       ]
                     },
+                    "answerSource": {
+                      "type": "string",
+                      "enum": [
+                        "model",
+                        "library"
+                      ]
+                    },
                     "tools": {
                       "type": "array",
                       "items": {
@@ -1841,6 +1848,7 @@
                     "level",
                     "blockedBy",
                     "channel",
+                    "answerSource",
                     "tools",
                     "companyDataToProvider",
                     "locales",
@@ -3288,11 +3296,19 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
+                        },
+                        "answerSource": {
+                          "type": "string",
+                          "enum": [
+                            "model",
+                            "library"
+                          ]
                         }
                       },
                       "required": [
                         "allowance",
-                        "assignedPercent"
+                        "assignedPercent",
+                        "answerSource"
                       ],
                       "additionalProperties": false
                     },
@@ -153582,6 +153598,13 @@
                               "agent"
                             ]
                           },
+                          "answerSource": {
+                            "type": "string",
+                            "enum": [
+                              "model",
+                              "library"
+                            ]
+                          },
                           "quotaMode": {
                             "nullable": true,
                             "type": "string",
@@ -153837,6 +153860,13 @@
                           "agent"
                         ]
                       },
+                      "answerSource": {
+                        "type": "string",
+                        "enum": [
+                          "model",
+                          "library"
+                        ]
+                      },
                       "quotaMode": {
                         "nullable": true,
                         "type": "string",
@@ -153972,6 +154002,13 @@
                         "help",
                         "insights",
                         "agent"
+                      ]
+                    },
+                    "answerSource": {
+                      "type": "string",
+                      "enum": [
+                        "model",
+                        "library"
                       ]
                     },
                     "quotaMode": {
@@ -154209,6 +154246,13 @@
                             "agent"
                           ]
                         },
+                        "answerSource": {
+                          "type": "string",
+                          "enum": [
+                            "model",
+                            "library"
+                          ]
+                        },
                         "quotaMode": {
                           "nullable": true,
                           "type": "string",
@@ -154350,6 +154394,13 @@
                             "help",
                             "insights",
                             "agent"
+                          ]
+                        },
+                        "answerSource": {
+                          "type": "string",
+                          "enum": [
+                            "model",
+                            "library"
                           ]
                         },
                         "quotaMode": {
@@ -154501,6 +154552,13 @@
                             "agent"
                           ]
                         },
+                        "answerSource": {
+                          "type": "string",
+                          "enum": [
+                            "model",
+                            "library"
+                          ]
+                        },
                         "quotaMode": {
                           "nullable": true,
                           "type": "string",
@@ -154610,6 +154668,22 @@
                             "provider_unconfigured"
                           ]
                         },
+                        "answersFrom": {
+                          "type": "string",
+                          "enum": [
+                            "model",
+                            "library"
+                          ]
+                        },
+                        "libraryReason": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "policy",
+                            "no_provider",
+                            "provider_unconfigured"
+                          ]
+                        },
                         "companyDataToProvider": {
                           "type": "boolean"
                         }
@@ -154632,6 +154706,8 @@
                         "source",
                         "configuredLevel",
                         "offReason",
+                        "answersFrom",
+                        "libraryReason",
                         "companyDataToProvider"
                       ],
                       "additionalProperties": false
@@ -154926,6 +155002,13 @@
                           "agent"
                         ]
                       },
+                      "answerSource": {
+                        "type": "string",
+                        "enum": [
+                          "model",
+                          "library"
+                        ]
+                      },
                       "quotaMode": {
                         "nullable": true,
                         "type": "string",
@@ -155082,6 +155165,13 @@
                             "agent"
                           ]
                         },
+                        "answerSource": {
+                          "type": "string",
+                          "enum": [
+                            "model",
+                            "library"
+                          ]
+                        },
                         "quotaMode": {
                           "nullable": true,
                           "type": "string",
@@ -155223,6 +155313,13 @@
                             "help",
                             "insights",
                             "agent"
+                          ]
+                        },
+                        "answerSource": {
+                          "type": "string",
+                          "enum": [
+                            "model",
+                            "library"
                           ]
                         },
                         "quotaMode": {
@@ -155374,6 +155471,13 @@
                             "agent"
                           ]
                         },
+                        "answerSource": {
+                          "type": "string",
+                          "enum": [
+                            "model",
+                            "library"
+                          ]
+                        },
                         "quotaMode": {
                           "nullable": true,
                           "type": "string",
@@ -155483,6 +155587,22 @@
                             "provider_unconfigured"
                           ]
                         },
+                        "answersFrom": {
+                          "type": "string",
+                          "enum": [
+                            "model",
+                            "library"
+                          ]
+                        },
+                        "libraryReason": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "policy",
+                            "no_provider",
+                            "provider_unconfigured"
+                          ]
+                        },
                         "companyDataToProvider": {
                           "type": "boolean"
                         }
@@ -155505,6 +155625,8 @@
                         "source",
                         "configuredLevel",
                         "offReason",
+                        "answersFrom",
+                        "libraryReason",
                         "companyDataToProvider"
                       ],
                       "additionalProperties": false
@@ -155993,6 +156115,7 @@
                     "active": {
                       "type": "string",
                       "enum": [
+                        "none",
                         "recording",
                         "groq",
                         "gemini",
@@ -156036,6 +156159,9 @@
                       "additionalProperties": false
                     },
                     "ready": {
+                      "type": "boolean"
+                    },
+                    "libraryOnly": {
                       "type": "boolean"
                     },
                     "problems": {
@@ -156128,6 +156254,7 @@
                           "id": {
                             "type": "string",
                             "enum": [
+                              "none",
                               "recording",
                               "groq",
                               "gemini",
@@ -156166,6 +156293,7 @@
                     "maxLevelServed",
                     "models",
                     "ready",
+                    "libraryOnly",
                     "problems",
                     "servedLevels",
                     "prices",

@@ -2659,6 +2659,8 @@ export interface ErpWorkOrderPurchasesTable {
 export type AiLevel = 'off' | 'help' | 'insights' | 'agent';
 export type AiQuotaMode = 'daily' | 'monthly' | 'daily_and_monthly';
 export type AiPolicyMode = 'inherit' | 'custom';
+/** Where a policy's answers come from (0047; ADR-0002 D9). */
+export type AiAnswerSource = 'model' | 'library';
 export type AiUsageSubjectType = 'tenant' | 'user';
 export type AiPeriodType = 'day' | 'month';
 export type AiReservationState = 'reserved' | 'completed' | 'released' | 'expired' | 'uncertain';
@@ -2672,6 +2674,7 @@ export type AiHelpArticleStatus = 'published' | 'disabled';
 /** The policy columns a plan and a company override share. Money is USD micros. */
 interface AiPolicyColumns {
   level: Generated<AiLevel>;
+  answer_source: Generated<AiAnswerSource>;
   quota_mode: AiQuotaMode | null;
   daily_limit: number | null;
   monthly_limit: number | null;

@@ -429,7 +429,7 @@ describe('asking', () => {
     }
   });
 
-  it('pauses the provider when its credit is spent, and charges nobody (ADR-0002 D8)', async () => {
+  it('pauses the provider when its credit is spent, charges nobody, and answers from the library meanwhile (ADR-0002 D8, D11)', async () => {
     const token = await api.signIn(engineer);
     const conversationId = await startConversation(token);
     const before = await companyUsage();
@@ -448,14 +448,20 @@ describe('asking', () => {
       expect(code(failed)).toBe('ai_provider_unavailable');
       expect(failed.body).not.toMatch(/credit|quota|billing/iu);
 
-      // Paused: the next question does not reach the provider at all.
-      const paused = await ask(token, conversationId, 'Anything else?');
-      expect(paused.statusCode).toBe(503);
+      // Paused: the next question does not reach the provider at all. The
+      // help library answers it instead, saying only the guide can answer
+      // for now; it counts as a message, but uses no tokens and no money.
+      const paused = await ask(token, conversationId, 'How do I create a work order?');
+      expect(paused.statusCode, paused.body).toBe(200);
+      const fromLibrary = json<{ message: { text: string; sources: unknown[] } }>(paused);
+      expect(fromLibrary.message.text).toMatch(/^Right now I can only answer from the help guide/u);
+      expect(fromLibrary.message.sources.length).toBeGreaterThan(0);
       expect(asked).toBe(1);
 
       const after = await companyUsage();
-      expect(after.day).toEqual(before.day);
+      expect(after.day).toEqual({ used: before.day.used + 1, reserved: before.day.reserved });
       expect(after.tokens.day).toEqual(before.tokens.day);
+      expect(after.cost.spent).toBe(before.cost.spent);
 
       const health = json<{ window: { creditExhausted: number } }>(
         await api.call(admin.accessToken, { method: 'GET', url: '/v1/platform/ai/health' }),

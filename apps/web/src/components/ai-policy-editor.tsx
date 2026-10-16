@@ -1,10 +1,12 @@
 'use client';
 
 import {
+  AI_ANSWER_SOURCES,
   AI_LEVELS,
   AI_QUOTA_MODES,
   quotaModeHasDaily,
   quotaModeHasMonthly,
+  type AiAnswerSource,
   type AiLevel,
   type AiPolicy,
   type AiQuotaMode,
@@ -32,21 +34,30 @@ import { Field } from '~/components/ui';
  * The plan's per-person message defaults no longer decide anything, since
  * shares replaced them: they have no field here, but travel back unchanged in
  * every save so nothing stored is lost.
+ *
+ * Answers come from a model or from the help library (ADR-0002 D9, D10). The
+ * library spends nothing, so under it the token limits, the cost cap and the
+ * model ceilings are hidden — kept in the draft, and saved unchanged, for when
+ * answers come from a model again — and unlimited messages need no cost cap.
  */
 
+type OptionalOnWrite = 'dailyTokenLimit' | 'monthlyTokenLimit' | 'answerSource';
 type TokenLimitKey = 'dailyTokenLimit' | 'monthlyTokenLimit';
 
 /**
- * A policy as the API returns it. The token limits are optional there, because
- * the same schema takes a write in which leaving them out keeps what is stored.
+ * A policy as the API returns it. The token limits and the answer source are
+ * optional there, because the same schema takes a write in which leaving them
+ * out keeps what is stored.
  */
-export type AiPolicyFields = Omit<AiPolicy, TokenLimitKey> & Partial<Pick<AiPolicy, TokenLimitKey>>;
+export type AiPolicyFields = Omit<AiPolicy, OptionalOnWrite> &
+  Partial<Pick<AiPolicy, OptionalOnWrite>>;
 
 const SELECT_CLASS = 'rounded-md border border-border-subtle bg-surface px-3 py-2 text-content';
 
 /** What the form holds: strings, because an input is a string until it is saved. */
 export interface AiPolicyDraft {
   level: AiLevel;
+  answerSource: AiAnswerSource;
   quotaMode: AiQuotaMode;
   dailyLimit: string;
   monthlyLimit: string;
@@ -68,6 +79,7 @@ export interface AiPolicyDraft {
 export function draftFromPolicy(policy: AiPolicyFields): AiPolicyDraft {
   return {
     level: policy.level,
+    answerSource: policy.answerSource ?? 'model',
     quotaMode: policy.quotaMode ?? 'monthly',
     dailyLimit: policy.dailyLimit === null ? '' : String(policy.dailyLimit),
     monthlyLimit: policy.monthlyLimit === null ? '' : String(policy.monthlyLimit),
@@ -100,6 +112,7 @@ export function pickPolicyFields(policy: AiPolicyFields): AiPolicyFields {
     ...(policy.monthlyTokenLimit === undefined
       ? {}
       : { monthlyTokenLimit: policy.monthlyTokenLimit }),
+    ...(policy.answerSource === undefined ? {} : { answerSource: policy.answerSource }),
     level: policy.level,
     quotaMode: policy.quotaMode,
     dailyLimit: policy.dailyLimit,
@@ -127,6 +140,7 @@ export function policyFromDraft(draft: AiPolicyDraft): AiPolicy {
   const quotaMode = quotaApplies ? draft.quotaMode : null;
   return {
     level: draft.level,
+    answerSource: draft.answerSource,
     quotaMode,
     dailyLimit: quotaModeHasDaily(quotaMode) ? intOrNull(draft.dailyLimit) : null,
     monthlyLimit: quotaModeHasMonthly(quotaMode) ? intOrNull(draft.monthlyLimit) : null,
@@ -163,7 +177,7 @@ function isTokenLimit(value: string): boolean {
  *
  * Mirrors `aiPolicySchema` in `@integr8/core`: a level other than off needs
  * either a quota mode with the limits it names, or unlimited messages with a
- * monthly cost cap.
+ * monthly cost cap — which library answers, spending nothing, do not need.
  */
 export function draftProblems(draft: AiPolicyDraft, t: TFunction): AiDraftProblems {
   if (draft.level === 'off') {
@@ -177,7 +191,7 @@ export function draftProblems(draft: AiPolicyDraft, t: TFunction): AiDraftProble
     problems.monthlyTokenLimit = t('platform.ai.tokenLimitInvalid');
   }
   if (draft.unlimitedMessages) {
-    if (draft.monthlyCostCapUsd.trim() === '') {
+    if (draft.answerSource === 'model' && draft.monthlyCostCapUsd.trim() === '') {
       problems.monthlyCostCapUsd = t('platform.ai.capRequired');
     }
     return problems;
@@ -206,6 +220,12 @@ export function levelLabel(t: TFunction, level: AiLevel): string {
     case 'agent':
       return t('platform.ai.levelAgent');
   }
+}
+
+export function answerSourceLabel(t: TFunction, source: AiAnswerSource): string {
+  return source === 'library'
+    ? t('platform.ai.answerSourceLibrary')
+    : t('platform.ai.answerSourceModel');
 }
 
 export function quotaModeLabel(t: TFunction, mode: AiQuotaMode | null): string {
@@ -264,6 +284,10 @@ export function AiPolicySummary({ policy }: { policy: AiPolicyFields }) {
   return (
     <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
       <SummaryFact label={t('platform.ai.level')} value={levelLabel(t, policy.level)} />
+      <SummaryFact
+        label={t('platform.ai.answerSource')}
+        value={answerSourceLabel(t, policy.answerSource ?? 'model')}
+      />
       <SummaryFact label={t('platform.ai.quota')} value={quota} />
       <SummaryFact label={t('platform.ai.tokenAllowance')} value={tokenLimits} />
       <SummaryFact
@@ -326,6 +350,7 @@ export function AiPolicyEditor({
 
   const enabled = draft.level !== 'off';
   const quotaApplies = enabled && !draft.unlimitedMessages;
+  const fromModel = draft.answerSource === 'model';
 
   return (
     <div className="flex flex-col gap-4">
@@ -345,6 +370,23 @@ export function AiPolicyEditor({
             ))}
           </select>
           <span className="text-xs text-content-muted">{t('platform.ai.levelHint')}</span>
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-content">{t('platform.ai.answerSource')}</span>
+          <select
+            value={draft.answerSource}
+            disabled={disabled}
+            onChange={(event) => set('answerSource', event.target.value as AiAnswerSource)}
+            className={SELECT_CLASS}
+          >
+            {AI_ANSWER_SOURCES.map((source) => (
+              <option key={source} value={source}>
+                {answerSourceLabel(t, source)}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-content-muted">{t('platform.ai.answerSourceHint')}</span>
         </label>
 
         {enabled ? (
@@ -418,7 +460,11 @@ export function AiPolicyEditor({
           </>
         ) : null}
 
-        {enabled ? (
+        {enabled && !fromModel ? (
+          <p className="text-xs text-content-muted sm:col-span-2">{t('platform.ai.libraryNote')}</p>
+        ) : null}
+
+        {enabled && fromModel ? (
           <>
             <p className="text-xs text-content-muted sm:col-span-2">
               {t('platform.ai.tokenLimitsNote')}
@@ -448,58 +494,62 @@ export function AiPolicyEditor({
           </>
         ) : null}
 
-        <Field
-          label={t('platform.ai.monthlyCostCap')}
-          hint={
-            draft.unlimitedMessages
-              ? t('platform.ai.monthlyCostCapRequiredHint')
-              : t('platform.ai.monthlyCostCapHint')
-          }
-          type="number"
-          min={0.01}
-          step="0.01"
-          required={draft.unlimitedMessages}
-          disabled={disabled}
-          value={draft.monthlyCostCapUsd}
-          onChange={(event) => set('monthlyCostCapUsd', event.target.value)}
-          error={problems.monthlyCostCapUsd}
-        />
-        <Field
-          label={t('platform.ai.maxInputTokens')}
-          type="number"
-          min={1}
-          required
-          disabled={disabled}
-          value={draft.maxInputTokens}
-          onChange={(event) => set('maxInputTokens', event.target.value)}
-        />
-        <Field
-          label={t('platform.ai.maxOutputTokens')}
-          type="number"
-          min={1}
-          required
-          disabled={disabled}
-          value={draft.maxOutputTokens}
-          onChange={(event) => set('maxOutputTokens', event.target.value)}
-        />
-        <Field
-          label={t('platform.ai.maxProviderCalls')}
-          type="number"
-          min={1}
-          required
-          disabled={disabled}
-          value={draft.maxProviderCalls}
-          onChange={(event) => set('maxProviderCalls', event.target.value)}
-        />
-        <Field
-          label={t('platform.ai.maxToolSteps')}
-          type="number"
-          min={1}
-          required
-          disabled={disabled}
-          value={draft.maxToolSteps}
-          onChange={(event) => set('maxToolSteps', event.target.value)}
-        />
+        {fromModel ? (
+          <>
+            <Field
+              label={t('platform.ai.monthlyCostCap')}
+              hint={
+                draft.unlimitedMessages
+                  ? t('platform.ai.monthlyCostCapRequiredHint')
+                  : t('platform.ai.monthlyCostCapHint')
+              }
+              type="number"
+              min={0.01}
+              step="0.01"
+              required={draft.unlimitedMessages}
+              disabled={disabled}
+              value={draft.monthlyCostCapUsd}
+              onChange={(event) => set('monthlyCostCapUsd', event.target.value)}
+              error={problems.monthlyCostCapUsd}
+            />
+            <Field
+              label={t('platform.ai.maxInputTokens')}
+              type="number"
+              min={1}
+              required
+              disabled={disabled}
+              value={draft.maxInputTokens}
+              onChange={(event) => set('maxInputTokens', event.target.value)}
+            />
+            <Field
+              label={t('platform.ai.maxOutputTokens')}
+              type="number"
+              min={1}
+              required
+              disabled={disabled}
+              value={draft.maxOutputTokens}
+              onChange={(event) => set('maxOutputTokens', event.target.value)}
+            />
+            <Field
+              label={t('platform.ai.maxProviderCalls')}
+              type="number"
+              min={1}
+              required
+              disabled={disabled}
+              value={draft.maxProviderCalls}
+              onChange={(event) => set('maxProviderCalls', event.target.value)}
+            />
+            <Field
+              label={t('platform.ai.maxToolSteps')}
+              type="number"
+              min={1}
+              required
+              disabled={disabled}
+              value={draft.maxToolSteps}
+              onChange={(event) => set('maxToolSteps', event.target.value)}
+            />
+          </>
+        ) : null}
         <Field
           label={t('platform.ai.retentionDays')}
           hint={t('platform.ai.retentionHint')}

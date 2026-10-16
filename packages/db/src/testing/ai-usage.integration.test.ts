@@ -416,6 +416,7 @@ describe('the platform’s side', () => {
     const platform = getPlatformDataSource().ai;
     const policy = {
       level: 'insights' as const,
+      answerSource: 'model' as const,
       quotaMode: 'daily_and_monthly' as const,
       dailyLimit: 50,
       monthlyLimit: 1000,

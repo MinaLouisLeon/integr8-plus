@@ -241,11 +241,15 @@ export const apiConfigSchema = z.object({
   /**
    * Who answers. `recording` is a deterministic fake for development and
    * tests; `groq`, `gemini`, `anthropic` and `openai` are live, each needing
-   * its key. Only the one named here is ever called: there is no fallback.
-   * A missing key or model never stops the server (ADR-0002 D2): it turns
-   * the assistant off and the platform AI screen says why.
+   * its key. Only the one named here is ever called: there is no fallback to
+   * another provider. `none` is a server with no AI provider: every company
+   * is answered from the help library (ADR-0002 D12). A missing key or model
+   * never stops the server (D2): companies get library answers instead, and
+   * the platform AI screen says why (D11).
    */
-  AI_PROVIDER: z.enum(['recording', 'groq', 'gemini', 'anthropic', 'openai']).default('recording'),
+  AI_PROVIDER: z
+    .enum(['none', 'recording', 'groq', 'gemini', 'anthropic', 'openai'])
+    .default('recording'),
   AI_GROQ_API_KEY: z.string().optional(),
   AI_GEMINI_API_KEY: z.string().optional(),
   AI_ANTHROPIC_API_KEY: z.string().optional(),
@@ -266,8 +270,8 @@ export const apiConfigSchema = z.object({
     .optional(),
   /**
    * How long this process stops asking the provider after it said the
-   * account's credit is spent (ADR-0002 D8). Members see the assistant as
-   * temporarily unavailable meanwhile; nothing else is affected.
+   * account's credit is spent (ADR-0002 D8). Questions are answered from the
+   * help library meanwhile (D11); nothing else is affected.
    */
   AI_CREDIT_EXHAUSTED_PAUSE_SECONDS: positiveInt(300),
   /**
@@ -532,7 +536,9 @@ export function emailProblems(config: ApiConfig): string[] {
  * lowers the level served (see `ai/configuration.ts`).
  */
 export function aiProblems(config: ApiConfig): string[] {
-  if (!config.AI_ENABLED) {
+  // No provider, by choice: every company is answered from the help library
+  // (ADR-0002 D12). Nothing is missing.
+  if (!config.AI_ENABLED || config.AI_PROVIDER === 'none') {
     return [];
   }
   if (config.AI_PROVIDER === 'recording') {

@@ -138,7 +138,11 @@ function Assistant({ capabilities }: { capabilities: AiCapabilities }) {
             {t(`ai.level.${level}`)}
           </span>
         </div>
-        <p className="max-w-prose text-sm text-content-muted">{t(`ai.level.hint.${level}`)}</p>
+        <p className="max-w-prose text-sm text-content-muted">
+          {capabilities.answerSource === 'library'
+            ? t('ai.level.hint.library')
+            : t(`ai.level.hint.${level}`)}
+        </p>
         {level !== 'help' && !capabilities.companyDataToProvider ? (
           <p className="max-w-prose text-sm text-content-muted">{t('ai.level.noCompanyData')}</p>
         ) : null}

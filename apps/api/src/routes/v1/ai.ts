@@ -1,4 +1,5 @@
 import {
+  AI_ANSWER_SOURCES,
   AI_CHANNELS,
   AI_LEVELS,
   AI_PROPOSAL_STATES,
@@ -20,7 +21,12 @@ import {
 import { ACTION_CATALOGUE } from '../../ai/actions/catalogue.js';
 import { confirmProposal, getProposal, rejectProposal } from '../../ai/actions/service.js';
 import { aiConversationNotFound } from '../../ai/errors.js';
-import { companyAllowance, memberAllowance, periodKeysAt } from '../../ai/periods.js';
+import {
+  companyAllowance,
+  libraryAllowance,
+  memberAllowance,
+  periodKeysAt,
+} from '../../ai/periods.js';
 import { type AiAccess, resolveAiAccess } from '../../ai/policy.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { iso } from './schemas.js';
@@ -62,7 +68,11 @@ export const aiUsageSchema = z.object({
   company: z.object({ allowance: aiAllowanceSchema, assignedPercent: z.number().int() }).nullable(),
 });
 
-/** What a member, and an owner, is told about what is left (ADR-0002 D6, D7). */
+/**
+ * What a member, and an owner, is told about what is left (ADR-0002 D6, D7).
+ * When answers come from the library, member and company alike see the
+ * company's messages left: nobody holds a share of what costs nothing (D10).
+ */
 async function usageOf(principal: Principal, access: AiAccess, now: Date) {
   const periods = periodKeysAt(now);
   const owner = holds(principal, 'member.update_role');
@@ -71,6 +81,14 @@ async function usageOf(principal: Principal, access: AiAccess, now: Date) {
     tokens: await tx.aiUsage.tokenCounters(principal.userId, periods),
     assigned: owner ? await tx.aiMemberLimits.assignedPercent() : 0,
   }));
+  if (access.policy.answersFrom === 'library') {
+    const allowance = libraryAllowance({ policy: access.policy, messages, now });
+    return {
+      allowance,
+      sharePercent: access.sharePercent,
+      company: owner ? { allowance, assignedPercent: assigned } : null,
+    };
+  }
   return {
     allowance: memberAllowance({
       policy: access.policy,
@@ -106,6 +124,12 @@ export const aiCapabilitiesSchema = z.object({
     ])
     .nullable(),
   channel: z.enum(AI_CHANNELS),
+  /**
+   * Where answers come from now (ADR-0002 D9–D12): a model, or the help
+   * library, which answers Help questions with the articles it holds and
+   * needs no share.
+   */
+  answerSource: z.enum(AI_ANSWER_SOURCES),
   /** The tools this member may use at this level: insight tools and prepare-only actions. */
   tools: z.array(z.string()),
   /** Whether the company's own records may be sent to the provider (insights, actions). */
@@ -146,6 +170,7 @@ export const aiCapabilitiesRoute = defineRoute({
         level: access.level,
         blockedBy: access.blockedBy,
         channel: access.channel,
+        answerSource: access.policy.answersFrom,
         tools: offeredToolKeys({
           access,
           principal: context.principal,

@@ -65,6 +65,15 @@ export function limitsOf(policy: AiPolicy, sharePercent: number | null): AiToken
   };
 }
 
+/**
+ * The message limits a library answer is held to: the company's only (ADR-0002
+ * D10). Library answers cost nothing, so no member is held to a share of them.
+ */
+export function companyLimitsOf(policy: AiPolicy): AiTokenLimits {
+  const { tenantDaily, tenantMonthly } = limitsOf(policy, null);
+  return { tenantDaily, tenantMonthly, userDaily: null, userMonthly: null };
+}
+
 /** The token limits each model call is held against (ADR-0002 D5, D6). */
 export function tokenLimitsOf(policy: AiPolicy, sharePercent: number | null): AiTokenLimits {
   return {
@@ -157,6 +166,31 @@ export function memberAllowance(input: {
       {
         limit: tokenLimits.userMonthly,
         ...counterOf(input.tokens, 'user', 'month'),
+        period: 'month',
+      },
+    ],
+    input.now,
+  );
+}
+
+/**
+ * What is left when answers come from the library (D10): the company's pooled
+ * messages, day and month. The same for the company and every member in it,
+ * because no member holds a slice of something that costs nothing; tokens are
+ * not used, so they are not shown.
+ */
+export function libraryAllowance(input: {
+  policy: AiPolicy;
+  messages: AiUsageCounter[];
+  now: Date;
+}): AiAllowance {
+  const limits = companyLimitsOf(input.policy);
+  return allowanceOf(
+    [
+      { limit: limits.tenantDaily, ...counterOf(input.messages, 'tenant', 'day'), period: 'day' },
+      {
+        limit: limits.tenantMonthly,
+        ...counterOf(input.messages, 'tenant', 'month'),
         period: 'month',
       },
     ],

@@ -7853,6 +7853,8 @@ export interface operations {
                         blockedBy: "global_off" | "plan_off" | "custom_off" | "not_served" | "provider_unconfigured" | "channel_off" | "member_off" | "no_share" | null;
                         /** @enum {string} */
                         channel: "web" | "desktop" | "mobile";
+                        /** @enum {string} */
+                        answerSource: "model" | "library";
                         tools: string[];
                         companyDataToProvider: boolean;
                         locales: ("en" | "ar")[];
@@ -8622,6 +8624,8 @@ export interface operations {
                                 exhausted: boolean;
                             };
                             assignedPercent: number;
+                            /** @enum {string} */
+                            answerSource: "model" | "library";
                         };
                         items: {
                             /** Format: uuid */
@@ -66029,6 +66033,8 @@ export interface operations {
                         items: {
                             /** @enum {string} */
                             level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string} */
+                            answerSource?: "model" | "library";
                             /** @enum {string|null} */
                             quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
                             dailyLimit: number | null;
@@ -66121,6 +66127,8 @@ export interface operations {
                     policy: {
                         /** @enum {string} */
                         level: "off" | "help" | "insights" | "agent";
+                        /** @enum {string} */
+                        answerSource?: "model" | "library";
                         /** @enum {string|null} */
                         quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
                         dailyLimit: number | null;
@@ -66153,6 +66161,8 @@ export interface operations {
                     "application/json": {
                         /** @enum {string} */
                         level: "off" | "help" | "insights" | "agent";
+                        /** @enum {string} */
+                        answerSource?: "model" | "library";
                         /** @enum {string|null} */
                         quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
                         dailyLimit: number | null;
@@ -66254,6 +66264,8 @@ export interface operations {
                         planPolicy: {
                             /** @enum {string} */
                             level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string} */
+                            answerSource?: "model" | "library";
                             /** @enum {string|null} */
                             quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
                             dailyLimit: number | null;
@@ -66281,6 +66293,8 @@ export interface operations {
                         override: {
                             /** @enum {string} */
                             level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string} */
+                            answerSource?: "model" | "library";
                             /** @enum {string|null} */
                             quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
                             dailyLimit: number | null;
@@ -66310,6 +66324,8 @@ export interface operations {
                         effective: {
                             /** @enum {string} */
                             level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string} */
+                            answerSource?: "model" | "library";
                             /** @enum {string|null} */
                             quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
                             dailyLimit: number | null;
@@ -66332,6 +66348,10 @@ export interface operations {
                             configuredLevel: "off" | "help" | "insights" | "agent";
                             /** @enum {string|null} */
                             offReason: "global_off" | "plan_off" | "custom_off" | "not_served" | "provider_unconfigured" | null;
+                            /** @enum {string} */
+                            answersFrom: "model" | "library";
+                            /** @enum {string|null} */
+                            libraryReason: "policy" | "no_provider" | "provider_unconfigured" | null;
                             companyDataToProvider: boolean;
                         };
                         /** @enum {string} */
@@ -66443,6 +66463,8 @@ export interface operations {
                     policy: {
                         /** @enum {string} */
                         level: "off" | "help" | "insights" | "agent";
+                        /** @enum {string} */
+                        answerSource?: "model" | "library";
                         /** @enum {string|null} */
                         quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
                         dailyLimit: number | null;
@@ -66479,6 +66501,8 @@ export interface operations {
                         planPolicy: {
                             /** @enum {string} */
                             level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string} */
+                            answerSource?: "model" | "library";
                             /** @enum {string|null} */
                             quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
                             dailyLimit: number | null;
@@ -66506,6 +66530,8 @@ export interface operations {
                         override: {
                             /** @enum {string} */
                             level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string} */
+                            answerSource?: "model" | "library";
                             /** @enum {string|null} */
                             quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
                             dailyLimit: number | null;
@@ -66535,6 +66561,8 @@ export interface operations {
                         effective: {
                             /** @enum {string} */
                             level: "off" | "help" | "insights" | "agent";
+                            /** @enum {string} */
+                            answerSource?: "model" | "library";
                             /** @enum {string|null} */
                             quotaMode: "daily" | "monthly" | "daily_and_monthly" | null;
                             dailyLimit: number | null;
@@ -66557,6 +66585,10 @@ export interface operations {
                             configuredLevel: "off" | "help" | "insights" | "agent";
                             /** @enum {string|null} */
                             offReason: "global_off" | "plan_off" | "custom_off" | "not_served" | "provider_unconfigured" | null;
+                            /** @enum {string} */
+                            answersFrom: "model" | "library";
+                            /** @enum {string|null} */
+                            libraryReason: "policy" | "no_provider" | "provider_unconfigured" | null;
                             companyDataToProvider: boolean;
                         };
                         /** @enum {string} */
@@ -66766,7 +66798,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        active: "recording" | "groq" | "gemini" | "anthropic" | "openai";
+                        active: "none" | "recording" | "groq" | "gemini" | "anthropic" | "openai";
                         globalEnabled: boolean;
                         /** @enum {string} */
                         maxLevelServed: "off" | "help" | "insights" | "agent";
@@ -66776,6 +66808,7 @@ export interface operations {
                             agent: string | null;
                         };
                         ready: boolean;
+                        libraryOnly: boolean;
                         problems: string[];
                         servedLevels: ("agent" | "insights" | "help")[];
                         prices: {
@@ -66795,7 +66828,7 @@ export interface operations {
                         creditPauseSeconds: number | null;
                         providers: {
                             /** @enum {string} */
-                            id: "recording" | "groq" | "gemini" | "anthropic" | "openai";
+                            id: "none" | "recording" | "groq" | "gemini" | "anthropic" | "openai";
                             configured: boolean;
                             approvedDataClasses: ("public_help" | "company_operational" | "company_financial" | "restricted_personal")[];
                         }[];

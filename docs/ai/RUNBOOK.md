@@ -15,9 +15,12 @@ every member switched on and **no member holding a share** of their company's
 allowance. Turning the assistant on is four deliberate steps, in this order,
 and each can be undone on its own.
 
-No AI setting ever stops the server or any other part of the product. A
-missing key or model switches the assistant off, and the platform's AI
-**Provider** panel and the API's startup log say exactly what is missing.
+A missing AI key or model never stops the server or any other part of the
+product: companies are answered from the help library instead (§2.2), and the
+platform's AI **Provider** panel and the API's startup log say exactly what is
+missing. A mistyped value (a provider name that does not exist, a price list
+that is not valid JSON) does stop the API at startup, and its log names the
+line.
 
 ## 2. Turning it on
 
@@ -41,9 +44,9 @@ Restart the API and the worker. What happens with a setting missing:
 
 | Missing                                                  | Effect                                                                          |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| The selected provider's key, or `AI_MODEL_HELP`          | Assistant off everywhere; members see "temporarily unavailable"                 |
+| The selected provider's key, or `AI_MODEL_HELP`          | No model answers anywhere; every company gets help-library answers, at Help     |
 | `AI_MODEL_INSIGHTS` or `AI_MODEL_AGENT`                  | That level is not served; companies above it get the highest level with a model |
-| `recording` in production, or a non-HTTPS OpenAI address | Assistant off everywhere                                                        |
+| `recording` in production, or a non-HTTPS OpenAI address | No model answers anywhere; every company gets help-library answers, at Help     |
 | A price row for a model                                  | Costed at the conservative default rates, marked estimated, flagged on Provider |
 
 Each level runs its own model; one level never borrows another's. The live
@@ -51,6 +54,8 @@ providers are interchangeable: change `AI_PROVIDER`, set that provider's key
 and model ids, restart. Only the provider named is ever called: there is no
 fallback to another one when it fails or runs out of credit. Usage and costs
 keep accruing in the same tables.
+
+`AI_PROVIDER=none` is no provider at all, on purpose: see §2.2.
 
 `AI_PROVIDER_APPROVED_DATA_CLASSES` is only needed for insights and actions
 (§6); the ceilings `AI_MAX_*` rarely need changing.
@@ -81,15 +86,46 @@ keep accruing in the same tables.
 (`insufficient_quota` and its relatives), which the assistant tells apart from
 a rate limit. That API process stops calling OpenAI for
 `AI_CREDIT_EXHAUSTED_PAUSE_SECONDS` (default 300), the Provider panel shows
-the pause, the log says `ai.provider.credit_exhausted`, and members see the
-assistant as temporarily unavailable. Nobody is charged a message for an
-answer that never came, companies' allowances are untouched, and nothing else
-in the product is affected. Top the credit up; the next call after the pause,
-or a restart, resumes.
+the pause, and the log says `ai.provider.credit_exhausted`. The question that
+met the billing stop is answered "temporarily unavailable" and charged
+nothing; until the pause ends, every question is answered from the help
+library with a first line saying only the help guide can answer for now
+(§2.2). Those library answers count as messages but use no tokens and no
+money. Nothing else in the product is affected. Top the credit up; the next
+call after the pause, or a restart, resumes model answers.
 
 `AI_GLOBAL_MONTHLY_BUDGET_MICROUSD` is Integr8's own ceiling, computed from
 the configured prices: it is not the OpenAI balance, and either can run out
 first.
+
+#### 2.2 Without AI: the help library
+
+The assistant can answer with no model at all (ADR-0002 D9–D12). A **library
+answer** is the help article that best matches the question: its title, its
+summary and the paragraph closest to the question, with up to three articles
+as sources linking to their screens. It is not a conversation and it cannot
+read company records or prepare changes, so it serves **Help only**.
+
+Library answers call no provider and use **no tokens and no money**: no
+deployment budget, no company cost cap, no member dollar cap, no credit
+pause. They **need no share** — a member with their switch on can ask — and
+they **count against the company's message limits**, which the plan sets.
+Unlimited messages need no cost cap under the library.
+
+They come about three ways:
+
+1. **By policy**, per plan or per company: **Answers come from** → **The help
+   library (no AI)** (step 2, step 3). The company runs at Help whatever its
+   level says. Integr8 decides; the company sees the effect, not the switch.
+2. **By server**: `AI_ENABLED=true` with `AI_PROVIDER=none` and no key, no
+   model, no price list, no budget. Every company is answered from the
+   library whatever its policy says. The Provider panel says "None (help
+   library only)" and lists nothing to fix.
+3. **As a fallback**: a company on model answers gets library answers when
+   the server cannot give it model answers (no key or Help model, the fake
+   provider in production), and while the provider is paused after a billing
+   stop (§2.1). The company page's **AI assistant** panel shows "Answers come
+   from now" and why.
 
 ### Step 2 — the plan (the dashboard, no deploy)
 
@@ -98,6 +134,10 @@ Dashboard → **Plans**. Each plan has an **AI assistant** section. Set:
 - **Level**: Help (documentation only), Insights (Help + read-only company
   data), Agent (Insights + prepare-and-confirm actions). This build serves up
   to the level shown at the top of the page; a plan set above it is capped.
+- **Answers come from**: an AI model (the default), or the help library with
+  no AI (§2.2). Under the library the token limits, cost cap and model
+  ceilings are hidden and do not apply; they are kept for when answers come
+  from a model again.
 - **Quota mode** and the message limits it names: daily, monthly, or both,
   pooled across the company.
 - **Daily and monthly token limits**: input plus output tokens, pooled across
@@ -135,6 +175,10 @@ owners and admins set them under **People** (web) or **Assistant settings**
 (desktop); Integr8 can set them on the company page's **Members** panel.
 Example: a company with 500,000 tokens a month gives one engineer 10%, so
 they have 50,000 a month, and the company's other members cannot use those.
+
+Shares matter for **model answers only**. A company answered from the help
+library needs none (§2.2); its share editor says so, and any shares already
+set are kept for when it moves to model answers.
 
 **After this release is deployed, nobody has a share**, so the assistant is
 off for every member until shares are set. Tell your companies before you
@@ -182,16 +226,17 @@ dollars on screens. A cost is an estimate when the model was not in
 
 ## 5. When something goes wrong
 
-| Symptom                                       | Where to look                              | What to do                                                                                                                                                           |
-| --------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Members see "not included"                    | capabilities `blockedBy`                   | `global_off` → §2 step 1; `plan_off`/`custom_off` → step 2; `channel_off` → company switches; `member_off` → People; `no_share` → step 4                             |
-| Members see "temporarily unavailable"         | Provider panel `problems`, startup log     | `provider_unconfigured`: a key or model is missing, or the fake provider is selected in production. Fix the env and restart.                                         |
-| Every answer is 503 `ai_provider_unavailable` | API log `ai.request.failed`, health screen | Key or model wrong, or the provider is rate-limiting (`rate_limited`). Fix the env, or wait out `retry-after`.                                                       |
-| Log says `ai.provider.credit_exhausted`       | Provider panel credit pause                | The provider account's prepaid credit is spent (§2.1). Top it up; calls resume after the pause or a restart.                                                         |
-| Members told their allowance is used up       | Members panel, company usage               | `ai_*_token_quota_exceeded`: the company's or the member's token share is spent; raise the limit or the share. `ai_member_budget_exceeded`: the member's dollar cap. |
-| 503 `ai_budget_unavailable`                   | health → budget                            | The deployment's month is spent. Raise `AI_GLOBAL_MONTHLY_BUDGET_MICROUSD` and restart, or wait for the month.                                                       |
-| Counters look stuck (reserved > 0)            | health → stale reservations                | The worker's reconciler settles them after `AI_RESERVATION_TTL_SECONDS`; check the worker is running.                                                                |
-| A company's spend is unexpectedly high        | usage report, `ai_provider_calls`          | Lower the company's cost ceiling or message limits; check `AI_MODEL_PRICES` matches the provider's current rates.                                                    |
+| Symptom                                       | Where to look                                       | What to do                                                                                                                                                                                         |
+| --------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Members see "not included"                    | capabilities `blockedBy`                            | `global_off` → §2 step 1; `plan_off`/`custom_off` → step 2; `channel_off` → company switches; `member_off` → People; `no_share` → step 4                                                           |
+| Members see "temporarily unavailable"         | API log `ai.request.failed`                         | The provider refused the call that was being answered. The next questions get help-library answers while a billing pause lasts (§2.1).                                                             |
+| Answers are help articles, not conversation   | Company page → AI assistant → Answers come from now | `policy`: the plan or company says library; `no_provider`: `AI_PROVIDER=none`; `provider_unconfigured`: a key or model is missing, or the fake provider in production (Provider panel `problems`). |
+| Every answer is 503 `ai_provider_unavailable` | API log `ai.request.failed`, health screen          | Key or model wrong, or the provider is rate-limiting (`rate_limited`). Fix the env, or wait out `retry-after`.                                                                                     |
+| Log says `ai.provider.credit_exhausted`       | Provider panel credit pause                         | The provider account's prepaid credit is spent (§2.1). Top it up; calls resume after the pause or a restart.                                                                                       |
+| Members told their allowance is used up       | Members panel, company usage                        | `ai_*_token_quota_exceeded`: the company's or the member's token share is spent; raise the limit or the share. `ai_member_budget_exceeded`: the member's dollar cap.                               |
+| 503 `ai_budget_unavailable`                   | health → budget                                     | The deployment's month is spent. Raise `AI_GLOBAL_MONTHLY_BUDGET_MICROUSD` and restart, or wait for the month.                                                                                     |
+| Counters look stuck (reserved > 0)            | health → stale reservations                         | The worker's reconciler settles them after `AI_RESERVATION_TTL_SECONDS`; check the worker is running.                                                                                              |
+| A company's spend is unexpectedly high        | usage report, `ai_provider_calls`                   | Lower the company's cost ceiling or message limits; check `AI_MODEL_PRICES` matches the provider's current rates.                                                                                  |
 
 The worker's maintenance tick runs the reconciler every `MEDIA_MAINTENANCE_INTERVAL_SECONDS`
 and the retention sweep once a day (`scheduled_task_runs.task = 'ai.retention'`).
@@ -238,3 +283,7 @@ company data is ever indexed.
   tables and columns are additive, the previous release ignores them, and
   rolling it back would lose the token accounting and every member's share.
   `0046_ai_token_quotas.down.sql` exists for development databases only.
+  The same goes for 0047 (where answers come from): the previous release
+  ignores the column, and every policy keeps its meaning.
+- **No AI at all**: `AI_PROVIDER=none` and restart; companies keep a working
+  assistant on the help library while you sort the provider out.

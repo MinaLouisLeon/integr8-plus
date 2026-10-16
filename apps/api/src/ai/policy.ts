@@ -1,5 +1,6 @@
 import {
   AI_POLICY_OFF,
+  type AiAnswerSource,
   type AiChannel,
   type AiLevel,
   type AiPolicy,
@@ -18,8 +19,12 @@ import { planFor } from '../http/suspension.js';
  *
  * The order is the gate order: the kill switch, then the plan's policy, then
  * the company's override when it is `custom`, then what this build of the
- * code serves at all, then the server's own ceilings. A missing plan row is
- * off — fail closed — rather than uncapped.
+ * code serves at all, then where answers come from, then the server's own
+ * ceilings. A missing plan row is off — fail closed — rather than uncapped.
+ *
+ * Answers come from a model or from the help library (ADR-0002 D9–D12). A
+ * policy can ask for the library; a server that cannot give a company model
+ * answers gives it the library instead, at Help, rather than nothing.
  *
  * Cached per company for thirty seconds, as the suspension status and the
  * module flags are, and forgotten at once when the dashboard writes a policy.
@@ -43,11 +48,18 @@ export interface EffectiveAiPolicy extends AiPolicy {
   source: 'plan' | 'custom';
   /**
    * Why the level is `off`, when it is. `null` when the assistant is on.
-   * `provider_unconfigured` is the server's settings, not the company's
-   * policy: no key, no model, or a fake provider in production (ADR-0002 D2).
+   * `provider_unconfigured` is kept for older clients; since D11 a server
+   * that cannot answer with a model answers from the library instead.
    */
   offReason:
     'global_off' | 'plan_off' | 'custom_off' | 'not_served' | 'provider_unconfigured' | null;
+  /** Where this company's answers actually come from now (D9–D12). */
+  answersFrom: AiAnswerSource;
+  /**
+   * Why answers come from the library, when they do: the policy says so, the
+   * server has no provider by choice, or its AI settings are incomplete.
+   */
+  libraryReason: 'policy' | 'no_provider' | 'provider_unconfigured' | null;
   /** The level before this build's cap, for the dashboard to show honestly. */
   configuredLevel: AiLevel;
   /** Whether the company's own records may go to the provider (L2, L3). */
@@ -98,6 +110,8 @@ async function read(tenantId: string, config: ApiConfig, now: number): Promise<E
 
   let offReason: EffectiveAiPolicy['offReason'] = null;
   let level = configuredLevel;
+  let answersFrom: AiAnswerSource = chosen.answerSource;
+  let libraryReason: EffectiveAiPolicy['libraryReason'] = null;
   if (!config.AI_ENABLED) {
     offReason = 'global_off';
     level = 'off';
@@ -106,12 +120,19 @@ async function read(tenantId: string, config: ApiConfig, now: number): Promise<E
   } else if (minAiLevel(configuredLevel, AI_MAX_LEVEL_SERVED) === 'off') {
     offReason = 'not_served';
     level = 'off';
+  } else if (chosen.answerSource === 'library') {
+    // The library serves Help only, and needs nothing from the server (D10).
+    level = 'help';
+    libraryReason = 'policy';
   } else {
     // Capped again by what the server can run: a level whose model is not set
     // gives way to the highest one below it that has one (ADR-0002 D2, D3).
     level = servableLevel(minAiLevel(configuredLevel, AI_MAX_LEVEL_SERVED), config);
     if (level === 'off') {
-      offReason = 'provider_unconfigured';
+      // No model at all: answer from the library rather than not at all (D11).
+      level = 'help';
+      answersFrom = 'library';
+      libraryReason = config.AI_PROVIDER === 'none' ? 'no_provider' : 'provider_unconfigured';
     }
   }
 
@@ -120,6 +141,8 @@ async function read(tenantId: string, config: ApiConfig, now: number): Promise<E
     level,
     source,
     offReason,
+    answersFrom,
+    libraryReason,
     configuredLevel,
     companyDataToProvider: override?.companyDataToProvider ?? false,
     overrideVersion: override?.version ?? null,
@@ -130,6 +153,7 @@ async function read(tenantId: string, config: ApiConfig, now: number): Promise<E
 export function clampToServer(policy: AiPolicyFields, config: ApiConfig): AiPolicy {
   return {
     level: policy.level,
+    answerSource: policy.answerSource,
     quotaMode: policy.quotaMode,
     dailyLimit: policy.dailyLimit,
     monthlyLimit: policy.monthlyLimit,
@@ -197,11 +221,14 @@ export async function resolveAiAccess(input: {
     mobile: settings.aiMobileEnabled,
   }[channel];
   // Integr8 staff acting as the company hold no membership row; their seat
-  // follows the company's switches, and having no share, has no assistant.
+  // follows the company's switches, and having no share, has no model
+  // answers.
   const memberEnabled = member?.aiEnabled ?? true;
-  // A member needs a share of the company's allowance as well as their
-  // switch: no share, no assistant (ADR-0002 D6).
+  // For model answers a member needs a share of the company's allowance as
+  // well as their switch: no share, no assistant (ADR-0002 D6). Library
+  // answers cost nothing, so they need the switch only (D10).
   const sharePercent = limits?.sharePercent ?? null;
+  const shareNeeded = policy.answersFrom === 'model';
 
   const blockedBy =
     policy.level === 'off'
@@ -210,7 +237,7 @@ export async function resolveAiAccess(input: {
         ? 'channel_off'
         : !memberEnabled
           ? 'member_off'
-          : sharePercent === null
+          : shareNeeded && sharePercent === null
             ? 'no_share'
             : null;
 
