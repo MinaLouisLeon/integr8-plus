@@ -159,6 +159,30 @@ export async function fetchMyPayslips() {
 }
 
 // ---------------------------------------------------------------------------
+// PDF documents (docs/documents)
+// ---------------------------------------------------------------------------
+
+export type DocumentRow = Awaited<ReturnType<typeof fetchDocuments>>[number];
+
+/** The company's documents, newest first, matching a search when there is one. Online only. */
+export async function fetchDocuments(q: string) {
+  await online();
+  const { data } = await client().GET('/v1/documents', {
+    params: { query: { limit: 50, ...(q.trim() === '' ? {} : { q: q.trim() }) } },
+  });
+  return data?.items ?? [];
+}
+
+/** A five-minute link to a document's PDF, to open in the browser. */
+export async function documentFileUrl(documentId: string): Promise<string | null> {
+  await online();
+  const { data } = await client().GET('/v1/documents/{documentId}/file', {
+    params: { path: { documentId }, query: { disposition: 'inline' } },
+  });
+  return data?.url ?? null;
+}
+
+// ---------------------------------------------------------------------------
 // Receiving goods at the store
 // ---------------------------------------------------------------------------
 

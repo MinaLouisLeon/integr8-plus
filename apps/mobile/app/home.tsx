@@ -80,6 +80,7 @@ function Jobs() {
       van: myVan !== null && (myVan !== undefined || (stocked?.n ?? 0) > 0),
       receive: allows(granted, 'purchasing.manage', 'purchasing'),
       payslips: granted.features.payroll === true,
+      documents: allows(granted, 'document.read', 'documents'),
     };
   });
   // What the person may do, asked once a launch when there is signal.
@@ -149,6 +150,14 @@ function Jobs() {
           label={t('mobile.receive.title')}
           variant="secondary"
           onPress={() => router.push('/receive')}
+        />
+      ) : null}
+
+      {more.status === 'ready' && more.data.documents ? (
+        <Button
+          label={t('mobile.documents.title')}
+          variant="secondary"
+          onPress={() => router.push('/documents')}
         />
       ) : null}
 

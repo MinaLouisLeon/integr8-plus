@@ -179,6 +179,8 @@ export function renderScreen(
       financeSettings: '/finance/settings',
       assets: '/assets',
       asset: (id) => `/assets/${id}`,
+      documents: '/documents',
+      document: (id) => `/documents/${id}`,
       ledger: '/ledger',
       ledgerAccounts: '/ledger/accounts',
       journals: '/ledger/journals',

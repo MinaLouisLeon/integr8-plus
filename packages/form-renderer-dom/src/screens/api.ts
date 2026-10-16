@@ -25,6 +25,8 @@ export interface ScreensConfig {
     submission: (id: string) => string;
     /** A job. When set, a submission made for a job offers a way back to it. */
     workOrder?: (id: string) => string;
+    /** A PDF document. When set, a document made from a submission links to it (docs/documents). */
+    document?: (id: string) => string;
   };
   /** Saves a file the person asked for, such as a CSV export. */
   download: (blob: Blob, filename: string) => void;

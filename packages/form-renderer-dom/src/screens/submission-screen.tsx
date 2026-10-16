@@ -15,6 +15,7 @@ import {
   useScreens,
 } from './api.js';
 import { say } from '../text.js';
+import { MakeDocumentButton } from './make-document.js';
 import { BackLink, Dialog, Failure, Loading } from './parts.js';
 
 /**
@@ -109,15 +110,22 @@ export function SubmissionScreen({ submissionId }: { submissionId: string }) {
             </p>
           )}
         </div>
-        {detail.data.can.reopen ? (
-          <button
-            type="button"
-            className={buttonClass.secondary}
-            onClick={() => setReopening(true)}
-          >
-            {t('submissions.detail.reopen')}
-          </button>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <MakeDocumentButton
+            submissionId={submission.id}
+            formId={submission.formId}
+            isDraft={submission.status === 'draft'}
+          />
+          {detail.data.can.reopen ? (
+            <button
+              type="button"
+              className={buttonClass.secondary}
+              onClick={() => setReopening(true)}
+            >
+              {t('submissions.detail.reopen')}
+            </button>
+          ) : null}
+        </div>
       </header>
 
       {detail.data.can.edit && detail.data.carriedOver !== null && detail.data.asset !== null ? (

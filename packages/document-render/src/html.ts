@@ -460,7 +460,9 @@ function css(
         background-size: ${layers.map(() => '210mm 297mm').join(', ')};
         background-position: ${positions.join(', ')}; background-repeat: ${repeats.join(', ')};
         box-shadow: 0 1px 4px rgba(0,0,0,.15);
-      }`;
+      }
+      /* On screen a page break cannot start a new sheet; it shows where one will. */
+      .sheet .page-break { border-top: 1px dashed #9aa4b2; margin: 6mm 0; }`;
   }
   return `
     ${page}

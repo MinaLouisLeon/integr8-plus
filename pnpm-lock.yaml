@@ -126,6 +126,9 @@ importers:
       '@integr8/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@integr8/document-render':
+        specifier: workspace:*
+        version: link:../../packages/document-render
       '@integr8/form-engine':
         specifier: workspace:*
         version: link:../../packages/form-engine
