@@ -340,11 +340,18 @@ describe('insight tools', () => {
         { id: 'c1', name: 'prepare_create_customer', arguments: { name: 'Nope Ltd' } },
       ],
       finishReason: 'tool',
+      // The provider's own record of the turn (Anthropic's thinking blocks):
+      // it must reach the next call unchanged.
+      providerContent: [{ type: 'thinking', thinking: '', signature: 'sig-1' }],
     });
     const asked = await ask(viewerToken, conversationId, 'add a customer called Nope Ltd');
     expect(asked.statusCode, asked.body).toBe(200);
     const toolTurn = provider.calls[1]?.input.messages.find((turn) => turn.role === 'tool');
     expect(toolTurn?.content).toContain('not_allowed');
+    const askedTurn = provider.calls[1]?.input.messages.find((turn) => turn.role === 'assistant');
+    expect(askedTurn?.providerContent).toEqual([
+      { type: 'thinking', thinking: '', signature: 'sig-1' },
+    ]);
     const customers = json<{ items: { name: string }[] }>(
       await api.call(await api.signIn(owner), { method: 'GET', url: '/v1/customers?q=Nope' }),
     );

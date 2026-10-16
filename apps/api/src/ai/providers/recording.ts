@@ -64,6 +64,9 @@ export class RecordingAiProvider implements AiProvider {
       },
       finishReason:
         scripted.finishReason ?? ((scripted.toolRequests?.length ?? 0) > 0 ? 'tool' : 'stop'),
+      ...(scripted.providerContent === undefined
+        ? {}
+        : { providerContent: scripted.providerContent }),
     };
   }
 

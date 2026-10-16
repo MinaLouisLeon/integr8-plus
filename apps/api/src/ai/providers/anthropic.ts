@@ -1,4 +1,5 @@
 import {
+  type AiChatMessage,
   type AiGenerateInput,
   type AiGeneration,
   type AiProvider,
@@ -16,42 +17,29 @@ import {
  *
  * Selectable by `AI_PROVIDER=anthropic` with a key and model ids. Tool use
  * arrives as `tool_use` content blocks; a tool's answer goes back as a
- * `tool_result` block in a user turn naming the block's id.
+ * `tool_result` block in a user turn naming the block's id, every result of
+ * one turn in the same user message.
+ *
+ * No sampling parameter is sent: Claude's 5.x models refuse a non-default
+ * `temperature`, and the older ones answer well at the default. Those 5.x
+ * models think by default, so a turn that asked for tools is sent back
+ * exactly as it came, thinking blocks included, which the API requires; and
+ * `AI_ANTHROPIC_EFFORT`, when set, keeps the thinking short enough to leave
+ * room for the answer inside `max_tokens`.
  */
 export class AnthropicAiProvider implements AiProvider {
   readonly id = 'anthropic' as const;
   readonly capabilities = { toolCalling: true };
 
-  constructor(private readonly options: { apiKey: string; baseUrl: string }) {}
+  constructor(
+    private readonly options: {
+      apiKey: string;
+      baseUrl: string;
+      effort?: string | undefined;
+    },
+  ) {}
 
   async generate(input: AiGenerateInput): Promise<AiGeneration> {
-    const messages: unknown[] = [];
-    for (const message of input.messages) {
-      if (message.role === 'tool') {
-        messages.push({
-          role: 'user',
-          content: [
-            { type: 'tool_result', tool_use_id: message.toolCallId, content: message.content },
-          ],
-        });
-      } else if (message.role === 'assistant' && (message.toolCalls?.length ?? 0) > 0) {
-        messages.push({
-          role: 'assistant',
-          content: [
-            ...(message.content === '' ? [] : [{ type: 'text', text: message.content }]),
-            ...(message.toolCalls ?? []).map((call) => ({
-              type: 'tool_use',
-              id: call.id,
-              name: call.name,
-              input: call.arguments ?? {},
-            })),
-          ],
-        });
-      } else {
-        messages.push({ role: message.role, content: message.content });
-      }
-    }
-
     const { body } = await postJson(
       'anthropic',
       `${this.options.baseUrl.replace(/\/+$/u, '')}/messages`,
@@ -59,9 +47,11 @@ export class AnthropicAiProvider implements AiProvider {
       {
         model: input.model,
         system: input.system,
-        messages,
+        messages: toAnthropicMessages(input.messages),
         max_tokens: input.maxOutputTokens,
-        temperature: 0.2,
+        ...(this.options.effort === undefined
+          ? {}
+          : { output_config: { effort: this.options.effort } }),
         ...(input.tools === undefined || input.tools.length === 0
           ? {}
           : {
@@ -97,6 +87,8 @@ export class AnthropicAiProvider implements AiProvider {
     return {
       text,
       toolRequests,
+      // Only a turn that goes on to tool results is ever sent back.
+      ...(toolRequests.length === 0 ? {} : { providerContent: blocks }),
       usage:
         inputTokens === null || outputTokens === null
           ? {
@@ -116,4 +108,50 @@ export class AnthropicAiProvider implements AiProvider {
               : 'other',
     };
   }
+}
+
+/**
+ * The conversation in Anthropic's shape. A turn that asked for tools goes back
+ * as the provider returned it when we hold that; the tool results that follow
+ * it share one user message.
+ */
+export function toAnthropicMessages(messages: readonly AiChatMessage[]): unknown[] {
+  const out: { role: string; content: unknown }[] = [];
+  for (const message of messages) {
+    if (message.role === 'tool') {
+      const result = {
+        type: 'tool_result',
+        tool_use_id: message.toolCallId,
+        content: message.content,
+      };
+      const last = out.at(-1);
+      if (last?.role === 'user' && Array.isArray(last.content) && isToolResults(last.content)) {
+        last.content.push(result);
+      } else {
+        out.push({ role: 'user', content: [result] });
+      }
+    } else if (message.role === 'assistant' && Array.isArray(message.providerContent)) {
+      out.push({ role: 'assistant', content: message.providerContent });
+    } else if (message.role === 'assistant' && (message.toolCalls?.length ?? 0) > 0) {
+      out.push({
+        role: 'assistant',
+        content: [
+          ...(message.content === '' ? [] : [{ type: 'text', text: message.content }]),
+          ...(message.toolCalls ?? []).map((call) => ({
+            type: 'tool_use',
+            id: call.id,
+            name: call.name,
+            input: call.arguments ?? {},
+          })),
+        ],
+      });
+    } else {
+      out.push({ role: message.role, content: message.content });
+    }
+  }
+  return out;
+}
+
+function isToolResults(content: unknown[]): boolean {
+  return content.every((block) => stringAt(block, 'type') === 'tool_result');
 }

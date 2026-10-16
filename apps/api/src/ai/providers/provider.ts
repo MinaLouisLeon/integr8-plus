@@ -16,6 +16,13 @@ export interface AiChatMessage {
   toolCallId?: string;
   /** On an `assistant` message that asked for tools: what it asked for. */
   toolCalls?: AiToolRequest[];
+  /**
+   * On an `assistant` message: the turn exactly as the provider returned it,
+   * for an adapter that must send it back unchanged (Anthropic's thinking
+   * blocks). Opaque everywhere else; an adapter that does not set it rebuilds
+   * the turn from `content` and `toolCalls`.
+   */
+  providerContent?: unknown;
 }
 
 export interface AiToolDefinition {
@@ -45,6 +52,8 @@ export interface AiGenerateInput {
 export interface AiGeneration {
   text: string;
   toolRequests: AiToolRequest[];
+  /** The turn as the provider returned it, when it must go back unchanged; see `AiChatMessage`. */
+  providerContent?: unknown;
   /**
    * Tokens as the provider reported them, or estimated. `cachedTokens` is the
    * part of `inputTokens` served from the provider's prompt cache and

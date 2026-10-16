@@ -674,6 +674,9 @@ async function generateWithTools(args: {
       role: 'assistant',
       content: generation.text,
       toolCalls: generation.toolRequests,
+      ...(generation.providerContent === undefined
+        ? {}
+        : { providerContent: generation.providerContent }),
     });
     for (const request of generation.toolRequests) {
       steps += 1;
