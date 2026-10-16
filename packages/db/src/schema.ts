@@ -2909,6 +2909,81 @@ export interface AiHelpArticlesTable {
   updated_at: Generated<Date>;
 }
 
+// ---------------------------------------------------------------------------
+// PDF documents (0048; docs/documents/ADR-0001)
+// ---------------------------------------------------------------------------
+
+export type DocumentStatus = 'pending' | 'ready' | 'failed';
+export type DocumentLookupRole = 'key' | 'confirm';
+
+export interface DocumentTemplatesTable {
+  id: string;
+  tenant_id: string;
+  form_id: string;
+  name: string;
+  /** Validated by @integr8/document-render before it is written. */
+  design: Jsonb<unknown>;
+  design_schema_version: Generated<number>;
+  revision: Generated<number>;
+  archived_at: Date | null;
+  created_by: string;
+  updated_by: string;
+  created_at: CreatedAt;
+  updated_at: Generated<Date>;
+}
+
+export interface DocumentsTable {
+  id: string;
+  tenant_id: string;
+  template_id: string;
+  template_revision: number;
+  submission_id: string;
+  form_id: string;
+  title: string;
+  /** The QR link's key (D7). */
+  public_code: string;
+  status: Generated<DocumentStatus>;
+  failure_code: string | null;
+  file_id: string | null;
+  byte_size: ColumnType<string | null, number | string | null | undefined, number | string | null>;
+  page_count: number | null;
+  sha256: string | null;
+  rendered_at: Date | null;
+  expired_at: Date | null;
+  expired_by: string | null;
+  expires_at: Date | null;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: Generated<Date>;
+}
+
+export interface DocumentFieldValuesTable {
+  tenant_id: string;
+  document_id: string;
+  field_key: string;
+  /** The field's label, per language, when the document was made. */
+  label: Jsonb<Record<string, string>>;
+  value: string;
+  value_normalized: string;
+  lookup_role: DocumentLookupRole | null;
+}
+
+/** Platform-level: issued by staff managers; the runtime role reaches nothing here. */
+export interface WebsiteKeysTable {
+  id: string;
+  tenant_id: string;
+  key_hash: string;
+  key_hint: string;
+  label: string | null;
+  created_by: string;
+  created_at: CreatedAt;
+  revoked_at: Date | null;
+  revoked_by: string | null;
+  last_used_at: Date | null;
+  lookups: ColumnType<string, never, string | number>;
+  found: ColumnType<string, never, string | number>;
+}
+
 export interface Database {
   tenants: TenantsTable;
   platform_users: PlatformUsersTable;
@@ -2992,6 +3067,10 @@ export interface Database {
   erp_asset_settings: ErpAssetSettingsTable;
   asset_reference_counters: AssetReferenceCountersTable;
   erp_assets: ErpAssetsTable;
+  document_templates: DocumentTemplatesTable;
+  documents: DocumentsTable;
+  document_field_values: DocumentFieldValuesTable;
+  website_keys: WebsiteKeysTable;
   erp_asset_events: ErpAssetEventsTable;
   erp_work_order_assets: ErpWorkOrderAssetsTable;
   erp_ledger_accounts: ErpLedgerAccountsTable;
@@ -3134,6 +3213,11 @@ export const PLATFORM_TABLES = [
   'ai_plan_policies',
   'ai_platform_cost_periods',
   'ai_help_articles',
+  // A company website's key for the document lookup (0048; documents
+  // ADR-0001 D11). Issued and revoked by staff managers, looked up before any
+  // company is known, and never reached by the runtime role. It names its
+  // company with a foreign key, so the purge removes it with the company.
+  'website_keys',
 ] as const;
 
 /**
@@ -3304,6 +3388,9 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   erp_asset_settings: true,
   asset_reference_counters: true,
   erp_assets: true,
+  document_templates: true,
+  documents: true,
+  document_field_values: true,
   erp_asset_events: true,
   erp_work_order_assets: true,
   erp_ledger_accounts: true,

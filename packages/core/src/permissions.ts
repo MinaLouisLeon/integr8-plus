@@ -274,6 +274,24 @@ export const PERMISSIONS = [
   'manufacturing.read',
   /** Keep bills of materials, assemble and take apart, and run planning. */
   'manufacturing.manage',
+
+  // PDF documents made from submissions (documents ADR-0001). Each also needs
+  // the company's `documents` module switched on.
+
+  /** See the company's register of generated PDFs, open them and copy their links. */
+  'document.read',
+  /**
+   * Turn a submission into a PDF from one of its form's templates. The
+   * submission must also be one the member may read.
+   */
+  'document.create',
+  /** Expire, renew and delete generated PDFs. */
+  'document.manage',
+  /**
+   * Design a form's PDF templates. Staff-only (see
+   * {@link STAFF_ONLY_PERMISSIONS}), like the forms themselves.
+   */
+  'document.design',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -361,6 +379,10 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'payroll.approve',
     'manufacturing.read',
     'manufacturing.manage',
+    'document.read',
+    'document.create',
+    'document.manage',
+    'document.design',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -425,6 +447,10 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'expense.approve',
     'manufacturing.read',
     'manufacturing.manage',
+    'document.read',
+    'document.create',
+    'document.manage',
+    'document.design',
   ],
 
   // Keeps HR and payroll (ADR-0010): the people, their pay and their claims,
@@ -505,6 +531,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'asset.record',
     'asset.manage',
     'expense.submit',
+    'document.read',
+    'document.create',
   ],
 
   // Does the work. Sees colleagues so a job can be handed over, their own
@@ -524,6 +552,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'asset.read',
     'asset.record',
     'expense.submit',
+    'document.create',
   ],
 
   // Reads, and only reads: every submission and every job, and nothing to fill.
@@ -544,6 +573,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'ledger.read',
     'expense.submit',
     'manufacturing.read',
+    'document.read',
   ],
 });
 
@@ -623,6 +653,7 @@ export const STAFF_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<Permissio
   'form.manage',
   'job_type.manage',
   'branding.manage',
+  'document.design',
 ]);
 
 /**

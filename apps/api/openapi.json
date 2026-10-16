@@ -7470,7 +7470,11 @@
                           "payroll.run",
                           "payroll.approve",
                           "manufacturing.read",
-                          "manufacturing.manage"
+                          "manufacturing.manage",
+                          "document.read",
+                          "document.create",
+                          "document.manage",
+                          "document.design"
                         ]
                       }
                     },
@@ -29699,7 +29703,11 @@
                                 "payroll.run",
                                 "payroll.approve",
                                 "manufacturing.read",
-                                "manufacturing.manage"
+                                "manufacturing.manage",
+                                "document.read",
+                                "document.create",
+                                "document.manage",
+                                "document.design"
                               ]
                             }
                           }
@@ -29780,7 +29788,11 @@
                           "payroll.run",
                           "payroll.approve",
                           "manufacturing.read",
-                          "manufacturing.manage"
+                          "manufacturing.manage",
+                          "document.read",
+                          "document.create",
+                          "document.manage",
+                          "document.design"
                         ]
                       }
                     }
@@ -29989,7 +30001,11 @@
                                 "payroll.run",
                                 "payroll.approve",
                                 "manufacturing.read",
-                                "manufacturing.manage"
+                                "manufacturing.manage",
+                                "document.read",
+                                "document.create",
+                                "document.manage",
+                                "document.design"
                               ]
                             }
                           },
@@ -30062,7 +30078,11 @@
                                 "payroll.run",
                                 "payroll.approve",
                                 "manufacturing.read",
-                                "manufacturing.manage"
+                                "manufacturing.manage",
+                                "document.read",
+                                "document.create",
+                                "document.manage",
+                                "document.design"
                               ]
                             }
                           },
@@ -30135,7 +30155,11 @@
                                 "payroll.run",
                                 "payroll.approve",
                                 "manufacturing.read",
-                                "manufacturing.manage"
+                                "manufacturing.manage",
+                                "document.read",
+                                "document.create",
+                                "document.manage",
+                                "document.design"
                               ]
                             }
                           },
@@ -30374,7 +30398,11 @@
                         "payroll.run",
                         "payroll.approve",
                         "manufacturing.read",
-                        "manufacturing.manage"
+                        "manufacturing.manage",
+                        "document.read",
+                        "document.create",
+                        "document.manage",
+                        "document.design"
                       ]
                     }
                   },
@@ -30449,7 +30477,11 @@
                         "payroll.run",
                         "payroll.approve",
                         "manufacturing.read",
-                        "manufacturing.manage"
+                        "manufacturing.manage",
+                        "document.read",
+                        "document.create",
+                        "document.manage",
+                        "document.design"
                       ]
                     }
                   },
@@ -30573,7 +30605,11 @@
                           "payroll.run",
                           "payroll.approve",
                           "manufacturing.read",
-                          "manufacturing.manage"
+                          "manufacturing.manage",
+                          "document.read",
+                          "document.create",
+                          "document.manage",
+                          "document.design"
                         ]
                       }
                     },
@@ -30646,7 +30682,11 @@
                           "payroll.run",
                           "payroll.approve",
                           "manufacturing.read",
-                          "manufacturing.manage"
+                          "manufacturing.manage",
+                          "document.read",
+                          "document.create",
+                          "document.manage",
+                          "document.design"
                         ]
                       }
                     },
@@ -30719,7 +30759,11 @@
                           "payroll.run",
                           "payroll.approve",
                           "manufacturing.read",
-                          "manufacturing.manage"
+                          "manufacturing.manage",
+                          "document.read",
+                          "document.create",
+                          "document.manage",
+                          "document.design"
                         ]
                       }
                     },
@@ -30936,7 +30980,11 @@
                         "payroll.run",
                         "payroll.approve",
                         "manufacturing.read",
-                        "manufacturing.manage"
+                        "manufacturing.manage",
+                        "document.read",
+                        "document.create",
+                        "document.manage",
+                        "document.design"
                       ]
                     }
                   },
@@ -31011,7 +31059,11 @@
                         "payroll.run",
                         "payroll.approve",
                         "manufacturing.read",
-                        "manufacturing.manage"
+                        "manufacturing.manage",
+                        "document.read",
+                        "document.create",
+                        "document.manage",
+                        "document.design"
                       ]
                     }
                   },
@@ -31129,7 +31181,11 @@
                           "payroll.run",
                           "payroll.approve",
                           "manufacturing.read",
-                          "manufacturing.manage"
+                          "manufacturing.manage",
+                          "document.read",
+                          "document.create",
+                          "document.manage",
+                          "document.design"
                         ]
                       }
                     },
@@ -31202,7 +31258,11 @@
                           "payroll.run",
                           "payroll.approve",
                           "manufacturing.read",
-                          "manufacturing.manage"
+                          "manufacturing.manage",
+                          "document.read",
+                          "document.create",
+                          "document.manage",
+                          "document.design"
                         ]
                       }
                     },
@@ -31275,7 +31335,11 @@
                           "payroll.run",
                           "payroll.approve",
                           "manufacturing.read",
-                          "manufacturing.manage"
+                          "manufacturing.manage",
+                          "document.read",
+                          "document.create",
+                          "document.manage",
+                          "document.design"
                         ]
                       }
                     },
@@ -31526,7 +31590,11 @@
                           "payroll.run",
                           "payroll.approve",
                           "manufacturing.read",
-                          "manufacturing.manage"
+                          "manufacturing.manage",
+                          "document.read",
+                          "document.create",
+                          "document.manage",
+                          "document.design"
                         ]
                       }
                     },
@@ -31599,7 +31667,11 @@
                           "payroll.run",
                           "payroll.approve",
                           "manufacturing.read",
-                          "manufacturing.manage"
+                          "manufacturing.manage",
+                          "document.read",
+                          "document.create",
+                          "document.manage",
+                          "document.design"
                         ]
                       }
                     },
@@ -31672,7 +31744,11 @@
                           "payroll.run",
                           "payroll.approve",
                           "manufacturing.read",
-                          "manufacturing.manage"
+                          "manufacturing.manage",
+                          "document.read",
+                          "document.create",
+                          "document.manage",
+                          "document.design"
                         ]
                       }
                     },

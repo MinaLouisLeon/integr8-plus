@@ -198,9 +198,10 @@ describe('what Integr8 does for a company', () => {
   const staffAsOwner = { role: 'owner', impersonatedBy: { pid: 'p', gid: 'g' } } as const;
   const staffAsEngineer = { role: 'engineer', impersonatedBy: { pid: 'p', gid: 'g' } } as const;
 
-  it('names exactly the form, job-type and branding configuration', () => {
+  it('names exactly the form, job-type, branding and PDF-template configuration', () => {
     expect([...STAFF_ONLY_PERMISSIONS].sort()).toEqual([
       'branding.manage',
+      'document.design',
       'form.manage',
       'job_type.manage',
     ]);
@@ -208,7 +209,12 @@ describe('what Integr8 does for a company', () => {
 
   it('withholds those from the company\u2019s own owner, and nothing else', () => {
     const withheld = PERMISSIONS.filter((permission) => !holds(owner, permission));
-    expect(withheld.sort()).toEqual(['branding.manage', 'form.manage', 'job_type.manage']);
+    expect(withheld.sort()).toEqual([
+      'branding.manage',
+      'document.design',
+      'form.manage',
+      'job_type.manage',
+    ]);
     expect(permissionsHeld(owner)).toEqual(
       permissionsFor('owner').filter((permission) => !STAFF_ONLY_PERMISSIONS.has(permission)),
     );

@@ -66,6 +66,7 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   payrollRules: '/hr/payroll-rules',
   myPayslips: '/hr/payslips',
   assets: '/assets',
+  documents: '/documents',
 };
 
 /**

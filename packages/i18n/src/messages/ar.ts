@@ -656,6 +656,7 @@ export const ar: Catalogue<Messages> = {
       sales: 'المبيعات',
       finance: 'المالية',
       asset: 'الأصول',
+      document: 'مستندات PDF',
       ledger: 'دفتر الأستاذ',
       hr: 'الموارد البشرية',
       expense: 'المصروفات',
@@ -722,6 +723,12 @@ export const ar: Catalogue<Messages> = {
         issue: 'إصدار الفواتير وتسجيل المدفوعات',
       },
       asset: { read: 'عرض الأصول', record: 'تسجيل الأصول في المهام', manage: 'إدارة الأصول' },
+      document: {
+        read: 'عرض ملفات PDF المُنشأة',
+        create: 'إنشاء ملفات PDF من الإرساليات',
+        manage: 'إنهاء صلاحية ملفات PDF وحذفها',
+        design: 'تصميم قوالب PDF (لفريق Integr8 فقط)',
+      },
       ledger: {
         read: 'عرض دفتر الأستاذ',
         post: 'ترحيل القيود',
@@ -6323,6 +6330,7 @@ export const ar: Catalogue<Messages> = {
       payrollRules: 'قواعد الرواتب',
       myPayslips: 'قسائم راتبي',
       assets: 'الأصول',
+      documents: 'المستندات',
     },
     hint: {
       dashboard: 'أين أنت، وما الذي يحتاج إلى إنجاز.',
@@ -6374,6 +6382,7 @@ export const ar: Catalogue<Messages> = {
       payrollRules: 'شرائح الضريبة والتأمينات الاجتماعية وصندوق الشهداء كما أكدها المالك.',
       myPayslips: 'قسائم راتبك، للاطلاع والطباعة.',
       assets: 'المعدات التي تخدمها، وملصقاتها، وسجلها.',
+      documents: 'ملفات PDF المُنشأة من إرسالياتك، وروابطها ورموز QR الخاصة بها.',
     },
   },
 

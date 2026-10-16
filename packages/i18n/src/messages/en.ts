@@ -686,6 +686,7 @@ export const en = {
       sales: 'Sales',
       finance: 'Finance',
       asset: 'Assets',
+      document: 'PDF documents',
       ledger: 'Ledger',
       hr: 'HR',
       expense: 'Expenses',
@@ -753,6 +754,12 @@ export const en = {
         issue: 'Issue invoices and record payments',
       },
       asset: { read: 'See assets', record: 'Record assets on jobs', manage: 'Manage assets' },
+      document: {
+        read: 'See generated PDFs',
+        create: 'Make PDFs from submissions',
+        manage: 'Expire and delete PDFs',
+        design: 'Design PDF templates (Integr8 only)',
+      },
       ledger: {
         read: 'See the ledger',
         post: 'Post journals',
@@ -6253,6 +6260,7 @@ export const en = {
       payrollRules: 'Payroll rules',
       myPayslips: 'My payslips',
       assets: 'Assets',
+      documents: 'Documents',
     },
     hint: {
       dashboard: 'Where you are, and what needs doing.',
@@ -6305,6 +6313,7 @@ export const en = {
         'Tax bands, social insurance and the Martyrs’ Fund, as the owner confirmed them.',
       myPayslips: 'Your payslips, to read and print.',
       assets: 'The machines you service, their tags and their history.',
+      documents: 'The PDFs made from your submissions, their links and QR codes.',
     },
   },
 

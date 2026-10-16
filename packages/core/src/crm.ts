@@ -31,6 +31,8 @@ export const MODULE_FEATURES = [
   'hr',
   'payroll',
   'manufacturing',
+  // PDF documents made from submissions (documents ADR-0001).
+  'documents',
 ] as const;
 export const moduleFeatureSchema = z.enum(MODULE_FEATURES);
 export type ModuleFeature = z.infer<typeof moduleFeatureSchema>;

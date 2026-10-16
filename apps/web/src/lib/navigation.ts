@@ -58,6 +58,7 @@ export const NAV_PATHS: Readonly<Record<Exclude<NavPath, 'forms' | 'branding'>, 
   payrollRules: '/hr/payroll-rules',
   myPayslips: '/hr/payslips',
   assets: '/assets',
+  documents: '/documents',
 };
 
 /**
