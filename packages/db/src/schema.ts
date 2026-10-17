@@ -45,6 +45,14 @@ import {
   type JournalSourceKind,
   type JournalStatus,
   type PeriodEventKind,
+  type EtaAttemptKind,
+  type EtaAttemptOutcome,
+  type EtaDocumentKind,
+  type EtaDocumentState,
+  type EtaEnvironment,
+  type EtaItemType,
+  type EtaReceiverType,
+  type EtaSigningStatus,
 } from '@integr8/core';
 import type { ColumnType, Generated } from 'kysely';
 import { z } from 'zod';
@@ -2984,6 +2992,172 @@ export interface WebsiteKeysTable {
   found: ColumnType<string, never, string | number>;
 }
 
+// ---------------------------------------------------------------------------
+// Egyptian e-invoicing (migration 0049; ADR-0014)
+// ---------------------------------------------------------------------------
+
+export interface EtaSettingsTable {
+  tenant_id: string;
+  enabled: Generated<boolean>;
+  environment: Generated<EtaEnvironment>;
+  issuer_type: Generated<string>;
+  taxpayer_id: string | null;
+  issuer_name: string | null;
+  branch_id: string | null;
+  activity_code: string | null;
+  address_country: string | null;
+  address_governate: string | null;
+  address_region_city: string | null;
+  address_street: string | null;
+  address_building_number: string | null;
+  address_postal_code: string | null;
+  address_floor: string | null;
+  address_room: string | null;
+  address_landmark: string | null;
+  address_additional: string | null;
+  client_id_sealed: string | null;
+  client_secret_sealed: string | null;
+  credentials_hint: string | null;
+  credentials_version: Generated<number>;
+  credentials_updated_at: Date | null;
+  credentials_updated_by: string | null;
+  intermediary_for: string | null;
+  document_type_version: Generated<string>;
+  default_item_type: EtaItemType | null;
+  default_item_code: string | null;
+  pinned_certificates: Generated<string[]>;
+  version: Generated<number>;
+  updated_by: string | null;
+  updated_at: Generated<Date>;
+}
+
+export interface EtaAddressColumns {
+  address_country: string | null;
+  address_governate: string | null;
+  address_region_city: string | null;
+  address_street: string | null;
+  address_building_number: string | null;
+  address_postal_code: string | null;
+  address_floor: string | null;
+  address_room: string | null;
+  address_landmark: string | null;
+  address_additional: string | null;
+}
+
+export interface EtaReceiversTable extends EtaAddressColumns {
+  tenant_id: string;
+  customer_id: string;
+  receiver_type: EtaReceiverType;
+  receiver_id: string | null;
+  updated_by: string;
+  updated_at: Generated<Date>;
+}
+
+export interface EtaItemCodesTable {
+  tenant_id: string;
+  item_id: string;
+  item_type: EtaItemType;
+  item_code: string;
+  updated_by: string;
+  updated_at: Generated<Date>;
+}
+
+export interface EtaUnitTypesTable {
+  tenant_id: string;
+  unit: string;
+  eta_unit_type: string;
+  updated_by: string;
+  updated_at: Generated<Date>;
+}
+
+export interface EtaTaxMappingsTable {
+  tenant_id: string;
+  tax_rate_bp: number;
+  tax_type: string;
+  sub_type: string;
+  updated_by: string;
+  updated_at: Generated<Date>;
+}
+
+export interface EtaDocumentsTable {
+  id: string;
+  tenant_id: string;
+  document_kind: Generated<EtaDocumentKind>;
+  invoice_id: string;
+  sequence: number;
+  environment: EtaEnvironment;
+  internal_id: string;
+  state: Generated<EtaDocumentState>;
+  unsigned_json: string;
+  canonical_sha256: string;
+  signed_json: string | null;
+  signer_certificate: string | null;
+  signed_by: string | null;
+  signed_at: Date | null;
+  exchange_rate: string | null;
+  total_amount: string;
+  currency_code: string;
+  eta_uuid: string | null;
+  eta_long_id: string | null;
+  submission_id: string | null;
+  eta_status: string | null;
+  errors: Jsonb<unknown[]>;
+  last_error_code: string | null;
+  prepared_by: string;
+  prepared_at: CreatedAt;
+  submitted_by: string | null;
+  submitted_at: Date | null;
+  final_at: Date | null;
+  next_check_at: Date | null;
+  checks: Generated<number>;
+  version: Generated<number>;
+  updated_at: Generated<Date>;
+}
+
+export interface EtaAttemptsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  document_id: string | null;
+  kind: EtaAttemptKind;
+  outcome: EtaAttemptOutcome;
+  http_status: number | null;
+  error_code: string | null;
+  message: string | null;
+  correlation_id: string | null;
+  started_at: Generated<Date>;
+  finished_at: Generated<Date>;
+  actor_id: string | null;
+}
+
+export interface EtaSigningRequestsTable {
+  id: string;
+  tenant_id: string;
+  document_id: string;
+  digest: string;
+  nonce: string;
+  status: Generated<EtaSigningStatus>;
+  requested_by: string;
+  requested_at: Generated<Date>;
+  expires_at: Date;
+  claimed_by: string | null;
+  claimed_at: Date | null;
+  finished_at: Date | null;
+  failure: string | null;
+}
+
+export interface EtaSchemasTable {
+  tenant_id: string;
+  environment: EtaEnvironment;
+  document_type: string;
+  type_version: string;
+  eta_type_id: string;
+  eta_version_id: string;
+  schema_text: string;
+  schema_sha256: string;
+  fetched_by: string;
+  fetched_at: Generated<Date>;
+}
+
 export interface Database {
   tenants: TenantsTable;
   platform_users: PlatformUsersTable;
@@ -3071,6 +3245,15 @@ export interface Database {
   documents: DocumentsTable;
   document_field_values: DocumentFieldValuesTable;
   website_keys: WebsiteKeysTable;
+  eta_settings: EtaSettingsTable;
+  eta_receivers: EtaReceiversTable;
+  eta_item_codes: EtaItemCodesTable;
+  eta_unit_types: EtaUnitTypesTable;
+  eta_tax_mappings: EtaTaxMappingsTable;
+  eta_documents: EtaDocumentsTable;
+  eta_attempts: EtaAttemptsTable;
+  eta_signing_requests: EtaSigningRequestsTable;
+  eta_schemas: EtaSchemasTable;
   erp_asset_events: ErpAssetEventsTable;
   erp_work_order_assets: ErpWorkOrderAssetsTable;
   erp_ledger_accounts: ErpLedgerAccountsTable;
@@ -3391,6 +3574,15 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   document_templates: true,
   documents: true,
   document_field_values: true,
+  eta_settings: true,
+  eta_receivers: true,
+  eta_item_codes: true,
+  eta_unit_types: true,
+  eta_tax_mappings: true,
+  eta_documents: true,
+  eta_attempts: true,
+  eta_signing_requests: true,
+  eta_schemas: true,
   erp_asset_events: true,
   erp_work_order_assets: true,
   erp_ledger_accounts: true,

@@ -1,5 +1,14 @@
 import {
   findTransition,
+  ETA_ATTEMPT_KINDS,
+  ETA_ATTEMPT_OUTCOMES,
+  ETA_DOCUMENT_KINDS,
+  ETA_DOCUMENT_STATES,
+  ETA_ENVIRONMENTS,
+  ETA_ITEM_TYPES,
+  ETA_MAPPABLE_UNITS,
+  ETA_RECEIVER_TYPES,
+  ETA_SIGNING_STATUSES,
   ACTIVITY_KINDS,
   ACTIVITY_STATUSES,
   ITEM_KINDS,
@@ -557,6 +566,18 @@ describe('vocabularies shared with the application', () => {
       // Manufacturing (0039).
       ['erp_assembly_orders_status_known', ASSEMBLY_ORDER_STATUSES],
       ['erp_assembly_orders_direction_known', ASSEMBLY_DIRECTIONS],
+      // E-invoicing (0049).
+      ['eta_settings_environment_known', ETA_ENVIRONMENTS],
+      ['eta_documents_environment_known', ETA_ENVIRONMENTS],
+      ['eta_documents_state_known', ETA_DOCUMENT_STATES],
+      ['eta_documents_kind_known', ETA_DOCUMENT_KINDS],
+      ['eta_receivers_type_known', ETA_RECEIVER_TYPES],
+      ['eta_item_codes_type_known', ETA_ITEM_TYPES],
+      ['eta_unit_types_unit_known', ETA_MAPPABLE_UNITS],
+      ['eta_attempts_kind_known', ETA_ATTEMPT_KINDS],
+      ['eta_attempts_outcome_known', ETA_ATTEMPT_OUTCOMES],
+      ['eta_signing_requests_status_known', ETA_SIGNING_STATUSES],
+      ['eta_schemas_environment_known', ETA_ENVIRONMENTS],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,
@@ -566,7 +587,9 @@ describe('vocabularies shared with the application', () => {
       for (const value of vocabulary) {
         expect(definition, `${constraint} rejects "${value}"`).toContain(`'${value}'`);
       }
-      expect((definition.match(/'[a-z0-9_]+'/gu) ?? []).length, constraint).toBe(vocabulary.length);
+      expect((definition.match(/'[A-Za-z0-9_]+'/gu) ?? []).length, constraint).toBe(
+        vocabulary.length,
+      );
     }
   });
 

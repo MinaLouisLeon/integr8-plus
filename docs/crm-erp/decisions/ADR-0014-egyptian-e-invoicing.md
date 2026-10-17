@@ -1,61 +1,61 @@
-# ADR-0014 — Egyptian e-invoicing is a second step after an invoice is issued
+# ADR-0014 — Egyptian e-invoicing is a second, separate lifecycle after an invoice is issued
 
-**Status:** Accepted (planning, 2026-10-17). Not built.
+**Status:** Accepted (2026-10-17). Offline integration built; not
+production-ready until live PreProd submissions and hardware-token signing pass
+(see `docs/e-invoicing/PLAN.md` §9).
 
 ## Context
 
 ADR-0004 and ADR-0007 made a company's invoices and credit notes an internal
-commercial record, with no claim of e-invoicing or tax compliance until a
-jurisdiction was chosen and reviewed. The first customers are in Egypt, where
-the Egyptian Tax Authority (ETA) requires taxpayers to submit invoices and
-credit notes electronically, signed with a certificate the taxpayer holds on a
-hardware token.
+commercial record, with no claim of e-invoicing or tax compliance. The first
+customers are in Egypt, where the Egyptian Tax Authority (ETA) requires B2B
+invoices to be submitted electronically, signed with a certificate the
+taxpayer holds on a hardware token. Integr8 is multi-tenant: each company is
+its own taxpayer.
 
 ## Decision
 
-- **Sending is separate from issuing.** An issued invoice or credit note stays
-  frozen and keeps its number. "Send to the tax authority" creates a
-  **submission record** beside it. A rejected submission never edits the
-  invoice; the company corrects as it always does, with a credit note and a new
-  invoice.
-- **The ETA document is derived.** It is rebuilt from the frozen invoice for
-  every attempt. Nothing in it is typed by hand.
-- **Signing happens on the company's own computer.** The certificate's token
-  stays plugged into the accountant's PC. The desktop app, signed in as the
-  company, reads documents awaiting signature from the server, signs them, and
-  returns the signature. Integr8's servers never hold the certificate or its
-  PIN.
-- **Each company is its own taxpayer.** It registers with the ETA, and enters
-  its own client id and secret in settings; the secret is stored encrypted
-  (like the HR data key) and never shown again. Integr8 is not an intermediary
-  and holds no company's credentials in the clear.
-- **The ETA is a port.** A `TaxAuthority` adapter has a recording
-  implementation (tests, laptops) and the real one; production refuses the
-  recording one. Submission, status polling and retries run in the existing
-  worker with its lease rules.
-- **Scope of the first release:** e-invoices and credit notes, VAT only (any
-  other tax stops the document with a clear message), a person presses
-  **Send** (no automatic sending). E-receipts for retail point of sale are a
-  separate system and are not built.
-- **A new module switch**, `e_invoicing`, off by default, needs `finance`.
-  Permissions follow finance: issuers (`finance.issue`) may send; viewers read
-  the status.
-- **The notice stays until a document is valid.** Every printed invoice keeps
-  saying it is not a certified tax document until its own submission is
-  **valid**; then the copy shows the authority's identifier.
-- **Payroll's missing legal review is not a code task.** It needs a qualified
-  person to review the rule sets (ADR-0010); the product already makes the owner
-  confirm them, and says on every payslip that an accountant must check them.
+1. **A separate lifecycle.** An issued invoice stays frozen. An **ETA
+   document** is an immutable snapshot built from it, with its own states,
+   attempts and history (`eta_documents`, `eta_attempts`). Rejection never
+   edits the invoice; the company corrects as always, with a credit note and a
+   new invoice.
+2. **Per-company everything.** Each company holds its own ETA client id and
+   secret, sealed with AES-256-GCM under `ETA_CREDENTIALS_KEY` and bound to the
+   company. There are no deployment-wide taxpayer credentials. An intermediary
+   login is possible only when a company's settings name the taxpayer it acts
+   for.
+3. **Off by default, PreProd by default.** A module `e_invoicing` (needs
+   `finance`), a company switch, and PreProd unless the company chooses
+   Production _and_ the server allows it (`ETA_ALLOW_PRODUCTION`). URLs come
+   from server configuration, never from the person.
+4. **Signing stays on the accountant's machine.** The server never holds a
+   certificate, private key or PIN. It issues signing requests bound to the
+   company, document, digest, nonce and expiry; an agent signs locally after an
+   explicit confirmation; the server verifies the CMS (digest, pinned
+   certificate, signature) before accepting it. The hardware signer itself is a
+   contract until it can be built and tested on the real token.
+5. **Exact text, exact numbers.** Documents are written and canonicalised from
+   a lexeme-preserving JSON model and BigInt decimals. Nothing on the way to a
+   signature is a JavaScript number.
+6. **Submission is gated** on a signed, verified document, the company's
+   authoritative schema fetched from the ETA API, validation against it, and
+   the arithmetic rules. A 2xx answer is not validity: status is reconciled
+   until final. A lost answer is never resubmitted automatically.
+7. **Invoices first.** Credit and debit notes are a separate extension, not
+   invoices with a different label. E-receipts (point of sale) are out of scope.
+8. **Unverified is labelled.** Every rule written from memory rather than the
+   provided references carries `SPEC-UNVERIFIED(<id>)` in the code and a row in
+   the spec register.
+9. **Payroll's missing legal review is not a code task.** It needs a qualified
+   person to review the rule sets (ADR-0010).
 
 ## Consequences
 
-- The invoice, ledger and payment code do not change; the e-invoice layer
-  reads them.
-- A company with no token or no agent computer can still issue invoices as
-  today; documents simply wait or are not sent.
-- The agent is a new surface in the desktop app (token access and signing in
-  its native part), with its own security review and a per-vendor support
-  matrix.
-- The ETA's official specification must be taken in before the document
-  builder is written (plan phase E0); until then every ETA-specific detail in
-  `docs/e-invoicing/PLAN.md` is a working assumption.
+- The invoice, ledger and payment code do not change.
+- A company without credentials, a token or an agent computer issues invoices
+  as before; its documents wait.
+- Hardware signing needs a native module in the desktop app, with its own
+  security review and a per-vendor support matrix.
+- The first live run will likely surface schema errors; the readiness screen
+  and validator show them field by field.

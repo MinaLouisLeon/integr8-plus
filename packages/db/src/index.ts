@@ -493,6 +493,22 @@ export {
   WebsiteKeysRepository,
 } from './repositories/documents.js';
 export {
+  DEFAULT_ETA_SETTINGS,
+  EMPTY_ETA_ADDRESS,
+  type EtaAddress,
+  type EtaAttempt,
+  type EtaDocumentPatch,
+  type EtaDocumentRecord,
+  type EtaItemCode,
+  type EtaReceiver,
+  EtaRepository,
+  type EtaSchemaRecord,
+  type EtaSettings,
+  type EtaSettingsInput,
+  type EtaSigningRequest,
+  type EtaTaxMapping,
+} from './repositories/e-invoicing.js';
+export {
   type OrderWorkOrderLink,
   type Reservation,
   type SalesOrder,
