@@ -206,11 +206,13 @@ describe('the Chromium printer', () => {
 
   it.skipIf(CHROMIUM === undefined)(
     'prints English and Arabic onto A4 pages, breaking a long table across them',
-    { timeout: 60_000 },
+    // Generous: `pnpm test` runs every package at once, and on a busy CI
+    // runner Chromium has taken more than 30 seconds just to start.
+    { timeout: 180_000 },
     async () => {
       const printer = new ChromiumPrinter({
         executablePath: CHROMIUM!,
-        timeoutMs: 30_000,
+        timeoutMs: 90_000,
         maxConcurrent: 2,
       });
       printers.push(printer);
