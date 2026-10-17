@@ -62,6 +62,11 @@ async function main(): Promise<void> {
     logger.warn(`Assistant: ${problem}`);
   }
 
+  // Nor do e-invoicing's: it stays off until Integr8 switches it on.
+  for (const problem of services.eta.problems ?? []) {
+    logger.warn(`E-invoicing: ${problem}`);
+  }
+
   /**
    * Shutdown, in the order that loses nothing.
    *

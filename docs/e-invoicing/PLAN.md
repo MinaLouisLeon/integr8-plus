@@ -121,6 +121,7 @@ ready ──request signature──► pending_signature ──agent returns a v
 | `eta.configure` | ✓     | ✓     |            |        | Connection, issuer, environment, credentials, pinned certificates |
 | `eta.sign`      | ✓     | ✓     |            |        | Act as the signing agent                                          |
 | `eta.submit`    | ✓     | ✓     |            |        | Request a signature, submit, sync, cancel, reconcile              |
+| `eta.switch`    | staff |       |            |        | Switch the company's `e_invoicing` module on or off (staff only)  |
 
 ## 6. Spec register
 
@@ -154,7 +155,10 @@ is gated on the authoritative schema (§7) for exactly this reason.
 
 ## 7. Gates (enforced in code)
 
-1. The module is off by default; the company's own switch is off by default.
+1. The module is off by default, and only Integr8 staff switch it on (the
+   dashboard's flags, or the staff desktop app's **E-invoicing switch**); the
+   company's own switch is off by default. No `ETA_*` setting is needed for the
+   server to start.
 2. Production needs `ETA_ALLOW_PRODUCTION=true` and an explicit choice in the
    company's settings; PreProd is the default.
 3. A document can be submitted only when:

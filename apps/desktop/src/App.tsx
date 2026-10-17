@@ -108,6 +108,7 @@ import { FillRoute, SubmissionRoute, SubmissionsRoute } from '~/features/submiss
 import { AssistantSettingsRoute } from '~/routes/assistant-settings';
 import { BrandingRoute } from '~/routes/branding';
 import { DashboardRoute } from '~/routes/dashboard';
+import { EInvoicingSwitchRoute } from '~/routes/e-invoicing-switch';
 import { SignInRoute } from '~/routes/sign-in';
 
 /**
@@ -234,6 +235,7 @@ const SIGNED_IN_ROUTES: readonly { path: string; element: ReactNode }[] = [
   { path: '/sites/:siteId', element: <SiteRoute /> },
   { path: '/settings/job-types', element: <JobTypesRoute /> },
   { path: '/settings/branding', element: <BrandingRoute /> },
+  { path: '/settings/e-invoicing', element: <EInvoicingSwitchRoute /> },
   { path: '/settings/assistant', element: <AssistantSettingsRoute /> },
   { path: '/imports', element: <ImportsRoute /> },
   { path: '/timesheets', element: <TimesheetsRoute /> },

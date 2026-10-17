@@ -7479,7 +7479,8 @@
                           "eta.prepare",
                           "eta.configure",
                           "eta.sign",
-                          "eta.submit"
+                          "eta.submit",
+                          "eta.switch"
                         ]
                       }
                     },
@@ -26617,6 +26618,257 @@
         ]
       }
     },
+    "/v1/eta/availability": {
+      "get": {
+        "operationId": "getEtaAvailability",
+        "summary": "Whether e-invoicing is switched on for the company",
+        "description": "Integr8 staff only, acting as the company (`eta.switch`). Answers whether the module is on, and whether the server has what e-invoicing needs.",
+        "tags": [
+          "e-invoicing"
+        ],
+        "responses": {
+          "200": {
+            "description": "Where the switch stands.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "financeEnabled": {
+                      "type": "boolean"
+                    },
+                    "active": {
+                      "type": "boolean"
+                    },
+                    "server": {
+                      "type": "object",
+                      "properties": {
+                        "credentialsKeyConfigured": {
+                          "type": "boolean"
+                        },
+                        "productionAllowed": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "credentialsKeyConfigured",
+                        "productionAllowed"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "financeEnabled",
+                    "active",
+                    "server"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "setEtaAvailability",
+        "summary": "Switch e-invoicing on or off for the company",
+        "description": "Integr8 staff only, acting as the company (`eta.switch`). Sets the company’s `e_invoicing` module, as the dashboard’s Features does. Off closes every e-invoicing screen and route at once and stops further sending; nothing is deleted, and switching it on again brings everything back.",
+        "tags": [
+          "e-invoicing"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Where the switch now stands.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "financeEnabled": {
+                      "type": "boolean"
+                    },
+                    "active": {
+                      "type": "boolean"
+                    },
+                    "server": {
+                      "type": "object",
+                      "properties": {
+                        "credentialsKeyConfigured": {
+                          "type": "boolean"
+                        },
+                        "productionAllowed": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "credentialsKeyConfigured",
+                        "productionAllowed"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "financeEnabled",
+                    "active",
+                    "server"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not Integr8 staff."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/v1/media": {
       "post": {
         "operationId": "createMediaUpload",
@@ -41279,7 +41531,8 @@
                                 "eta.prepare",
                                 "eta.configure",
                                 "eta.sign",
-                                "eta.submit"
+                                "eta.submit",
+                                "eta.switch"
                               ]
                             }
                           }
@@ -41369,7 +41622,8 @@
                           "eta.prepare",
                           "eta.configure",
                           "eta.sign",
-                          "eta.submit"
+                          "eta.submit",
+                          "eta.switch"
                         ]
                       }
                     }
@@ -41587,7 +41841,8 @@
                                 "eta.prepare",
                                 "eta.configure",
                                 "eta.sign",
-                                "eta.submit"
+                                "eta.submit",
+                                "eta.switch"
                               ]
                             }
                           },
@@ -41669,7 +41924,8 @@
                                 "eta.prepare",
                                 "eta.configure",
                                 "eta.sign",
-                                "eta.submit"
+                                "eta.submit",
+                                "eta.switch"
                               ]
                             }
                           },
@@ -41751,7 +42007,8 @@
                                 "eta.prepare",
                                 "eta.configure",
                                 "eta.sign",
-                                "eta.submit"
+                                "eta.submit",
+                                "eta.switch"
                               ]
                             }
                           },
@@ -41999,7 +42256,8 @@
                         "eta.prepare",
                         "eta.configure",
                         "eta.sign",
-                        "eta.submit"
+                        "eta.submit",
+                        "eta.switch"
                       ]
                     }
                   },
@@ -42083,7 +42341,8 @@
                         "eta.prepare",
                         "eta.configure",
                         "eta.sign",
-                        "eta.submit"
+                        "eta.submit",
+                        "eta.switch"
                       ]
                     }
                   },
@@ -42216,7 +42475,8 @@
                           "eta.prepare",
                           "eta.configure",
                           "eta.sign",
-                          "eta.submit"
+                          "eta.submit",
+                          "eta.switch"
                         ]
                       }
                     },
@@ -42298,7 +42558,8 @@
                           "eta.prepare",
                           "eta.configure",
                           "eta.sign",
-                          "eta.submit"
+                          "eta.submit",
+                          "eta.switch"
                         ]
                       }
                     },
@@ -42380,7 +42641,8 @@
                           "eta.prepare",
                           "eta.configure",
                           "eta.sign",
-                          "eta.submit"
+                          "eta.submit",
+                          "eta.switch"
                         ]
                       }
                     },
@@ -42606,7 +42868,8 @@
                         "eta.prepare",
                         "eta.configure",
                         "eta.sign",
-                        "eta.submit"
+                        "eta.submit",
+                        "eta.switch"
                       ]
                     }
                   },
@@ -42690,7 +42953,8 @@
                         "eta.prepare",
                         "eta.configure",
                         "eta.sign",
-                        "eta.submit"
+                        "eta.submit",
+                        "eta.switch"
                       ]
                     }
                   },
@@ -42817,7 +43081,8 @@
                           "eta.prepare",
                           "eta.configure",
                           "eta.sign",
-                          "eta.submit"
+                          "eta.submit",
+                          "eta.switch"
                         ]
                       }
                     },
@@ -42899,7 +43164,8 @@
                           "eta.prepare",
                           "eta.configure",
                           "eta.sign",
-                          "eta.submit"
+                          "eta.submit",
+                          "eta.switch"
                         ]
                       }
                     },
@@ -42981,7 +43247,8 @@
                           "eta.prepare",
                           "eta.configure",
                           "eta.sign",
-                          "eta.submit"
+                          "eta.submit",
+                          "eta.switch"
                         ]
                       }
                     },
@@ -43241,7 +43508,8 @@
                           "eta.prepare",
                           "eta.configure",
                           "eta.sign",
-                          "eta.submit"
+                          "eta.submit",
+                          "eta.switch"
                         ]
                       }
                     },
@@ -43323,7 +43591,8 @@
                           "eta.prepare",
                           "eta.configure",
                           "eta.sign",
-                          "eta.submit"
+                          "eta.submit",
+                          "eta.switch"
                         ]
                       }
                     },
@@ -43405,7 +43674,8 @@
                           "eta.prepare",
                           "eta.configure",
                           "eta.sign",
-                          "eta.submit"
+                          "eta.submit",
+                          "eta.switch"
                         ]
                       }
                     },

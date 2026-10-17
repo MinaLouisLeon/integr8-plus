@@ -80,6 +80,7 @@ describe('who can do what', () => {
       'hr.manage',
       'payroll.run',
       'payroll.approve',
+      'eta.switch',
     ]);
   });
 
@@ -198,10 +199,11 @@ describe('what Integr8 does for a company', () => {
   const staffAsOwner = { role: 'owner', impersonatedBy: { pid: 'p', gid: 'g' } } as const;
   const staffAsEngineer = { role: 'engineer', impersonatedBy: { pid: 'p', gid: 'g' } } as const;
 
-  it('names exactly the form, job-type, branding and PDF-template configuration', () => {
+  it('names exactly the form, job-type, branding and PDF-template configuration, and the e-invoicing switch', () => {
     expect([...STAFF_ONLY_PERMISSIONS].sort()).toEqual([
       'branding.manage',
       'document.design',
+      'eta.switch',
       'form.manage',
       'job_type.manage',
     ]);
@@ -212,6 +214,7 @@ describe('what Integr8 does for a company', () => {
     expect(withheld.sort()).toEqual([
       'branding.manage',
       'document.design',
+      'eta.switch',
       'form.manage',
       'job_type.manage',
     ]);

@@ -46,6 +46,10 @@ async function main(): Promise<void> {
   } else {
     logger.error('PDF documents cannot be printed', { reason: printer.reason });
   }
+  // E-invoicing's settings never stop the worker either; what is wrong is said once.
+  for (const problem of services.eta.problems ?? []) {
+    logger.warn(`E-invoicing: ${problem}`);
+  }
 
   // Media housekeeping on a timer, alongside the queue. Several workers running
   // it at once is safe: every step is idempotent.

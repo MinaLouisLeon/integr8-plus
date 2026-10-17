@@ -9,8 +9,13 @@ import type { NavPath, PlatformNavPath } from '@integr8/core';
  * so the top bar's title and back link are testable without a browser.
  */
 
-/** The web routes for every section the web app draws. Forms and branding are desktop-only. */
-export const NAV_PATHS: Readonly<Record<Exclude<NavPath, 'forms' | 'branding'>, string>> = {
+/**
+ * The web routes for every section the web app draws. Forms, branding and the
+ * e-invoicing switch are desktop-only.
+ */
+export const NAV_PATHS: Readonly<
+  Record<Exclude<NavPath, 'forms' | 'branding' | 'eInvoicingSwitch'>, string>
+> = {
   dashboard: '/dashboard',
   assistant: '/assistant',
   fill: '/fill',

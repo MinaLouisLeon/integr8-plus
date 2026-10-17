@@ -781,6 +781,7 @@ export const en = {
         configure: 'Set up e-invoicing, credentials and codes',
         sign: 'Sign ETA documents with the company token',
         submit: 'Send documents to the tax authority',
+        switch: 'Switch e-invoicing on or off (Integr8 staff)',
       },
     },
     // Giving somebody a role on the People screen.
@@ -6210,6 +6211,35 @@ export const en = {
   // PDF documents made from submissions (docs/documents/ADR-0001).
   eta: {
     title: 'E-invoicing',
+    switch: {
+      title: 'E-invoicing for this company',
+      intro:
+        'Integr8’s switch for whether this company can send invoices to the Egyptian Tax Authority. Only Integr8 staff see this screen.',
+      notReady:
+        'E-invoicing has not been tested with the tax authority yet. Keep it off until it has.',
+      on: 'On',
+      off: 'Off',
+      statusOn: 'E-invoicing is on for this company.',
+      statusOff: 'E-invoicing is off for this company: its menus are hidden and nothing is sent.',
+      statusOnInactive:
+        'E-invoicing is switched on, but the Finance module it needs is off, so the company does not see it yet.',
+      financeOff: 'The Finance module is off. Turn it on from the dashboard (Features) as well.',
+      keyMissing:
+        'This server has no ETA_CREDENTIALS_KEY: the company cannot save its tax authority credentials until one is added. Everything else works.',
+      keyPresent: 'This server has the key that locks the company’s tax authority credentials.',
+      productionLocked:
+        'Production is locked on this server; only the test system (PreProd) can be used.',
+      turnOn: 'Turn e-invoicing on',
+      turnOff: 'Turn e-invoicing off',
+      confirmOnTitle: 'Turn e-invoicing on for this company?',
+      confirmOn:
+        'The company’s owners and admins will see E-invoicing in their menus and can start setting it up on the test system. Only do this once e-invoicing has been tested.',
+      confirmOffTitle: 'Turn e-invoicing off for this company?',
+      confirmOff:
+        'Its screens close at once and nothing more is sent to the tax authority. Nothing is deleted: turning it on again brings everything back.',
+      confirm: 'Yes, change it',
+      saved: 'Saved.',
+    },
     subtitle:
       'Invoices sent to the Egyptian Tax Authority (ETA) as e-invoices, signed with your company’s own token.',
     unavailable: 'E-invoicing is not switched on for your company, or your role cannot see it.',
@@ -6357,6 +6387,7 @@ export const en = {
       eta_disabled: 'E-invoicing is switched off in the company’s settings.',
       eta_production_disabled: 'The ETA production environment is not enabled on this server.',
       eta_document_unsigned: 'The document was not signed.',
+      feature_disabled: 'Integr8 switched e-invoicing off for this company, so nothing was sent.',
       other: 'Last error: {{code}}',
     },
     readiness: {
@@ -6891,6 +6922,7 @@ export const en = {
       assets: 'Assets',
       documents: 'Documents',
       eInvoicing: 'E-invoicing',
+      eInvoicingSwitch: 'E-invoicing switch',
     },
     hint: {
       dashboard: 'Where you are, and what needs doing.',
@@ -6945,6 +6977,7 @@ export const en = {
       assets: 'The machines you service, their tags and their history.',
       documents: 'The PDFs made from your submissions, their links and QR codes.',
       eInvoicing: 'Invoices sent to the Egyptian Tax Authority, and their status.',
+      eInvoicingSwitch: 'Whether this company can use e-invoicing at all. Integr8 staff only.',
     },
   },
 

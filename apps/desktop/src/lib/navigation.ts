@@ -28,6 +28,7 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   imports: '/imports',
   jobTypes: '/settings/job-types',
   branding: '/settings/branding',
+  eInvoicingSwitch: '/settings/e-invoicing',
   getStarted: null,
   people: null,
   companySettings: null,

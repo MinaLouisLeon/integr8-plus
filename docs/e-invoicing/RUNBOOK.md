@@ -22,6 +22,10 @@ the accountant's own list is `ACCOUNTANT-CHECKLIST.md`.
 | `ETA_SIGNING_REQUEST_TTL_SECONDS` | `900`      | How long a signing request waits for the accountant's machine.                                                                                                                  |
 | `ETA_MAX_STATUS_CHECKS`           | `12`       | Background status checks after a submission (15 s, doubling, to an hour each) before the document is left for a person to sync.                                                 |
 
+Every one of these may be left out, or left blank in the env file: the API and
+the worker start without them, and say at startup if `ETA_PREPROD_CA_FILE`
+cannot be read. A deployment that does not use e-invoicing yet needs none.
+
 `ETA_CREDENTIALS_KEY` belongs with the database backups, like `HR_DATA_KEY`:
 a restored database without it has credentials nobody can open, and every
 company must enter theirs again (`eta_credentials_unreadable`). Rotating it
@@ -34,7 +38,12 @@ The worker must run (`node dist/jobs/worker-main.js`): it sends submissions
 ## 2. Switching a company on
 
 1. Integr8 staff turn on the `finance` and `e_invoicing` modules for the
-   company (Platform → Companies → Flags). Both are off by default.
+   company. Both are off by default. `e_invoicing` has its own switch in the
+   staff desktop app, acting as the company: **E-invoicing switch** →
+   **Turn e-invoicing on** (staff-only permission `eta.switch`; it says whether
+   `finance` is on and whether the server has `ETA_CREDENTIALS_KEY`). The
+   dashboard's Platform → Companies → Flags sets the same thing. Leave it off
+   until e-invoicing has been tested with the ETA.
 2. The company's owner or an admin opens **E-invoicing → Settings** and
    enters, from the company's ETA registration:
    - tax registration number, registered name, branch id, activity code,
@@ -126,7 +135,19 @@ checks each request and says it cannot sign. What the signer needs is in
 `ACCOUNTANT-CHECKLIST.md`: token model, middleware and its version, operating
 system, and the certificate's issuing CA.
 
-## 7. Removing the module
+## 7. Switching it off
+
+**E-invoicing switch** → **Turn e-invoicing off** in the staff desktop app (or
+the `e_invoicing` flag on the dashboard). At once: every e-invoicing route
+refuses with 403 `feature_disabled` and the menus close. The worker sends
+nothing still waiting: a document in `submitting` becomes `failed` with
+`feature_disabled`, and status checks stop (a worker process may take up to
+half a minute to see the switch). Nothing is deleted; switching it on again
+brings every setting and document back, and **Check status now** resumes the
+checks. Both the company's audit log (`eta.module_switched`) and the platform
+audit log (`flag.set`) record who did it.
+
+## 8. Removing the module
 
 `0049_e_invoicing.down.sql` drops every e-invoicing table and the flag. It is
 for development databases: on a live deployment it deletes every company's

@@ -27,6 +27,10 @@ describe('mapping the shared menu onto hash routes', () => {
     expect(keys).toContain('branding');
     expect(keys).toContain('forms');
     expect(keys).not.toContain('billing');
+    // Integr8's e-invoicing switch is there whether or not the module is on:
+    // it is how the module is turned on.
+    expect(keys).toContain('eInvoicingSwitch');
+    expect(keys).not.toContain('eInvoicing');
 
     const bare = desktopNavigation([]);
     const bareKeys = bare.flatMap((group) => group.sections.map((section) => section.key));
@@ -58,6 +62,8 @@ describe('finding the section a route is in', () => {
     expect(sectionPathFor('/work-orders/abc')).toBe('workOrders');
     expect(sectionPathFor('/forms/f1/versions/v2')).toBe('forms');
     expect(sectionPathFor('/settings/job-types')).toBe('jobTypes');
+    expect(sectionPathFor('/settings/e-invoicing')).toBe('eInvoicingSwitch');
+    expect(sectionPathFor('/e-invoicing/signing')).toBe('eInvoicing');
     expect(sectionPathFor('/settings/branding')).toBe('branding');
     expect(sectionPathFor('/assistant')).toBe('assistant');
     expect(sectionPathFor('/assistant/c1')).toBe('assistant');
