@@ -52,6 +52,7 @@ import { documentRoutes } from './v1/documents.js';
 import { documentPublicRoutes } from './v1/documents-public.js';
 import { etaSettingsRoutes } from './v1/e-invoicing.js';
 import { etaDocumentRoutes } from './v1/e-invoicing-documents.js';
+import { etaSwitchRoutes } from './v1/e-invoicing-switch.js';
 import { syncRoutes } from './v1/sync.js';
 import { timeRoutes } from './v1/time.js';
 import { workspaceRoutes } from './v1/workspace.js';
@@ -82,6 +83,7 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...documentPublicRoutes,
     ...etaSettingsRoutes,
     ...etaDocumentRoutes,
+    ...etaSwitchRoutes,
     ...mediaRoutes,
     ...customerRoutes,
     ...crmRoutes,

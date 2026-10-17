@@ -23,19 +23,33 @@ import { etaKey, openCredential } from './credentials.js';
 export interface EtaServices {
   transports: Record<EtaEnvironment, EtaTransport>;
   tokens: EtaTokenCache;
+  /**
+   * What is wrong with this deployment's e-invoicing settings, said at startup
+   * by the API and the worker. Never a reason to refuse to start: e-invoicing
+   * is off until Integr8 switches it on for a company.
+   */
+  problems?: readonly string[];
 }
 
 export function buildEtaServices(config: ApiConfig): EtaServices {
-  const preprodCa =
-    config.ETA_PREPROD_CA_FILE === undefined
-      ? null
-      : readFileSync(config.ETA_PREPROD_CA_FILE, 'utf8');
+  const problems: string[] = [];
+  let preprodCa: string | null = null;
+  if (config.ETA_PREPROD_CA_FILE !== undefined) {
+    try {
+      preprodCa = readFileSync(config.ETA_PREPROD_CA_FILE, 'utf8');
+    } catch {
+      problems.push(
+        `ETA_PREPROD_CA_FILE (${config.ETA_PREPROD_CA_FILE}) cannot be read; calls to PreProd trust the system's certificates only.`,
+      );
+    }
+  }
   return {
     transports: {
       preprod: createNodeTransport({ extraCaPem: preprodCa }),
       production: createNodeTransport(),
     },
     tokens: new EtaTokenCache(),
+    problems,
   };
 }
 

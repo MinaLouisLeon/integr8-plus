@@ -110,6 +110,7 @@ const LAST_ERRORS = [
   'eta_disabled',
   'eta_production_disabled',
   'eta_document_unsigned',
+  'feature_disabled',
 ] as const;
 type LastError = (typeof LAST_ERRORS)[number];
 const isLastError = (code: string): code is LastError =>

@@ -10,6 +10,20 @@ import { z } from 'zod';
 
 const positiveInt = (fallback: number) => z.coerce.number().int().positive().default(fallback);
 
+/**
+ * A setting whose line may be in the env file with nothing after the `=`.
+ *
+ * `deploy/.env.example` lists every optional setting, so an operator who copies
+ * it and leaves one blank gets an empty string, not a missing variable. For the
+ * settings wrapped in this, blank means "not set": the default applies, and an
+ * optional feature stays off instead of the API refusing to start.
+ */
+const blankIsUnset = <T extends z.ZodType>(schema: T) =>
+  z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    schema,
+  );
+
 export const apiConfigSchema = z.object({
   APP_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
 
@@ -220,9 +234,10 @@ export const apiConfigSchema = z.object({
    * The bearer token the release pipeline presents to `GET /v1/build/companies`
    * to learn which companies' apps to build. Unset means the route answers
    * 404: a deployment that builds no company apps exposes no list of them.
-   * Long and random; GitHub holds the same value as a repository secret.
+   * Blank counts as unset. Long and random; GitHub holds the same value as a
+   * repository secret.
    */
-  BUILD_TOKEN: z.string().min(32).optional(),
+  BUILD_TOKEN: blankIsUnset(z.string().min(32).optional()),
 
   // -------------------------------------------------------------------------
   // The AI assistant (docs/ai; ADR-0001)
@@ -323,17 +338,19 @@ export const apiConfigSchema = z.object({
 
   /**
    * Encrypts employees' national ID, social insurance and bank account
-   * numbers at rest (ADR-0010): 32 bytes, base64. Unset means those fields
-   * cannot be written or revealed (503 `hr_key_missing`); everything else in
-   * HR works. Losing it loses those fields: keep it with the backups.
+   * numbers at rest (ADR-0010): 32 bytes, base64. Unset or blank means those
+   * fields cannot be written or revealed (503 `hr_key_missing`); everything
+   * else in HR works. Losing it loses those fields: keep it with the backups.
    */
-  HR_DATA_KEY: z
-    .string()
-    .refine(
-      (value) => Buffer.from(value, 'base64').length === 32,
-      'HR_DATA_KEY must be 32 bytes, base64',
-    )
-    .optional(),
+  HR_DATA_KEY: blankIsUnset(
+    z
+      .string()
+      .refine(
+        (value) => Buffer.from(value, 'base64').length === 32,
+        'HR_DATA_KEY must be 32 bytes, base64',
+      )
+      .optional(),
+  ),
 
   // -------------------------------------------------------------------------
   // Egyptian e-invoicing (docs/e-invoicing; ADR-0014)
@@ -341,44 +358,49 @@ export const apiConfigSchema = z.object({
 
   /**
    * Seals each company's ETA client id and secret at rest: 32 bytes, base64.
-   * Unset means no company can save or use ETA credentials (503
-   * `eta_key_missing`); everything else works. Losing it loses every saved
+   * Unset or blank means no company can save or use ETA credentials (503
+   * `eta_key_missing`); everything else works, so a deployment that does not
+   * use e-invoicing yet leaves it out. Losing it loses every saved
    * credential, and each company enters theirs again. Keep it with the backups.
    */
-  ETA_CREDENTIALS_KEY: z
-    .string()
-    .refine(
-      (value) => Buffer.from(value, 'base64').length === 32,
-      'ETA_CREDENTIALS_KEY must be 32 bytes, base64',
-    )
-    .optional(),
+  ETA_CREDENTIALS_KEY: blankIsUnset(
+    z
+      .string()
+      .refine(
+        (value) => Buffer.from(value, 'base64').length === 32,
+        'ETA_CREDENTIALS_KEY must be 32 bytes, base64',
+      )
+      .optional(),
+  ),
   /**
    * Whether any company on this deployment may switch to the ETA production
    * environment. Off by default: until it is on, a company can choose PreProd
    * only, and one already set to production is refused (403
    * `eta_production_disabled`) rather than quietly sent somewhere else.
    */
-  ETA_ALLOW_PRODUCTION: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((value) => value === 'true'),
+  ETA_ALLOW_PRODUCTION: blankIsUnset(
+    z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+  ),
   /**
    * A PEM file of extra certificate authorities trusted for the PreProd
    * environment only, when its chain is not in the system store. Never used
    * for production, and verification is never turned off.
    */
-  ETA_PREPROD_CA_FILE: z.string().min(1).optional(),
+  ETA_PREPROD_CA_FILE: blankIsUnset(z.string().min(1).optional()),
   /** Overrides of the ETA base URLs, for a local fake. Production refuses them unless https. */
-  ETA_PREPROD_IDENTITY_URL: z.url().optional(),
-  ETA_PREPROD_API_URL: z.url().optional(),
-  ETA_PRODUCTION_IDENTITY_URL: z.url().optional(),
-  ETA_PRODUCTION_API_URL: z.url().optional(),
+  ETA_PREPROD_IDENTITY_URL: blankIsUnset(z.url().optional()),
+  ETA_PREPROD_API_URL: blankIsUnset(z.url().optional()),
+  ETA_PRODUCTION_IDENTITY_URL: blankIsUnset(z.url().optional()),
+  ETA_PRODUCTION_API_URL: blankIsUnset(z.url().optional()),
   /** Longest one call to the ETA may take. */
-  ETA_REQUEST_TIMEOUT_MS: positiveInt(30_000),
+  ETA_REQUEST_TIMEOUT_MS: blankIsUnset(positiveInt(30_000)),
   /** How long a signing request waits for the accountant's machine. */
-  ETA_SIGNING_REQUEST_TTL_SECONDS: positiveInt(900),
+  ETA_SIGNING_REQUEST_TTL_SECONDS: blankIsUnset(positiveInt(900)),
   /** Status checks after a submission before it is left for a person to sync. */
-  ETA_MAX_STATUS_CHECKS: positiveInt(12),
+  ETA_MAX_STATUS_CHECKS: blankIsUnset(positiveInt(12)),
 
   /**
    * Sentry. Optional: unset means errors are logged and not reported, which is

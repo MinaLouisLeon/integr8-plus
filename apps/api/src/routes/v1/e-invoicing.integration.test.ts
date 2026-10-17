@@ -382,6 +382,50 @@ describe('the module switch and who may do what', () => {
     expect((await call(viewer, 'GET', '/v1/eta/settings')).statusCode).toBe(200);
   });
 
+  it('lets Integr8 staff acting as the company switch it off and on again, and nobody else', async () => {
+    for (const who of [owner, adminMember]) {
+      expect((await call(who, 'GET', '/v1/eta/availability')).statusCode).toBe(403);
+      expect((await call(who, 'PUT', '/v1/eta/availability', { enabled: false })).statusCode).toBe(
+        403,
+      );
+    }
+    const staff = await api.staff(owner);
+    const read = await api.call(staff, { method: 'GET', url: '/v1/eta/availability' });
+    expect(read.statusCode, read.body).toBe(200);
+    expect(json(read)).toEqual({
+      enabled: true,
+      financeEnabled: true,
+      active: true,
+      server: { credentialsKeyConfigured: true, productionAllowed: false },
+    });
+
+    const off = await api.call(staff, {
+      method: 'PUT',
+      url: '/v1/eta/availability',
+      payload: { enabled: false },
+    });
+    expect(off.statusCode, off.body).toBe(200);
+    expect(json(off)).toMatchObject({ enabled: false, active: false });
+    const closed = await call(owner, 'GET', '/v1/eta/settings');
+    expect(closed.statusCode).toBe(403);
+    expect(code(closed)).toBe('feature_disabled');
+    expect((await getPlatformDataSource().settings.flagsFor(api.tenantId)).e_invoicing).toBe(false);
+    const audited = await withTenant(api.tenantId, (tx) =>
+      tx.auditLog.list({ resourceType: 'tenant', resourceId: api.tenantId }),
+    );
+    expect(audited.find((entry) => entry.action === 'eta.module_switched')?.metadata).toMatchObject(
+      { enabled: false, was: true },
+    );
+
+    const on = await api.call(staff, {
+      method: 'PUT',
+      url: '/v1/eta/availability',
+      payload: { enabled: true },
+    });
+    expect(json(on)).toMatchObject({ enabled: true, active: true });
+    expect((await call(viewer, 'GET', '/v1/eta/settings')).statusCode).toBe(200);
+  });
+
   it('lets only owners and admins configure, and keeps engineers out', async () => {
     const settings = {
       expectedVersion: 0,
@@ -848,6 +892,38 @@ describe('when the ETA says no, or says nothing', () => {
     expect(detail.document).toMatchObject({
       state: 'unknown',
       lastErrorCode: 'eta_submission_interrupted',
+    });
+  });
+});
+
+describe('when Integr8 switches e-invoicing off', () => {
+  it('sends nothing that was waiting, and says why once it is back on', async () => {
+    const invoiceId = await issuedInvoice();
+    const document = await prepare(invoiceId);
+    expect((await sign(document.id)).statusCode).toBe(200);
+    expect(
+      (
+        await call(
+          owner,
+          'POST',
+          `/v1/eta/documents/${document.id}/submit`,
+          undefined,
+          randomUUID(),
+        )
+      ).statusCode,
+    ).toBe(202);
+    const staff = await api.staff(owner);
+    const switchTo = (enabled: boolean) =>
+      api.call(staff, { method: 'PUT', url: '/v1/eta/availability', payload: { enabled } });
+    expect((await switchTo(false)).statusCode).toBe(200);
+    const before = fake.requests.length;
+    expect(await runJobs('eta.submit')).toBe(1);
+    expect(fake.requests.length).toBe(before);
+
+    expect((await switchTo(true)).statusCode).toBe(200);
+    expect((await documentDetail(document.id)).document).toMatchObject({
+      state: 'failed',
+      lastErrorCode: 'feature_disabled',
     });
   });
 });
