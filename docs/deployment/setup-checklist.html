@@ -98,6 +98,10 @@ Remove-Item keys.txt</code></pre>
         <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell)
 $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($k); [Convert]::ToBase64String($k)</code></pre>
         <div class="note warn"><p><code>HR_DATA_KEY</code> belongs with the database backups: a backup restored without the key it was written with has those employee numbers unreadable for ever. Never generate a new one for an existing database; carry the same value to every new machine.</p></div>
+        <ul class="check" data-stage="a1d">
+          <li><input type="checkbox" id="a1-3b"><label for="a1-3b"><b>The e-invoicing key.</b> The e-invoicing module locks each company's Egyptian Tax Authority (ETA) client ID and secret with this key: 32 random bytes written as base64, made with the same command as the HR data key (run it again; never reuse that value). Key sheet: <code>ETA_CREDENTIALS_KEY</code>. Without it companies cannot save their ETA credentials ("ETA key missing"); nothing else is affected.</label></li>
+        </ul>
+        <div class="note warn"><p><code>ETA_CREDENTIALS_KEY</code> also belongs with the database backups. Restored without it, every company's saved ETA credentials are unreadable and each company enters them again. E-invoicing is not ready to send real tax documents yet: leave <code>ETA_ALLOW_PRODUCTION=false</code> (see <code>docs/e-invoicing/RUNBOOK.md</code>).</p></div>
 
         <h3>C. Oracle Cloud account</h3>
         <ul class="check" data-stage="a2">
@@ -254,6 +258,7 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
             <tr><td><code>POSTGRES_PASSWORD</code>, <code>INTEGR8_APP_PASSWORD</code>, <code>INTEGR8_AUTH_PASSWORD</code></td><td>Part B, generated</td><td><code>deploy/.env</code>, each twice (Stage 3)</td></tr>
             <tr><td><code>AUTH_SIGNING_KEY_ID</code>, <code>AUTH_SIGNING_KEY</code>, <code>AUTH_VERIFICATION_KEYS</code>, <code>PLATFORM_SECRET_KEY</code></td><td>Part B, generated</td><td><code>deploy/.env</code></td></tr>
             <tr><td><code>HR_DATA_KEY</code></td><td>Part B, generated</td><td><code>deploy/.env</code>; also with the database backups. Never regenerated for an existing database</td></tr>
+            <tr><td><code>ETA_CREDENTIALS_KEY</code></td><td>Part B, generated</td><td><code>deploy/.env</code>; also with the database backups. Never regenerated for an existing database</td></tr>
             <tr><td><code>BUILD_TOKEN</code></td><td>Part B, generated</td><td><code>deploy/.env</code> (Stage 3) <b>and</b> GitHub secret (Part K), the same value</td></tr>
             <tr><td>SSH public key</td><td>Part A</td><td>Oracle's instance form (Stage 1)</td></tr>
             <tr><td><code>CLOUDFLARE_ACCOUNT_ID</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code></td><td>Part D</td><td><code>deploy/.env</code></td></tr>
@@ -412,6 +417,7 @@ MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoiaW50ZWdyOCIsImEiOiJjbG…</code></pre>
         <ul class="check" data-stage="s3f">
           <li><input type="checkbox" id="s3-8"><label for="s3-8"><b>Push.</b> <code>PUSH_SENDER=recording</code> becomes <code>expo</code>. Leave <code># EXPO_ACCESS_TOKEN=</code> commented out: it is only needed if you turn on Expo's "enhanced push security", and you have not. (This is a different token from the <code>EXPO_TOKEN</code> GitHub uses.)</label></li>
           <li><input type="checkbox" id="s3-8c"><label for="s3-8c"><b>HR data key.</b> Find <code>HR_DATA_KEY=</code> (after the Supabase block) and paste the value from the key sheet after the <code>=</code>. On a rebuilt machine it must be the <b>same</b> value the old machine had, or restored employee numbers cannot be read.</label></li>
+          <li><input type="checkbox" id="s3-8d"><label for="s3-8d"><b>E-invoicing key.</b> Find <code>ETA_CREDENTIALS_KEY=</code> (just after <code>HR_DATA_KEY</code>) and paste the value from the key sheet after the <code>=</code>. Leave <code>ETA_ALLOW_PRODUCTION=false</code> as it is. On a rebuilt machine it must be the <b>same</b> value the old machine had.</label></li>
           <li><input type="checkbox" id="s3-8b"><label for="s3-8b"><b>Build token.</b> Find <code>BUILD_TOKEN=</code> (near <code>CONTACT_EMAIL</code>) and paste the value from the key sheet after the <code>=</code>. It is the token GitHub shows the API to list the companies whose apps it should build (Stage 8); the same value goes in the GitHub secret of that name.</label></li>
         </ul>
         <pre><code>PUSH_SENDER=expo
@@ -684,6 +690,7 @@ curl -s https://api.integr8-media.com/health/ready</code></pre>
         <ul class="check" data-stage="s8b2">
           <li><input type="checkbox" id="s8-7"><label for="s8-7"><b>Rehearse a restore once</b>, before there is anything to lose: run the script by hand, restore the file with the command in the script's header, sign in afterwards. A backup that has never been restored is a hope.</label></li>
           <li><input type="checkbox" id="s8-7b"><label for="s8-7b"><b>Keep <code>HR_DATA_KEY</code> with the backups</b>, in the password manager beside them. The dumps hold employees' identity and bank numbers encrypted with it; without the same key a restored database cannot show them.</label></li>
+          <li><input type="checkbox" id="s8-7c"><label for="s8-7c"><b>Keep <code>ETA_CREDENTIALS_KEY</code> with the backups</b> too. The dumps hold each company's ETA credentials locked with it; without the same key every company enters them again.</label></li>
         </ul>
 
         <h3>C. The machine</h3>

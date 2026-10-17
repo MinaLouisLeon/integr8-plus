@@ -115,6 +115,11 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
 > [!WARNING]
 > `HR_DATA_KEY` belongs with the database backups: a backup restored without the key it was written with has those employee numbers unreadable for ever. Never generate a new one for an existing database; carry the same value to every new machine.
 
+- [ ] **The e-invoicing key.** The e-invoicing module locks each company's Egyptian Tax Authority (ETA) client ID and secret with this key: 32 random bytes written as base64, made with the same command as the HR data key (run it again; never reuse that value). Key sheet: `ETA_CREDENTIALS_KEY`. Without it companies cannot save their ETA credentials ("ETA key missing"); nothing else is affected.
+
+> [!WARNING]
+> `ETA_CREDENTIALS_KEY` also belongs with the database backups. Restored without it, every company's saved ETA credentials are unreadable and each company enters them again. E-invoicing is not ready to send real tax documents yet: leave `ETA_ALLOW_PRODUCTION=false` (see `docs/e-invoicing/RUNBOOK.md`).
+
 ### C. Oracle Cloud account
 
 - [ ] **Sign up** at `cloud.oracle.com` → "Start for free", with your real name and address exactly as on your card (mismatches are the usual reason a signup is refused). Oracle places a small verification hold and releases it. Always Free resources are free for ever; a card is needed only to verify you.
@@ -265,6 +270,7 @@ Every value, where it came from, and where it goes. `deploy/.env` is the one fil
 | `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`                                                                           | Part B, generated                   | `deploy/.env`, each twice (Stage 3)                                                                   |
 | `AUTH_SIGNING_KEY_ID`, `AUTH_SIGNING_KEY`, `AUTH_VERIFICATION_KEYS`, `PLATFORM_SECRET_KEY`                                                     | Part B, generated                   | `deploy/.env`                                                                                         |
 | `HR_DATA_KEY`                                                                                                                                  | Part B, generated                   | `deploy/.env`; also with the database backups. Never regenerated for an existing database             |
+| `ETA_CREDENTIALS_KEY`                                                                                                                          | Part B, generated                   | `deploy/.env`; also with the database backups. Never regenerated for an existing database             |
 | `BUILD_TOKEN`                                                                                                                                  | Part B, generated                   | `deploy/.env` (Stage 3) **and** GitHub secret (Part K), the same value                                |
 | SSH public key                                                                                                                                 | Part A                              | Oracle's instance form (Stage 1)                                                                      |
 | `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`                                                                            | Part D                              | `deploy/.env`                                                                                         |
@@ -466,6 +472,7 @@ MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoiaW50ZWdyOCIsImEiOiJjbG…
 
 - [ ] **Push.** `PUSH_SENDER=recording` becomes `expo`. Leave `# EXPO_ACCESS_TOKEN=` commented out: it is only needed if you turn on Expo's "enhanced push security", and you have not. (This is a different token from the `EXPO_TOKEN` GitHub uses.)
 - [ ] **HR data key.** Find `HR_DATA_KEY=` (after the Supabase block) and paste the value from the key sheet after the `=`. On a rebuilt machine it must be the **same** value the old machine had, or restored employee numbers cannot be read.
+- [ ] **E-invoicing key.** Find `ETA_CREDENTIALS_KEY=` (just after `HR_DATA_KEY`) and paste the value from the key sheet after the `=`. Leave `ETA_ALLOW_PRODUCTION=false` as it is. On a rebuilt machine it must be the **same** value the old machine had.
 - [ ] **Build token.** Find `BUILD_TOKEN=` (near `CONTACT_EMAIL`) and paste the value from the key sheet after the `=`. It is the token GitHub shows the API to list the companies whose apps it should build (Stage 8); the same value goes in the GitHub secret of that name.
 
 ```text
@@ -813,6 +820,7 @@ curl -s https://api.integr8-media.com/health/ready
 
 - [ ] **Rehearse a restore once**, before there is anything to lose: run the script by hand, restore the file with the command in the script's header, sign in afterwards. A backup that has never been restored is a hope.
 - [ ] **Keep `HR_DATA_KEY` with the backups**, in the password manager beside them. The dumps hold employees' identity and bank numbers encrypted with it; without the same key a restored database cannot show them.
+- [ ] **Keep `ETA_CREDENTIALS_KEY` with the backups** too. The dumps hold each company's ETA credentials locked with it; without the same key every company enters them again.
 
 ### C. The machine
 
