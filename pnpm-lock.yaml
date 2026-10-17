@@ -56,6 +56,9 @@ importers:
       '@integr8/document-render':
         specifier: workspace:*
         version: link:../../packages/document-render
+      '@integr8/eta':
+        specifier: workspace:*
+        version: link:../../packages/eta
       '@integr8/form-engine':
         specifier: workspace:*
         version: link:../../packages/form-engine

@@ -33,6 +33,7 @@ import { PriceTable } from './ai/pricing.js';
 import { buildAiProvider } from './ai/providers/index.js';
 import { INSIGHT_TOOLS } from './ai/tools/insights.js';
 import { buildPdfPrinter, type PdfPrinter } from './documents/printer.js';
+import { buildEtaServices, type EtaServices } from './eta/services.js';
 
 /**
  * The composition root.
@@ -90,6 +91,12 @@ export interface Services {
    * never in a request. Chromium starts on the first document, not here.
    */
   pdf: PdfPrinter;
+  /**
+   * The Egyptian Tax Authority (docs/e-invoicing; ADR-0014): a transport per
+   * environment and the token cache. Each company's own credentials are
+   * opened per request; there are no deployment-wide taxpayer credentials.
+   */
+  eta: EtaServices;
 }
 
 export interface BuildServicesOptions {
@@ -149,6 +156,7 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
       tools: INSIGHT_TOOLS,
     },
     pdf: buildPdfPrinter(options.config),
+    eta: buildEtaServices(options.config),
   };
 }
 

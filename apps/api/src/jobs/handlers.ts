@@ -2,6 +2,8 @@ import { withTenant } from '@integr8/db';
 import type { Services } from '../composition.js';
 import type { ApiConfig } from '../config.js';
 import { DOCUMENT_RENDER_QUEUE, renderDocument } from '../documents/render.js';
+import { ETA_RECONCILE_QUEUE, ETA_SUBMIT_QUEUE } from '../eta/documents.js';
+import { runReconcile, runSubmission } from '../eta/jobs.js';
 import { GEOCODE_QUEUE, geocodeSite } from '../geo/geocode-site.js';
 import { IMPORT_QUEUE, runImport } from '../imports/run-import.js';
 import { makeThumbnail, THUMBNAIL_QUEUE } from '../media/thumbnails.js';
@@ -27,7 +29,7 @@ import type { JobHandlers } from './worker.js';
  * this process a handler it does not have.
  */
 export const buildJobHandlers = (
-  services: Pick<Services, 'media' | 'geocoder' | 'push' | 'pdf'>,
+  services: Pick<Services, 'media' | 'geocoder' | 'push' | 'pdf' | 'eta'>,
   config: ApiConfig,
 ): JobHandlers => ({
   [WORK_ORDER_PUSH_QUEUE]: async (payload, context) => {
@@ -157,6 +159,46 @@ export const buildJobHandlers = (
       },
     );
     context.logger.info('Document job finished', { jobId: context.jobId, documentId, ...outcome });
+  },
+
+  [ETA_SUBMIT_QUEUE]: async (payload, context) => {
+    const documentId = text(payload, 'documentId');
+    if (documentId === null) {
+      context.logger.warn('ETA submission job without a document id', { jobId: context.jobId });
+      return;
+    }
+    const outcome = await runSubmission(
+      { config, eta: services.eta },
+      {
+        tenantId: context.tenantId,
+        documentId,
+        attempt: context.attempt,
+        actorId: text(payload, 'actorId'),
+      },
+      context.logger,
+    );
+    context.logger.info('ETA submission job finished', {
+      jobId: context.jobId,
+      documentId,
+      outcome,
+    });
+  },
+
+  [ETA_RECONCILE_QUEUE]: async (payload, context) => {
+    const documentId = text(payload, 'documentId');
+    if (documentId === null) {
+      context.logger.warn('ETA status job without a document id', { jobId: context.jobId });
+      return;
+    }
+    await runReconcile(
+      { config, eta: services.eta },
+      {
+        tenantId: context.tenantId,
+        documentId,
+        watchCancellation: payload.watchCancellation === true,
+      },
+      context.logger,
+    );
   },
 
   [PURGE_QUEUE]: async (_payload, context) => {

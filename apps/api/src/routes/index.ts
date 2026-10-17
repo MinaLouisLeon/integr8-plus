@@ -50,6 +50,8 @@ import { publicBrandRoutes } from './v1/public-brand.js';
 import { submissionRoutes } from './v1/submissions.js';
 import { documentRoutes } from './v1/documents.js';
 import { documentPublicRoutes } from './v1/documents-public.js';
+import { etaSettingsRoutes } from './v1/e-invoicing.js';
+import { etaDocumentRoutes } from './v1/e-invoicing-documents.js';
 import { syncRoutes } from './v1/sync.js';
 import { timeRoutes } from './v1/time.js';
 import { workspaceRoutes } from './v1/workspace.js';
@@ -78,6 +80,8 @@ export function allRoutes(config: ApiConfig): AnyRoute[] {
     ...submissionRoutes,
     ...documentRoutes,
     ...documentPublicRoutes,
+    ...etaSettingsRoutes,
+    ...etaDocumentRoutes,
     ...mediaRoutes,
     ...customerRoutes,
     ...crmRoutes,

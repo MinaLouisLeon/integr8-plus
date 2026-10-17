@@ -335,6 +335,51 @@ export const apiConfigSchema = z.object({
     )
     .optional(),
 
+  // -------------------------------------------------------------------------
+  // Egyptian e-invoicing (docs/e-invoicing; ADR-0014)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Seals each company's ETA client id and secret at rest: 32 bytes, base64.
+   * Unset means no company can save or use ETA credentials (503
+   * `eta_key_missing`); everything else works. Losing it loses every saved
+   * credential, and each company enters theirs again. Keep it with the backups.
+   */
+  ETA_CREDENTIALS_KEY: z
+    .string()
+    .refine(
+      (value) => Buffer.from(value, 'base64').length === 32,
+      'ETA_CREDENTIALS_KEY must be 32 bytes, base64',
+    )
+    .optional(),
+  /**
+   * Whether any company on this deployment may switch to the ETA production
+   * environment. Off by default: until it is on, a company can choose PreProd
+   * only, and one already set to production is refused (403
+   * `eta_production_disabled`) rather than quietly sent somewhere else.
+   */
+  ETA_ALLOW_PRODUCTION: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  /**
+   * A PEM file of extra certificate authorities trusted for the PreProd
+   * environment only, when its chain is not in the system store. Never used
+   * for production, and verification is never turned off.
+   */
+  ETA_PREPROD_CA_FILE: z.string().min(1).optional(),
+  /** Overrides of the ETA base URLs, for a local fake. Production refuses them unless https. */
+  ETA_PREPROD_IDENTITY_URL: z.url().optional(),
+  ETA_PREPROD_API_URL: z.url().optional(),
+  ETA_PRODUCTION_IDENTITY_URL: z.url().optional(),
+  ETA_PRODUCTION_API_URL: z.url().optional(),
+  /** Longest one call to the ETA may take. */
+  ETA_REQUEST_TIMEOUT_MS: positiveInt(30_000),
+  /** How long a signing request waits for the accountant's machine. */
+  ETA_SIGNING_REQUEST_TTL_SECONDS: positiveInt(900),
+  /** Status checks after a submission before it is left for a person to sync. */
+  ETA_MAX_STATUS_CHECKS: positiveInt(12),
+
   /**
    * Sentry. Optional: unset means errors are logged and not reported, which is
    * the right default for a developer's machine and the wrong one for
@@ -669,6 +714,17 @@ export function assertProductionReady(config: ApiConfig): void {
     problems.push(
       'PDF_RENDERER is recording: every PDF document would be a placeholder page, not the template.',
     );
+  }
+  for (const name of [
+    'ETA_PREPROD_IDENTITY_URL',
+    'ETA_PREPROD_API_URL',
+    'ETA_PRODUCTION_IDENTITY_URL',
+    'ETA_PRODUCTION_API_URL',
+  ] as const) {
+    const value = config[name];
+    if (value !== undefined && !value.startsWith('https://')) {
+      problems.push(`${name} must be an https:// address in production.`);
+    }
   }
   if (config.API_RELEASE === 'development') {
     problems.push('API_RELEASE is not set: reported errors could not be tied to a build.');

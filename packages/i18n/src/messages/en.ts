@@ -692,6 +692,7 @@ export const en = {
       expense: 'Expenses',
       payroll: 'Payroll',
       manufacturing: 'Manufacturing',
+      eta: 'E-invoicing (ETA)',
     },
     // One per permission in `PERMISSIONS` (@integr8/core), nested as named.
     permission: {
@@ -774,6 +775,13 @@ export const en = {
       expense: { submit: 'Claim expenses', approve: 'Approve expense claims' },
       payroll: { run: 'Prepare pay runs', approve: 'Approve pay runs' },
       manufacturing: { read: 'See bills of materials', manage: 'Manage bills and assembly' },
+      eta: {
+        read: 'See e-invoicing status and documents',
+        prepare: 'Prepare ETA documents from invoices',
+        configure: 'Set up e-invoicing, credentials and codes',
+        sign: 'Sign ETA documents with the company token',
+        submit: 'Send documents to the tax authority',
+      },
     },
     // Giving somebody a role on the People screen.
     picker: {
