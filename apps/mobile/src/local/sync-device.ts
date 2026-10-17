@@ -26,11 +26,12 @@ export function localFile(path: string): File {
 /** Reads a stored file a part at a time, so a large video is never all in memory. */
 export const deviceFiles: FileSource = {
   exists: (path) => Promise.resolve(localFile(path).exists),
-  read: (path, offset, length) => {
+  read: async (path, offset, length) => {
     const handle = localFile(path).open();
     try {
       handle.offset = offset;
-      return Promise.resolve(handle.readBytes(length));
+      // Awaited before the handle closes: `readBytes` returns a promise since expo-file-system 58.
+      return await handle.readBytes(length);
     } finally {
       handle.close();
     }

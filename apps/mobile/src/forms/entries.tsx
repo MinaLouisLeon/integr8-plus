@@ -18,7 +18,7 @@ import {
 } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
-import type { View as ViewType } from 'react-native';
+import type { ComponentRef } from 'react';
 import { Alert, I18nManager, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '~/components/ui';
 import { FieldBlock } from './field-block';
@@ -34,7 +34,7 @@ import { ActionButton, Muted, Problem } from './widgets/kit';
  * questions, with the way to the next one, to move it, and to remove it.
  */
 
-type Register = (key: string) => (node: ViewType | null) => void;
+type Register = (key: string) => (node: ComponentRef<typeof View> | null) => void;
 
 /** "Radiator 2 · Hall", or "Radiator 2" before the room is answered. */
 function titleOf(title: { label: string; name: string | undefined }): string {

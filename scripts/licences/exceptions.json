@@ -12,6 +12,11 @@
       "reason": "Build-time tool that uploads source maps; not shipped to users. Functional Source Licence, becoming MIT two years after each release; our use is permitted."
     },
     {
+      "package": "sentry",
+      "license": "FSL-1.1-Apache-2.0",
+      "reason": "The newer Sentry CLI, pulled in by @sentry/nextjs 11's build plugin to upload source maps; build-time only, not shipped to users. Functional Source Licence, becoming Apache-2.0 two years after each release; our use is permitted."
+    },
+    {
       "package": "axe-core",
       "license": "MPL-2.0",
       "reason": "Accessibility checks in tests only; never shipped. Unmodified, so MPL's file-level copyleft asks nothing of us."

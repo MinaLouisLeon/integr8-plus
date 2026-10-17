@@ -1,5 +1,5 @@
 {
-  "extends": "expo/tsconfig.base",
+  "extends": "expo/tsconfig.base.json",
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -10,7 +10,12 @@
     "noUnusedParameters": true,
     "exactOptionalPropertyTypes": true,
     "verbatimModuleSyntax": true,
-    "paths": { "~/*": ["./src/*"] }
+    "paths": {
+      "~/*": ["./src/*"],
+      // Its package points the react-native condition at its TypeScript source,
+      // which does not compile under this project's stricter settings.
+      "react-native-view-shot": ["./node_modules/react-native-view-shot/lib/index.d.ts"]
+    }
   },
   "include": ["app/**/*.ts", "app/**/*.tsx", "src/**/*.ts", "src/**/*.tsx", ".expo/types/**/*.ts"],
   "exclude": ["node_modules", "dist", ".expo"]

@@ -19,8 +19,20 @@ export function register(): void {
     release: process.env.NEXT_PUBLIC_APP_VERSION ?? '0.1.0',
     tracesSampleRate: 0.1,
     // Request bodies and headers carry tokens and customer data. Reporting an
-    // error must not become a way of exporting either.
-    sendDefaultPii: false,
+    // error must not become a way of exporting either. Sentry 11 replaced
+    // `sendDefaultPii: false` with these per-category switches, and collects
+    // every one of them unless told not to.
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      httpBodies: [],
+      urlQueryParams: false,
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      queues: false,
+      graphQL: { document: false, variables: false },
+    },
   });
 }
 

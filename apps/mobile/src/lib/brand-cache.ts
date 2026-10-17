@@ -95,7 +95,9 @@ export async function refreshBrand(fetchImpl: typeof fetch = fetch): Promise<voi
     }
     publish(brand);
     try {
-      file().write(JSON.stringify(brand));
+      // Synchronous on purpose: `write` returns a promise since expo-file-system 58,
+      // and this catch would miss its failure.
+      file().writeSync(JSON.stringify(brand));
     } catch {
       // The brand is in memory for this run; a cache that cannot be written is not an error.
     }

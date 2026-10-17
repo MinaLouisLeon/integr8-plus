@@ -24,6 +24,31 @@ updates:
       types:
         patterns:
           - '@types/*'
+      # The phone's native packages move together within one Expo SDK.
+      expo:
+        patterns:
+          - 'expo'
+          - 'expo-*'
+          - '@expo/*'
+          - 'react-native'
+          - 'react-native-*'
+          - '@react-native-community/*'
+          - '@sentry/react-native'
+    ignore:
+      # A new Expo SDK changes every native package and React Native at once;
+      # one package's major on its own builds an app that does not run. SDK
+      # upgrades are done deliberately, all packages together, to the versions
+      # in the SDK's bundledNativeModules.json.
+      - dependency-name: 'expo'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'expo-*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@expo/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-native'
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
+      - dependency-name: 'react-native-*'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: /

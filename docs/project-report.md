@@ -126,17 +126,17 @@ The five company roles are `owner`, `admin`, `dispatcher`, `engineer` and `viewe
 | Postgres driver          | node-postgres (`pg`)                                      | 8.16.3                                 |
 | Tokens (JWT)             | jose (EdDSA signing)                                      | 6.2.0                                  |
 | Web framework            | Next.js (App Router)                                      | 16.3.4                                 |
-| UI library               | React                                                     | 19.3.0 (web, desktop); 19.2.3 (mobile) |
+| UI library               | React                                                     | 19.3.0                                 |
 | Styling                  | Tailwind CSS                                              | 4.3.3                                  |
 | Server-state caching     | TanStack Query                                            | 5.102.8                                |
 | Desktop shell            | Tauri                                                     | 2 (CLI 2.11.4, API 2.12.0)             |
 | Desktop bundler          | Vite                                                      | 8.2.2                                  |
 | Desktop routing          | React Router                                              | 8.3.1                                  |
 | Desktop native code      | Rust (edition 2021, minimum 1.77)                         | —                                      |
-| Phone framework          | Expo SDK                                                  | 57 (`expo` 57.0.27)                    |
-| Phone runtime            | React Native                                              | 0.86.3                                 |
-| Phone routing            | Expo Router                                               | 57.0.25                                |
-| Phone local database     | SQLite (`expo-sqlite`)                                    | 57.0.4                                 |
+| Phone framework          | Expo SDK                                                  | 58 (`expo` 58.0.14)                    |
+| Phone runtime            | React Native                                              | 0.88.0                                 |
+| Phone routing            | Expo Router                                               | 58.0.23                                |
+| Phone local database     | SQLite (`expo-sqlite`)                                    | 58.0.13                                |
 | Translation              | i18next and react-i18next                                 | 26.4.2 / 17.0.13                       |
 | Maps                     | Leaflet with OpenStreetMap tiles                          | 1.9.4                                  |
 | Image processing         | sharp                                                     | 0.35.4                                 |
@@ -263,7 +263,7 @@ integr8-plus/
 
 ### 6.3 Desktop — `apps/desktop`
 
-**Built with:** Tauri 2 with a Rust core, React 19, Vite 8, React Router 8, Tailwind CSS 4, TanStack Query, and dnd-kit (drag-and-drop in the form builder). It also uses `@tauri-apps/plugin-updater` and Sentry for React (version 11, while the API and web app use Sentry 10).
+**Built with:** Tauri 2 with a Rust core, React 19, Vite 8, React Router 8, Tailwind CSS 4, TanStack Query, and dnd-kit (drag-and-drop in the form builder). It also uses `@tauri-apps/plugin-updater` and Sentry for React (version 11, like the web app; the API uses Sentry 10).
 
 **Rust dependencies:** `tauri`, `tauri-plugin-updater`, `serde`, `serde_json`, and `keyring`. `keyring` stores the session in the macOS Keychain, the Windows Credential Manager or the Linux Secret Service. Release builds are size-optimised: LTO, `opt-level = "s"`, symbols stripped, `panic = "abort"`.
 
@@ -282,7 +282,7 @@ integr8-plus/
 
 ### 6.4 Mobile — `apps/mobile`
 
-**Built with:** Expo SDK 57, React Native 0.86, Expo Router, and `expo-sqlite` for the local database, plus Sentry for React Native.
+**Built with:** Expo SDK 58, React Native 0.88, Expo Router, and `expo-sqlite` for the local database, plus Sentry for React Native.
 
 **Expo modules used**
 
@@ -304,7 +304,7 @@ integr8-plus/
 | `expo-localization`                           | Device language and region                                                                  |
 | `expo-updates`                                | Over-the-air updates per channel                                                            |
 | `expo-web-browser`                            | Opening links                                                                               |
-| `@expo/metro-runtime`                         | The Metro runtime Expo Router needs, installed directly at the version Expo 57.0.27 expects |
+| `@expo/metro-runtime`                         | The Metro runtime Expo Router needs, installed directly at the version Expo 58.0.14 expects |
 | `expo-status-bar`                             | Status bar                                                                                  |
 
 **Other native libraries:**
@@ -1059,13 +1059,13 @@ Workspace packages used: `@integr8/auth`, `@integr8/core`, `@integr8/db`, `@inte
 
 | Library                         | Version  | Kind        |
 | ------------------------------- | -------- | ----------- |
-| `@aws-sdk/client-s3`            | 3.1131.0 | runtime     |
-| `@aws-sdk/s3-request-presigner` | 3.1131.0 | runtime     |
+| `@aws-sdk/client-s3`            | 3.1149.0 | runtime     |
+| `@aws-sdk/s3-request-presigner` | 3.1149.0 | runtime     |
 | `@sentry/node`                  | 10.74.0  | runtime     |
 | `fastify`                       | 5.12.3   | runtime     |
 | `sharp`                         | 0.35.4   | runtime     |
 | `zod`                           | 4.6.1    | runtime     |
-| `@types/node`                   | 26.6.4   | development |
+| `@types/node`                   | 26.6.5   | development |
 | `eslint`                        | 10.12.0  | development |
 | `tsx`                           | 4.23.13  | development |
 | `typescript`                    | 6.0.3    | development |
@@ -1089,7 +1089,7 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 | `react-router`               | 8.3.1   | runtime     |
 | `@tailwindcss/vite`          | 4.3.3   | development |
 | `@tauri-apps/cli`            | 2.11.4  | development |
-| `@types/node`                | 26.6.4  | development |
+| `@types/node`                | 26.6.5  | development |
 | `@types/react`               | 19.3.0  | development |
 | `@types/react-dom`           | 19.3.0  | development |
 | `@vitejs/plugin-react`       | 6.1.1   | development |
@@ -1105,43 +1105,43 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 
 | Library                                  | Version | Kind        |
 | ---------------------------------------- | ------- | ----------- |
-| `@expo/metro-runtime`                    | 57.0.16 | runtime     |
-| `@react-native-community/datetimepicker` | 9.1.0   | runtime     |
-| `@sentry/react-native`                   | 7.11.0  | runtime     |
-| `expo`                                   | 57.0.27 | runtime     |
-| `expo-background-task`                   | 57.0.21 | runtime     |
-| `expo-battery`                           | 57.0.3  | runtime     |
-| `expo-camera`                            | 57.0.6  | runtime     |
-| `expo-constants`                         | 57.0.21 | runtime     |
-| `expo-crypto`                            | 57.0.3  | runtime     |
-| `expo-device`                            | 57.0.2  | runtime     |
-| `expo-document-picker`                   | 57.0.3  | runtime     |
-| `expo-file-system`                       | 57.0.7  | runtime     |
-| `expo-image-manipulator`                 | 57.0.21 | runtime     |
-| `expo-image-picker`                      | 57.0.20 | runtime     |
-| `expo-local-authentication`              | 57.0.3  | runtime     |
-| `expo-localization`                      | 57.0.2  | runtime     |
-| `expo-location`                          | 57.0.20 | runtime     |
-| `expo-network`                           | 57.0.2  | runtime     |
-| `expo-notifications`                     | 57.0.22 | runtime     |
-| `expo-router`                            | 57.0.25 | runtime     |
-| `expo-secure-store`                      | 57.0.4  | runtime     |
-| `expo-sharing`                           | 57.0.22 | runtime     |
-| `expo-sqlite`                            | 57.0.4  | runtime     |
-| `expo-status-bar`                        | 57.0.1  | runtime     |
-| `expo-task-manager`                      | 57.0.21 | runtime     |
-| `expo-updates`                           | 57.0.25 | runtime     |
-| `expo-web-browser`                       | ~57.0.3 | runtime     |
-| `react`                                  | 19.2.3  | runtime     |
-| `react-dom`                              | 19.2.3  | runtime     |
-| `react-native`                           | 0.86.3  | runtime     |
-| `react-native-safe-area-context`         | 5.7.0   | runtime     |
-| `react-native-screens`                   | 4.26.0  | runtime     |
-| `react-native-svg`                       | 15.15.4 | runtime     |
-| `react-native-view-shot`                 | 5.1.0   | runtime     |
-| `react-native-webview`                   | 13.16.1 | runtime     |
-| `@types/node`                            | 26.6.4  | development |
-| `@types/react`                           | 19.2.4  | development |
+| `@expo/metro-runtime`                    | 58.0.14 | runtime     |
+| `@react-native-community/datetimepicker` | 9.2.1   | runtime     |
+| `@sentry/react-native`                   | 8.28.0  | runtime     |
+| `expo`                                   | 58.0.14 | runtime     |
+| `expo-background-task`                   | 58.0.11 | runtime     |
+| `expo-battery`                           | 58.0.3  | runtime     |
+| `expo-camera`                            | 58.0.10 | runtime     |
+| `expo-constants`                         | 58.0.12 | runtime     |
+| `expo-crypto`                            | 58.0.7  | runtime     |
+| `expo-device`                            | 58.0.5  | runtime     |
+| `expo-document-picker`                   | 58.0.4  | runtime     |
+| `expo-file-system`                       | 58.0.9  | runtime     |
+| `expo-image-manipulator`                 | 58.0.14 | runtime     |
+| `expo-image-picker`                      | 58.0.10 | runtime     |
+| `expo-local-authentication`              | 58.0.2  | runtime     |
+| `expo-localization`                      | 58.0.4  | runtime     |
+| `expo-location`                          | 58.0.17 | runtime     |
+| `expo-network`                           | 58.0.3  | runtime     |
+| `expo-notifications`                     | 58.1.5  | runtime     |
+| `expo-router`                            | 58.0.23 | runtime     |
+| `expo-secure-store`                      | 58.0.2  | runtime     |
+| `expo-sharing`                           | 58.0.19 | runtime     |
+| `expo-sqlite`                            | 58.0.13 | runtime     |
+| `expo-status-bar`                        | 58.0.3  | runtime     |
+| `expo-task-manager`                      | 58.0.12 | runtime     |
+| `expo-updates`                           | 58.0.17 | runtime     |
+| `expo-web-browser`                       | ~58.0.6 | runtime     |
+| `react`                                  | 19.3.0  | runtime     |
+| `react-dom`                              | 19.3.0  | runtime     |
+| `react-native`                           | 0.88.0  | runtime     |
+| `react-native-safe-area-context`         | 5.10.1  | runtime     |
+| `react-native-screens`                   | 4.30.0  | runtime     |
+| `react-native-svg`                       | 15.16.0 | runtime     |
+| `react-native-view-shot`                 | 6.1.1   | runtime     |
+| `react-native-webview`                   | 14.0.1  | runtime     |
+| `@types/node`                            | 26.6.5  | development |
+| `@types/react`                           | 19.3.0  | development |
 | `eslint`                                 | 10.12.0 | development |
 | `typescript`                             | 6.0.3   | development |
 | `vitest`                                 | 5.0.3   | development |
@@ -1152,13 +1152,13 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 
 | Library                 | Version | Kind        |
 | ----------------------- | ------- | ----------- |
-| `@sentry/nextjs`        | 10.74.0 | runtime     |
+| `@sentry/nextjs`        | 11.7.0  | runtime     |
 | `@tanstack/react-query` | 5.102.8 | runtime     |
 | `next`                  | 16.3.4  | runtime     |
 | `react`                 | 19.3.0  | runtime     |
 | `react-dom`             | 19.3.0  | runtime     |
 | `@tailwindcss/postcss`  | 4.3.3   | development |
-| `@types/node`           | 26.6.4  | development |
+| `@types/node`           | 26.6.5  | development |
 | `@types/react`          | 19.3.0  | development |
 | `@types/react-dom`      | 19.3.0  | development |
 | `eslint`                | 10.12.0 | development |
@@ -1173,7 +1173,7 @@ Workspace packages used: `@integr8/core`, `@integr8/eslint-config`, `@integr8/ty
 | Library              | Version | Kind        |
 | -------------------- | ------- | ----------- |
 | `openapi-fetch`      | 0.17.0  | runtime     |
-| `@types/node`        | 26.6.4  | development |
+| `@types/node`        | 26.6.5  | development |
 | `eslint`             | 10.12.0 | development |
 | `openapi-typescript` | 7.13.0  | development |
 | `typescript`         | 6.0.3   | development |
@@ -1187,7 +1187,7 @@ Workspace packages used: `@integr8/core`, `@integr8/db`, `@integr8/eslint-config
 | ------------- | ------- | ----------- |
 | `jose`        | 6.2.0   | runtime     |
 | `zod`         | 4.6.1   | runtime     |
-| `@types/node` | 26.6.4  | development |
+| `@types/node` | 26.6.5  | development |
 | `eslint`      | 10.12.0 | development |
 | `tsx`         | 4.23.13 | development |
 | `typescript`  | 6.0.3   | development |
@@ -1200,7 +1200,7 @@ Workspace packages used: `@integr8/eslint-config`, `@integr8/typescript-config`
 | Library       | Version | Kind        |
 | ------------- | ------- | ----------- |
 | `zod`         | 4.6.1   | runtime     |
-| `@types/node` | 26.6.4  | development |
+| `@types/node` | 26.6.5  | development |
 | `eslint`      | 10.12.0 | development |
 | `typescript`  | 6.0.3   | development |
 | `vitest`      | 5.0.3   | development |
@@ -1214,7 +1214,7 @@ Workspace packages used: `@integr8/core`, `@integr8/form-engine`, `@integr8/esli
 | `kysely`      | 0.28.9  | runtime     |
 | `pg`          | 8.16.3  | runtime     |
 | `zod`         | 4.6.1   | runtime     |
-| `@types/node` | 26.6.4  | development |
+| `@types/node` | 26.6.5  | development |
 | `@types/pg`   | 8.15.6  | development |
 | `eslint`      | 10.12.0 | development |
 | `tsx`         | 4.23.13 | development |
@@ -1240,7 +1240,7 @@ Workspace packages used: `@integr8/eslint-config`, `@integr8/typescript-config`
 | Library               | Version | Kind        |
 | --------------------- | ------- | ----------- |
 | `zod`                 | 4.6.1   | runtime     |
-| `@types/node`         | 26.6.4  | development |
+| `@types/node`         | 26.6.5  | development |
 | `@vitest/coverage-v8` | 5.0.0   | development |
 | `esbuild`             | 0.28.2  | development |
 | `eslint`              | 10.12.0 | development |
@@ -1255,7 +1255,7 @@ Workspace packages used: `@integr8/form-engine`, `@integr8/eslint-config`, `@int
 
 | Library       | Version | Kind        |
 | ------------- | ------- | ----------- |
-| `@types/node` | 26.6.4  | development |
+| `@types/node` | 26.6.5  | development |
 | `eslint`      | 10.12.0 | development |
 | `typescript`  | 6.0.3   | development |
 | `vitest`      | 5.0.3   | development |
@@ -1270,10 +1270,10 @@ Workspace packages used: `@integr8/form-engine`, `@integr8/i18n`, `@integr8/api-
 | `@testing-library/jest-dom`   | 7.0.1   | development |
 | `@testing-library/react`      | 16.3.3  | development |
 | `@testing-library/user-event` | 14.6.7  | development |
-| `@types/node`                 | 26.6.4  | development |
+| `@types/node`                 | 26.6.5  | development |
 | `@types/react`                | 19.3.0  | development |
 | `@types/react-dom`            | 19.3.0  | development |
-| `axe-core`                    | 4.13.0  | development |
+| `axe-core`                    | 4.14.0  | development |
 | `eslint`                      | 10.12.0 | development |
 | `jsdom`                       | 30.0.1  | development |
 | `react`                       | 19.3.0  | development |
@@ -1293,7 +1293,7 @@ Workspace packages used: `@integr8/eslint-config`, `@integr8/form-engine`, `@int
 | --------------- | ------- | ----------- |
 | `i18next`       | 26.4.2  | runtime     |
 | `react-i18next` | 17.0.13 | runtime     |
-| `@types/node`   | 26.6.4  | development |
+| `@types/node`   | 26.6.5  | development |
 | `@types/react`  | 19.3.0  | development |
 | `eslint`        | 10.12.0 | development |
 | `react`         | 19.3.0  | development |
@@ -1307,7 +1307,7 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/eslin
 
 | Library       | Version | Kind        |
 | ------------- | ------- | ----------- |
-| `@types/node` | 26.6.4  | development |
+| `@types/node` | 26.6.5  | development |
 | `eslint`      | 10.12.0 | development |
 | `typescript`  | 6.0.3   | development |
 | `vitest`      | 5.0.3   | development |
@@ -1323,10 +1323,10 @@ Workspace packages used: `@integr8/api-client`, `@integr8/core`, `@integr8/form-
 | `@testing-library/jest-dom`   | 7.0.1   | development |
 | `@testing-library/react`      | 16.3.3  | development |
 | `@testing-library/user-event` | 14.6.7  | development |
-| `@types/node`                 | 26.6.4  | development |
+| `@types/node`                 | 26.6.5  | development |
 | `@types/react`                | 19.3.0  | development |
 | `@types/react-dom`            | 19.3.0  | development |
-| `axe-core`                    | 4.13.0  | development |
+| `axe-core`                    | 4.14.0  | development |
 | `eslint`                      | 10.12.0 | development |
 | `jsdom`                       | 30.0.1  | development |
 | `react`                       | 19.3.0  | development |
@@ -1345,7 +1345,7 @@ Workspace packages used: `@integr8/eslint-config`, `@integr8/typescript-config`
 
 | Library       | Version | Kind        |
 | ------------- | ------- | ----------- |
-| `@types/node` | 26.6.4  | development |
+| `@types/node` | 26.6.5  | development |
 | `eslint`      | 10.12.0 | development |
 | `tsx`         | 4.23.13 | development |
 | `typescript`  | 6.0.3   | development |
