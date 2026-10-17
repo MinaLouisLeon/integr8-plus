@@ -292,6 +292,24 @@ export const PERMISSIONS = [
    * {@link STAFF_ONLY_PERMISSIONS}), like the forms themselves.
    */
   'document.design',
+
+  // Egyptian e-invoicing with the Tax Authority (ADR-0014). Each also needs the
+  // company's `e_invoicing` module, which needs `finance`.
+
+  /** See the e-invoicing settings (never the credentials), readiness, statuses and history. */
+  'eta.read',
+  /** Keep customers' tax identities, items' codes and the unit and tax mappings; prepare a document. */
+  'eta.prepare',
+  /**
+   * Set the connection, issuer, environment, credentials and pinned signing
+   * certificates. Owners and admins (ADR-0014): the credentials act for the
+   * company before the tax authority.
+   */
+  'eta.configure',
+  /** Act as the signing agent on the computer that holds the company's token. */
+  'eta.sign',
+  /** Ask for a signature, submit, sync, cancel and reconcile documents with the tax authority. */
+  'eta.submit',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -383,6 +401,11 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'document.create',
     'document.manage',
     'document.design',
+    'eta.read',
+    'eta.prepare',
+    'eta.configure',
+    'eta.sign',
+    'eta.submit',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -451,6 +474,11 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'document.create',
     'document.manage',
     'document.design',
+    'eta.read',
+    'eta.prepare',
+    'eta.configure',
+    'eta.sign',
+    'eta.submit',
   ],
 
   // Keeps HR and payroll (ADR-0010): the people, their pay and their claims,
@@ -533,6 +561,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'expense.submit',
     'document.read',
     'document.create',
+    'eta.read',
+    'eta.prepare',
   ],
 
   // Does the work. Sees colleagues so a job can be handed over, their own
@@ -574,6 +604,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'expense.submit',
     'manufacturing.read',
     'document.read',
+    'eta.read',
   ],
 });
 

@@ -19,6 +19,8 @@ export interface Call {
   path: string;
   query: URLSearchParams;
   body: unknown;
+  /** The request's headers, lower-cased: an `idempotency-key`, for one. */
+  headers: Record<string, string>;
 }
 
 /**
@@ -54,6 +56,7 @@ export function fakeApi(routes: Record<string, Handler>) {
       path: url.pathname,
       query: url.searchParams,
       body: text === '' ? undefined : (JSON.parse(text) as unknown),
+      headers: Object.fromEntries(request.headers.entries()),
     };
     calls.push(call);
     for (const route of compiled) {
@@ -181,6 +184,8 @@ export function renderScreen(
       asset: (id) => `/assets/${id}`,
       documents: '/documents',
       document: (id) => `/documents/${id}`,
+      eInvoicing: '/e-invoicing',
+      etaDocument: (id) => `/e-invoicing/documents/${id}`,
       ledger: '/ledger',
       ledgerAccounts: '/ledger/accounts',
       journals: '/ledger/journals',

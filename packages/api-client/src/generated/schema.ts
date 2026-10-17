@@ -1528,6 +1528,518 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/eta/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The company’s e-invoicing settings
+         * @description Never includes the credentials themselves: only whether they are saved and the client id’s last four characters.
+         */
+        get: operations["getEtaSettings"];
+        /**
+         * Change the company’s e-invoicing settings
+         * @description With `expectedVersion` (0 for the first save; 409 `version_conflict`). Choosing `production` needs the server’s ETA_ALLOW_PRODUCTION (403 `eta_production_disabled`), the owner’s own session (403 `eta_production_owner_only`) and `confirmProduction: true`. Credentials and pinned certificates have their own routes.
+         */
+        put: operations["saveEtaSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/settings/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save the company’s ETA client id and secret
+         * @description Write-only. Sealed with the server’s ETA_CREDENTIALS_KEY (503 `eta_key_missing`) before they are stored; never returned, logged or audited. Integr8 staff acting as the company are refused (403 `eta_staff_refused`).
+         */
+        put: operations["saveEtaCredentials"];
+        post?: never;
+        /** Remove the company’s ETA credentials */
+        delete: operations["clearEtaCredentials"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/settings/credentials/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check the saved credentials with the ETA
+         * @description Asks the ETA for a token in the company’s environment. 422 `eta_credentials_rejected` when the ETA refuses them; 502 `eta_unreachable` when it cannot be reached. Works while e-invoicing is switched off, so a company can test before enabling.
+         */
+        post: operations["checkEtaCredentials"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/settings/certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the certificates allowed to sign this company’s documents
+         * @description Each certificate as PEM or Base64 DER — the public certificate only, never a private key. Replaces the list; an empty list means nothing can be signed. Only signatures by one of these are accepted (ADR-0014 D6). The owner or an admin, on their own session.
+         */
+        put: operations["pinEtaCertificates"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The company’s ETA codes: receivers, item codes, units and taxes */
+        get: operations["getEtaCodes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/receivers/{customerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set how a customer appears on ETA documents
+         * @description `B` business (registration number), `P` person (national id), `F` foreigner. The name comes from the invoice. 404 when the customer is not in this company.
+         */
+        put: operations["saveEtaReceiver"];
+        post?: never;
+        /** Forget a customer’s ETA receiver details */
+        delete: operations["deleteEtaReceiver"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/item-codes/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set a catalogue item’s ETA code (GS1 or EGS)
+         * @description The code as registered with the ETA; nothing here checks it against the ETA’s list.
+         */
+        put: operations["saveEtaItemCode"];
+        post?: never;
+        /** Remove a catalogue item’s ETA code */
+        delete: operations["deleteEtaItemCode"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/unit-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Map Integr8 units to ETA unit type codes
+         * @description Replaces the whole mapping; units left out are unmapped. Codes come from the ETA’s unit types table.
+         */
+        put: operations["saveEtaUnitTypes"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/tax-mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Map invoice tax rates to ETA tax types and subtypes
+         * @description Replaces the whole mapping. One entry per rate in basis points (1400 is 14%); type and subtype come from the ETA’s tax types table. 422 `eta_tax_rate_repeated`.
+         */
+        put: operations["saveEtaTaxMappings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/schemas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The ETA document schemas this company has fetched
+         * @description A document is submitted only after it validates against the schema for its environment, type and version.
+         */
+        get: operations["listEtaSchemas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/schemas/available": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Document types and versions as the ETA lists them
+         * @description Read from the ETA with the company’s credentials, so the person fetching a schema picks the exact type and version ids the ETA uses.
+         */
+        get: operations["availableEtaSchemas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/schemas/fetch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fetch and keep one document schema from the ETA
+         * @description Fetches `GET /api/v1.0/documenttypes/{etaTypeId}/versions/{etaVersionId}` with the company’s credentials, decodes its JSON Schema and keeps it for the company’s environment under `documentType` and `typeVersion`. 422 `eta_schema_unreadable` when it does not compile.
+         */
+        post: operations["fetchEtaSchema"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/invoices/{invoiceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An invoice’s e-invoicing panel: readiness and documents
+         * @description Readiness lists what stops the invoice becoming an ETA document (errors) and what deserves a look (warnings), by code. `documents` is every document made from it, newest first.
+         */
+        get: operations["getEtaInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/invoices/{invoiceId}/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make an unsigned ETA document from an issued invoice
+         * @description Snapshots the document text and its canonical SHA-256. A previous document that was never accepted (ready, awaiting signature, signed or failed) is superseded; one being sent, sent, valid or of unknown outcome is not (409 `eta_document_live`). 422 `eta_not_ready` with the readiness codes as details.
+         */
+        post: operations["prepareEtaDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ETA documents, newest first
+         * @description `state` may be repeated as a comma-separated list. A page at a time with `cursor`.
+         */
+        get: operations["listEtaDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/documents/{documentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One ETA document, with its signing request and every call made about it */
+        get: operations["getEtaDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/documents/{documentId}/signature-request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask the signing agent to sign a ready document
+         * @description Records a request bound to the document’s canonical digest, with a random nonce and an expiry (ETA_SIGNING_REQUEST_TTL_SECONDS). The company’s signing agent — its desktop app, on the computer that holds the token — picks it up. 422 `eta_no_certificates` until a certificate is pinned.
+         */
+        post: operations["requestEtaSignature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/signing-requests/{requestId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw a signing request; the document is ready again */
+        post: operations["cancelEtaSignature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/signing-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The signing agent’s queue
+         * @description Open and claimed requests of this company, oldest first. Expired ones are closed first and their documents made ready again.
+         */
+        get: operations["listEtaSigningRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/signing-requests/{requestId}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The signing agent takes a request and the exact document text to sign
+         * @description `documentText` is the unsigned document exactly as stored. The agent recomputes its canonical digest, refuses a mismatch, and shows the person what it reads from the text itself. Integr8 staff acting as the company are refused.
+         */
+        post: operations["claimEtaSigningRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/signing-requests/{requestId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The signing agent returns the signature
+         * @description Accepted only from the member who claimed the request, before it expires, with its nonce, for a CMS (CAdES-BES, detached, Base64) that verifies against the stored digest and a certificate the company pinned, signed within the request’s life. Anything else is refused (422 `eta_signature_refused`, the reason as a detail) and the document returns to ready.
+         */
+        post: operations["completeEtaSigningRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/documents/{documentId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a signed document to the ETA
+         * @description Only a signed document (or one whose last attempt definitely failed), in the environment it was prepared for, that validates against the company’s fetched schema (422 `eta_schema_missing`, `eta_schema_invalid`) and whose amounts add up (422 `eta_arithmetic`). Queued, sent once, never retried blindly: an answer that is lost makes the document `unknown` for a person to resolve. A 202 from the ETA is not validity; the status is checked afterwards. Requires `Idempotency-Key`.
+         */
+        post: operations["submitEtaDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/documents/{documentId}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask the ETA for a submitted or valid document’s status now */
+        post: operations["syncEtaDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/documents/{documentId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Say what happened to a document whose submission had no clear answer
+         * @description For a document in `unknown`. Look it up in the ETA portal first. `received` with the ETA’s `etaUuid` makes it submitted and checks its status; `not_received` makes it signed so it can be sent again — sending a document the ETA did receive creates a duplicate, so say this only when the portal shows nothing.
+         */
+        post: operations["resolveEtaDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/documents/{documentId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask the ETA to cancel a valid document
+         * @description Sent once; the document stays valid until the ETA reports it cancelled, which is then checked in the background. The invoice is not changed: issue a credit note or void it in Integr8 as well. Requires `Idempotency-Key`.
+         */
+        post: operations["cancelEtaDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/eta/documents/{documentId}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The ETA’s printable copy of an accepted document, as Base64 */
+        get: operations["getEtaDocumentPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/media": {
         parameters: {
             query?: never;
@@ -11373,7 +11885,7 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
-                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
+                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -16528,6 +17040,3734 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getEtaSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        enabled: boolean;
+                        /** @enum {string} */
+                        environment: "preprod" | "production";
+                        issuerType: string;
+                        taxpayerId: string | null;
+                        issuerName: string | null;
+                        branchId: string | null;
+                        activityCode: string | null;
+                        address: {
+                            country: string | null;
+                            governate: string | null;
+                            regionCity: string | null;
+                            street: string | null;
+                            buildingNumber: string | null;
+                            postalCode: string | null;
+                            floor: string | null;
+                            room: string | null;
+                            landmark: string | null;
+                            additionalInformation: string | null;
+                        };
+                        credentials: {
+                            saved: boolean;
+                            hint: string | null;
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                        };
+                        intermediaryFor: string | null;
+                        documentTypeVersion: string;
+                        defaultItem: {
+                            /** @enum {string} */
+                            itemType: "GS1" | "EGS";
+                            itemCode: string;
+                        } | null;
+                        pinnedCertificates: string[];
+                        version: number;
+                        /** Format: date-time */
+                        updatedAt: string | null;
+                        server: {
+                            credentialsKeyConfigured: boolean;
+                            productionAllowed: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveEtaSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    enabled: boolean;
+                    /** @enum {string} */
+                    environment: "preprod" | "production";
+                    confirmProduction?: boolean;
+                    taxpayerId: string | null;
+                    issuerName: string | null;
+                    branchId: string | null;
+                    activityCode: string | null;
+                    address: {
+                        country: string | null;
+                        governate: string | null;
+                        regionCity: string | null;
+                        street: string | null;
+                        buildingNumber: string | null;
+                        postalCode: string | null;
+                        floor: string | null;
+                        room: string | null;
+                        landmark: string | null;
+                        additionalInformation: string | null;
+                    };
+                    intermediaryFor: string | null;
+                    /** @enum {string} */
+                    documentTypeVersion: "1.0";
+                    defaultItem: {
+                        /** @enum {string} */
+                        itemType: "GS1" | "EGS";
+                        itemCode: string;
+                    } | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        enabled: boolean;
+                        /** @enum {string} */
+                        environment: "preprod" | "production";
+                        issuerType: string;
+                        taxpayerId: string | null;
+                        issuerName: string | null;
+                        branchId: string | null;
+                        activityCode: string | null;
+                        address: {
+                            country: string | null;
+                            governate: string | null;
+                            regionCity: string | null;
+                            street: string | null;
+                            buildingNumber: string | null;
+                            postalCode: string | null;
+                            floor: string | null;
+                            room: string | null;
+                            landmark: string | null;
+                            additionalInformation: string | null;
+                        };
+                        credentials: {
+                            saved: boolean;
+                            hint: string | null;
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                        };
+                        intermediaryFor: string | null;
+                        documentTypeVersion: string;
+                        defaultItem: {
+                            /** @enum {string} */
+                            itemType: "GS1" | "EGS";
+                            itemCode: string;
+                        } | null;
+                        pinnedCertificates: string[];
+                        version: number;
+                        /** Format: date-time */
+                        updatedAt: string | null;
+                        server: {
+                            credentialsKeyConfigured: boolean;
+                            productionAllowed: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Production is not allowed here, or not by this person. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveEtaCredentials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    clientId: string;
+                    clientSecret: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        enabled: boolean;
+                        /** @enum {string} */
+                        environment: "preprod" | "production";
+                        issuerType: string;
+                        taxpayerId: string | null;
+                        issuerName: string | null;
+                        branchId: string | null;
+                        activityCode: string | null;
+                        address: {
+                            country: string | null;
+                            governate: string | null;
+                            regionCity: string | null;
+                            street: string | null;
+                            buildingNumber: string | null;
+                            postalCode: string | null;
+                            floor: string | null;
+                            room: string | null;
+                            landmark: string | null;
+                            additionalInformation: string | null;
+                        };
+                        credentials: {
+                            saved: boolean;
+                            hint: string | null;
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                        };
+                        intermediaryFor: string | null;
+                        documentTypeVersion: string;
+                        defaultItem: {
+                            /** @enum {string} */
+                            itemType: "GS1" | "EGS";
+                            itemCode: string;
+                        } | null;
+                        pinnedCertificates: string[];
+                        version: number;
+                        /** Format: date-time */
+                        updatedAt: string | null;
+                        server: {
+                            credentialsKeyConfigured: boolean;
+                            productionAllowed: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Staff acting as the company. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description ETA_CREDENTIALS_KEY is not set. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    clearEtaCredentials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        enabled: boolean;
+                        /** @enum {string} */
+                        environment: "preprod" | "production";
+                        issuerType: string;
+                        taxpayerId: string | null;
+                        issuerName: string | null;
+                        branchId: string | null;
+                        activityCode: string | null;
+                        address: {
+                            country: string | null;
+                            governate: string | null;
+                            regionCity: string | null;
+                            street: string | null;
+                            buildingNumber: string | null;
+                            postalCode: string | null;
+                            floor: string | null;
+                            room: string | null;
+                            landmark: string | null;
+                            additionalInformation: string | null;
+                        };
+                        credentials: {
+                            saved: boolean;
+                            hint: string | null;
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                        };
+                        intermediaryFor: string | null;
+                        documentTypeVersion: string;
+                        defaultItem: {
+                            /** @enum {string} */
+                            itemType: "GS1" | "EGS";
+                            itemCode: string;
+                        } | null;
+                        pinnedCertificates: string[];
+                        version: number;
+                        /** Format: date-time */
+                        updatedAt: string | null;
+                        server: {
+                            credentialsKeyConfigured: boolean;
+                            productionAllowed: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    checkEtaCredentials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The ETA accepted them. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The ETA refused them. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The ETA could not be reached. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    pinEtaCertificates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    certificates: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description The settings and what each certificate is. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        settings: {
+                            enabled: boolean;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            issuerType: string;
+                            taxpayerId: string | null;
+                            issuerName: string | null;
+                            branchId: string | null;
+                            activityCode: string | null;
+                            address: {
+                                country: string | null;
+                                governate: string | null;
+                                regionCity: string | null;
+                                street: string | null;
+                                buildingNumber: string | null;
+                                postalCode: string | null;
+                                floor: string | null;
+                                room: string | null;
+                                landmark: string | null;
+                                additionalInformation: string | null;
+                            };
+                            credentials: {
+                                saved: boolean;
+                                hint: string | null;
+                                /** Format: date-time */
+                                updatedAt: string | null;
+                            };
+                            intermediaryFor: string | null;
+                            documentTypeVersion: string;
+                            defaultItem: {
+                                /** @enum {string} */
+                                itemType: "GS1" | "EGS";
+                                itemCode: string;
+                            } | null;
+                            pinnedCertificates: string[];
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            server: {
+                                credentialsKeyConfigured: boolean;
+                                productionAllowed: boolean;
+                            };
+                        };
+                        certificates: {
+                            sha256: string;
+                            subject: string;
+                            issuer: string;
+                            serialNumber: string;
+                            /** Format: date-time */
+                            notBefore: string;
+                            /** Format: date-time */
+                            notAfter: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not a certificate, or a private key. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getEtaCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The codes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        receivers: {
+                            /** Format: uuid */
+                            customerId: string;
+                            /** @enum {string} */
+                            receiverType: "B" | "P" | "F";
+                            receiverId: string | null;
+                            address: {
+                                country: string | null;
+                                governate: string | null;
+                                regionCity: string | null;
+                                street: string | null;
+                                buildingNumber: string | null;
+                                postalCode: string | null;
+                                floor: string | null;
+                                room: string | null;
+                                landmark: string | null;
+                                additionalInformation: string | null;
+                            };
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        itemCodes: {
+                            /** Format: uuid */
+                            itemId: string;
+                            /** @enum {string} */
+                            itemType: "GS1" | "EGS";
+                            itemCode: string;
+                        }[];
+                        unitTypes: {
+                            [key: string]: string;
+                        };
+                        taxMappings: {
+                            taxRateBp: number;
+                            taxType: string;
+                            subType: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveEtaReceiver: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    receiverType: "B" | "P" | "F";
+                    receiverId: string | null;
+                    address: {
+                        country: string | null;
+                        governate: string | null;
+                        regionCity: string | null;
+                        street: string | null;
+                        buildingNumber: string | null;
+                        postalCode: string | null;
+                        floor: string | null;
+                        room: string | null;
+                        landmark: string | null;
+                        additionalInformation: string | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The receiver. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        customerId: string;
+                        /** @enum {string} */
+                        receiverType: "B" | "P" | "F";
+                        receiverId: string | null;
+                        address: {
+                            country: string | null;
+                            governate: string | null;
+                            regionCity: string | null;
+                            street: string | null;
+                            buildingNumber: string | null;
+                            postalCode: string | null;
+                            floor: string | null;
+                            room: string | null;
+                            landmark: string | null;
+                            additionalInformation: string | null;
+                        };
+                        /** Format: date-time */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such customer. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteEtaReceiver: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        deleted: boolean;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveEtaItemCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    itemType: "GS1" | "EGS";
+                    itemCode: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The code. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        itemId: string;
+                        /** @enum {string} */
+                        itemType: "GS1" | "EGS";
+                        itemCode: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteEtaItemCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        deleted: boolean;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveEtaUnitTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    unitTypes: {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The mapping. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        unitTypes: {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveEtaTaxMappings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    taxMappings: {
+                        taxRateBp: number;
+                        taxType: string;
+                        subType: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The mapping. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        taxMappings: {
+                            taxRateBp: number;
+                            taxType: string;
+                            subType: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A rate given twice. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listEtaSchemas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The schemas. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            documentType: string;
+                            typeVersion: string;
+                            etaTypeId: string;
+                            etaVersionId: string;
+                            schemaSha256: string;
+                            /** Format: date-time */
+                            fetchedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    availableEtaSchemas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The types. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            id: string;
+                            name: string | null;
+                            versions: {
+                                id: string;
+                                number: string | null;
+                                status: string | null;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The ETA could not be reached. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    fetchEtaSchema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    etaTypeId: string;
+                    etaVersionId: string;
+                    /** @enum {string} */
+                    documentType: "I";
+                    /** @enum {string} */
+                    typeVersion: "1.0";
+                };
+            };
+        };
+        responses: {
+            /** @description The schema kept. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        environment: "preprod" | "production";
+                        documentType: string;
+                        typeVersion: string;
+                        etaTypeId: string;
+                        etaVersionId: string;
+                        schemaSha256: string;
+                        /** Format: date-time */
+                        fetchedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not a usable schema. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The ETA could not be reached. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getEtaInvoice: {
+        parameters: {
+            query?: {
+                exchangeRate?: string;
+            };
+            header?: never;
+            path: {
+                invoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The panel. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        enabled: boolean;
+                        /** @enum {string} */
+                        environment: "preprod" | "production";
+                        readiness: {
+                            code: string;
+                            /** @enum {string} */
+                            severity: "error" | "warning";
+                            path: string;
+                            params?: {
+                                [key: string]: string;
+                            };
+                        }[];
+                        documents: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            invoiceId: string;
+                            sequence: number;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            internalId: string;
+                            /** @enum {string} */
+                            state: "ready" | "pending_signature" | "signed" | "submitting" | "submitted" | "valid" | "invalid" | "rejected" | "cancelled" | "failed" | "unknown" | "superseded";
+                            etaStatus: string | null;
+                            etaUuid: string | null;
+                            etaLongId: string | null;
+                            submissionId: string | null;
+                            totalAmount: string;
+                            currencyCode: string;
+                            exchangeRate: string | null;
+                            canonicalSha256: string;
+                            signerCertificate: string | null;
+                            /** Format: date-time */
+                            signedAt: string | null;
+                            /** Format: date-time */
+                            preparedAt: string;
+                            /** Format: date-time */
+                            submittedAt: string | null;
+                            /** Format: date-time */
+                            finalAt: string | null;
+                            /** Format: date-time */
+                            nextCheckAt: string | null;
+                            checks: number;
+                            lastErrorCode: string | null;
+                            errors: {
+                                code: string | null;
+                                message: string;
+                                target: string | null;
+                            }[];
+                            version: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such invoice. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    prepareEtaDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                invoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    exchangeRate?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The document. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        invoiceId: string;
+                        sequence: number;
+                        /** @enum {string} */
+                        environment: "preprod" | "production";
+                        internalId: string;
+                        /** @enum {string} */
+                        state: "ready" | "pending_signature" | "signed" | "submitting" | "submitted" | "valid" | "invalid" | "rejected" | "cancelled" | "failed" | "unknown" | "superseded";
+                        etaStatus: string | null;
+                        etaUuid: string | null;
+                        etaLongId: string | null;
+                        submissionId: string | null;
+                        totalAmount: string;
+                        currencyCode: string;
+                        exchangeRate: string | null;
+                        canonicalSha256: string;
+                        signerCertificate: string | null;
+                        /** Format: date-time */
+                        signedAt: string | null;
+                        /** Format: date-time */
+                        preparedAt: string;
+                        /** Format: date-time */
+                        submittedAt: string | null;
+                        /** Format: date-time */
+                        finalAt: string | null;
+                        /** Format: date-time */
+                        nextCheckAt: string | null;
+                        checks: number;
+                        lastErrorCode: string | null;
+                        errors: {
+                            code: string | null;
+                            message: string;
+                            target: string | null;
+                        }[];
+                        version: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such invoice. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description E-invoicing is off, or a live document exists. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The invoice is not ready. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listEtaDocuments: {
+        parameters: {
+            query?: {
+                state?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            invoiceId: string;
+                            sequence: number;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            internalId: string;
+                            /** @enum {string} */
+                            state: "ready" | "pending_signature" | "signed" | "submitting" | "submitted" | "valid" | "invalid" | "rejected" | "cancelled" | "failed" | "unknown" | "superseded";
+                            etaStatus: string | null;
+                            etaUuid: string | null;
+                            etaLongId: string | null;
+                            submissionId: string | null;
+                            totalAmount: string;
+                            currencyCode: string;
+                            exchangeRate: string | null;
+                            canonicalSha256: string;
+                            signerCertificate: string | null;
+                            /** Format: date-time */
+                            signedAt: string | null;
+                            /** Format: date-time */
+                            preparedAt: string;
+                            /** Format: date-time */
+                            submittedAt: string | null;
+                            /** Format: date-time */
+                            finalAt: string | null;
+                            /** Format: date-time */
+                            nextCheckAt: string | null;
+                            checks: number;
+                            lastErrorCode: string | null;
+                            errors: {
+                                code: string | null;
+                                message: string;
+                                target: string | null;
+                            }[];
+                            version: number;
+                        }[];
+                        nextCursor: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getEtaDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The document. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        document: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            invoiceId: string;
+                            sequence: number;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            internalId: string;
+                            /** @enum {string} */
+                            state: "ready" | "pending_signature" | "signed" | "submitting" | "submitted" | "valid" | "invalid" | "rejected" | "cancelled" | "failed" | "unknown" | "superseded";
+                            etaStatus: string | null;
+                            etaUuid: string | null;
+                            etaLongId: string | null;
+                            submissionId: string | null;
+                            totalAmount: string;
+                            currencyCode: string;
+                            exchangeRate: string | null;
+                            canonicalSha256: string;
+                            signerCertificate: string | null;
+                            /** Format: date-time */
+                            signedAt: string | null;
+                            /** Format: date-time */
+                            preparedAt: string;
+                            /** Format: date-time */
+                            submittedAt: string | null;
+                            /** Format: date-time */
+                            finalAt: string | null;
+                            /** Format: date-time */
+                            nextCheckAt: string | null;
+                            checks: number;
+                            lastErrorCode: string | null;
+                            errors: {
+                                code: string | null;
+                                message: string;
+                                target: string | null;
+                            }[];
+                            version: number;
+                        };
+                        signingRequest: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            documentId: string;
+                            internalId: string;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            digest: string;
+                            nonce: string;
+                            /** @enum {string} */
+                            status: "open" | "claimed" | "completed" | "cancelled" | "expired";
+                            /** Format: date-time */
+                            requestedAt: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            /** Format: uuid */
+                            claimedBy: string | null;
+                            failure: string | null;
+                        } | null;
+                        attempts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
+                            httpStatus: number | null;
+                            errorCode: string | null;
+                            message: string | null;
+                            correlationId: string | null;
+                            /** Format: date-time */
+                            startedAt: string;
+                            /** Format: date-time */
+                            finishedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such document. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    requestEtaSignature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The document, awaiting its signature. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        document: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            invoiceId: string;
+                            sequence: number;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            internalId: string;
+                            /** @enum {string} */
+                            state: "ready" | "pending_signature" | "signed" | "submitting" | "submitted" | "valid" | "invalid" | "rejected" | "cancelled" | "failed" | "unknown" | "superseded";
+                            etaStatus: string | null;
+                            etaUuid: string | null;
+                            etaLongId: string | null;
+                            submissionId: string | null;
+                            totalAmount: string;
+                            currencyCode: string;
+                            exchangeRate: string | null;
+                            canonicalSha256: string;
+                            signerCertificate: string | null;
+                            /** Format: date-time */
+                            signedAt: string | null;
+                            /** Format: date-time */
+                            preparedAt: string;
+                            /** Format: date-time */
+                            submittedAt: string | null;
+                            /** Format: date-time */
+                            finalAt: string | null;
+                            /** Format: date-time */
+                            nextCheckAt: string | null;
+                            checks: number;
+                            lastErrorCode: string | null;
+                            errors: {
+                                code: string | null;
+                                message: string;
+                                target: string | null;
+                            }[];
+                            version: number;
+                        };
+                        signingRequest: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            documentId: string;
+                            internalId: string;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            digest: string;
+                            nonce: string;
+                            /** @enum {string} */
+                            status: "open" | "claimed" | "completed" | "cancelled" | "expired";
+                            /** Format: date-time */
+                            requestedAt: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            /** Format: uuid */
+                            claimedBy: string | null;
+                            failure: string | null;
+                        } | null;
+                        attempts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
+                            httpStatus: number | null;
+                            errorCode: string | null;
+                            message: string | null;
+                            correlationId: string | null;
+                            /** Format: date-time */
+                            startedAt: string;
+                            /** Format: date-time */
+                            finishedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such document. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not ready. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No certificate pinned. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelEtaSignature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The document. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        document: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            invoiceId: string;
+                            sequence: number;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            internalId: string;
+                            /** @enum {string} */
+                            state: "ready" | "pending_signature" | "signed" | "submitting" | "submitted" | "valid" | "invalid" | "rejected" | "cancelled" | "failed" | "unknown" | "superseded";
+                            etaStatus: string | null;
+                            etaUuid: string | null;
+                            etaLongId: string | null;
+                            submissionId: string | null;
+                            totalAmount: string;
+                            currencyCode: string;
+                            exchangeRate: string | null;
+                            canonicalSha256: string;
+                            signerCertificate: string | null;
+                            /** Format: date-time */
+                            signedAt: string | null;
+                            /** Format: date-time */
+                            preparedAt: string;
+                            /** Format: date-time */
+                            submittedAt: string | null;
+                            /** Format: date-time */
+                            finalAt: string | null;
+                            /** Format: date-time */
+                            nextCheckAt: string | null;
+                            checks: number;
+                            lastErrorCode: string | null;
+                            errors: {
+                                code: string | null;
+                                message: string;
+                                target: string | null;
+                            }[];
+                            version: number;
+                        };
+                        signingRequest: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            documentId: string;
+                            internalId: string;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            digest: string;
+                            nonce: string;
+                            /** @enum {string} */
+                            status: "open" | "claimed" | "completed" | "cancelled" | "expired";
+                            /** Format: date-time */
+                            requestedAt: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            /** Format: uuid */
+                            claimedBy: string | null;
+                            failure: string | null;
+                        } | null;
+                        attempts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
+                            httpStatus: number | null;
+                            errorCode: string | null;
+                            message: string | null;
+                            correlationId: string | null;
+                            /** Format: date-time */
+                            startedAt: string;
+                            /** Format: date-time */
+                            finishedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such request. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already finished. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listEtaSigningRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The queue. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            documentId: string;
+                            internalId: string;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            digest: string;
+                            nonce: string;
+                            /** @enum {string} */
+                            status: "open" | "claimed" | "completed" | "cancelled" | "expired";
+                            /** Format: date-time */
+                            requestedAt: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            /** Format: uuid */
+                            claimedBy: string | null;
+                            failure: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    claimEtaSigningRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request and the document text. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        request: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            documentId: string;
+                            internalId: string;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            digest: string;
+                            nonce: string;
+                            /** @enum {string} */
+                            status: "open" | "claimed" | "completed" | "cancelled" | "expired";
+                            /** Format: date-time */
+                            requestedAt: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            /** Format: uuid */
+                            claimedBy: string | null;
+                            failure: string | null;
+                        };
+                        documentText: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such request. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Expired, finished or claimed by someone else. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    completeEtaSigningRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    nonce: string;
+                    cms: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The document, signed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        document: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            invoiceId: string;
+                            sequence: number;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            internalId: string;
+                            /** @enum {string} */
+                            state: "ready" | "pending_signature" | "signed" | "submitting" | "submitted" | "valid" | "invalid" | "rejected" | "cancelled" | "failed" | "unknown" | "superseded";
+                            etaStatus: string | null;
+                            etaUuid: string | null;
+                            etaLongId: string | null;
+                            submissionId: string | null;
+                            totalAmount: string;
+                            currencyCode: string;
+                            exchangeRate: string | null;
+                            canonicalSha256: string;
+                            signerCertificate: string | null;
+                            /** Format: date-time */
+                            signedAt: string | null;
+                            /** Format: date-time */
+                            preparedAt: string;
+                            /** Format: date-time */
+                            submittedAt: string | null;
+                            /** Format: date-time */
+                            finalAt: string | null;
+                            /** Format: date-time */
+                            nextCheckAt: string | null;
+                            checks: number;
+                            lastErrorCode: string | null;
+                            errors: {
+                                code: string | null;
+                                message: string;
+                                target: string | null;
+                            }[];
+                            version: number;
+                        };
+                        signingRequest: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            documentId: string;
+                            internalId: string;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            digest: string;
+                            nonce: string;
+                            /** @enum {string} */
+                            status: "open" | "claimed" | "completed" | "cancelled" | "expired";
+                            /** Format: date-time */
+                            requestedAt: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            /** Format: uuid */
+                            claimedBy: string | null;
+                            failure: string | null;
+                        } | null;
+                        attempts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
+                            httpStatus: number | null;
+                            errorCode: string | null;
+                            message: string | null;
+                            correlationId: string | null;
+                            /** Format: date-time */
+                            startedAt: string;
+                            /** Format: date-time */
+                            finishedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such request. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not claimed by this member, expired, or finished. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The signature was refused. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    submitEtaDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        document: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            invoiceId: string;
+                            sequence: number;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            internalId: string;
+                            /** @enum {string} */
+                            state: "ready" | "pending_signature" | "signed" | "submitting" | "submitted" | "valid" | "invalid" | "rejected" | "cancelled" | "failed" | "unknown" | "superseded";
+                            etaStatus: string | null;
+                            etaUuid: string | null;
+                            etaLongId: string | null;
+                            submissionId: string | null;
+                            totalAmount: string;
+                            currencyCode: string;
+                            exchangeRate: string | null;
+                            canonicalSha256: string;
+                            signerCertificate: string | null;
+                            /** Format: date-time */
+                            signedAt: string | null;
+                            /** Format: date-time */
+                            preparedAt: string;
+                            /** Format: date-time */
+                            submittedAt: string | null;
+                            /** Format: date-time */
+                            finalAt: string | null;
+                            /** Format: date-time */
+                            nextCheckAt: string | null;
+                            checks: number;
+                            lastErrorCode: string | null;
+                            errors: {
+                                code: string | null;
+                                message: string;
+                                target: string | null;
+                            }[];
+                            version: number;
+                        };
+                        signingRequest: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            documentId: string;
+                            internalId: string;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            digest: string;
+                            nonce: string;
+                            /** @enum {string} */
+                            status: "open" | "claimed" | "completed" | "cancelled" | "expired";
+                            /** Format: date-time */
+                            requestedAt: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            /** Format: uuid */
+                            claimedBy: string | null;
+                            failure: string | null;
+                        } | null;
+                        attempts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
+                            httpStatus: number | null;
+                            errorCode: string | null;
+                            message: string | null;
+                            correlationId: string | null;
+                            /** Format: date-time */
+                            startedAt: string;
+                            /** Format: date-time */
+                            finishedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such document. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed, or the environment changed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No schema, or the document does not pass it. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    syncEtaDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The document. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        document: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            invoiceId: string;
+                            sequence: number;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            internalId: string;
+                            /** @enum {string} */
+                            state: "ready" | "pending_signature" | "signed" | "submitting" | "submitted" | "valid" | "invalid" | "rejected" | "cancelled" | "failed" | "unknown" | "superseded";
+                            etaStatus: string | null;
+                            etaUuid: string | null;
+                            etaLongId: string | null;
+                            submissionId: string | null;
+                            totalAmount: string;
+                            currencyCode: string;
+                            exchangeRate: string | null;
+                            canonicalSha256: string;
+                            signerCertificate: string | null;
+                            /** Format: date-time */
+                            signedAt: string | null;
+                            /** Format: date-time */
+                            preparedAt: string;
+                            /** Format: date-time */
+                            submittedAt: string | null;
+                            /** Format: date-time */
+                            finalAt: string | null;
+                            /** Format: date-time */
+                            nextCheckAt: string | null;
+                            checks: number;
+                            lastErrorCode: string | null;
+                            errors: {
+                                code: string | null;
+                                message: string;
+                                target: string | null;
+                            }[];
+                            version: number;
+                        };
+                        signingRequest: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            documentId: string;
+                            internalId: string;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            digest: string;
+                            nonce: string;
+                            /** @enum {string} */
+                            status: "open" | "claimed" | "completed" | "cancelled" | "expired";
+                            /** Format: date-time */
+                            requestedAt: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            /** Format: uuid */
+                            claimedBy: string | null;
+                            failure: string | null;
+                        } | null;
+                        attempts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
+                            httpStatus: number | null;
+                            errorCode: string | null;
+                            message: string | null;
+                            correlationId: string | null;
+                            /** Format: date-time */
+                            startedAt: string;
+                            /** Format: date-time */
+                            finishedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such document. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not submitted. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    resolveEtaDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    outcome: "received";
+                    etaUuid: string;
+                } | {
+                    /** @enum {string} */
+                    outcome: "not_received";
+                };
+            };
+        };
+        responses: {
+            /** @description The document. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        document: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            invoiceId: string;
+                            sequence: number;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            internalId: string;
+                            /** @enum {string} */
+                            state: "ready" | "pending_signature" | "signed" | "submitting" | "submitted" | "valid" | "invalid" | "rejected" | "cancelled" | "failed" | "unknown" | "superseded";
+                            etaStatus: string | null;
+                            etaUuid: string | null;
+                            etaLongId: string | null;
+                            submissionId: string | null;
+                            totalAmount: string;
+                            currencyCode: string;
+                            exchangeRate: string | null;
+                            canonicalSha256: string;
+                            signerCertificate: string | null;
+                            /** Format: date-time */
+                            signedAt: string | null;
+                            /** Format: date-time */
+                            preparedAt: string;
+                            /** Format: date-time */
+                            submittedAt: string | null;
+                            /** Format: date-time */
+                            finalAt: string | null;
+                            /** Format: date-time */
+                            nextCheckAt: string | null;
+                            checks: number;
+                            lastErrorCode: string | null;
+                            errors: {
+                                code: string | null;
+                                message: string;
+                                target: string | null;
+                            }[];
+                            version: number;
+                        };
+                        signingRequest: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            documentId: string;
+                            internalId: string;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            digest: string;
+                            nonce: string;
+                            /** @enum {string} */
+                            status: "open" | "claimed" | "completed" | "cancelled" | "expired";
+                            /** Format: date-time */
+                            requestedAt: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            /** Format: uuid */
+                            claimedBy: string | null;
+                            failure: string | null;
+                        } | null;
+                        attempts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
+                            httpStatus: number | null;
+                            errorCode: string | null;
+                            message: string | null;
+                            correlationId: string | null;
+                            /** Format: date-time */
+                            startedAt: string;
+                            /** Format: date-time */
+                            finishedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such document. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not unknown. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelEtaDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The document. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        document: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            invoiceId: string;
+                            sequence: number;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            internalId: string;
+                            /** @enum {string} */
+                            state: "ready" | "pending_signature" | "signed" | "submitting" | "submitted" | "valid" | "invalid" | "rejected" | "cancelled" | "failed" | "unknown" | "superseded";
+                            etaStatus: string | null;
+                            etaUuid: string | null;
+                            etaLongId: string | null;
+                            submissionId: string | null;
+                            totalAmount: string;
+                            currencyCode: string;
+                            exchangeRate: string | null;
+                            canonicalSha256: string;
+                            signerCertificate: string | null;
+                            /** Format: date-time */
+                            signedAt: string | null;
+                            /** Format: date-time */
+                            preparedAt: string;
+                            /** Format: date-time */
+                            submittedAt: string | null;
+                            /** Format: date-time */
+                            finalAt: string | null;
+                            /** Format: date-time */
+                            nextCheckAt: string | null;
+                            checks: number;
+                            lastErrorCode: string | null;
+                            errors: {
+                                code: string | null;
+                                message: string;
+                                target: string | null;
+                            }[];
+                            version: number;
+                        };
+                        signingRequest: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            documentId: string;
+                            internalId: string;
+                            /** @enum {string} */
+                            environment: "preprod" | "production";
+                            digest: string;
+                            nonce: string;
+                            /** @enum {string} */
+                            status: "open" | "claimed" | "completed" | "cancelled" | "expired";
+                            /** Format: date-time */
+                            requestedAt: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                            /** Format: uuid */
+                            claimedBy: string | null;
+                            failure: string | null;
+                        } | null;
+                        attempts: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
+                            httpStatus: number | null;
+                            errorCode: string | null;
+                            message: string | null;
+                            correlationId: string | null;
+                            /** Format: date-time */
+                            startedAt: string;
+                            /** Format: date-time */
+                            finishedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description The `Idempotency-Key` header is missing (`idempotency_key_required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such document. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not valid. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The ETA refused or could not be reached. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getEtaDocumentPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        fileName: string;
+                        /** @enum {string} */
+                        contentType: "application/pdf";
+                        base64: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `e_invoicing` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such document. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not accepted by the ETA. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The ETA refused or could not be reached. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description This client build is older than the minimum supported. */
             503: {
@@ -22992,9 +27232,9 @@ export interface operations {
                         bases: {
                             /** @enum {string} */
                             role: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                            permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
+                            permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
                         }[];
-                        addable: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
+                        addable: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
                     };
                 };
             };
@@ -23079,9 +27319,9 @@ export interface operations {
                             description: string | null;
                             /** @enum {string} */
                             baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                            added: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
-                            removed: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
-                            permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
+                            added: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
+                            removed: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
+                            permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
                             holders: number;
                             version: number;
                             /** Format: date-time */
@@ -23168,9 +27408,9 @@ export interface operations {
                     /** @default null */
                     description?: string | null;
                     /** @default [] */
-                    added?: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
+                    added?: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
                     /** @default [] */
-                    removed?: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
+                    removed?: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
                     /** @enum {string} */
                     baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                 };
@@ -23190,9 +27430,9 @@ export interface operations {
                         description: string | null;
                         /** @enum {string} */
                         baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                        added: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
-                        removed: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
-                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
+                        added: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
+                        removed: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
+                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
                         holders: number;
                         version: number;
                         /** Format: date-time */
@@ -23279,9 +27519,9 @@ export interface operations {
                     /** @default null */
                     description?: string | null;
                     /** @default [] */
-                    added?: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
+                    added?: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
                     /** @default [] */
-                    removed?: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
+                    removed?: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
                     expectedVersion: number;
                 };
             };
@@ -23300,9 +27540,9 @@ export interface operations {
                         description: string | null;
                         /** @enum {string} */
                         baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                        added: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
-                        removed: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
-                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
+                        added: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
+                        removed: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
+                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
                         holders: number;
                         version: number;
                         /** Format: date-time */
@@ -23410,9 +27650,9 @@ export interface operations {
                         description: string | null;
                         /** @enum {string} */
                         baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                        added: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
-                        removed: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
-                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design")[];
+                        added: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
+                        removed: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
+                        permissions: ("tenant.read" | "tenant.update" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit")[];
                         holders: number;
                         version: number;
                         /** Format: date-time */

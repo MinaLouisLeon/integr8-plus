@@ -692,6 +692,7 @@ export const en = {
       expense: 'Expenses',
       payroll: 'Payroll',
       manufacturing: 'Manufacturing',
+      eta: 'E-invoicing (ETA)',
     },
     // One per permission in `PERMISSIONS` (@integr8/core), nested as named.
     permission: {
@@ -774,6 +775,13 @@ export const en = {
       expense: { submit: 'Claim expenses', approve: 'Approve expense claims' },
       payroll: { run: 'Prepare pay runs', approve: 'Approve pay runs' },
       manufacturing: { read: 'See bills of materials', manage: 'Manage bills and assembly' },
+      eta: {
+        read: 'See e-invoicing status and documents',
+        prepare: 'Prepare ETA documents from invoices',
+        configure: 'Set up e-invoicing, credentials and codes',
+        sign: 'Sign ETA documents with the company token',
+        submit: 'Send documents to the tax authority',
+      },
     },
     // Giving somebody a role on the People screen.
     picker: {
@@ -6200,6 +6208,324 @@ export const en = {
   },
 
   // PDF documents made from submissions (docs/documents/ADR-0001).
+  eta: {
+    title: 'E-invoicing',
+    subtitle:
+      'Invoices sent to the Egyptian Tax Authority (ETA) as e-invoices, signed with your company’s own token.',
+    unavailable: 'E-invoicing is not switched on for your company, or your role cannot see it.',
+    back: 'Back to e-invoicing',
+    save: 'Save',
+    saving: 'Saving…',
+    tabs: { documents: 'Documents', settings: 'Settings', codes: 'Codes' },
+    environment: { preprod: 'PreProd (testing)', production: 'Production' },
+    state: {
+      ready: 'Ready to sign',
+      pending_signature: 'Waiting for signature',
+      signed: 'Signed',
+      submitting: 'Sending',
+      submitted: 'Sent, awaiting the ETA',
+      valid: 'Valid',
+      invalid: 'Invalid',
+      rejected: 'Rejected',
+      cancelled: 'Cancelled',
+      failed: 'Not sent',
+      unknown: 'Outcome unknown',
+      superseded: 'Replaced',
+    },
+    hint: {
+      ready:
+        'Ask for a signature. The company’s token signs it on the computer it is plugged into.',
+      pending_signature:
+        'Open the desktop app on the computer with the company’s token, go to the signing queue, check the document and sign it.',
+      signed: 'Signed and checked. Send it to the ETA when you are ready.',
+      submitting: 'Being sent to the ETA. This page refreshes by itself.',
+      submitted:
+        'The ETA has the document and is checking it. It is not valid until the ETA says so; the status is checked automatically.',
+      valid: 'The ETA accepted this document.',
+      invalid:
+        'The ETA checked the document and found problems. Correct the invoice or the codes, then prepare it again.',
+      rejected:
+        'The ETA refused the document when it was sent. Correct what it says, then prepare the invoice again.',
+      cancelled: 'This document is cancelled at the ETA.',
+      failed:
+        'The ETA did not accept the request, so nothing was received. Fix the cause shown, then send it again.',
+      unknown:
+        'No clear answer came back, so the document may or may not have reached the ETA. Look it up in the ETA portal, then say what you found.',
+      superseded: 'A newer document replaced this one.',
+    },
+    list: {
+      title: 'ETA documents',
+      filter: 'State',
+      all: 'All states',
+      empty: 'No ETA documents yet. Prepare one from an issued invoice.',
+      internalId: 'Invoice',
+      state: 'State',
+      environment: 'Environment',
+      total: 'Total (EGP)',
+      prepared: 'Prepared',
+      more: 'Show more',
+    },
+    document: {
+      sequence: 'ETA document {{sequence}}',
+      facts: 'Details',
+      prepared: 'Prepared',
+      signed: 'Signed',
+      submitted: 'Sent',
+      final: 'Final answer',
+      nextCheck: 'Next status check',
+      etaUuid: 'ETA UUID',
+      etaStatus: 'Status at the ETA',
+      digest: 'Document fingerprint (SHA-256)',
+      certificate: 'Signing certificate (SHA-256)',
+      invoice: 'Open the invoice',
+      errors: 'What the ETA said',
+      errorsHint: 'In the ETA’s own words.',
+      attempts: 'Calls to the ETA',
+      noAttempts: 'Nothing has been sent to the ETA for this document yet.',
+    },
+    attempt: {
+      kind: {
+        token: 'Sign-in',
+        submit: 'Send',
+        status: 'Status check',
+        cancel: 'Cancellation',
+        pdf: 'PDF',
+        schema: 'Schema',
+      },
+      outcome: {
+        ok: 'done',
+        accepted: 'accepted',
+        rejected: 'rejected',
+        error: 'failed',
+        unknown: 'no clear answer',
+      },
+    },
+    actions: {
+      prepare: 'Prepare ETA document',
+      prepareAgain: 'Prepare again',
+      requestSignature: 'Ask for signature',
+      withdraw: 'Withdraw the signing request',
+      submit: 'Send to the ETA',
+      sync: 'Check status now',
+      resolve: 'Say what happened',
+      pdf: 'Download the ETA PDF',
+      cancel: 'Cancel at the ETA',
+    },
+    signing: {
+      request: 'Signing request',
+      requestHint: 'Waiting for the signing agent until {{date}}.',
+    },
+    resolve: {
+      title: 'What happened to this document?',
+      intro:
+        'Search the ETA portal for this invoice number before you answer. Sending a document the ETA already has creates a duplicate.',
+      received: 'The ETA portal shows it',
+      notReceived: 'The ETA portal does not show it',
+      uuid: 'The document’s UUID in the portal',
+      notReceivedWarning: 'The document will be ready to send again.',
+      confirm: 'Save',
+    },
+    cancel: {
+      title: 'Cancel at the ETA',
+      intro:
+        'The ETA is asked to cancel this document. The invoice in Integr8 does not change: issue a credit note or void it as well.',
+      reason: 'Reason',
+      confirm: 'Ask the ETA to cancel',
+    },
+    lastError: {
+      eta_submission_interrupted:
+        'Sending was interrupted part-way, so it is not known whether the ETA received the document.',
+      eta_answer_unclear: 'The ETA answered, but the answer did not name this document.',
+      eta_document_rejected: 'The ETA refused this document. Its reasons are below.',
+      eta_signature_refused:
+        'The last signature was refused: it did not match the document or a certificate the company allows.',
+      eta_timeout: 'The ETA did not answer in time.',
+      eta_network: 'The ETA could not be reached.',
+      eta_server: 'The ETA had a problem of its own.',
+      eta_unauthorized: 'The ETA refused the company’s credentials.',
+      eta_forbidden: 'The ETA refused: these credentials may not do this.',
+      eta_bad_request: 'The ETA refused the request.',
+      eta_rate_limited: 'The ETA asked us to slow down.',
+      eta_not_found: 'The ETA does not know this document.',
+      eta_unexpected: 'The ETA’s answer was not understood.',
+      eta_environment_changed:
+        'The company switched ETA environment after this document was prepared. Prepare the invoice again.',
+      eta_credentials_missing: 'The company’s ETA credentials are not saved.',
+      eta_credentials_unreadable:
+        'The saved ETA credentials cannot be opened on this server. Enter them again.',
+      eta_key_missing: 'The server has no e-invoicing key yet. Ask Integr8.',
+      eta_disabled: 'E-invoicing is switched off in the company’s settings.',
+      eta_production_disabled: 'The ETA production environment is not enabled on this server.',
+      eta_document_unsigned: 'The document was not signed.',
+      other: 'Last error: {{code}}',
+    },
+    readiness: {
+      invoice_not_issued: 'The invoice is not issued.',
+      issuer_missing: 'Your company’s ETA details are not set (e-invoicing settings).',
+      issuer_field_missing: 'A company detail is missing in the e-invoicing settings ({{path}}).',
+      receiver_missing: 'The customer’s ETA details are not set.',
+      receiver_id_missing: 'The customer’s registration number is missing.',
+      receiver_address_missing: 'The customer’s address for ETA documents is missing.',
+      receiver_field_missing: 'A part of the customer’s address is missing ({{path}}).',
+      line_item_code_missing:
+        'A line has no item code, and there is no default item code ({{path}}).',
+      line_unit_unmapped: 'The unit “{{unit}}” has no ETA unit code (Codes).',
+      line_tax_unmapped: 'The tax rate {{rate}}% has no ETA tax type (Codes).',
+      exchange_rate_missing: 'Give the exchange rate from {{currency}} to EGP.',
+      exchange_rate_invalid: 'The exchange rate must be a positive number.',
+      text_unsupported:
+        'Quotation marks, backslashes and control characters cannot be sent yet ({{path}}).',
+      amount_invalid: 'An amount on a line is not a plain decimal ({{path}}).',
+      total_differs:
+        'The ETA total ({{eta}}) differs from the invoice total ({{invoice}}) because of rounding to five places.',
+      other: '{{code}} ({{path}})',
+    },
+    invoice: {
+      title: 'E-invoicing (ETA)',
+      environment: 'Sent to: {{environment}}',
+      disabled: 'E-invoicing is switched off in the company’s settings.',
+      exchangeRate: 'Exchange rate: EGP per 1 {{currency}}',
+      exchangeRateHint: 'Up to five decimal places. Saved with the document.',
+      ready: 'Ready to become an ETA document.',
+      fixFirst: 'Fix these first:',
+      worthALook: 'Worth a look:',
+      none: 'No ETA document has been made from this invoice yet.',
+    },
+    receiver: {
+      edit: 'Customer’s ETA details',
+      title: 'The customer on ETA documents',
+      intro:
+        'How this customer appears on documents sent to the ETA. The name comes from the invoice.',
+      type: 'Customer type',
+      types: { B: 'Business (registered)', P: 'Person (Egyptian)', F: 'Foreigner' },
+      id: 'Identifier',
+      idHint: {
+        B: 'The tax registration number.',
+        P: 'The national ID number, when the ETA requires it.',
+        F: 'The passport or foreign ID number, when the ETA requires it.',
+      },
+    },
+    address: {
+      country: 'Country code',
+      countryHint: 'Two letters, as in the ETA’s country codes: EG.',
+      governate: 'Governorate',
+      regionCity: 'Region or city',
+      street: 'Street',
+      buildingNumber: 'Building number',
+      postalCode: 'Postal code',
+      floor: 'Floor',
+      room: 'Room',
+      landmark: 'Landmark',
+      additionalInformation: 'More information',
+    },
+    settings: {
+      title: 'Your company at the ETA',
+      keyMissing:
+        'This server has no e-invoicing key yet, so credentials cannot be saved. Ask Integr8 to set it.',
+      enabled: 'E-invoicing is on for this company',
+      environment: 'ETA environment',
+      environmentHint: 'PreProd is the ETA’s test system. Production sends real tax documents.',
+      productionLocked: 'Production is not enabled on this server yet.',
+      confirmProduction:
+        'I understand that documents will be sent to the real Egyptian Tax Authority from now on.',
+      taxpayerId: 'Tax registration number',
+      issuerName: 'Registered name',
+      branchId: 'Branch ID',
+      branchHint: 'As registered at the ETA; usually 0 for the head office.',
+      activityCode: 'Activity code',
+      intermediaryFor: 'Acting for taxpayer (intermediaries only)',
+      intermediaryHint: 'Leave empty unless your credentials are an intermediary’s.',
+      address: 'Registered address',
+      defaultItem: 'Default item code',
+      defaultItemHint:
+        'Used for invoice lines whose item has no ETA code of its own. Your EGS or GS1 code as registered at the ETA.',
+      saved: 'Saved.',
+    },
+    credentials: {
+      title: 'ETA credentials',
+      intro:
+        'The client ID and secret of your company’s ERP system, from the ETA portal. They are locked on the server and never shown again, not even to you.',
+      saved: 'Saved: client ID ending {{hint}}, on {{date}}.',
+      none: 'No credentials saved.',
+      clientId: 'Client ID',
+      clientSecret: 'Client secret',
+      save: 'Save credentials',
+      replace: 'Replace credentials',
+      remove: 'Remove credentials',
+      check: 'Check with the ETA',
+      checked: 'The ETA accepted the credentials.',
+    },
+    certificates: {
+      title: 'Certificates allowed to sign',
+      intro:
+        'Only a signature made with one of these certificates is accepted. Export the public certificate from the company’s token (never the private key) and paste it here.',
+      none: 'No certificate yet: nothing can be signed.',
+      add: 'Certificate (PEM)',
+      addHint: 'Begins with -----BEGIN CERTIFICATE-----.',
+      save: 'Allow this certificate',
+      clear: 'Remove all certificates',
+    },
+    schemas: {
+      title: 'ETA invoice schema',
+      intro:
+        'Every document is checked against the ETA’s own schema before it is sent. Fetch it once per environment, and again when the ETA publishes a new version.',
+      none: 'No schema fetched yet: documents cannot be sent.',
+      list: 'List the ETA’s document types',
+      pick: 'Document type and version',
+      fetch: 'Fetch this schema',
+    },
+    agent: {
+      title: 'Signing queue',
+      intro:
+        'Documents waiting for the company’s signature. Each is checked on this computer before it is shown: what you see is read from the document that will be signed.',
+      empty: 'Nothing is waiting for a signature.',
+      review: 'Review',
+      expires: 'Expires {{date}}',
+      checked: 'Checked: this is exactly the document the request names.',
+      summary: {
+        internalId: 'Invoice',
+        documentType: 'Document type',
+        issuedAt: 'Issued',
+        issuer: 'Issuer',
+        receiver: 'Customer',
+        total: 'Total (EGP)',
+        environment: 'Environment',
+      },
+      noSigner:
+        'This build cannot sign yet: no driver for the company’s hardware token is included. The document was checked, but it stays unsigned until a signer for your token model is added.',
+      sign: 'Sign with the token',
+      refused: {
+        digest_mismatch: 'Refused: the document does not match the signing request.',
+        document_mismatch: 'Refused: this is not the document the request names.',
+        expired: 'Refused: the signing request has expired.',
+        certificate_unknown: 'Refused: that certificate is not on the token.',
+      },
+      close: 'Close',
+      open: 'Open the signing queue',
+      desktopOnly:
+        'Documents are signed in the desktop app, on the computer that holds the company’s token.',
+    },
+    codes: {
+      units: 'Units',
+      unitsHint:
+        'The ETA unit type code for each unit your invoices use, from the ETA’s unit types table.',
+      taxes: 'Tax rates',
+      taxesHint:
+        'The ETA tax type and subtype for each tax rate your invoices use, from the ETA’s tax types table.',
+      rate: 'Rate (%)',
+      taxType: 'Tax type',
+      subType: 'Subtype',
+      addTax: 'Add a rate',
+      remove: 'Remove',
+      itemCodes: 'Item codes',
+      itemCodesHint:
+        'A catalogue item’s own GS1 or EGS code. Items without one use the default item code. Clear the code and save to remove it.',
+      search: 'Find items',
+      itemsUnavailable: 'The catalogue is not available to you.',
+      itemType: 'Code type',
+      itemCode: 'Item code',
+    },
+  },
   documents: {
     title: 'Documents',
     intro:
@@ -6564,6 +6890,7 @@ export const en = {
       myPayslips: 'My payslips',
       assets: 'Assets',
       documents: 'Documents',
+      eInvoicing: 'E-invoicing',
     },
     hint: {
       dashboard: 'Where you are, and what needs doing.',
@@ -6617,6 +6944,7 @@ export const en = {
       myPayslips: 'Your payslips, to read and print.',
       assets: 'The machines you service, their tags and their history.',
       documents: 'The PDFs made from your submissions, their links and QR codes.',
+      eInvoicing: 'Invoices sent to the Egyptian Tax Authority, and their status.',
     },
   },
 

@@ -35,6 +35,7 @@ import { InventoryStockRepository } from './repositories/inventory-stock.js';
 import { FinanceInvoicesRepository } from './repositories/finance-invoices.js';
 import { FinancePaymentsRepository } from './repositories/finance-payments.js';
 import { AssetsRepository } from './repositories/assets.js';
+import { EtaRepository } from './repositories/e-invoicing.js';
 import {
   DocumentsRepository,
   DocumentTemplatesRepository,
@@ -164,6 +165,8 @@ export interface TenantTransaction {
   readonly documentTemplates: DocumentTemplatesRepository;
   /** PDFs made from submissions, their fields and their links. */
   readonly documents: DocumentsRepository;
+  /** Egyptian e-invoicing: settings, codes, ETA documents, attempts, signing (ADR-0014). */
+  readonly eta: EtaRepository;
   readonly ledger: LedgerRepository;
   readonly ledgerReports: LedgerReportsRepository;
   readonly memberGrants: MemberGrantsRepository;
@@ -452,6 +455,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     assets: new AssetsRepository(scope),
     documentTemplates: new DocumentTemplatesRepository(scope),
     documents: new DocumentsRepository(scope),
+    eta: new EtaRepository(scope),
     ledger: new LedgerRepository(scope),
     ledgerReports: new LedgerReportsRepository(scope),
     memberGrants: new MemberGrantsRepository(scope),

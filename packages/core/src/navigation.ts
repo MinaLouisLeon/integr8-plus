@@ -148,7 +148,8 @@ export type NavPath =
   | 'payrollRules'
   | 'myPayslips'
   | 'assets'
-  | 'documents';
+  | 'documents'
+  | 'eInvoicing';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   'overview',
@@ -287,6 +288,15 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     icon: 'wallet',
     permission: 'finance.read',
     feature: 'finance',
+  },
+  // Egyptian e-invoicing (ADR-0014): the company's `e_invoicing` module.
+  {
+    key: 'eInvoicing',
+    group: 'finance',
+    path: 'eInvoicing',
+    icon: 'scale',
+    permission: 'eta.read',
+    feature: 'e_invoicing',
   },
 
   // Accounting (CRM/ERP plan, phase A1; ADR-0009): the company's `ledger` module.

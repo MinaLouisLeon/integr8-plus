@@ -1,5 +1,6 @@
 export {
   OperationsContext,
+  useOperations,
   type OperationsConfig,
   type RowAction,
   type RowActionsEvent,
@@ -64,6 +65,10 @@ export { SalesOrderScreen } from './sales/order-screen.js';
 export { DeliveryNoteDocument, DeliveryNoteScreen } from './sales/deliveries.js';
 export { InvoiceListScreen, NewInvoiceDialog } from './finance/invoice-list.js';
 export { InvoiceScreen } from './finance/invoice-screen.js';
+export { EtaScreen } from './e-invoicing/eta-screen.js';
+export { EtaDocumentScreen } from './e-invoicing/eta-document-screen.js';
+export { InvoiceEtaPanel } from './e-invoicing/invoice-eta-panel.js';
+export { useEtaAccess } from './e-invoicing/eta-parts.js';
 export { InvoiceDocument, type InvoiceDocumentData } from './finance/invoice-document.js';
 export { PaymentListScreen } from './finance/payment-list.js';
 export { PaymentScreen } from './finance/payment-screen.js';

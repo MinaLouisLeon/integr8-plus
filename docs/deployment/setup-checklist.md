@@ -15,6 +15,9 @@ Stage 0 creates every account and collects every key and secret before anything 
 > [!NOTE]
 > **New: PDF documents.** Integr8 staff design PDF templates for a company's forms in the staff desktop app. The company turns a submission into a PDF with a QR code, keeps it in its own storage, and finds it again in a **Documents** register; its own website can look documents up with a **website key**. Nothing to set up on the server: the image brings what it needs. The steps: [Stage 3](#stage-3--the-env-file-filled-once-from-the-key-sheet) (one line to check), [Stage 7](#pdf-documents-for-this-company) (switching it on, a template, a first PDF, a website key) and [Stage 12](#k-this-update-pdf-documents) (bringing it to a running machine). The operator's details are in `docs/documents/RUNBOOK.md`.
 
+> [!NOTE]
+> **New, not in `main` yet: e-invoicing for the Egyptian Tax Authority (ETA).** A company prepares an ETA document from an issued invoice, signs it with its own token on the accountant's computer, and sends it; Integr8 follows its status until the ETA says it is valid. Each company enters its own ETA credentials, which are locked on the server. It is **not ready for real tax documents**: nothing has been sent to the ETA yet, and the desktop app cannot sign until a driver for the company's token is added. It arrives with the branch `claude/e-invoicing-eta`; until its pull request is in `main`, skip these steps. The steps: [Stage 0, Part B](#b-secrets-you-generate-yourself) (one more key), [Stage 3](#stage-3--the-env-file-filled-once-from-the-key-sheet) (where it goes), [Stage 7](#e-invoicing-eta-for-this-company) (setting a company up on the ETA's test system) and [Stage 12](#l-this-update-e-invoicing) (bringing it to a running machine). The operator's details are in `docs/e-invoicing/RUNBOOK.md`.
+
 > [!TIP]
 > GitHub shows the boxes below but does not let you tick them in a file. To track your progress, copy a stage into an issue (checkboxes there can be ticked), or open the interactive page described in the [last section](#about-this-page).
 
@@ -114,6 +117,11 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
 
 > [!WARNING]
 > `HR_DATA_KEY` belongs with the database backups: a backup restored without the key it was written with has those employee numbers unreadable for ever. Never generate a new one for an existing database; carry the same value to every new machine.
+
+- [ ] **The e-invoicing key.** The e-invoicing module locks each company's Egyptian Tax Authority (ETA) client ID and secret with this key: 32 random bytes written as base64, made with the same command as the HR data key (run it again; never reuse that value). Key sheet: `ETA_CREDENTIALS_KEY`. Without it companies cannot save their ETA credentials ("ETA key missing"); nothing else is affected.
+
+> [!WARNING]
+> `ETA_CREDENTIALS_KEY` also belongs with the database backups. Restored without it, every company's saved ETA credentials are unreadable and each company enters them again. E-invoicing is not ready to send real tax documents yet: leave `ETA_ALLOW_PRODUCTION=false` (see `docs/e-invoicing/RUNBOOK.md`).
 
 ### C. Oracle Cloud account
 
@@ -265,6 +273,7 @@ Every value, where it came from, and where it goes. `deploy/.env` is the one fil
 | `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`                                                                           | Part B, generated                   | `deploy/.env`, each twice (Stage 3)                                                                   |
 | `AUTH_SIGNING_KEY_ID`, `AUTH_SIGNING_KEY`, `AUTH_VERIFICATION_KEYS`, `PLATFORM_SECRET_KEY`                                                     | Part B, generated                   | `deploy/.env`                                                                                         |
 | `HR_DATA_KEY`                                                                                                                                  | Part B, generated                   | `deploy/.env`; also with the database backups. Never regenerated for an existing database             |
+| `ETA_CREDENTIALS_KEY`                                                                                                                          | Part B, generated                   | `deploy/.env`; also with the database backups. Never regenerated for an existing database             |
 | `BUILD_TOKEN`                                                                                                                                  | Part B, generated                   | `deploy/.env` (Stage 3) **and** GitHub secret (Part K), the same value                                |
 | SSH public key                                                                                                                                 | Part A                              | Oracle's instance form (Stage 1)                                                                      |
 | `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`                                                                            | Part D                              | `deploy/.env`                                                                                         |
@@ -466,6 +475,7 @@ MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoiaW50ZWdyOCIsImEiOiJjbG…
 
 - [ ] **Push.** `PUSH_SENDER=recording` becomes `expo`. Leave `# EXPO_ACCESS_TOKEN=` commented out: it is only needed if you turn on Expo's "enhanced push security", and you have not. (This is a different token from the `EXPO_TOKEN` GitHub uses.)
 - [ ] **HR data key.** Find `HR_DATA_KEY=` (after the Supabase block) and paste the value from the key sheet after the `=`. On a rebuilt machine it must be the **same** value the old machine had, or restored employee numbers cannot be read.
+- [ ] **E-invoicing key.** Find `ETA_CREDENTIALS_KEY=` (just after `HR_DATA_KEY`) and paste the value from the key sheet after the `=`. Leave `ETA_ALLOW_PRODUCTION=false` as it is. On a rebuilt machine it must be the **same** value the old machine had.
 - [ ] **Build token.** Find `BUILD_TOKEN=` (near `CONTACT_EMAIL`) and paste the value from the key sheet after the `=`. It is the token GitHub shows the API to list the companies whose apps it should build (Stage 8); the same value goes in the GitHub secret of that name.
 
 ```text
@@ -740,10 +750,25 @@ Only once `documents` is switched on under **Features**. Integr8 staff design th
 > [!NOTE]
 > **A PDF says "Failed"**: its page says why. The usual one is "This server cannot make PDFs at the moment": Stage 4's worker line names the reason. The full list, and what to do for each, is in `docs/documents/RUNBOOK.md`.
 
+### E-invoicing (ETA) for this company
+
+Only once `finance` and `e_invoicing` are both switched on under **Features**, and only on the ETA's test system (PreProd). You need the company's ETA registration details, the client ID and secret of its ERP system from the ETA portal, and the public certificate of its signing token; `docs/e-invoicing/ACCOUNTANT-CHECKLIST.md` is the list to send the company's accountant.
+
+- [ ] **The company's details**, as the owner in the web app: side menu → **E-invoicing** → **Settings**. Tick **E-invoicing is on**, keep **PreProd (testing)**, and fill in the tax registration number, registered name, branch ID, activity code, registered address and the default item code, exactly as registered at the ETA. **Save**. Production cannot be chosen: the server keeps it locked.
+- [ ] **The credentials**: on the same page, **Client ID** and **Client secret**, **Save credentials**. They are never shown again, not even to you; the page shows only the last four characters of the client ID. Then **Check with the ETA**: "The ETA accepted the credentials." Enter them as the company's own member: Integr8 staff acting as the company are refused.
+- [ ] **The signing certificate**: paste the token's public certificate (it begins `-----BEGIN CERTIFICATE-----`) and **Allow this certificate**. Never a private key: the page refuses one.
+- [ ] **The ETA's schema**: **List the ETA's document types**, pick the invoice type, version 1.0, and **Fetch this schema**. Every document is checked against it before it is sent.
+- [ ] **The codes**: the **Codes** tab. The ETA unit code for each unit the company's invoices use, the ETA tax type and subtype for each tax rate (14% is usually there), and item codes for catalogue items that have their own. All come from the ETA's code tables; nothing is suggested.
+- [ ] **Prepare a first document**: open an issued invoice. Its **E-invoicing (ETA)** panel lists what is still missing; **Customer's ETA details** sets the customer's type, registration number and address. When the panel says "Ready to become an ETA document", **Prepare ETA document**, then on the document **Ask for signature**.
+- [ ] **The signing queue**, in the company's desktop app on the computer that holds the token: **E-invoicing** → **Open the signing queue** → **Review**. It checks the document on that computer and shows what would be signed, then says "This build cannot sign yet". That is where it stops today: back on the document, **Withdraw the signing request**.
+
+> [!NOTE]
+> **What each state means, and what to do when a document says "Not sent", "Outcome unknown", "Rejected" or "Invalid"**, is in `docs/e-invoicing/RUNBOOK.md`. Never send a document again while it says "Outcome unknown": look it up in the ETA portal first, or the ETA receives it twice.
+
 - [ ] **Check the dashboard**: Companies lists the company with its billing mode; its page shows the owner, your impersonation in the history and the storage used; Health stays empty; Sentry shows no errors.
 
 > [!NOTE]
-> **Where things live.** Forms, job types, logo, icon, colours and theme: the staff desktop app, acting as the company. Plan, billing mode, modules (Features), website, the "build apps" switch and inviting the owner: the dashboard, the company's page. Company roles (a built-in role with permissions added or taken away): the company's owner, Settings → People. The AI assistant: its level, limits and whether answers come from AI or the help library, on the dashboard (Plans, or the company's **AI assistant** panel); which apps show it, in the company's switches; each person's share, by the owner under Settings → People or by you on the dashboard; dollar caps, on the dashboard only. PDF templates: the staff desktop app, a form's **PDF templates** tab. Website keys: the dashboard, the company's page, by the terminal account only. The company's owner changes timezone, currency and working hours in Settings → Company, and nothing about the look. Who may sign up: nobody; `/contact` shows `info@integr8-media.com`.
+> **Where things live.** Forms, job types, logo, icon, colours and theme: the staff desktop app, acting as the company. Plan, billing mode, modules (Features), website, the "build apps" switch and inviting the owner: the dashboard, the company's page. Company roles (a built-in role with permissions added or taken away): the company's owner, Settings → People. The AI assistant: its level, limits and whether answers come from AI or the help library, on the dashboard (Plans, or the company's **AI assistant** panel); which apps show it, in the company's switches; each person's share, by the owner under Settings → People or by you on the dashboard; dollar caps, on the dashboard only. PDF templates: the staff desktop app, a form's **PDF templates** tab. Website keys: the dashboard, the company's page, by the terminal account only. E-invoicing settings, credentials, certificates and codes: the company's owner or an admin, E-invoicing → Settings and Codes; signing: the company's desktop app, on the computer with the token. The company's owner changes timezone, currency and working hours in Settings → Company, and nothing about the look. Who may sign up: nobody; `/contact` shows `info@integr8-media.com`.
 
 ---
 
@@ -813,6 +838,7 @@ curl -s https://api.integr8-media.com/health/ready
 
 - [ ] **Rehearse a restore once**, before there is anything to lose: run the script by hand, restore the file with the command in the script's header, sign in afterwards. A backup that has never been restored is a hope.
 - [ ] **Keep `HR_DATA_KEY` with the backups**, in the password manager beside them. The dumps hold employees' identity and bank numbers encrypted with it; without the same key a restored database cannot show them.
+- [ ] **Keep `ETA_CREDENTIALS_KEY` with the backups** too. The dumps hold each company's ETA credentials locked with it; without the same key every company enters them again.
 
 ### C. The machine
 
@@ -1077,6 +1103,18 @@ PDF documents reached `main` after the assistant. A machine that runs the assist
 
 > [!WARNING]
 > **Rolling back with PDF documents.** To stop new PDFs without touching the code, switch `documents` off for the company: its menus and its QR code pages close at once, and nothing is deleted. To go back to the previous code (part I): leave migration 0048 applied, because the older version ignores its tables; its `.down.sql` deletes every document and template and is for development databases only.
+
+### L. This update: e-invoicing
+
+Only once the branch `claude/e-invoicing-eta` is in `main`. The same order as above, with these details.
+
+- [ ] **Make the e-invoicing key first**, with Stage 0, Part B, and add it to the key sheet: `ETA_CREDENTIALS_KEY`.
+- [ ] **Machine: parts B to E as usual.** The `comm` check in part C prints `ETA_CREDENTIALS_KEY=` and `ETA_ALLOW_PRODUCTION=`: add the key from the key sheet, and `ETA_ALLOW_PRODUCTION=false`. `migrate` applies `0049_e_invoicing`, an addition that changes no existing data.
+- [ ] **Nothing changes for any company yet**: `e_invoicing` is off for every company until you switch it on under **Features** (Stage 7). Leave production off.
+- [ ] **The apps** (part G): the web app has E-invoicing as soon as part D has run. The signing queue is in the desktop app, so send each company that uses e-invoicing its new desktop installer.
+
+> [!WARNING]
+> **Rolling back with e-invoicing.** To stop it without touching the code, switch `e_invoicing` off for the company: its menus close at once, and nothing is deleted. To go back to the previous code (part I): leave migration 0049 applied, because the older version ignores its tables; its `.down.sql` deletes every company's ETA settings, credentials and the record of every document sent, and is for development databases only.
 
 > [!NOTE]
 > **The test box (Stage 11)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout and `pull` its `:staging` images. Updating it first, the day before, is the cheapest rehearsal there is.

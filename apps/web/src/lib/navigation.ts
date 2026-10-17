@@ -59,6 +59,7 @@ export const NAV_PATHS: Readonly<Record<Exclude<NavPath, 'forms' | 'branding'>, 
   myPayslips: '/hr/payslips',
   assets: '/assets',
   documents: '/documents',
+  eInvoicing: '/e-invoicing',
 };
 
 /**

@@ -22,6 +22,24 @@ money stays in SQL `numeric`, with BigInt helpers for addition and
 multiplication in code. A PDF renderer is re-checked only if a later phase
 emails invoices as attachments.
 
+## Added for Egyptian e-invoicing (ADR-0014)
+
+In `@integr8/eta` only. Versions exact; each licence read from the installed
+package's own `package.json` and licence file on 2026-10-17; `pnpm licences:check`
+passes with their transitive dependencies.
+
+| Package       | Version | Licence      | Reason                                                                                                              |
+| ------------- | ------- | ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `pkijs`       | 3.4.1   | BSD-3-Clause | Builds the detached CAdES-BES `SignedData` around the token's signature, and verifies a returned one on the server. |
+| `asn1js`      | 3.1.0   | BSD-3-Clause | The DER encoding under `pkijs`: signed attributes, the issuer name taken byte for byte from the certificate.        |
+| `ajv`         | 8.20.0  | MIT          | Validates each signed document against the JSON Schema the company fetched from the ETA, before anything is sent.   |
+| `ajv-formats` | 3.0.1   | MIT          | The `date-time` and other formats such a schema may use.                                                            |
+
+Considered and **not installed**: a JSON library keeping number lexemes (the
+package's own `json-text.ts` does it, so no amount is ever a JavaScript
+float), `node-forge` (larger, and `pkijs` already covers CMS), and any PKCS#11
+binding (needs the token's model first; PLAN §9).
+
 ## Licence audit of the existing direct dependencies
 
 Read on 2026-10-11 from each installed package's own `package.json`

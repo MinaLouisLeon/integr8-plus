@@ -162,6 +162,45 @@ export const apiErrorsEn = {
   empty_run: 'Nobody is paid in this run.',
   end_before_hire: 'Employment must end on or after the hire date.',
   end_pairing: 'Give an end date with its reason, or neither.',
+  eta_arithmetic: "The document's amounts do not add up. Prepare the invoice again.",
+  eta_certificate_unreadable:
+    'That is not a certificate that can be read. Export the public certificate from the token and try again.',
+  eta_credentials_missing:
+    "Save the company's ETA client ID and secret in the e-invoicing settings first.",
+  eta_credentials_rejected:
+    "The tax authority refused the company's ETA credentials. Check the client ID and secret registered in the ETA portal.",
+  eta_credentials_unreadable:
+    'The saved ETA credentials can no longer be opened on this server. Enter them again.',
+  eta_disabled: "E-invoicing is switched off in this company's settings.",
+  eta_document_live:
+    'This invoice already has an ETA document that is being sent, sent or accepted. Cancel it at the ETA before preparing another.',
+  eta_document_unsigned: 'An unsigned document is never sent. Sign it first.',
+  eta_environment_changed:
+    'This document was prepared for another ETA environment. Prepare the invoice again.',
+  eta_key_missing:
+    'ETA credentials cannot be stored or used until the e-invoicing key is set on the server. Ask Integr8 to set it.',
+  eta_no_certificates: 'Choose the certificate allowed to sign in the e-invoicing settings first.',
+  eta_not_found: 'The tax authority does not know that document.',
+  eta_not_ready: 'The invoice is not ready to become an ETA document. Fix the items listed.',
+  eta_private_key_refused: 'Send only the public certificate, never a private key.',
+  eta_production_disabled:
+    'The ETA production environment is not enabled on this server. Ask Integr8.',
+  eta_production_owner_only: "Only the company's owner can switch e-invoicing to production.",
+  eta_production_unconfirmed: 'Confirm that documents will go to the real tax authority.',
+  eta_rate_limited: 'The tax authority asked us to slow down. Try again in a minute.',
+  eta_refused: 'The tax authority refused the request.',
+  eta_request_closed: 'That signing request is already finished.',
+  eta_request_unavailable:
+    'That signing request has expired, finished, or is being signed on another computer.',
+  eta_schema_invalid: "The document does not pass the tax authority's schema.",
+  eta_schema_missing: "Fetch the tax authority's invoice schema in the e-invoicing settings first.",
+  eta_schema_unreadable: "The tax authority's answer is not a schema that can be used.",
+  eta_signature_refused: 'The signature was refused. The document is ready to be signed again.',
+  eta_staff_refused:
+    "Integr8 staff cannot do this for a company. Sign in as the company's own member.",
+  eta_state_conflict: 'This document has moved on since you opened it. Reload to see where it is.',
+  eta_tax_rate_repeated: 'Give each tax rate once.',
+  eta_unreachable: 'The tax authority could not be reached. Try again later.',
   export_not_ready:
     'A company is scheduled for deletion only once its export is ready. Wait for the export, then try again.',
   filter_needs_form: 'Choose a form before filtering by an answer.',
