@@ -22,6 +22,7 @@
     "@dnd-kit/utilities": "3.2.2",
     "@integr8/api-client": "workspace:*",
     "@integr8/core": "workspace:*",
+    "@integr8/document-render": "workspace:*",
     "@integr8/form-engine": "workspace:*",
     "@integr8/form-renderer-dom": "workspace:*",
     "@integr8/i18n": "workspace:*",

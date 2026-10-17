@@ -35,6 +35,12 @@ import { InventoryStockRepository } from './repositories/inventory-stock.js';
 import { FinanceInvoicesRepository } from './repositories/finance-invoices.js';
 import { FinancePaymentsRepository } from './repositories/finance-payments.js';
 import { AssetsRepository } from './repositories/assets.js';
+import {
+  DocumentsRepository,
+  DocumentTemplatesRepository,
+  PublicDocumentsLookup,
+  WebsiteKeysRepository,
+} from './repositories/documents.js';
 import { LedgerRepository } from './repositories/ledger.js';
 import { LedgerReportsRepository } from './repositories/ledger-reports.js';
 import { MemberGrantsRepository } from './repositories/member-grants.js';
@@ -154,6 +160,10 @@ export interface TenantTransaction {
   readonly financeInvoices: FinanceInvoicesRepository;
   readonly financePayments: FinancePaymentsRepository;
   readonly assets: AssetsRepository;
+  /** A form's PDF templates (documents ADR-0001). */
+  readonly documentTemplates: DocumentTemplatesRepository;
+  /** PDFs made from submissions, their fields and their links. */
+  readonly documents: DocumentsRepository;
   readonly ledger: LedgerRepository;
   readonly ledgerReports: LedgerReportsRepository;
   readonly memberGrants: MemberGrantsRepository;
@@ -278,6 +288,10 @@ export interface PlatformDataSource {
   readonly tenantSettings: TenantSettingsWriter;
   /** Which company a quote's customer link belongs to (CRM/ERP plan, S1; ADR-0006). */
   readonly publicQuotes: PublicQuotesLookup;
+  /** Which company a document's QR code belongs to (documents ADR-0001 D7). */
+  readonly publicDocuments: PublicDocumentsLookup;
+  /** Company websites' keys for the document lookup (D10, D11). */
+  readonly websiteKeys: WebsiteKeysRepository;
   /** The assistant's plan policies, company overrides, help library, budget and usage report (docs/ai; ADR-0001). */
   readonly ai: AiPlatformRepository;
 }
@@ -436,6 +450,8 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     financeInvoices: new FinanceInvoicesRepository(scope),
     financePayments: new FinancePaymentsRepository(scope),
     assets: new AssetsRepository(scope),
+    documentTemplates: new DocumentTemplatesRepository(scope),
+    documents: new DocumentsRepository(scope),
     ledger: new LedgerRepository(scope),
     ledgerReports: new LedgerReportsRepository(scope),
     memberGrants: new MemberGrantsRepository(scope),
@@ -542,6 +558,8 @@ export function getPlatformDataSource(): PlatformDataSource {
     signup: new SignupRepository(db),
     tenantSettings: new TenantSettingsWriter(db),
     publicQuotes: new PublicQuotesLookup(db),
+    publicDocuments: new PublicDocumentsLookup(db),
+    websiteKeys: new WebsiteKeysRepository(db),
     ai: new AiPlatformRepository(db),
     jobs: {
       claim: (options) => claimJobs(db, options),

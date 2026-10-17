@@ -23,6 +23,7 @@ import {
   sameDefinition,
 } from '../model/recovery';
 import { useDraftSync } from '../use-draft-sync';
+import { DocumentDesigner } from '../../documents/designer';
 
 /**
  * The form builder.
@@ -71,20 +72,28 @@ export function FormBuilderRoute() {
       detail={detail.data}
       tenantId={me.data.tenantId}
       manage={canManageForms(me.data)}
+      documents={{
+        design: me.data.permissions.includes('document.design'),
+        enabled: me.data.features.documents === true,
+        companyName: me.data.company?.name ?? '',
+      }}
     />
   );
 }
 
-type Tab = 'build' | 'preview' | 'changes' | 'history' | 'settings';
+type Tab = 'build' | 'preview' | 'changes' | 'history' | 'settings' | 'pdf';
 
 function Builder({
   detail,
   tenantId,
   manage,
+  documents,
 }: {
   detail: FormDetail;
   tenantId: string;
   manage: boolean;
+  /** PDF templates (docs/documents): whether this seat designs them, and whether the company has them. */
+  documents: { design: boolean; enabled: boolean; companyName: string };
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
@@ -135,6 +144,14 @@ function Builder({
   });
 
   const compiled = useMemo(() => compileDefinition(editor.definition), [editor.definition]);
+  // PDF templates are designed against the form as published: that is what submissions answer.
+  const liveForm = useMemo(() => {
+    if (live === null) {
+      return null;
+    }
+    const result = compileDefinition(live.definition);
+    return result.ok ? result.form : null;
+  }, [live]);
   // Every id a published version has used: the live version's, plus everything an earlier
   // publish removed (each version's change summary records it). Submissions are stored under
   // these keys, so a new question must never be given one of them.
@@ -183,9 +200,12 @@ function Builder({
     dispatch({ type: 'select', id: elementId });
   };
 
-  const tabs: Tab[] = manage
-    ? ['build', 'preview', 'changes', 'history', 'settings']
-    : ['build', 'preview', 'history'];
+  const tabs: Tab[] = [
+    ...(manage
+      ? (['build', 'preview', 'changes', 'history', 'settings'] as const)
+      : (['build', 'preview', 'history'] as const)),
+    ...(documents.design ? (['pdf'] as const) : []),
+  ];
   const problems = compiled.ok ? 0 : compiled.issues.length;
 
   return (
@@ -250,7 +270,7 @@ function Builder({
                 : 'border-transparent text-content-muted hover:text-content',
             ].join(' ')}
           >
-            {t(`forms.builder.tabs.${name}`)}
+            {name === 'pdf' ? t('documents.designer.tab') : t(`forms.builder.tabs.${name}`)}
           </button>
         ))}
       </div>
@@ -382,6 +402,16 @@ function Builder({
 
       {tab === 'history' ? <HistoryPanel formId={formId} locale={locale} /> : null}
       {tab === 'settings' ? <SettingsPanel detail={detail} /> : null}
+      {tab === 'pdf' ? (
+        <DocumentDesigner
+          formId={formId}
+          formTitle={detail.form.title}
+          form={liveForm}
+          locale={locale}
+          enabled={documents.enabled}
+          companyName={documents.companyName}
+        />
+      ) : null}
 
       {manage && publishing ? (
         <PublishDialog

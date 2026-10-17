@@ -101,7 +101,8 @@ services:
       retries: 5
 
   # The same image as the API, running the job worker: thumbnails, geocoding,
-  # push, email, media maintenance, dunning, scheduled tasks. Scale separately.
+  # push, email, PDF documents, media maintenance, dunning, scheduled tasks.
+  # Scale separately.
   worker:
     <<: [*api-image, *api-env, *logging]
     command: ['node', 'dist/jobs/worker-main.js']

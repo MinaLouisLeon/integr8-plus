@@ -136,6 +136,20 @@ export const apiErrorsEn = {
   deletion_scheduled: 'This company is already scheduled for deletion.',
   deliberate_probe: 'A deliberate error, raised to test reporting.',
   description_required: 'Describe the line: a line without an item needs a description.',
+  document_expired: "This document's link has been stopped by the company that issued it.",
+  document_expiry_past: 'The expiry date has already passed. Choose a later one.',
+  document_fields_invalid:
+    'Some document fields are missing or too long. Check the fields marked below.',
+  document_link_unavailable:
+    'Documents cannot be made yet: this server has no web address for the QR code. Ask Integr8.',
+  document_template_archived: 'This template is archived. Choose another one.',
+  document_template_changed:
+    'Someone else saved this template meanwhile. Open it again to see their changes.',
+  document_template_image_unusable:
+    'A picture in the template is not usable. Upload it again as a PNG, JPEG or WebP image.',
+  document_template_invalid: 'The template has problems. Each one is listed below.',
+  document_template_problem: 'This part of the template needs fixing.',
+  document_template_wrong_form: 'This template belongs to another form.',
   draft_changed:
     'The draft was saved again since you reviewed it. Review it again before publishing.',
   draft_conflict:
@@ -152,6 +166,8 @@ export const apiErrorsEn = {
     'A company is scheduled for deletion only once its export is ready. Wait for the export, then try again.',
   filter_needs_form: 'Choose a form before filtering by an answer.',
   form_not_on_work_order: 'This form is no longer one of the job’s forms.',
+  form_not_published:
+    'Publish the form first; its documents are designed against the published version.',
   form_started: 'Someone has started this form for this job, so it stays on the job.',
   form_unknown: 'Choose a published form.',
   form_version_unavailable:
@@ -385,6 +401,7 @@ export const apiErrorsEn = {
     'This would take the company past its storage allowance. Delete some files, or ask for a larger plan.',
   submission_changed:
     'This submission was changed elsewhere since you loaded it. Reload it and try again.',
+  submission_draft: 'A draft cannot be made into a document. Submit it first.',
   submission_id_taken:
     'This form clashed with another submission. Discard it and fill it in again.',
   submission_limit_reached:
@@ -418,6 +435,9 @@ export const apiErrorsEn = {
     'Somebody else changed this while you were looking at it. Reload it and try again.',
   view_name_taken: 'You already have a view with this name. Choose another.',
   waits_for_invoice: 'Post or set aside the invoice it follows first.',
+  website_key_invalid: 'This website key is not valid. Ask Integr8 for a new one.',
+  website_key_limit:
+    'This company already has two live website keys. Revoke one before making another.',
   work_order_changed:
     'This job was changed elsewhere since you loaded it. Reload it and try again.',
   work_order_closed: 'This job is closed. Reopen it before changing it.',

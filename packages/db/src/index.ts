@@ -360,6 +360,7 @@ export type {
   StorageUsage,
   UploadIntent,
 } from './repositories/files.js';
+export { DOCUMENT_FILE_ENTITY, TEMPLATE_ASSET_ENTITY } from './repositories/files.js';
 
 export type { StorageRegistry, TenantBucket } from './repositories/storage-registry.js';
 
@@ -477,6 +478,20 @@ export {
   PublicQuotesLookup,
   SalesQuotesRepository,
 } from './repositories/sales-quotes.js';
+export {
+  type DocumentFieldValue,
+  type DocumentListQuery,
+  type DocumentRecord,
+  type DocumentTemplate,
+  type WebsiteKey,
+  DocumentsRepository,
+  DocumentTemplatesRepository,
+  linkOpens,
+  MAX_LIVE_WEBSITE_KEYS,
+  normalizeFieldValue,
+  PublicDocumentsLookup,
+  WebsiteKeysRepository,
+} from './repositories/documents.js';
 export {
   type OrderWorkOrderLink,
   type Reservation,
@@ -765,6 +780,8 @@ export {
   type FormTemplateCategory,
   type FormVersionStatus,
   type MediaCategory,
+  type DocumentLookupRole,
+  type DocumentStatus,
   type StorageProvider,
   type ThumbnailStatus,
   type UsageCategory,

@@ -35,7 +35,17 @@ async function main(): Promise<void> {
   // invitation should go through the same code an HTTP request does.
   const services = await buildServices({ config });
 
-  const worker = new Worker({ config, logger, handlers: buildJobHandlers(services) });
+  const worker = new Worker({ config, logger, handlers: buildJobHandlers(services, config) });
+
+  // PDF documents (ADR-0001 D12): a worker that cannot print says so once, at
+  // the start, and every other job runs as before. Documents asked for are
+  // marked failed with the same reason.
+  const printer = await services.pdf.status();
+  if (printer.ok) {
+    logger.info('PDF documents can be printed', { renderer: services.pdf.kind });
+  } else {
+    logger.error('PDF documents cannot be printed', { reason: printer.reason });
+  }
 
   // Media housekeeping on a timer, alongside the queue. Several workers running
   // it at once is safe: every step is idempotent.
@@ -161,6 +171,7 @@ async function main(): Promise<void> {
   // finished, so a deploy never kills a job halfway.
   await worker.run();
   await maintenanceRun;
+  await services.pdf.close();
   await closeDatabase();
   await flushSentry();
 }

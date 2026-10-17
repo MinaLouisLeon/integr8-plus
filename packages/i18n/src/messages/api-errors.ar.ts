@@ -112,6 +112,18 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   deletion_scheduled: 'حذف هذه الشركة مجدول بالفعل.',
   deliberate_probe: 'خطأ متعمَّد لاختبار الإبلاغ عن الأخطاء.',
   description_required: 'صِف السطر: السطر الذي لا يحمل صنفًا يحتاج إلى وصف.',
+  document_expired: 'أوقفت الشركة التي أصدرت هذا المستند رابطه.',
+  document_expiry_past: 'تاريخ الانتهاء قد مضى. اختر تاريخًا لاحقًا.',
+  document_fields_invalid: 'بعض حقول المستند ناقصة أو أطول من المسموح. راجع الحقول المحددة أدناه.',
+  document_link_unavailable:
+    'لا يمكن إنشاء المستندات بعد: لا يوجد لهذا الخادم عنوان ويب لرمز QR. تواصل مع Integr8.',
+  document_template_archived: 'هذا القالب مؤرشف. اختر قالبًا آخر.',
+  document_template_changed: 'حفظ شخص آخر هذا القالب في الأثناء. افتحه من جديد لترى تغييراته.',
+  document_template_image_unusable:
+    'صورة في القالب غير صالحة للاستخدام. ارفعها من جديد بصيغة PNG أو JPEG أو WebP.',
+  document_template_invalid: 'في القالب مشكلات، كل منها مذكور أدناه.',
+  document_template_problem: 'هذا الجزء من القالب يحتاج إلى تصحيح.',
+  document_template_wrong_form: 'هذا القالب يخص نموذجًا آخر.',
   draft_changed: 'حُفظت المسودة مرة أخرى منذ راجعتها. راجعها من جديد قبل النشر.',
   draft_conflict:
     'تغيّرت هذه المسودة في مكان آخر أثناء تعديلك لها. أعد تحميلها، ثم أجرِ تغييرك مرة أخرى.',
@@ -127,6 +139,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
     'لا يُجدوَل حذف شركة إلا بعد أن يجهز تصدير بياناتها. انتظر حتى يجهز التصدير، ثم حاول مرة أخرى.',
   filter_needs_form: 'اختر نموذجًا قبل التصفية حسب إجابة.',
   form_not_on_work_order: 'لم يعد هذا النموذج من نماذج المهمة.',
+  form_not_published: 'انشر النموذج أولًا؛ فمستنداته تُصمَّم على النسخة المنشورة.',
   form_started: 'بدأ أحدهم تعبئة هذا النموذج لهذه المهمة، لذا يبقى ضمنها.',
   form_unknown: 'اختر نموذجًا منشورًا.',
   form_version_unavailable:
@@ -344,6 +357,7 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   storage_quota_exceeded:
     'سيتجاوز هذا مساحة التخزين المتاحة للشركة. احذف بعض الملفات، أو اطلب خطة أكبر.',
   submission_changed: 'تغيّر هذا الإرسال في مكان آخر منذ حمّلته. أعد تحميله وحاول مرة أخرى.',
+  submission_draft: 'لا يمكن تحويل مسودة إلى مستند. أرسلها أولًا.',
   submission_id_taken: 'تعارض هذا النموذج مع إرسال آخر. تجاهله وعبّئه من جديد.',
   submission_limit_reached:
     'استُنفدت إرسالات هذه الخطة لهذا الشهر. تتجدد في بداية الشهر القادم، أو ترفع خطة أكبر هذا الحد.',
@@ -371,6 +385,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   version_conflict: 'غيّر شخص آخر هذا بينما كنت تطّلع عليه. أعد تحميله وحاول مرة أخرى.',
   view_name_taken: 'لديك عرض بهذا الاسم بالفعل. اختر اسمًا آخر.',
   waits_for_invoice: 'رحّل الفاتورة التي يتبعها أو استبعدها أولًا.',
+  website_key_invalid: 'مفتاح الموقع هذا غير صالح. اطلب مفتاحًا جديدًا من Integr8.',
+  website_key_limit: 'لدى هذه الشركة مفتاحا موقع فعّالان. ألغِ أحدهما قبل إنشاء مفتاح جديد.',
   work_order_changed: 'تغيّرت هذه المهمة في مكان آخر منذ حمّلتها. أعد تحميلها وحاول مرة أخرى.',
   work_order_closed: 'هذه المهمة مغلقة. أعد فتحها قبل تغييرها.',
   work_order_not_customers: 'اختر إحدى مهام العميل.',

@@ -60,6 +60,8 @@ import {
   PayrollRulesScreen,
   MyPayslipsScreen,
   AssetListScreen,
+  DocumentListScreen,
+  DocumentScreen,
   AssistantScreen,
   WarrantyAlertsPanel,
   AssetScreen,
@@ -168,6 +170,8 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         financeSettings: '/finance/settings',
         assets: '/assets',
         asset: (id) => `/assets/${id}`,
+        documents: '/documents',
+        document: (id) => `/documents/${id}`,
         ledger: '/ledger',
         ledgerAccounts: '/ledger/accounts',
         journals: '/ledger/journals',
@@ -720,6 +724,24 @@ export function AssetRoute() {
   return (
     <OperationsScreens>
       <AssetScreen key={assetId} assetId={assetId} />
+    </OperationsScreens>
+  );
+}
+
+/** PDF documents made from submissions (docs/documents). */
+export function DocumentsRoute() {
+  return (
+    <OperationsScreens>
+      <DocumentListScreen />
+    </OperationsScreens>
+  );
+}
+
+export function DocumentRoute() {
+  const { documentId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <DocumentScreen key={documentId} documentId={documentId} />
     </OperationsScreens>
   );
 }

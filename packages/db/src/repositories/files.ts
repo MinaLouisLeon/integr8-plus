@@ -11,6 +11,11 @@ import {
 } from '../schema.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
+/** What a PDF template's images are linked to; retention leaves these alone. */
+export const TEMPLATE_ASSET_ENTITY = 'document_template';
+/** What a generated PDF is linked to. */
+export const DOCUMENT_FILE_ENTITY = 'document';
+
 export interface UploadIntent {
   id: string;
   tenantId: TenantId;
@@ -210,6 +215,66 @@ export class FilesRepository extends TenantScopedRepository {
     return toFile(row);
   }
 
+  /**
+   * Records an object the server wrote itself, such as a generated PDF
+   * (documents ADR-0001 D5). The facts are what storage reported after the
+   * put, as with {@link confirm}; there is no intent, because no client asked
+   * to upload anything.
+   */
+  async recordGenerated(input: {
+    id: string;
+    bucket: string;
+    storageKey: string;
+    stored: ConfirmedFile;
+    category: MediaCategory;
+    uploadedBy: UserId | string;
+    linkedEntity: { type: string; id: string };
+  }): Promise<FileRecord> {
+    const row = await this.db
+      .insertInto('files')
+      .values({
+        id: input.id,
+        tenant_id: this.tenantId,
+        bucket: input.bucket,
+        storage_key: input.storageKey,
+        byte_size: input.stored.byteSize,
+        etag: input.stored.etag,
+        content_type: input.stored.contentType,
+        category: input.category,
+        uploaded_by: toUserId(input.uploadedBy),
+        linked_entity_type: input.linkedEntity.type,
+        linked_entity_id: input.linkedEntity.id,
+        thumbnail_status: 'none',
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return toFile(row);
+  }
+
+  /**
+   * Ties an uploaded file to the record that uses it, such as a PDF
+   * template's background. Only a file not yet tied to anything else.
+   */
+  async link(fileId: string, entity: { type: string; id: string }): Promise<boolean> {
+    const result = await this.db
+      .updateTable('files')
+      .set({ linked_entity_type: entity.type, linked_entity_id: entity.id })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', fileId)
+      .where('deleted_at', 'is', null)
+      .where((eb) =>
+        eb.or([
+          eb('linked_entity_type', 'is', null),
+          eb.and([
+            eb('linked_entity_type', '=', entity.type),
+            eb('linked_entity_id', '=', entity.id),
+          ]),
+        ]),
+      )
+      .executeTakeFirst();
+    return Number(result.numUpdatedRows) > 0;
+  }
+
   // -------------------------------------------------------------------------
   // Files
   // -------------------------------------------------------------------------
@@ -309,6 +374,15 @@ export class FilesRepository extends TenantScopedRepository {
       .where('deleted_at', 'is', null)
       .where('purged_at', 'is', null)
       .where('created_at', '<', before)
+      // A PDF template's images are part of the template, not of any one
+      // submission: retiring them would break every later document
+      // (documents ADR-0001 D5).
+      .where((eb) =>
+        eb.or([
+          eb('linked_entity_type', 'is', null),
+          eb('linked_entity_type', '!=', TEMPLATE_ASSET_ENTITY),
+        ]),
+      )
       .where('id', 'in', (select) =>
         select
           .selectFrom('files')
@@ -317,6 +391,12 @@ export class FilesRepository extends TenantScopedRepository {
           .where('deleted_at', 'is', null)
           .where('purged_at', 'is', null)
           .where('created_at', '<', before)
+          .where((eb) =>
+            eb.or([
+              eb('linked_entity_type', 'is', null),
+              eb('linked_entity_type', '!=', TEMPLATE_ASSET_ENTITY),
+            ]),
+          )
           .orderBy('created_at')
           .limit(options.limit ?? 500),
       )

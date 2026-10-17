@@ -31,6 +31,7 @@ function FormScreens({ children }: { children: ReactNode }) {
         submissions: '/submissions',
         submission: (id) => `/submissions/${id}`,
         workOrder: (id) => `/work-orders/${id}`,
+        document: (id) => `/documents/${id}`,
       },
       download: saveFile,
       ...(menu.enabled

@@ -352,6 +352,35 @@ export const apiConfigSchema = z.object({
   SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
 
   // -------------------------------------------------------------------------
+  // PDF documents (docs/documents; ADR-0001)
+  // -------------------------------------------------------------------------
+
+  /**
+   * What prints a document. `chromium` is the real thing; `recording` makes a
+   * plain placeholder PDF for tests and machines without Chromium, and
+   * production refuses it.
+   */
+  PDF_RENDERER: z.enum(['chromium', 'recording']).default('chromium'),
+  /**
+   * The Chromium the worker starts. The API image installs Debian's at this
+   * path. A path with nothing there does not stop the server: the worker says
+   * so when it starts, and each document asked for is marked failed with
+   * `renderer_unavailable` (ADR-0001 D12).
+   */
+  PDF_CHROMIUM_PATH: z.string().min(1).default('/usr/bin/chromium'),
+  /** Longest one document may take to print, well inside the worker's lease. */
+  PDF_RENDER_TIMEOUT_MS: positiveInt(30_000),
+  /** Documents printed at once by one worker: each is a Chromium tab. */
+  PDF_MAX_CONCURRENT: positiveInt(2),
+  /**
+   * Lookups one website key may make per window (ADR-0001 D10). A company's
+   * website asks once per visitor's search; this is room for a busy day and
+   * not for walking every code.
+   */
+  WEBSITE_LOOKUP_RATE_LIMIT: positiveInt(60),
+  WEBSITE_LOOKUP_RATE_WINDOW_SECONDS: positiveInt(60),
+
+  // -------------------------------------------------------------------------
   // Worker
   // -------------------------------------------------------------------------
 
@@ -635,6 +664,11 @@ export function assertProductionReady(config: ApiConfig): void {
     if (missing !== undefined) {
       problems.push(missing);
     }
+  }
+  if (config.PDF_RENDERER === 'recording') {
+    problems.push(
+      'PDF_RENDERER is recording: every PDF document would be a placeholder page, not the template.',
+    );
   }
   if (config.API_RELEASE === 'development') {
     problems.push('API_RELEASE is not set: reported errors could not be tied to a build.');

@@ -91,6 +91,9 @@ export interface OperationsConfig {
     /** Assets (CRM/ERP plan, phase E3). */
     assets: string;
     asset: (id: string) => string;
+    /** PDF documents made from submissions (docs/documents). */
+    documents: string;
+    document: (id: string) => string;
     /** The general ledger (CRM/ERP plan, phase A1; ADR-0009). */
     ledger: string;
     ledgerAccounts: string;
@@ -187,6 +190,7 @@ export interface RowTarget {
     | 'invoice'
     | 'payment'
     | 'asset'
+    | 'document'
     | 'journal'
     | 'posting'
     | 'employee'
@@ -370,6 +374,9 @@ export type AssetTimelineEntry = Json<
 >['entries'][number];
 export type JobAssets = Json<'/v1/work-orders/{workOrderId}/assets', 'get', 200>;
 export type AssetSettings = Json<'/v1/assets/settings', 'get', 200>;
+export type DocumentRow = Json<'/v1/documents', 'get', 200>['items'][number];
+export type DocumentDetail = Json<'/v1/documents/{documentId}', 'get', 200>;
+export type DocumentState = 'active' | 'expired' | 'pending' | 'failed';
 export type LedgerOverview = Json<'/v1/ledger', 'get', 200>;
 export type LedgerSettings = NonNullable<LedgerOverview['settings']>;
 export type LedgerAccount = Json<'/v1/ledger/accounts', 'get', 200>['items'][number];
@@ -500,6 +507,8 @@ export const keys = {
   assetTimeline: (id: string) => ['assets', 'timeline', id] as const,
   jobAssets: (id: string) => ['assets', 'job', id] as const,
   assetSettings: ['assets', 'settings'] as const,
+  documents: (query: object) => ['documents', 'list', query] as const,
+  document: (id: string) => ['documents', 'document', id] as const,
   ledger: ['ledger', 'overview'] as const,
   ledgerAccounts: (archived: boolean) => ['ledger', 'accounts', archived] as const,
   journals: (query: object) => ['ledger', 'journals', query] as const,

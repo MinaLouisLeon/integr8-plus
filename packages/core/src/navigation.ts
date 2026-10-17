@@ -147,7 +147,8 @@ export type NavPath =
   | 'payRuns'
   | 'payrollRules'
   | 'myPayslips'
-  | 'assets';
+  | 'assets'
+  | 'documents';
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   'overview',
@@ -182,6 +183,15 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'submissions',
     icon: 'inbox',
     permission: 'form.read',
+  },
+  // PDF documents made from submissions (documents ADR-0001): the `documents` module.
+  {
+    key: 'documents',
+    group: 'work',
+    path: 'documents',
+    icon: 'file-text',
+    permission: 'document.read',
+    feature: 'documents',
   },
   { key: 'workOrders', group: 'work', path: 'workOrders', icon: 'briefcase' },
   {

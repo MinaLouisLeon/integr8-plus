@@ -74,7 +74,7 @@ async function upload(token: string, contentType = 'image/jpeg', bytes = 2_000) 
 }
 
 async function runJobs(queue: string) {
-  const handlers = buildJobHandlers(api.services);
+  const handlers = buildJobHandlers(api.services, api.config);
   // The test database is shared: other suites leave jobs of their own companies,
   // which stay leased here and are never run. Claim until nothing is left.
   for (;;) {

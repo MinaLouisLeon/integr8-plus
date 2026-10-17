@@ -70,6 +70,8 @@ export { PaymentScreen } from './finance/payment-screen.js';
 export { FinanceSettingsScreen } from './finance/finance-settings.js';
 export { AssetListScreen } from './assets/asset-list.js';
 export { AssetScreen } from './assets/asset-screen.js';
+export { DocumentListScreen } from './documents/document-list.js';
+export { DocumentScreen } from './documents/document-screen.js';
 export { NewAssetDialog } from './assets/asset-parts.js';
 export { AssetTagOpener } from './assets/asset-tag-open.js';
 export { AssetSettingsDialog, WarrantyAlertsPanel } from './assets/warranty.js';

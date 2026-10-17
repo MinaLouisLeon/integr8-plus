@@ -37,6 +37,7 @@ import { messageForError } from '~/lib/errors';
 import { formatBytes, formatDate, formatDuration, formatWhen } from '~/lib/platform-format';
 import { platformClient } from '~/lib/platform-session';
 import { planLabel } from '~/lib/plans';
+import { WebsiteKeysPanel } from './website-keys';
 
 /**
  * One company, and everything you can do to it (P15).
@@ -127,6 +128,7 @@ export default function CompanyPage() {
       <InvitationsPanel tenantId={tenantId} invitations={detail.invitations} />
       <AppsPanel tenantId={tenantId} settings={detail.settings} />
       <AiPanel tenantId={tenantId} />
+      <WebsiteKeysPanel tenantId={tenantId} />
       <AiMembersPanel tenantId={tenantId} />
       <BillingPanel billing={detail.billing} />
 

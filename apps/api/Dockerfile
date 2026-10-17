@@ -40,12 +40,21 @@ RUN pnpm turbo run build --filter=@integr8/api...
 RUN pnpm deploy --legacy --filter @integr8/api --prod /out
 
 # ---------------------------------------------------------------------------
-# Runtime: the pruned tree, an unprivileged user, and nothing else.
+# Runtime: the pruned tree, Chromium for PDFs, an unprivileged user, and
+# nothing else.
 # ---------------------------------------------------------------------------
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
+# Chromium prints PDF documents in the worker (docs/documents ADR-0001 D4), and
+# the Noto fonts give it Latin and Arabic to print with. Debian's own packages,
+# so their security fixes arrive with the base image. The API process never
+# starts Chromium; it is here because the worker is this same image.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends chromium fonts-noto-core fonts-dejavu-core \
+  && rm -rf /var/lib/apt/lists/*
+ENV PDF_CHROMIUM_PATH=/usr/bin/chromium
 WORKDIR /app
 COPY --from=build --chown=node:node /out ./
 # Local media storage is for development; production refuses it. The directory

@@ -12,6 +12,7 @@ import { funnelRoutes } from './funnel.js';
 import { platformHealthRoutes } from './health.js';
 import { platformSupportRoutes } from './support.js';
 import { platformTemplateRoutes } from './templates.js';
+import { platformWebsiteKeyRoutes } from './website-keys.js';
 
 /**
  * The super admin dashboard's API (P15).
@@ -34,6 +35,7 @@ export const platformRoutes: AnyRoute[] = [
   ...platformSupportRoutes,
   ...platformStaffRoutes,
   ...platformStorageRoutes,
+  ...platformWebsiteKeyRoutes,
   ...platformHealthRoutes,
   ...funnelRoutes,
 ];

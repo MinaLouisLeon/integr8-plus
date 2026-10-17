@@ -284,7 +284,7 @@ export function defineMediaSuite(storage: 'local' | 'r2'): void {
       expect(claimed).toHaveLength(1);
 
       const before = await usage();
-      await buildJobHandlers(api.services)[THUMBNAIL_QUEUE]!(claimed[0]!.payload, {
+      await buildJobHandlers(api.services, api.config)[THUMBNAIL_QUEUE]!(claimed[0]!.payload, {
         tenantId: api.tenantId,
         jobId: claimed[0]!.id,
         attempt: 1,
@@ -316,7 +316,7 @@ export function defineMediaSuite(storage: 'local' | 'r2'): void {
 
     it('marks a thumbnail failed, without retrying, for an image that cannot be read', async () => {
       const file = await upload(tokens.engineer, new TextEncoder().encode('not really a jpeg'));
-      await buildJobHandlers(api.services)[THUMBNAIL_QUEUE]!(
+      await buildJobHandlers(api.services, api.config)[THUMBNAIL_QUEUE]!(
         { fileId: file.id },
         { tenantId: api.tenantId, jobId: 'direct', attempt: 1, logger },
       );
