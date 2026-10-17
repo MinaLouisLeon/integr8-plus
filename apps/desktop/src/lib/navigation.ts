@@ -67,6 +67,7 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   myPayslips: '/hr/payslips',
   assets: '/assets',
   documents: '/documents',
+  eInvoicing: '/e-invoicing',
 };
 
 /**

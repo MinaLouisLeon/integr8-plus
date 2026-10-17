@@ -94,6 +94,11 @@ export interface OperationsConfig {
     /** PDF documents made from submissions (docs/documents). */
     documents: string;
     document: (id: string) => string;
+    /** Egyptian e-invoicing (docs/e-invoicing; ADR-0014): the register and one ETA document. */
+    eInvoicing: string;
+    etaDocument: (id: string) => string;
+    /** The signing agent's queue, where the host app has one (the desktop app). */
+    etaSigning?: string;
     /** The general ledger (CRM/ERP plan, phase A1; ADR-0009). */
     ledger: string;
     ledgerAccounts: string;
@@ -377,6 +382,20 @@ export type AssetSettings = Json<'/v1/assets/settings', 'get', 200>;
 export type DocumentRow = Json<'/v1/documents', 'get', 200>['items'][number];
 export type DocumentDetail = Json<'/v1/documents/{documentId}', 'get', 200>;
 export type DocumentState = 'active' | 'expired' | 'pending' | 'failed';
+export type EtaSettings = Json<'/v1/eta/settings', 'get', 200>;
+export type EtaAddress = EtaSettings['address'];
+export type EtaCodes = Json<'/v1/eta/codes', 'get', 200>;
+export type EtaReceiver = EtaCodes['receivers'][number];
+export type EtaSchemaSummary = Json<'/v1/eta/schemas', 'get', 200>['items'][number];
+export type EtaAvailableType = Json<'/v1/eta/schemas/available', 'get', 200>['items'][number];
+export type EtaDocumentPage = Json<'/v1/eta/documents', 'get', 200>;
+export type EtaDocument = EtaDocumentPage['items'][number];
+export type EtaDocumentState = EtaDocument['state'];
+export type EtaDocumentDetail = Json<'/v1/eta/documents/{documentId}', 'get', 200>;
+export type EtaInvoicePanel = Json<'/v1/eta/invoices/{invoiceId}', 'get', 200>;
+export type EtaReadinessIssue = EtaInvoicePanel['readiness'][number];
+export type EtaSigningRequest = Json<'/v1/eta/signing-requests', 'get', 200>['items'][number];
+export type EtaClaimed = Json<'/v1/eta/signing-requests/{requestId}/claim', 'post', 200>;
 export type LedgerOverview = Json<'/v1/ledger', 'get', 200>;
 export type LedgerSettings = NonNullable<LedgerOverview['settings']>;
 export type LedgerAccount = Json<'/v1/ledger/accounts', 'get', 200>['items'][number];
@@ -509,6 +528,14 @@ export const keys = {
   assetSettings: ['assets', 'settings'] as const,
   documents: (query: object) => ['documents', 'list', query] as const,
   document: (id: string) => ['documents', 'document', id] as const,
+  etaSettings: ['eta', 'settings'] as const,
+  etaCodes: ['eta', 'codes'] as const,
+  etaSchemas: ['eta', 'schemas'] as const,
+  etaDocuments: (query: object) => ['eta', 'documents', query] as const,
+  etaDocument: (id: string) => ['eta', 'document', id] as const,
+  etaInvoice: (invoiceId: string, exchangeRate: string) =>
+    ['eta', 'invoice', invoiceId, exchangeRate] as const,
+  etaSigningQueue: ['eta', 'signing-queue'] as const,
   ledger: ['ledger', 'overview'] as const,
   ledgerAccounts: (archived: boolean) => ['ledger', 'accounts', archived] as const,
   journals: (query: object) => ['ledger', 'journals', query] as const,

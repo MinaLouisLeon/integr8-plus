@@ -99,6 +99,8 @@ export function OperationsScreens({ children }: { children: ReactNode }) {
         asset: (id) => `/assets/${id}`,
         documents: '/documents',
         document: (id) => `/documents/${id}`,
+        eInvoicing: '/e-invoicing',
+        etaDocument: (id) => `/e-invoicing/documents/${id}`,
         ledger: '/ledger',
         ledgerAccounts: '/ledger/accounts',
         journals: '/ledger/journals',

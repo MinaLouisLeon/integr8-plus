@@ -1,5 +1,7 @@
 import { useTranslation } from '@integr8/i18n';
 import {
+  EtaDocumentScreen,
+  EtaScreen,
   CrmOverviewScreen,
   CustomerListScreen,
   CustomerScreen,
@@ -87,6 +89,7 @@ import {
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useContextMenu } from '~/components/context-menu';
+import { EtaSigningQueue } from '~/features/e-invoicing/signing-queue';
 import { useCustomerChrome, useSiteChrome, useWorkOrderChrome } from '~/components/record-chrome';
 import { MAP_TILES } from '~/lib/env';
 import { session } from '~/lib/session';
@@ -172,6 +175,9 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         asset: (id) => `/assets/${id}`,
         documents: '/documents',
         document: (id) => `/documents/${id}`,
+        eInvoicing: '/e-invoicing',
+        etaDocument: (id) => `/e-invoicing/documents/${id}`,
+        etaSigning: '/e-invoicing/signing',
         ledger: '/ledger',
         ledgerAccounts: '/ledger/accounts',
         journals: '/ledger/journals',
@@ -742,6 +748,33 @@ export function DocumentRoute() {
   return (
     <OperationsScreens>
       <DocumentScreen key={documentId} documentId={documentId} />
+    </OperationsScreens>
+  );
+}
+
+/** Egyptian e-invoicing (docs/e-invoicing; ADR-0014). */
+export function EtaRoute() {
+  return (
+    <OperationsScreens>
+      <EtaScreen />
+    </OperationsScreens>
+  );
+}
+
+export function EtaDocumentRoute() {
+  const { documentId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <EtaDocumentScreen key={documentId} documentId={documentId} />
+    </OperationsScreens>
+  );
+}
+
+/** The signing agent: this computer holds the company's token. */
+export function EtaSigningRoute() {
+  return (
+    <OperationsScreens>
+      <EtaSigningQueue />
     </OperationsScreens>
   );
 }

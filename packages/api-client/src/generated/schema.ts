@@ -19181,8 +19181,10 @@ export interface operations {
                         attempts: {
                             /** Format: uuid */
                             id: string;
-                            kind: string;
-                            outcome: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
                             httpStatus: number | null;
                             errorCode: string | null;
                             message: string | null;
@@ -19338,8 +19340,10 @@ export interface operations {
                         attempts: {
                             /** Format: uuid */
                             id: string;
-                            kind: string;
-                            outcome: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
                             httpStatus: number | null;
                             errorCode: string | null;
                             message: string | null;
@@ -19500,8 +19504,10 @@ export interface operations {
                         attempts: {
                             /** Format: uuid */
                             id: string;
-                            kind: string;
-                            outcome: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
                             httpStatus: number | null;
                             errorCode: string | null;
                             message: string | null;
@@ -19878,8 +19884,10 @@ export interface operations {
                         attempts: {
                             /** Format: uuid */
                             id: string;
-                            kind: string;
-                            outcome: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
                             httpStatus: number | null;
                             errorCode: string | null;
                             message: string | null;
@@ -20043,8 +20051,10 @@ export interface operations {
                         attempts: {
                             /** Format: uuid */
                             id: string;
-                            kind: string;
-                            outcome: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
                             httpStatus: number | null;
                             errorCode: string | null;
                             message: string | null;
@@ -20214,8 +20224,10 @@ export interface operations {
                         attempts: {
                             /** Format: uuid */
                             id: string;
-                            kind: string;
-                            outcome: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
                             httpStatus: number | null;
                             errorCode: string | null;
                             message: string | null;
@@ -20389,8 +20401,10 @@ export interface operations {
                         attempts: {
                             /** Format: uuid */
                             id: string;
-                            kind: string;
-                            outcome: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
                             httpStatus: number | null;
                             errorCode: string | null;
                             message: string | null;
@@ -20562,8 +20576,10 @@ export interface operations {
                         attempts: {
                             /** Format: uuid */
                             id: string;
-                            kind: string;
-                            outcome: string;
+                            /** @enum {string} */
+                            kind: "token" | "submit" | "status" | "cancel" | "pdf" | "schema";
+                            /** @enum {string} */
+                            outcome: "ok" | "accepted" | "rejected" | "error" | "unknown";
                             httpStatus: number | null;
                             errorCode: string | null;
                             message: string | null;

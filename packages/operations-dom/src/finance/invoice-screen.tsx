@@ -27,6 +27,7 @@ import {
   RecordPaymentDialog,
   useFinanceAccess,
 } from './finance-parts.js';
+import { InvoiceEtaPanel } from '../e-invoicing/invoice-eta-panel.js';
 import { InvoiceDocument } from './invoice-document.js';
 
 /**
@@ -518,6 +519,14 @@ export function InvoiceScreen({ invoiceId }: { invoiceId: string }) {
               ))}
             </ul>
           </section>
+        )}
+
+        {invoice.reference === null ? null : (
+          <InvoiceEtaPanel
+            invoiceId={invoice.id}
+            customerId={invoice.customer.id}
+            currencyCode={invoice.currencyCode}
+          />
         )}
 
         {dialog === 'issue' ? (

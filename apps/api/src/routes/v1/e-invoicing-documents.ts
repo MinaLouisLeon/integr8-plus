@@ -1,5 +1,11 @@
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
-import { ETA_DOCUMENT_STATES, ETA_ENVIRONMENTS, formatInvoiceReference } from '@integr8/core';
+import {
+  ETA_ATTEMPT_KINDS,
+  ETA_ATTEMPT_OUTCOMES,
+  ETA_DOCUMENT_STATES,
+  ETA_ENVIRONMENTS,
+  formatInvoiceReference,
+} from '@integr8/core';
 import { type EtaDocumentRecord, type TenantTransaction, withTenant } from '@integr8/db';
 import {
   buildInvoiceDocument,
@@ -81,8 +87,8 @@ const signingRequestSchema = z.object({
 
 const attemptSchema = z.object({
   id: z.uuid(),
-  kind: z.string(),
-  outcome: z.string(),
+  kind: z.enum(ETA_ATTEMPT_KINDS),
+  outcome: z.enum(ETA_ATTEMPT_OUTCOMES),
   httpStatus: z.number().int().nullable(),
   errorCode: z.string().nullable(),
   message: z.string().nullable(),
