@@ -33,6 +33,8 @@ export const MODULE_FEATURES = [
   'manufacturing',
   // PDF documents made from submissions (documents ADR-0001).
   'documents',
+  // Egyptian e-invoicing with the Tax Authority (ADR-0014).
+  'e_invoicing',
 ] as const;
 export const moduleFeatureSchema = z.enum(MODULE_FEATURES);
 export type ModuleFeature = z.infer<typeof moduleFeatureSchema>;
@@ -46,6 +48,7 @@ export const MODULE_REQUIRES: Readonly<Partial<Record<ModuleFeature, readonly Mo
   Object.freeze({
     payroll: ['hr'],
     manufacturing: ['inventory'],
+    e_invoicing: ['finance'],
   });
 
 /** True when a company's resolved flags (as `/v1/me` returns them) include this module and what it needs. */
