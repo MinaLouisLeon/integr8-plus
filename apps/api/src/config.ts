@@ -234,9 +234,10 @@ export const apiConfigSchema = z.object({
    * The bearer token the release pipeline presents to `GET /v1/build/companies`
    * to learn which companies' apps to build. Unset means the route answers
    * 404: a deployment that builds no company apps exposes no list of them.
-   * Long and random; GitHub holds the same value as a repository secret.
+   * Blank counts as unset. Long and random; GitHub holds the same value as a
+   * repository secret.
    */
-  BUILD_TOKEN: z.string().min(32).optional(),
+  BUILD_TOKEN: blankIsUnset(z.string().min(32).optional()),
 
   // -------------------------------------------------------------------------
   // The AI assistant (docs/ai; ADR-0001)
@@ -337,17 +338,19 @@ export const apiConfigSchema = z.object({
 
   /**
    * Encrypts employees' national ID, social insurance and bank account
-   * numbers at rest (ADR-0010): 32 bytes, base64. Unset means those fields
-   * cannot be written or revealed (503 `hr_key_missing`); everything else in
-   * HR works. Losing it loses those fields: keep it with the backups.
+   * numbers at rest (ADR-0010): 32 bytes, base64. Unset or blank means those
+   * fields cannot be written or revealed (503 `hr_key_missing`); everything
+   * else in HR works. Losing it loses those fields: keep it with the backups.
    */
-  HR_DATA_KEY: z
-    .string()
-    .refine(
-      (value) => Buffer.from(value, 'base64').length === 32,
-      'HR_DATA_KEY must be 32 bytes, base64',
-    )
-    .optional(),
+  HR_DATA_KEY: blankIsUnset(
+    z
+      .string()
+      .refine(
+        (value) => Buffer.from(value, 'base64').length === 32,
+        'HR_DATA_KEY must be 32 bytes, base64',
+      )
+      .optional(),
+  ),
 
   // -------------------------------------------------------------------------
   // Egyptian e-invoicing (docs/e-invoicing; ADR-0014)

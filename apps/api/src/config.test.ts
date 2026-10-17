@@ -122,3 +122,18 @@ describe('e-invoicing settings', () => {
     expect(loadApiConfig({ ETA_CREDENTIALS_KEY: key }).ETA_CREDENTIALS_KEY).toBe(key);
   });
 });
+
+describe('other optional keys left blank in the env file', () => {
+  // deploy/.env.example has an empty line for each; an operator who leaves one
+  // empty must get the feature switched off, not a server that will not start.
+  it('reads a blank HR_DATA_KEY and BUILD_TOKEN as not set', () => {
+    const config = loadApiConfig({ HR_DATA_KEY: '', BUILD_TOKEN: '' });
+    expect(config.HR_DATA_KEY).toBeUndefined();
+    expect(config.BUILD_TOKEN).toBeUndefined();
+  });
+
+  it('still refuses them when set and wrong', () => {
+    expect(() => loadApiConfig({ HR_DATA_KEY: 'too-short' })).toThrow(/HR_DATA_KEY/u);
+    expect(() => loadApiConfig({ BUILD_TOKEN: 'short' })).toThrow(/BUILD_TOKEN/u);
+  });
+});
