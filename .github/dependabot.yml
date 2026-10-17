@@ -49,6 +49,12 @@ updates:
         update-types: ['version-update:semver-minor', 'version-update:semver-major']
       - dependency-name: 'react-native-*'
         update-types: ['version-update:semver-major']
+      # `tauri build` refuses to run when @tauri-apps/api and the Rust `tauri`
+      # crate (apps/desktop/src-tauri/Cargo.lock) differ in major or minor, and
+      # Dependabot does not update the Cargo side. Tauri minors are moved by
+      # hand, npm and Cargo together; patches still come through here.
+      - dependency-name: '@tauri-apps/*'
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: /
