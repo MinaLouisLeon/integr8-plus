@@ -70,7 +70,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: identifiers?.androidPackage ?? 'com.integr8.plus',
-      edgeToEdgeEnabled: true,
+      // Edge to edge is always on from SDK 58 (Android 16 requires it), so there is no switch.
       ...(hasIcon
         ? { adaptiveIcon: { foregroundImage: './company/icon.png', backgroundColor: background } }
         : {}),

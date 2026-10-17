@@ -20,8 +20,8 @@
     "test:integration": "vitest run --project integration"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "3.1131.0",
-    "@aws-sdk/s3-request-presigner": "3.1131.0",
+    "@aws-sdk/client-s3": "3.1149.0",
+    "@aws-sdk/s3-request-presigner": "3.1149.0",
     "@integr8/auth": "workspace:*",
     "@integr8/core": "workspace:*",
     "@integr8/db": "workspace:*",
@@ -40,7 +40,7 @@
     "@integr8/form-input": "workspace:*",
     "@integr8/offline": "workspace:*",
     "@integr8/typescript-config": "workspace:*",
-    "@types/node": "26.6.4",
+    "@types/node": "26.6.5",
     "eslint": "10.12.0",
     "tsx": "4.23.13",
     "typescript": "6.0.3",

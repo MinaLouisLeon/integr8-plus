@@ -32,7 +32,7 @@ import { GOLDEN_PATH, PACKAGE_ROOT } from './paths.js';
  * ## Which Hermes, honestly
  *
  * The newest prebuilt Hermes command-line runner is 0.13, published for React
- * Native 0.75. The mobile app runs React Native 0.86, which ships Hermes V1 —
+ * Native 0.75. The mobile app runs React Native 0.88, which ships Hermes V1 —
  * newer, and able to run ES6 classes natively where 0.13 cannot parse them. So
  * Babel is told nothing about the engine here and lowers classes, as it would
  * for an older engine.

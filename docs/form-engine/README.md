@@ -290,7 +290,7 @@ helpers, and runs it in Hermes. CI does this on every pull request, with the Her
 download pinned by SHA-256.
 
 **What that proves, exactly.** The newest prebuilt Hermes command-line runner is the
-`v0.13.0` release, whose binary reports `0.12.0`. React Native 0.86 ships Hermes V1, which
+`v0.13.0` release, whose binary reports `0.12.0`. React Native 0.88 ships Hermes V1, which
 is newer. So the CI run is a genuine second engine — different regular expressions,
 number printing, BigInt and string library from V8 — reproducing Node's output byte for
 byte. It is not the exact engine in the phone. P13 closes that gap: `@integr8/form-engine/conformance`

@@ -8,7 +8,7 @@ import {
 import { type DependentChoices, errorMessage, say } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
-import { forwardRef, type ReactNode } from 'react';
+import { type ComponentRef, forwardRef, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '~/components/ui';
 import {
@@ -54,99 +54,101 @@ export interface FieldBlockProps {
   onBlur: () => void;
 }
 
-export const FieldBlock = forwardRef<View, FieldBlockProps>(function FieldBlock(props, ref) {
-  const { field, value, errors, locale, disabled, choices, onAnswer, onClear, onBlur } = props;
-  const required = props.required ?? field.required === true;
-  const { t } = useTranslation();
-  const theme = useTheme();
-  const label = say(field.label, locale) || field.id;
-  const translate = t as unknown as (key: string, params: Record<string, string>) => string;
+export const FieldBlock = forwardRef<ComponentRef<typeof View>, FieldBlockProps>(
+  function FieldBlock(props, ref) {
+    const { field, value, errors, locale, disabled, choices, onAnswer, onClear, onBlur } = props;
+    const required = props.required ?? field.required === true;
+    const { t } = useTranslation();
+    const theme = useTheme();
+    const label = say(field.label, locale) || field.id;
+    const translate = t as unknown as (key: string, params: Record<string, string>) => string;
 
-  const heading = (
-    <Text style={[styles.label, { color: theme.text }]}>
-      {label}
-      {required ? (
-        <Text accessibilityLabel={` (${t('fill.required')})`} style={{ color: theme.danger }}>
-          {' *'}
-        </Text>
-      ) : null}
-    </Text>
-  );
-  const help =
-    field.help === undefined ? null : (
-      <Text style={[styles.help, { color: theme.textMuted }]}>{say(field.help, locale)}</Text>
-    );
-  // Nothing to choose from until the question this one depends on is answered.
-  const noChoices =
-    choices === undefined || choices.options.length > 0 ? null : (
-      <Text style={[styles.help, { color: theme.textMuted }]}>
-        {choices.parentAnswered
-          ? t('fill.dependsOn.none', { parent: choices.parentLabel })
-          : t('fill.dependsOn.chooseFirst', { parent: choices.parentLabel })}
+    const heading = (
+      <Text style={[styles.label, { color: theme.text }]}>
+        {label}
+        {required ? (
+          <Text accessibilityLabel={` (${t('fill.required')})`} style={{ color: theme.danger }}>
+            {' *'}
+          </Text>
+        ) : null}
       </Text>
     );
-  const messages =
-    errors.length === 0 ? null : (
-      <View accessibilityLiveRegion="polite" style={styles.errors}>
-        {errors.map((error) => (
-          <Text
-            key={`${error.code}-${error.params.rule ?? ''}`}
-            style={[styles.error, { color: theme.danger }]}
-          >
-            {errorMessage(field, error, locale, translate)}
-          </Text>
-        ))}
-      </View>
-    );
-
-  if (isCalculated(field)) {
-    return (
-      <View ref={ref} style={styles.block}>
-        {heading}
-        {help}
-        <View
-          accessible
-          accessibilityLabel={`${label}: ${calculatedText(field, value) || '—'}`}
-          style={[styles.calculated, { backgroundColor: theme.surfaceMuted }]}
-        >
-          <Text style={[styles.calculatedValue, { color: theme.text }]}>
-            {calculatedText(field, value) || '—'}
-            {'unit' in field && field.unit !== undefined && value !== undefined
-              ? ` ${field.unit}`
-              : ''}
-          </Text>
+    const help =
+      field.help === undefined ? null : (
+        <Text style={[styles.help, { color: theme.textMuted }]}>{say(field.help, locale)}</Text>
+      );
+    // Nothing to choose from until the question this one depends on is answered.
+    const noChoices =
+      choices === undefined || choices.options.length > 0 ? null : (
+        <Text style={[styles.help, { color: theme.textMuted }]}>
+          {choices.parentAnswered
+            ? t('fill.dependsOn.none', { parent: choices.parentLabel })
+            : t('fill.dependsOn.chooseFirst', { parent: choices.parentLabel })}
+        </Text>
+      );
+    const messages =
+      errors.length === 0 ? null : (
+        <View accessibilityLiveRegion="polite" style={styles.errors}>
+          {errors.map((error) => (
+            <Text
+              key={`${error.code}-${error.params.rule ?? ''}`}
+              style={[styles.error, { color: theme.danger }]}
+            >
+              {errorMessage(field, error, locale, translate)}
+            </Text>
+          ))}
         </View>
-        <Text style={[styles.help, { color: theme.textMuted }]}>{t('fill.calculated')}</Text>
+      );
+
+    if (isCalculated(field)) {
+      return (
+        <View ref={ref} style={styles.block}>
+          {heading}
+          {help}
+          <View
+            accessible
+            accessibilityLabel={`${label}: ${calculatedText(field, value) || '—'}`}
+            style={[styles.calculated, { backgroundColor: theme.surfaceMuted }]}
+          >
+            <Text style={[styles.calculatedValue, { color: theme.text }]}>
+              {calculatedText(field, value) || '—'}
+              {'unit' in field && field.unit !== undefined && value !== undefined
+                ? ` ${field.unit}`
+                : ''}
+            </Text>
+          </View>
+          <Text style={[styles.help, { color: theme.textMuted }]}>{t('fill.calculated')}</Text>
+        </View>
+      );
+    }
+
+    const widgetProps: WidgetProps = {
+      field,
+      value,
+      label,
+      invalid: errors.length > 0,
+      available: choices?.options,
+      disabled: disabled || field.readOnly === true,
+      locale,
+      onAnswer,
+      onClear,
+      onBlur,
+    };
+
+    return (
+      <View
+        ref={ref}
+        style={[styles.block, errors.length > 0 ? { borderStartColor: theme.danger } : null]}
+      >
+        {field.type === 'checkbox' ? null : heading}
+        {help}
+        {widget(widgetProps)}
+        {noChoices}
+        {messages}
       </View>
     );
-  }
-
-  const widgetProps: WidgetProps = {
-    field,
-    value,
-    label,
-    invalid: errors.length > 0,
-    available: choices?.options,
-    disabled: disabled || field.readOnly === true,
-    locale,
-    onAnswer,
-    onClear,
-    onBlur,
-  };
-
-  return (
-    <View
-      ref={ref}
-      style={[styles.block, errors.length > 0 ? { borderStartColor: theme.danger } : null]}
-    >
-      {field.type === 'checkbox' ? null : heading}
-      {help}
-      {widget(widgetProps)}
-      {noChoices}
-      {messages}
-    </View>
-  );
-});
+  },
+);
 
 function widget(props: WidgetProps): ReactNode {
   switch (props.field.type) {

@@ -12,7 +12,7 @@ import {
 } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { radii, spacing } from '@integr8/tokens';
-import { useEffect, useRef, useState } from 'react';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { Image, type LayoutChangeEvent, PanResponder, StyleSheet, View } from 'react-native';
 import Svg, { Path, Rect, Text as SvgText } from 'react-native-svg';
 import { captureRef } from 'react-native-view-shot';
@@ -101,7 +101,7 @@ export function SignaturePad({
 }) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const surface = useRef<View>(null);
+  const surface = useRef<ComponentRef<typeof View>>(null);
   const [path, setPath] = useState('');
   // The drawing in progress lives outside React state: a finger reports points
   // far faster than the pad should re-render, and only the path is drawn.

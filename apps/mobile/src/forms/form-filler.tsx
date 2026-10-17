@@ -2,7 +2,7 @@ import { touchKey } from '@integr8/form-engine';
 import { dependentChoices, entriesOf, entryTitle, isRequiredNow, say } from '@integr8/form-input';
 import { useTranslation } from '@integr8/i18n';
 import { fontSize, radii, spacing } from '@integr8/tokens';
-import { useRef, useState, useSyncExternalStore } from 'react';
+import { type ComponentRef, useRef, useState, useSyncExternalStore } from 'react';
 import {
   AccessibilityInfo,
   KeyboardAvoidingView,
@@ -72,9 +72,9 @@ export function FormFiller(props: FormFillerProps) {
   const theme = useTheme();
   const snapshot = useSyncExternalStore(model.subscribe, model.snapshot);
   const { view, pages, pageIndex, reviewing, problems } = snapshot;
-  const scroll = useRef<ScrollView>(null);
-  const content = useRef<View>(null);
-  const questions = useRef(new Map<string, View>());
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const content = useRef<ComponentRef<typeof View>>(null);
+  const questions = useRef(new Map<string, ComponentRef<typeof View>>());
   const [contents, setContents] = useState(false);
   const [reason, setReason] = useState('');
   const [reasonMissing, setReasonMissing] = useState(false);
@@ -134,7 +134,7 @@ export function FormFiller(props: FormFillerProps) {
     }
   };
 
-  const register = (id: string) => (node: View | null) => {
+  const register = (id: string) => (node: ComponentRef<typeof View> | null) => {
     if (node === null) {
       questions.current.delete(id);
     } else {

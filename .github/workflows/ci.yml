@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Install Node
         uses: actions/setup-node@v5
@@ -95,7 +95,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Install Node
         uses: actions/setup-node@v5
@@ -122,7 +122,7 @@ jobs:
     #
     # The Hermes command-line runner is pinned by checksum. It is the newest
     # prebuilt one Facebook publishes (the v0.13.0 release, whose binary reports
-    # itself as 0.12.0); the phone runs Hermes V1 inside React Native 0.86.
+    # itself as 0.12.0); the phone runs Hermes V1 inside React Native 0.88.
     # docs/form-engine/README.md says exactly what that does and does not prove.
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -135,7 +135,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Install Node
         uses: actions/setup-node@v5
@@ -199,7 +199,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Install Node
         uses: actions/setup-node@v5
