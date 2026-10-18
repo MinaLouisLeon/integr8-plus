@@ -1,6 +1,7 @@
 import { withTenant } from '@integr8/db';
 import { EtaApiError } from '@integr8/eta/node';
 import type { ApiConfig } from '../config.js';
+import { isFeatureEnabled } from '../http/features.js';
 import type { Logger } from '../http/logger.js';
 import {
   checkStatus,
@@ -22,6 +23,11 @@ import { type EtaServices, openEtaClient } from './services.js';
  * until the ETA gives a final answer or the checks run out. A 200 from the
  * submission is never taken as validity.
  *
+ * Neither runs for a company whose e-invoicing Integr8 has switched off: a
+ * submission waiting to go is marked not sent (`feature_disabled`), and status
+ * checks stop until a person asks again with the module back on. Another
+ * process may take up to the module cache's half a minute to see the switch.
+ *
  * Neither logs credentials, tokens or document contents: ids, states and
  * error codes only.
  */
@@ -38,10 +44,18 @@ export async function runSubmission(
   job: { tenantId: string; documentId: string; attempt: number; actorId: string | null },
   logger: Logger,
 ): Promise<string> {
+  const moduleOn = await isFeatureEnabled(job.tenantId, 'e_invoicing');
   const loaded = await withTenant(job.tenantId, async (tx) => {
     const document = await tx.eta.document(job.documentId);
     if (document?.state !== 'submitting') {
       return { skip: document?.state ?? 'missing' } as const;
+    }
+    if (!moduleOn) {
+      // Nothing has been sent yet: that only happens below, after this check.
+      await tx.eta.transition(document.id, ['submitting'], 'failed', {
+        lastErrorCode: 'feature_disabled',
+      });
+      return { skip: 'feature_disabled' } as const;
     }
     if (job.attempt > 1) {
       await tx.eta.transition(document.id, ['submitting'], 'unknown', {
@@ -202,6 +216,7 @@ export async function runReconcile(
   job: { tenantId: string; documentId: string; watchCancellation: boolean },
   logger: Logger,
 ): Promise<string> {
+  const moduleOn = await isFeatureEnabled(job.tenantId, 'e_invoicing');
   return withTenant(job.tenantId, async (tx) => {
     const document = await tx.eta.document(job.documentId);
     if (document === undefined || !['submitted', 'valid'].includes(document.state)) {
@@ -209,6 +224,15 @@ export async function runReconcile(
     }
     if (document.state === 'valid' && !job.watchCancellation) {
       return 'nothing_to_check';
+    }
+    if (!moduleOn) {
+      // Switched off by Integr8: stop asking. "Check status now" asks again
+      // once it is back on.
+      await tx.eta.transition(document.id, [document.state], document.state, {
+        nextCheckAt: null,
+        lastErrorCode: 'feature_disabled',
+      });
+      return 'feature_disabled';
     }
     const settings = await tx.eta.settings();
     const opened = openEtaClient(deps, job.tenantId, settings, await tx.eta.sealedCredentials(), {

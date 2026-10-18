@@ -110,6 +110,7 @@ export type NavPath =
   | 'timesheets'
   | 'jobTypes'
   | 'branding'
+  | 'eInvoicingSwitch'
   | 'getStarted'
   | 'people'
   | 'companySettings'
@@ -518,6 +519,16 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'branding',
     icon: 'palette',
     permission: 'branding.manage',
+    desktopOnly: true,
+  },
+  // Whether the company has e-invoicing at all (ADR-0014): Integr8's switch,
+  // shown only to staff acting as the company, and whatever the module's state.
+  {
+    key: 'eInvoicingSwitch',
+    group: 'setup',
+    path: 'eInvoicingSwitch',
+    icon: 'scale',
+    permission: 'eta.switch',
     desktopOnly: true,
   },
 

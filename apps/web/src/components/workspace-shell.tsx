@@ -60,9 +60,14 @@ export function WorkspaceShell({
     key: group.group,
     label: t(`nav.group.${group.group}`),
     items: group.sections.flatMap((section) => {
-      // Forms and branding are desktop-only and filtered out above; the
-      // check keeps the type honest about which paths this app has.
-      if (section.path === 'forms' || section.path === 'branding') {
+      // Forms, branding and the e-invoicing switch are desktop-only and
+      // filtered out above; the check keeps the type honest about which paths
+      // this app has.
+      if (
+        section.path === 'forms' ||
+        section.path === 'branding' ||
+        section.path === 'eInvoicingSwitch'
+      ) {
         return [];
       }
       const aliases = NAV_ALIASES[section.path];

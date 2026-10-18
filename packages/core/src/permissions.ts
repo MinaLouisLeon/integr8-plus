@@ -310,6 +310,14 @@ export const PERMISSIONS = [
   'eta.sign',
   /** Ask for a signature, submit, sync, cancel and reconcile documents with the tax authority. */
   'eta.submit',
+  /**
+   * Switch e-invoicing on or off for the company: its `e_invoicing` module.
+   * Staff-only (see {@link STAFF_ONLY_PERMISSIONS}): whether a company may
+   * send documents to the tax authority at all is Integr8's decision, made
+   * from the staff desktop app while acting as the company, as on the
+   * dashboard's Features.
+   */
+  'eta.switch',
 ] as const;
 
 export const permissionSchema = z.enum(PERMISSIONS);
@@ -406,6 +414,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'eta.configure',
     'eta.sign',
     'eta.submit',
+    'eta.switch',
   ],
 
   // Everything an owner can do except change the company itself. The line is
@@ -685,6 +694,7 @@ export const STAFF_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<Permissio
   'job_type.manage',
   'branding.manage',
   'document.design',
+  'eta.switch',
 ]);
 
 /**
