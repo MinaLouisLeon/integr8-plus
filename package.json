@@ -1,6 +1,6 @@
 {
   "name": "integr8-plus",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "description": "Multi-tenant field operations platform",
