@@ -28,6 +28,7 @@
     "@integr8/document-render": "workspace:*",
     "@integr8/eta": "workspace:*",
     "@integr8/form-engine": "workspace:*",
+    "@integr8/form-input": "workspace:*",
     "@sentry/node": "10.74.0",
     "fastify": "5.12.3",
     "pdf-lib": "1.17.1",
@@ -38,7 +39,6 @@
   "devDependencies": {
     "@integr8/api-client": "workspace:*",
     "@integr8/eslint-config": "workspace:*",
-    "@integr8/form-input": "workspace:*",
     "@integr8/offline": "workspace:*",
     "@integr8/typescript-config": "workspace:*",
     "@types/node": "26.6.5",
