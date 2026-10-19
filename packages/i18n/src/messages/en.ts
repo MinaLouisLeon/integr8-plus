@@ -53,6 +53,9 @@ export const en = {
     // A part of a page that did not load, under the part that did; the button beside it tries again.
     loadFailed: 'This part could not be loaded.',
     copyId: 'Copy ID',
+    // The top bar's button that fetches what is on screen again, and its label while it does.
+    refresh: 'Refresh',
+    refreshing: 'Refreshing…',
     // Also development-only: the desktop app shows whether it is a Tauri window
     // or a browser tab, so P05's "identical in both" criterion can be checked
     // by eye. Translated anyway, because a string on screen is a string on
