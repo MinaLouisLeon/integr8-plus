@@ -7,6 +7,7 @@ import { CompanyMark } from '~/components/company-brand';
 import { useContextMenu } from '~/components/context-menu';
 import { ImpersonationBanner } from '~/components/impersonation-banner';
 import { ChromeIconGlyph, NavIconGlyph } from '~/components/nav-icon';
+import { RefreshButton } from '~/components/refresh-button';
 import { useShellChromeOverride } from '~/components/shell-chrome';
 import { assistantShown, type Me, useAiCapabilities, useMe } from '~/features/forms/api';
 import { desktopNavigation, routeChrome, type DesktopNavGroup } from '~/lib/navigation';
@@ -396,6 +397,8 @@ function TopBar({
       )}
 
       <p className="min-w-0 flex-1 truncate text-start text-base font-semibold">{title}</p>
+
+      <RefreshButton />
 
       {me === undefined ? null : (
         <p className="hidden truncate text-sm text-shell-text-muted md:block">

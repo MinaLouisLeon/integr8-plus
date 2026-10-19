@@ -72,6 +72,8 @@ export const ar: Catalogue<Messages> = {
     },
     loadFailed: 'تعذّر تحميل هذا الجزء.',
     copyId: 'نسخ المعرّف',
+    refresh: 'تحديث',
+    refreshing: 'جارٍ التحديث…',
     runtime: 'بيئة التشغيل',
     runtimeTauri: 'نافذة Tauri',
     runtimeBrowser: 'علامة تبويب في المتصفح',

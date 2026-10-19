@@ -334,9 +334,14 @@ function CompanyPicker({ staff, onBack }: { staff: StaffUser; onBack: () => void
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
 
+  // A company is often added from the dashboard while this list is open, so
+  // the list is fetched afresh whenever it is shown or the window comes back
+  // into focus, and Refresh beside it fetches it on request.
   const companies = useQuery({
     queryKey: ['staff', 'companies', search],
     queryFn: () => listCompanies(search),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const open = (event: FormEvent) => {
@@ -375,8 +380,19 @@ function CompanyPicker({ staff, onBack }: { staff: StaffUser; onBack: () => void
       />
 
       <fieldset className="flex flex-col gap-1">
-        <legend className="mb-1 text-sm font-medium text-content">
-          {t('auth.staff.chooseCompany')}
+        <legend className="mb-1 flex w-full items-center justify-between gap-2 text-sm font-medium text-content">
+          <span>{t('auth.staff.chooseCompany')}</span>
+          <Button
+            variant="ghost"
+            busy={companies.isFetching && !companies.isPending}
+            disabled={companies.isPending}
+            onClick={() => void companies.refetch()}
+            className="px-2 py-1"
+          >
+            {companies.isFetching && !companies.isPending
+              ? t('common.refreshing')
+              : t('common.refresh')}
+          </Button>
         </legend>
         {companies.isPending ? <LoadingState /> : null}
         {companies.isError ? (
