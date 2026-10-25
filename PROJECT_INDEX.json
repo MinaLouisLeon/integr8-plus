@@ -1,0 +1,46 @@
+{
+  "project": "Integr8 Plus",
+  "version": "1.1.2",
+  "summary": "Multi-tenant field operations and business platform with web, desktop, mobile and API apps.",
+  "apps": {
+    "api": "Fastify versioned API, OpenAPI routes, jobs and platform tooling",
+    "web": "Next.js public site, company workspace and platform dashboard",
+    "desktop": "React app packaged with Tauri for staff and company builds",
+    "mobile": "Expo field app with local-first offline operation and sync"
+  },
+  "shared_packages": [
+    "core: domain schemas, permissions and navigation",
+    "db: Postgres schema, migrations, repositories and seeds",
+    "auth and api-client: sessions and typed API access",
+    "form-engine, form-input, form-renderer-dom: authoring/runtime/rendering",
+    "offline: mobile database and synchronization",
+    "operations-dom: shared business screens for web and desktop",
+    "document-render and eta: documents and Egyptian ETA integration",
+    "i18n and tokens: English/Arabic RTL and themes/branding"
+  ],
+  "feature_areas": [
+    "Field operations, scheduling/execution, timesheets and work forms",
+    "Offline engineer workflows, media capture and conflict resolution",
+    "CRM, customer 360, opportunities, quotes, sales orders and deliveries",
+    "Assets, inventory, purchasing, stock tracking and van/site materials",
+    "Customer finance, general ledger, HR, expenses, payroll and manufacturing",
+    "AI help, permission-scoped insights and confirmed actions",
+    "Document generation and Egyptian ETA e-invoicing workflows",
+    "Tenant platform administration, plans, audit, branding and localization"
+  ],
+  "key_paths": [
+    "apps/api/src/routes/v1/",
+    "apps/web/src/app/",
+    "apps/mobile/app/",
+    "packages/operations-dom/src/",
+    "packages/db/migrations/",
+    "docs/crm-erp/",
+    "docs/ai/",
+    "docs/e-invoicing/"
+  ],
+  "notes": [
+    "Feature availability is gated by tenant modules, plans and permissions.",
+    "Root README/roadmap may lag implementation; verify focused source and docs.",
+    "ETA live validation and legal certification cannot be inferred from code presence."
+  ]
+}

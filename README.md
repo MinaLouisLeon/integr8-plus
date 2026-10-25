@@ -6,7 +6,7 @@ with its own forms, job types, look and apps. The company's office plans and
 dispatches work; its engineers do the work on a phone that keeps working with no
 signal; the office sees the result the moment the phone reconnects.
 
-Current version: **1.1.0**. The build plan lives in [`plan/`](./plan/README.md);
+Current version: **1.1.2**. The build plan lives in [`plan/`](./plan/README.md);
 start with [`plan/ROADMAP.md`](./plan/ROADMAP.md).
 
 ---
@@ -86,6 +86,37 @@ server; reopened and corrected only with a reason, with every version kept and
 nobody able to rewrite history. Reportable values, CSV export, filtering by form,
 customer, site, job and person. See [`docs/form-engine/submissions.md`](./docs/form-engine/submissions.md).
 
+**CRM and sales.** Track leads through configurable pipelines and opportunities,
+log activities and follow-ups, convert leads into customers, and view a combined
+customer history. Create quotes, share customer acceptance links, convert quotes
+to sales orders, reserve stock and record deliveries. See
+[`docs/crm-erp/README.md`](./docs/crm-erp/README.md).
+
+**Inventory, purchasing and assets.** Manage item catalogues, stock locations,
+counts, movements, serial and batch tracking, suppliers, purchase orders,
+receipts, returns, reorder drafts, van stock and parts used on jobs. Track
+customer equipment with asset tags, warranty and service history.
+
+**Company finance and people.** Record customer invoices, payments and credit
+notes; calculate job costs; and maintain a management ledger with journals,
+periods, automated postings and reports. Employee profiles, expense claims,
+payroll rules, pay runs and payslips are also available. Manufacturing covers
+versioned bills of materials, assembly/disassembly and material planning. The
+ledger and payroll are management tools; they do not claim statutory or legal
+compliance.
+
+**AI assistant.** A bilingual help library, permission-scoped business insights
+and a small set of actions that must be previewed and explicitly confirmed.
+Platform policy controls availability and usage; it is off by default. See
+[`docs/ai/`](./docs/ai/).
+
+**Documents and Egyptian e-invoicing.** Companies can prepare printable business
+documents from templates. An Egyptian Tax Authority (ETA) e-invoicing integration
+supports credential and mapping setup, document preparation, signing requests
+and a submission lifecycle. It is not production-ready: live PreProd submission
+and hardware-token signing remain to be validated. See
+[`docs/e-invoicing/`](./docs/e-invoicing/).
+
 **The engineer's phone.** Offline-first: the phone holds an encrypted copy of the
 engineer's work (SQLCipher) and every screen reads from it. Clock in and out,
 the next job and its one step forward, directions, access notes, the checklist,
@@ -136,7 +167,8 @@ recent failures, unlocking accounts and unsticking sync. See
 
 ## Roles and permissions
 
-Five roles per company. The whole policy is one table in
+Five built-in base roles per company, with owner-defined custom roles and grants
+for more specific access. The built-in policy is in
 [`packages/core/src/permissions.ts`](./packages/core/src/permissions.ts); a test
 fails if a permission is added without deciding it for every role.
 
@@ -148,10 +180,9 @@ fails if a permission is added without deciding it for every role.
 | **engineer**   | Does the work: their assigned jobs, filling forms, their own submissions            |
 | **viewer**     | Reads everything, changes nothing                                                   |
 
-Three permissions are **staff-only**: `form.manage`, `job_type.manage` and
-`branding.manage`. The company's owner and admins hold them on paper but only use
-them while Integr8 staff sit in the seat through an audited impersonation; a
-company's own people are told "This is set up for your company by Integr8".
+Some setup capabilities, including form/job-type management, branding and
+selected module switches, are **Integr8 staff-only** and are performed through
+audited access. A company's own people cannot use those staff controls.
 
 ## Apps built for each company
 
@@ -407,19 +438,23 @@ each with a down file, applied by `pnpm --filter @integr8/db db up` (or
 `migrator deploy` on a host's pre-deploy hook). Two runtime roles: `integr8_app`
 (row-level security applies) and `integr8_auth` (the sign-in path).
 
-| Migration | Adds                                                                          |
-| --------- | ----------------------------------------------------------------------------- |
-| 0001–0005 | Tenants, members, row-level security, authentication, API infrastructure      |
-| 0006–0008 | Forms, versions, the builder, submissions and their lifecycle                 |
-| 0009      | The media ledger                                                              |
-| 0010      | Customers, sites, work orders and their state machine                         |
-| 0011–0013 | Offline sync, submit location, job execution (shifts, photos, sign-off)       |
-| 0014      | Repeating groups                                                              |
-| 0015–0016 | The platform: sessions, audit, flags, exports, deletions; storage metering    |
-| 0017      | Subscriptions and billing                                                     |
-| 0018–0020 | Sign-up, company settings, sample data                                        |
-| 0021      | Billing mode per company (invoiced or self-serve)                             |
-| 0022      | Company branding: menu colour, default theme, website, app icon, build switch |
+| Migration | Adds                                                                                                  |
+| --------- | ----------------------------------------------------------------------------------------------------- |
+| 0001–0005 | Tenants, members, row-level security, authentication, API infrastructure                              |
+| 0006–0008 | Forms, versions, the builder, submissions and their lifecycle                                         |
+| 0009      | The media ledger                                                                                      |
+| 0010      | Customers, sites, work orders and their state machine                                                 |
+| 0011–0013 | Offline sync, submit location, job execution (shifts, photos, sign-off)                               |
+| 0014      | Repeating groups                                                                                      |
+| 0015–0016 | The platform: sessions, audit, flags, exports, deletions; storage metering                            |
+| 0017      | Subscriptions and billing                                                                             |
+| 0018–0020 | Sign-up, company settings, sample data                                                                |
+| 0021      | Billing mode per company (invoiced or self-serve)                                                     |
+| 0022      | Company branding: menu colour, default theme, website, app icon, build switch                         |
+| 0023–0043 | CRM, sales, inventory, purchasing, assets, finance, ledger, HR, payroll, manufacturing and follow-ups |
+| 0044–0047 | AI assistant policies, conversations, actions, metering and retention                                 |
+| 0048      | Business documents and templates                                                                      |
+| 0049      | Egyptian ETA e-invoicing integration                                                                  |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).
@@ -476,6 +511,10 @@ migrator; and web) and a Postgres database; everything else is configuration.
 | Offline sync           | [`docs/sync/`](./docs/sync/README.md)                                                                                                                                                                                                   |
 | Media                  | [`docs/media/`](./docs/media/README.md)                                                                                                                                                                                                 |
 | Billing                | [`docs/billing/`](./docs/billing/README.md)                                                                                                                                                                                             |
+| CRM and ERP            | [`docs/crm-erp/README.md`](./docs/crm-erp/README.md)                                                                                                                                                                                    |
+| AI assistant           | [`docs/ai/IMPLEMENTATION_STATUS.md`](./docs/ai/IMPLEMENTATION_STATUS.md), [`docs/ai/RUNBOOK.md`](./docs/ai/RUNBOOK.md)                                                                                                                  |
+| Business documents     | [`docs/documents/`](./docs/documents/)                                                                                                                                                                                                  |
+| Egyptian e-invoicing   | [`docs/e-invoicing/PLAN.md`](./docs/e-invoicing/PLAN.md), [`docs/e-invoicing/RUNBOOK.md`](./docs/e-invoicing/RUNBOOK.md)                                                                                                                |
 | Sign-up and onboarding | [`docs/onboarding/`](./docs/onboarding/README.md)                                                                                                                                                                                       |
 | Platform dashboard     | [`docs/platform/`](./docs/platform/README.md)                                                                                                                                                                                           |
 | Interface, tokens, RTL | [`docs/ui/`](./docs/ui/README.md)                                                                                                                                                                                                       |

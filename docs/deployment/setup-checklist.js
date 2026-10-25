@@ -1,5 +1,6 @@
+/* global document, navigator, window, setTimeout, localStorage */
 // Integr8 Plus Setup Checklist: copy buttons and the tick boxes.
-// Kept in step with setup-checklist.md and the published page (see AGENTS.md).
+// Supports the HTML version of setup-checklist.md (see AGENTS.md).
   // Copy buttons, with selection as the fallback where the clipboard is refused.
   for (const button of document.querySelectorAll('.copy')) {
     button.addEventListener('click', async () => {

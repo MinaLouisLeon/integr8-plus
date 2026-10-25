@@ -36,7 +36,7 @@ describe('where a spoken question comes from', () => {
     expect(
       desktopVoiceInput({ platform: 'Linux x86_64', userAgent: 'Mozilla/5.0 (X11; Linux)' }),
     ).toEqual({ kind: 'none' });
-    expect(desktopVoiceInput(undefined)).toEqual({ kind: 'none' });
+    expect(desktopVoiceInput({})).toEqual({ kind: 'none' });
   });
 
   it('reads the platform from whichever field the web view fills', () => {

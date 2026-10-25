@@ -1,28 +1,32 @@
-# Version 2 — what remains after 1.1.0
+# Current status and remaining work (version 1.1.2)
 
-Version **1.1.0** is everything on `main` after pull request #81 (12 October
-2026). This file is the single list of work left for version 2: the pilot
-phase of the CRM/ERP plan, the follow-ups that plan still carries, the launch
-checks of the original roadmap that are built but not yet proven, and every
-roadmap phase not yet started. Nothing here has begun.
+Version **1.1.2** is the current root package version. The CRM/ERP suite in
+this file shipped through PR #81; the AI assistant, business documents and ETA
+e-invoicing integration were added afterward (database migrations 0044–0049).
+This file tracks remaining pilot work, unproven launch checks and later roadmap
+work. A feature being implemented does not mean its real-device or production
+readiness checks have passed.
 
 Sources: `docs/crm-erp/README.md` (tracker and follow-ups), `docs/crm-erp/PLAN.md`
 (phase L), `plan/ROADMAP.md` and the phase files under `plan/`. When this file
 and those disagree, those are right; update this file.
 
-## Where 1.1.0 stands
+## Shipped scope as of 1.1.2
 
-| Area                                                                  | State in 1.1.0                                                                                                               |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Field work (forms, jobs, customers and sites, offline phone, billing) | Built and verified in tests; several exit checks need real devices, real services or a real customer (section 3)             |
-| CRM (leads, opportunities, pipelines, activities, Customer 360)       | Done (phases F1–C3, F2, G1)                                                                                                  |
-| Sales, finance, general ledger                                        | Done (S1, B1, A1)                                                                                                            |
-| Inventory, purchasing, van stock, serial numbers and batches          | Done (E1, E2, F2, G1)                                                                                                        |
-| Assets and service history                                            | Done (E3)                                                                                                                    |
-| HR, expenses, Egyptian payroll, manufacturing                         | Done (H1, M1)                                                                                                                |
-| Company roles, drag-and-drop board, menus, amount history             | Done (G1)                                                                                                                    |
-| Arabic                                                                | The whole interface is translated and right to left on web, desktop and phone; the formal Arabic review of P32 is still open |
-| Not started                                                           | Pilot (L), scheduling (v1.2), reporting and AI (v1.3), scale and enterprise (v2.0)                                           |
+| Area                                                                  | State as of 1.1.2                                                                                                                      |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Field work (forms, jobs, customers and sites, offline phone, billing) | Built and verified in tests; several exit checks need real devices, real services or a real customer (section 3)                       |
+| CRM (leads, opportunities, pipelines, activities, Customer 360)       | Done (phases F1–C3, F2, G1)                                                                                                            |
+| Sales, finance, general ledger                                        | Done (S1, B1, A1)                                                                                                                      |
+| Inventory, purchasing, van stock, serial numbers and batches          | Done (E1, E2, F2, G1)                                                                                                                  |
+| Assets and service history                                            | Done (E3)                                                                                                                              |
+| HR, expenses, Egyptian payroll, manufacturing                         | Done (H1, M1)                                                                                                                          |
+| Company roles, drag-and-drop board, menus, amount history             | Done (G1)                                                                                                                              |
+| Arabic                                                                | The whole interface is translated and right to left on web, desktop and phone; the formal Arabic review of P32 is still open           |
+| AI assistant                                                          | Help, permission-scoped insights and confirmed actions shipped; configurable and off by default                                        |
+| Business documents                                                    | Templates and printable business documents shipped                                                                                     |
+| Egyptian e-invoicing                                                  | Offline integration built; live PreProd submission and hardware-token signing remain blocked                                           |
+| Still to prove or build                                               | Pilot (L), scheduling (P25–P27), expanded reporting/communications (P28–P29), AI form authoring (P30), calendar (P31), scale (P32–P35) |
 
 ## 1. Phase L — the pilot release
 
@@ -75,7 +79,7 @@ address.
 
 - [ ] CRM-06 campaigns and automations: no marketing platform or bulk email exists.
 - [ ] Manufacturing routings and work centres (M1 built bills of materials, assembly and planning only).
-- [ ] Tax compliance: e-invoicing (the Egyptian Tax Authority's e-invoice and e-receipt systems), VAT numbers on invoices, tax returns. The finance module and ledger make no compliance claim today.
+- [ ] Production ETA e-invoicing: offline integration exists, but live PreProd submission and hardware-token signing are not validated. ETA e-receipts, VAT on company invoices, tax returns and any compliance claim remain out of scope until separately reviewed.
 - [ ] A legal review of the Egyptian payroll rule sets; today each company confirms the rules it uses.
 
 ## 3. Launch checks built but not yet proven (v0.1 – v1.1)
@@ -199,7 +203,7 @@ not. Items already delivered since the phase file was written are left out.
 - [ ] Follow-up jobs carrying context; a capacity view; a self-booking link for customers.
 - [ ] Done when: a quarterly rule is right across a daylight-saving change, editing a rule never disturbs completed jobs, a breach is recorded and reportable.
 
-## 6. v1.3 Reporting, communications and AI (not started)
+## 6. v1.3 Reporting, communications and AI-assisted form authoring (planned)
 
 ### P28 — Reporting and dashboards
 

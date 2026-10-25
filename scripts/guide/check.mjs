@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 /* global console, process */
-// The setup guide is one document in several copies (AGENTS.md, "The setup
-// guide"): docs/deployment/setup-checklist.md, the same guide as
-// setup-checklist.html with its .css and .js, and the hosted page. This checks
-// the three files in the repository agree: the same stages and parts in the same
-// order, the same tick boxes with the same words, and the page really loads its
-// stylesheet and script. The hosted page is compared by whoever republishes it.
+// The setup guide has two maintained content versions: docs/deployment/setup-checklist.md
+// and docs/deployment/setup-checklist.html. This checks that they agree on the
+// same stages and parts in the same order, the same tick boxes with the same
+// words, and that the HTML loads its supporting stylesheet and script.
 //
 // Words are compared with everything but letters and digits removed, so the
 // Markdown's `code` and **bold** against the page's tags do not count as
