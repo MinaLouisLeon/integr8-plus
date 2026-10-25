@@ -47,6 +47,10 @@ const settingsSchema = z.object({
   aiWebEnabled: z.boolean(),
   aiDesktopEnabled: z.boolean(),
   aiMobileEnabled: z.boolean(),
+  websiteFilesEnabled: z.boolean(),
+  websiteJobsEnabled: z.boolean(),
+  websiteQuotesEnabled: z.boolean(),
+  websiteInvoicesEnabled: z.boolean(),
 });
 
 export const getSettingsRoute = defineRoute({
@@ -108,6 +112,10 @@ export const updateSettingsRoute = defineRoute({
     aiWebEnabled: z.boolean().optional(),
     aiDesktopEnabled: z.boolean().optional(),
     aiMobileEnabled: z.boolean().optional(),
+    websiteFilesEnabled: z.boolean().optional(),
+    websiteJobsEnabled: z.boolean().optional(),
+    websiteQuotesEnabled: z.boolean().optional(),
+    websiteInvoicesEnabled: z.boolean().optional(),
   }),
   responses: {
     200: { description: 'The settings, as they now are.', schema: settingsSchema },
@@ -286,6 +294,10 @@ function toBody(settings: {
   aiWebEnabled: boolean;
   aiDesktopEnabled: boolean;
   aiMobileEnabled: boolean;
+  websiteFilesEnabled: boolean;
+  websiteJobsEnabled: boolean;
+  websiteQuotesEnabled: boolean;
+  websiteInvoicesEnabled: boolean;
 }) {
   return {
     logoMediaId: settings.logoMediaId,
@@ -304,6 +316,10 @@ function toBody(settings: {
     aiWebEnabled: settings.aiWebEnabled,
     aiDesktopEnabled: settings.aiDesktopEnabled,
     aiMobileEnabled: settings.aiMobileEnabled,
+    websiteFilesEnabled: settings.websiteFilesEnabled,
+    websiteJobsEnabled: settings.websiteJobsEnabled,
+    websiteQuotesEnabled: settings.websiteQuotesEnabled,
+    websiteInvoicesEnabled: settings.websiteInvoicesEnabled,
   };
 }
 

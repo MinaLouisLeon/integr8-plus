@@ -213,6 +213,7 @@ export const websiteDocumentLookupRoute = defineRoute({
     'For a company’s website server, never a browser: `Authorization: Bearer <website key>`. `key` is the template’s lookup field and the value a visitor typed; `confirm` is the second field, required when the template asks for one. Exact after trimming and ignoring case. Answers `found: false` rather than 404, and never more than one document. Rate-limited per key (429).',
   tags: TAGS,
   security: 'public',
+  websiteKeyAuth: true,
   allowedWhenReadOnly: true,
   params: noSchema,
   query: noSchema,
@@ -248,6 +249,13 @@ export const websiteDocumentLookupRoute = defineRoute({
         'feature_disabled',
         'Documents are not switched on for this company.',
       );
+    }
+    if ((await getPlatformDataSource().settings.flagsFor(live.tenantId)).website_files !== true) {
+      throw new ApiError(403, 'feature_disabled', 'Website file access is not switched on by Integr8.');
+    }
+    const websiteAccess = await withTenant(live.tenantId, (tx) => tx.settings.get());
+    if (!websiteAccess.websiteFilesEnabled) {
+      throw new ApiError(403, 'feature_disabled', 'Website file access is not switched on by this company.');
     }
 
     const match = await withTenant(live.tenantId, async (tx) => {

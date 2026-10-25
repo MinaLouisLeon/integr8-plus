@@ -41,6 +41,10 @@ export interface TenantSettings {
   aiWebEnabled: boolean;
   aiDesktopEnabled: boolean;
   aiMobileEnabled: boolean;
+  websiteFilesEnabled: boolean;
+  websiteJobsEnabled: boolean;
+  websiteQuotesEnabled: boolean;
+  websiteInvoicesEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
@@ -61,6 +65,10 @@ export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
   aiWebEnabled: false,
   aiDesktopEnabled: false,
   aiMobileEnabled: false,
+  websiteFilesEnabled: false,
+  websiteJobsEnabled: false,
+  websiteQuotesEnabled: false,
+  websiteInvoicesEnabled: false,
 };
 
 export class TenantSettingsRepository {
@@ -102,6 +110,10 @@ export class TenantSettingsRepository {
     aiWebEnabled?: boolean | undefined;
     aiDesktopEnabled?: boolean | undefined;
     aiMobileEnabled?: boolean | undefined;
+    websiteFilesEnabled?: boolean | undefined;
+    websiteJobsEnabled?: boolean | undefined;
+    websiteQuotesEnabled?: boolean | undefined;
+    websiteInvoicesEnabled?: boolean | undefined;
   }): Promise<TenantSettings> {
     const values = {
       ...(input.logoMediaId === undefined ? {} : { logo_media_id: input.logoMediaId }),
@@ -122,6 +134,10 @@ export class TenantSettingsRepository {
         ? {}
         : { ai_desktop_enabled: input.aiDesktopEnabled }),
       ...(input.aiMobileEnabled === undefined ? {} : { ai_mobile_enabled: input.aiMobileEnabled }),
+      ...(input.websiteFilesEnabled === undefined ? {} : { website_files_enabled: input.websiteFilesEnabled }),
+      ...(input.websiteJobsEnabled === undefined ? {} : { website_jobs_enabled: input.websiteJobsEnabled }),
+      ...(input.websiteQuotesEnabled === undefined ? {} : { website_quotes_enabled: input.websiteQuotesEnabled }),
+      ...(input.websiteInvoicesEnabled === undefined ? {} : { website_invoices_enabled: input.websiteInvoicesEnabled }),
     };
 
     const row = await this.db
@@ -247,5 +263,9 @@ function toSettings(row: Selectable<TenantSettingsTable>): TenantSettings {
     aiWebEnabled: row.ai_web_enabled,
     aiDesktopEnabled: row.ai_desktop_enabled,
     aiMobileEnabled: row.ai_mobile_enabled,
+    websiteFilesEnabled: row.website_files_enabled,
+    websiteJobsEnabled: row.website_jobs_enabled,
+    websiteQuotesEnabled: row.website_quotes_enabled,
+    websiteInvoicesEnabled: row.website_invoices_enabled,
   };
 }

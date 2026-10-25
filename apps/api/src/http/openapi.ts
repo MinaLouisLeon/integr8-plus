@@ -76,6 +76,12 @@ export function buildOpenApiDocument(
           bearerFormat: 'JWT',
           description: 'The access token from `POST /v1/auth/sign-in`. Fifteen minutes.',
         },
+        websiteKeyAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'Integr8 Website Key',
+          description: 'A website key created by Integr8 staff. Keep it in the company website server environment; never expose it to browser code.',
+        },
       },
       schemas: {
         Error: toJsonSchema(errorResponseSchema, 'output'),
@@ -135,7 +141,11 @@ function operation(route: AnyRoute): Record<string, unknown> {
         }
       : {}),
     responses: responses(route),
-    ...(route.security === 'public' ? {} : { security: [{ bearerAuth: [] }] }),
+    ...(route.websiteKeyAuth === true
+      ? { security: [{ websiteKeyAuth: [] }] }
+      : route.security === 'public'
+        ? {}
+        : { security: [{ bearerAuth: [] }] }),
   };
 }
 

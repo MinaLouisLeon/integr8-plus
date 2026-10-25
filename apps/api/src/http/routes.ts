@@ -102,6 +102,8 @@ interface RouteShape {
    * Never a boolean, for exactly the reason the third kind now demonstrates.
    */
   security: RouteSecurity;
+  /** A public customer website route that authenticates with a website key. */
+  websiteKeyAuth?: boolean;
 
   /** Checked after authentication, against the permission matrix in core. */
   permission?: Permission;

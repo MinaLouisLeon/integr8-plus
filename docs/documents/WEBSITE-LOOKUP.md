@@ -1,12 +1,13 @@
-# Finding a company's documents from its website
+# Connecting a company's website to Integr8
 
-For the developer of a company's own website (Next.js on Vercel). It lets a
-visitor type a reference, such as a certificate number, and find the PDF
-document the company issued with it.
+For the developer of a company's own website (Next.js on Vercel). It lets the
+company's authenticated customer see an issued document, job status, quote or
+invoice through Integr8's API.
 
 The website's **server** asks Integr8 Plus with a **website key**. The key is a
-secret: it lives in the server's environment and never reaches a browser, so
-nobody can use it to search the company's documents from outside.
+secret: it lives in the server's environment and never reaches a browser.
+The company website must authenticate its own customers before making requests;
+the key identifies the company website, not an individual customer.
 
 ## What you get from Integr8
 
@@ -17,6 +18,15 @@ nobody can use it to search the company's documents from outside.
   template was designed: the field the visitor types (for example
   `certificate`) and, if the template asks for one, a second field that must
   match too (for example `customer`).
+- **Capability switches.** The company owner or admin controls its switches in
+  **Settings → Company → Customer website access**. Integr8 controls four
+  independent grants (`website_files`, `website_jobs`, `website_quotes`, and
+  `website_invoices`) on the company's **Features** panel. Both sides must be
+  on for that capability to work.
+- **Key controls.** Any signed-in Integr8 staff member can create, enable,
+  disable or revoke a key. Disabling is reversible; revoking stops service and
+  leaves a record. Only the terminal-created Integr8 staff admin can
+  permanently delete a key. A deleted key's secret is never recoverable.
 
 ## Set the environment
 
@@ -30,6 +40,8 @@ Production (and Preview if wanted):
 
 Never prefix them with `NEXT_PUBLIC_`: that would put the key in the pages.
 Redeploy after adding them.
+Read these variables only in a Next.js Server Action, Route Handler or other
+server-side module. Never pass them as props or return them in a response.
 
 ## The request
 
@@ -200,4 +212,29 @@ export default function CertificatesPage() {
   Integr8's limit is per key, so one visitor could use up the website's
   allowance for everybody.
 - When Integr8 gives you a new key, put it in Vercel and redeploy; tell them,
-  and they revoke the old one.
+  verify the replacement works, then ask them to revoke the old one. A disabled
+  key can be enabled again; a revoked key cannot.
+
+## Other customer website endpoints
+
+The OpenAPI source of truth is `apps/api/openapi.json`. Every request uses the
+same `Authorization: Bearer <website key>` header. These endpoints return one
+known record by its UUID; they do not list or search across company records.
+
+| Method | Endpoint | Returns |
+| ------ | -------- | ------- |
+| `POST` | `/v1/website/documents/lookup` | One document found by the agreed template field and optional confirmation field. |
+| `GET` | `/v1/website/files/{documentId}` | Five-minute view and download links for one ready customer document. |
+| `GET` | `/v1/website/jobs/{workOrderId}` | Customer-safe job reference, status, title and due dates. |
+| `GET` | `/v1/website/quotes/{quoteId}` | One issued quote with customer-visible terms, totals and lines. Drafts and internal notes are excluded. |
+| `GET` | `/v1/website/invoices/{invoiceId}` | One issued invoice summary. Drafts and internal notes are excluded. |
+
+Each capability is checked separately against the company and Integr8 switches;
+documents, quotes and invoices also require their existing product module to
+be enabled. Turning off either website switch blocks new requests. Disabling a
+website key blocks all capabilities; revoking it cannot be undone.
+
+The company website is responsible for its visitor login and authorization. A
+record UUID must come from a trusted company-controlled flow. The API key is a
+company-wide credential and should only be used after the website has checked
+that the visitor may access that specific record.

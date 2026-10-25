@@ -609,6 +609,7 @@ export interface WebsiteKey {
   tenantId: TenantId;
   keyHint: string;
   label: string | null;
+  enabled: boolean;
   createdBy: string;
   createdAt: Date;
   revokedAt: Date | null;
@@ -661,11 +662,34 @@ export class WebsiteKeysRepository {
         key_hash: input.keyHash,
         key_hint: input.keyHint,
         label: input.label,
+        enabled: true,
         created_by: input.createdBy,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
     return toWebsiteKey(row);
+  }
+
+  async setEnabled(tenantId: string, keyId: string, enabled: boolean): Promise<WebsiteKey | undefined> {
+    const row = await this.db
+      .updateTable('website_keys')
+      .set({ enabled })
+      .where('tenant_id', '=', tenantId)
+      .where('id', '=', keyId)
+      .where('revoked_at', 'is', null)
+      .returningAll()
+      .executeTakeFirst();
+    return row === undefined ? undefined : toWebsiteKey(row);
+  }
+
+  async delete(tenantId: string, keyId: string): Promise<WebsiteKey | undefined> {
+    const row = await this.db
+      .deleteFrom('website_keys')
+      .where('tenant_id', '=', tenantId)
+      .where('id', '=', keyId)
+      .returningAll()
+      .executeTakeFirst();
+    return row === undefined ? undefined : toWebsiteKey(row);
   }
 
   async revoke(tenantId: string, keyId: string, by: string): Promise<WebsiteKey | undefined> {
@@ -688,6 +712,7 @@ export class WebsiteKeysRepository {
       .select(['website_keys.id', 'website_keys.tenant_id'])
       .where('website_keys.key_hash', '=', keyHash)
       .where('website_keys.revoked_at', 'is', null)
+      .where('website_keys.enabled', '=', true)
       .where('tenants.deleted_at', 'is', null)
       .where('tenants.status', '=', 'active')
       .executeTakeFirst();
@@ -714,6 +739,7 @@ function toWebsiteKey(row: Selectable<WebsiteKeysTable>): WebsiteKey {
     tenantId: toTenantId(row.tenant_id),
     keyHint: row.key_hint,
     label: row.label,
+    enabled: row.enabled,
     createdBy: row.created_by,
     createdAt: row.created_at,
     revokedAt: row.revoked_at,

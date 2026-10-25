@@ -35,6 +35,11 @@ export const MODULE_FEATURES = [
   'documents',
   // Egyptian e-invoicing with the Tax Authority (ADR-0014).
   'e_invoicing',
+  // Customer website API capabilities: Integr8's independent grant.
+  'website_files',
+  'website_jobs',
+  'website_quotes',
+  'website_invoices',
 ] as const;
 export const moduleFeatureSchema = z.enum(MODULE_FEATURES);
 export type ModuleFeature = z.infer<typeof moduleFeatureSchema>;

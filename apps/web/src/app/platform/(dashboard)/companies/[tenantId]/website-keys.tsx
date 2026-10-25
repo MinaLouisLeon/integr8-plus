@@ -53,6 +53,26 @@ export function WebsiteKeysPanel({ tenantId }: { tenantId: string }) {
   const revoke = useMutation({
     mutationFn: async (keyId: string) =>
       (
+        await platformClient().POST('/v1/platform/companies/{tenantId}/website-keys/{keyId}/revoke', {
+          params: { path: { tenantId, keyId } },
+        })
+      ).data!,
+    onSuccess: () => void queries.invalidateQueries({ queryKey }),
+  });
+
+  const setEnabled = useMutation({
+    mutationFn: async ({ keyId, enabled }: { keyId: string; enabled: boolean }) =>
+      (
+        await platformClient().PATCH('/v1/platform/companies/{tenantId}/website-keys/{keyId}', {
+          params: { path: { tenantId, keyId } },
+          body: { enabled },
+        })
+      ).data!,
+    onSuccess: () => void queries.invalidateQueries({ queryKey }),
+  });
+  const remove = useMutation({
+    mutationFn: async (keyId: string) =>
+      (
         await platformClient().DELETE('/v1/platform/companies/{tenantId}/website-keys/{keyId}', {
           params: { path: { tenantId, keyId } },
         })
@@ -79,7 +99,7 @@ export function WebsiteKeysPanel({ tenantId }: { tenantId: string }) {
     );
   }
 
-  const { items, canManage, maxLive } = keys.data;
+  const { items, canManage, canDelete, maxLive } = keys.data;
   const live = items.filter((key) => key.revokedAt === null).length;
   const locale = i18n.language;
 
@@ -131,12 +151,14 @@ export function WebsiteKeysPanel({ tenantId }: { tenantId: string }) {
                 <span className="flex flex-wrap items-center gap-2 font-medium text-content">
                   <span dir="ltr">{t('documents.keys.endsWith', { hint: key.hint })}</span>
                   {key.label === null ? null : <span dir="auto">· {key.label}</span>}
-                  {key.revokedAt === null ? (
-                    <Badge tone="ok">{t('documents.keys.live')}</Badge>
-                  ) : (
+                  {key.revokedAt !== null ? (
                     <Badge tone="muted">
                       {t('documents.keys.revoked', { date: formatWhen(key.revokedAt, locale) })}
                     </Badge>
+                  ) : key.enabled ? (
+                    <Badge tone="ok">{t('documents.keys.live')}</Badge>
+                  ) : (
+                    <Badge tone="warning">{t('documents.keys.disabled')}</Badge>
                   )}
                 </span>
                 <span className="text-content-muted">
@@ -154,6 +176,15 @@ export function WebsiteKeysPanel({ tenantId }: { tenantId: string }) {
               </div>
               {canManage && key.revokedAt === null ? (
                 <Button
+                  variant="secondary"
+                  busy={setEnabled.isPending && setEnabled.variables?.keyId === key.id}
+                  onClick={() => setEnabled.mutate({ keyId: key.id, enabled: !key.enabled })}
+                >
+                  {key.enabled ? t('documents.keys.disable') : t('documents.keys.enable')}
+                </Button>
+              ) : null}
+              {canManage && key.revokedAt === null ? (
+                <Button
                   variant="danger"
                   busy={revoke.isPending && revoke.variables === key.id}
                   onClick={() => {
@@ -165,6 +196,17 @@ export function WebsiteKeysPanel({ tenantId }: { tenantId: string }) {
                   {t('documents.keys.revoke')}
                 </Button>
               ) : null}
+              {canDelete ? (
+                <Button
+                  variant="danger"
+                  busy={remove.isPending && remove.variables === key.id}
+                  onClick={() => {
+                    if (window.confirm(t('documents.keys.deleteConfirm'))) remove.mutate(key.id);
+                  }}
+                >
+                  {t('documents.keys.delete')}
+                </Button>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -172,6 +214,11 @@ export function WebsiteKeysPanel({ tenantId }: { tenantId: string }) {
       {revoke.isError ? (
         <p role="alert" className="text-sm text-danger">
           {messageForError(revoke.error, t)}
+        </p>
+      ) : null}
+      {setEnabled.isError || remove.isError ? (
+        <p role="alert" className="text-sm text-danger">
+          {messageForError(setEnabled.error ?? remove.error, t)}
         </p>
       ) : null}
 
