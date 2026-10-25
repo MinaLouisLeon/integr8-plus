@@ -130,6 +130,7 @@ export function OperationsScreens({ children }: { children: ReactNode }) {
         assistant: '/assistant',
         people: '/settings/people',
         companySettings: '/settings/company',
+        websiteAccess: '/settings/website-access',
         billing: '/billing',
         submissions: '/submissions',
       },

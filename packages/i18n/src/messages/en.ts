@@ -517,6 +517,15 @@ export const en = {
       closed: 'Closed — no working days selected.',
       save: 'Save settings',
       saved: 'Saved.',
+      websiteAccess: {
+        title: 'Customer website access',
+        intro:
+          'Choose which customer data your company website may request. Integr8 must also enable each capability, and your website must authenticate its own customers.',
+        files: 'Files and documents',
+        jobs: 'Job status',
+        quotes: 'Quotes',
+        invoices: 'Invoices',
+      },
       ai: {
         title: 'Assistant',
         intro:
@@ -669,6 +678,7 @@ export const en = {
     // One per permission prefix (`crm.`, `inventory.` and so on).
     group: {
       tenant: 'Company',
+      website: 'Website access',
       branding: 'Branding',
       member: 'People',
       invitation: 'Invitations',
@@ -700,6 +710,7 @@ export const en = {
     // One per permission in `PERMISSIONS` (@integr8/core), nested as named.
     permission: {
       tenant: { read: 'See the company record', update: 'Change company settings' },
+      website: { access: { manage: 'Manage customer website access' } },
       branding: { manage: 'Change company branding' },
       member: {
         read: 'See people',
@@ -1636,6 +1647,8 @@ export const en = {
       peopleHint: 'Invite engineers, change roles, remove somebody.',
       companySettings: 'Company settings',
       companySettingsHint: 'Branding, timezone, currency and working hours.',
+      websiteAccess: 'Website access',
+      websiteAccessHint: 'Choose which customer records your website can request.',
     },
     duration: {
       hoursMinutes: '{{hours}} h {{minutes}} min',
@@ -6661,11 +6674,16 @@ export const en = {
       usage: 'Lookups: {{lookups}} · found: {{found}}',
       revoked: 'Revoked {{date}}',
       live: 'Live',
+      disabled: 'Disabled',
+      enable: 'Enable',
+      disable: 'Disable',
+      delete: 'Delete',
+      deleteConfirm:
+        'Permanently delete this key? Its record will be removed and the website service will stop.',
       revoke: 'Revoke',
       revokeConfirm: 'Revoke this key? The website using it stops finding documents at once.',
       limit: 'Two keys are live. Revoke one before making another.',
-      managerOnly:
-        'Only the account made with the terminal command can make or revoke website keys.',
+      managerOnly: 'Only the terminal-created staff admin can permanently delete a website key.',
       secretTitle: 'Copy this key now',
       secretBody:
         'It is shown only this once. Put it in the website server’s environment as INTEGR8_WEBSITE_KEY.',
@@ -6888,6 +6906,7 @@ export const en = {
       getStarted: 'Get set up',
       people: 'People',
       companySettings: 'Company settings',
+      websiteAccess: 'Website access',
       storage: 'Storage',
       billing: 'Billing',
       crm: 'CRM overview',
@@ -6942,6 +6961,7 @@ export const en = {
       getStarted: 'Five things to do, and sample data to look around with.',
       people: 'Invite engineers, change roles, remove somebody.',
       companySettings: 'Timezone, currency and working hours.',
+      websiteAccess: 'Control which customer records your company website can request.',
       storage: 'What you are using, and how much is left.',
       billing: 'Your plan, your limits and your card.',
       crm: 'Leads, opportunities and follow-ups.',

@@ -497,6 +497,15 @@ export const ar: Catalogue<Messages> = {
       closed: 'مغلق — لم تُحدَّد أيام عمل.',
       save: 'حفظ الإعدادات',
       saved: 'تم الحفظ.',
+      websiteAccess: {
+        title: 'وصول موقع العملاء',
+        intro:
+          'اختر بيانات العملاء التي يمكن لموقع شركتك طلبها. يجب على Integr8 تفعيل كل ميزة أيضًا، ويجب أن يتحقق موقعك من هوية عملائه.',
+        files: 'الملفات والمستندات',
+        jobs: 'حالة المهمة',
+        quotes: 'عروض الأسعار',
+        invoices: 'الفواتير',
+      },
       ai: {
         title: 'المساعد',
         intro:
@@ -638,6 +647,7 @@ export const ar: Catalogue<Messages> = {
     },
     group: {
       tenant: 'الشركة',
+      website: 'وصول الموقع',
       branding: 'الهوية',
       member: 'الأشخاص',
       invitation: 'الدعوات',
@@ -668,6 +678,7 @@ export const ar: Catalogue<Messages> = {
     },
     permission: {
       tenant: { read: 'عرض بيانات الشركة', update: 'تغيير إعدادات الشركة' },
+      website: { access: { manage: 'إدارة وصول موقع العملاء' } },
       branding: { manage: 'تغيير هوية الشركة' },
       member: {
         read: 'عرض الأشخاص',
@@ -1589,6 +1600,8 @@ export const ar: Catalogue<Messages> = {
       peopleHint: 'دعوة المهندسين، وتغيير الأدوار، وإزالة الأشخاص.',
       companySettings: 'إعدادات الشركة',
       companySettingsHint: 'الهوية البصرية والمنطقة الزمنية والعملة وساعات العمل.',
+      websiteAccess: 'وصول الموقع',
+      websiteAccessHint: 'اختر سجلات العملاء التي يمكن لموقعك طلبها.',
     },
     duration: {
       hoursMinutes: '{{hours}} س {{minutes}} د',
@@ -6718,10 +6731,15 @@ export const ar: Catalogue<Messages> = {
       usage: 'عمليات البحث: {{lookups}} · وُجد: {{found}}',
       revoked: 'أُلغي في {{date}}',
       live: 'فعّال',
+      disabled: 'معطّل',
+      enable: 'تفعيل',
+      disable: 'تعطيل',
+      delete: 'حذف',
+      deleteConfirm: 'حذف هذا المفتاح نهائيًا؟ سيُزال سجله وتتوقف خدمة الموقع.',
       revoke: 'إلغاء',
       revokeConfirm: 'إلغاء هذا المفتاح؟ يتوقف الموقع الذي يستخدمه عن إيجاد المستندات فورًا.',
       limit: 'يوجد مفتاحان فعّالان. ألغِ أحدهما قبل إنشاء مفتاح جديد.',
-      managerOnly: 'وحده الحساب المُنشأ بأمر الطرفية يستطيع إنشاء مفاتيح الموقع أو إلغاءها.',
+      managerOnly: 'وحده مسؤول Integr8 المُنشأ بأمر الطرفية يستطيع حذف مفتاح الموقع نهائيًا.',
       secretTitle: 'انسخ هذا المفتاح الآن',
       secretBody: 'لن يظهر إلا هذه المرة. ضعه في بيئة خادم الموقع باسم INTEGR8_WEBSITE_KEY.',
       copy: 'نسخ',
@@ -6939,6 +6957,7 @@ export const ar: Catalogue<Messages> = {
       getStarted: 'ابدأ الإعداد',
       people: 'الأشخاص',
       companySettings: 'إعدادات الشركة',
+      websiteAccess: 'وصول الموقع',
       storage: 'التخزين',
       billing: 'الفوترة',
       crm: 'نظرة عامة على إدارة علاقات العملاء',
@@ -6993,6 +7012,7 @@ export const ar: Catalogue<Messages> = {
       getStarted: 'خمسة أمور للقيام بها، وبيانات تجريبية للاستكشاف.',
       people: 'ادعُ المهندسين، وغيّر الأدوار، وأزل شخصًا.',
       companySettings: 'المنطقة الزمنية والعملة وساعات العمل.',
+      websiteAccess: 'التحكم في سجلات العملاء التي يمكن لموقع الشركة طلبها.',
       storage: 'ما تستخدمه، وما تبقّى.',
       billing: 'خطتك وحدودك وبطاقتك.',
       crm: 'العملاء المحتملون والفرص والمتابعات.',

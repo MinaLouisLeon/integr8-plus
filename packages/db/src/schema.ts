@@ -882,6 +882,10 @@ export interface TenantSettingsTable {
   ai_web_enabled: Generated<boolean>;
   ai_desktop_enabled: Generated<boolean>;
   ai_mobile_enabled: Generated<boolean>;
+  website_files_enabled: Generated<boolean>;
+  website_jobs_enabled: Generated<boolean>;
+  website_quotes_enabled: Generated<boolean>;
+  website_invoices_enabled: Generated<boolean>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
@@ -2983,6 +2987,7 @@ export interface WebsiteKeysTable {
   key_hash: string;
   key_hint: string;
   label: string | null;
+  enabled: Generated<boolean>;
   created_by: string;
   created_at: CreatedAt;
   revoked_at: Date | null;

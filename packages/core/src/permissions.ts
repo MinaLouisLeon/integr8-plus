@@ -23,6 +23,8 @@ export const PERMISSIONS = [
   'tenant.read',
   /** Change company settings. Owner only — billing hangs off this in P17. */
   'tenant.update',
+  /** Enable or disable customer website access. Available to owners and admins only. */
+  'website.access.manage',
   /**
    * Set the company's look: logo, app icon, colours, default theme, website,
    * and whether its own apps are built. Staff-only (see
@@ -342,6 +344,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
   owner: [
     'tenant.read',
     'tenant.update',
+    'website.access.manage',
     'branding.manage',
     'billing.read',
     'billing.manage',
@@ -424,6 +427,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
   // they will be asked before the owner is.
   admin: [
     'tenant.read',
+    'website.access.manage',
     'billing.read',
     'member.read',
     'member.invite',
@@ -755,6 +759,9 @@ function roleCan(seat: Seat, permission: Permission): boolean {
   if (custom === undefined || seat.role === 'owner') {
     return can(seat.role, permission);
   }
+  if (OWNER_ADMIN_ONLY_PERMISSIONS.has(permission)) {
+    return false;
+  }
   if (custom.removed.includes(permission)) {
     return false;
   }
@@ -813,9 +820,8 @@ export const CUSTOM_ROLE_BASES = ROLES.filter(
 export type CustomRoleBase = (typeof CUSTOM_ROLE_BASES)[number];
 
 /**
- * Permissions no custom role may hold: what only the owner does (the
- * company's settings and billing, unlocking a closed month, defining roles),
- * and what only Integr8 staff do.
+ * Permissions no custom role may hold: owner-only and owner/admin-only
+ * capabilities, and what only Integr8 staff do.
  */
 export const OWNER_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
   'tenant.update',
@@ -824,9 +830,18 @@ export const OWNER_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<Permissio
   'role.manage',
 ]);
 
+/** Permissions restricted to the built-in owner and admin roles. */
+export const OWNER_ADMIN_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
+  'website.access.manage',
+]);
+
 /** True when a custom role may add this permission to its base. */
 export function customRoleMayHold(permission: Permission): boolean {
-  return !OWNER_ONLY_PERMISSIONS.has(permission) && !STAFF_ONLY_PERMISSIONS.has(permission);
+  return (
+    !OWNER_ONLY_PERMISSIONS.has(permission) &&
+    !OWNER_ADMIN_ONLY_PERMISSIONS.has(permission) &&
+    !STAFF_ONLY_PERMISSIONS.has(permission)
+  );
 }
 
 /** A custom role as a seat carries it: what it adds to and takes from its base role. */
@@ -844,7 +859,9 @@ export function customRolePermissions(
   const removed = new Set(overlay.removed);
   return [
     ...new Set([
-      ...permissionsFor(base).filter((permission) => !removed.has(permission)),
+      ...permissionsFor(base).filter(
+        (permission) => !removed.has(permission) && !OWNER_ADMIN_ONLY_PERMISSIONS.has(permission),
+      ),
       ...overlay.added.filter(customRoleMayHold),
     ]),
   ];
