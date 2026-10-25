@@ -670,7 +670,11 @@ export class WebsiteKeysRepository {
     return toWebsiteKey(row);
   }
 
-  async setEnabled(tenantId: string, keyId: string, enabled: boolean): Promise<WebsiteKey | undefined> {
+  async setEnabled(
+    tenantId: string,
+    keyId: string,
+    enabled: boolean,
+  ): Promise<WebsiteKey | undefined> {
     const row = await this.db
       .updateTable('website_keys')
       .set({ enabled })

@@ -211,7 +211,8 @@ export const updateWebsiteKeyRoute = defineRoute({
   path: '/v1/platform/companies/:tenantId/website-keys/:keyId',
   operationId: 'updateWebsiteKey',
   summary: 'Enable or disable a company website key',
-  description: 'Any active Integr8 staff member can change key state. Disabling stops requests while retaining the key; enabling resumes it unless revoked.',
+  description:
+    'Any active Integr8 staff member can change key state. Disabling stops requests while retaining the key; enabling resumes it unless revoked.',
   tags: TAGS,
   security: 'platform',
   params: companyParams.extend({ keyId: z.uuid() }),
@@ -246,7 +247,8 @@ export const deleteWebsiteKeyRoute = defineRoute({
   path: '/v1/platform/companies/:tenantId/website-keys/:keyId',
   operationId: 'deleteWebsiteKey',
   summary: 'Permanently delete a company website key',
-  description: 'Only the terminal-created Integr8 staff admin can permanently delete a key. An audit event records the action; the secret is never retained.',
+  description:
+    'Only the terminal-created Integr8 staff admin can permanently delete a key. An audit event records the action; the secret is never retained.',
   tags: TAGS,
   security: 'platform',
   params: companyParams.extend({ keyId: z.uuid() }),

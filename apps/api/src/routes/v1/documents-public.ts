@@ -251,11 +251,19 @@ export const websiteDocumentLookupRoute = defineRoute({
       );
     }
     if ((await getPlatformDataSource().settings.flagsFor(live.tenantId)).website_files !== true) {
-      throw new ApiError(403, 'feature_disabled', 'Website file access is not switched on by Integr8.');
+      throw new ApiError(
+        403,
+        'feature_disabled',
+        'Website file access is not switched on by Integr8.',
+      );
     }
     const websiteAccess = await withTenant(live.tenantId, (tx) => tx.settings.get());
     if (!websiteAccess.websiteFilesEnabled) {
-      throw new ApiError(403, 'feature_disabled', 'Website file access is not switched on by this company.');
+      throw new ApiError(
+        403,
+        'feature_disabled',
+        'Website file access is not switched on by this company.',
+      );
     }
 
     const match = await withTenant(live.tenantId, async (tx) => {

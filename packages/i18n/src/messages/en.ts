@@ -519,7 +519,8 @@ export const en = {
       saved: 'Saved.',
       websiteAccess: {
         title: 'Customer website access',
-        intro: 'Choose which customer data your company website may request. Integr8 must also enable each capability, and your website must authenticate its own customers.',
+        intro:
+          'Choose which customer data your company website may request. Integr8 must also enable each capability, and your website must authenticate its own customers.',
         files: 'Files and documents',
         jobs: 'Job status',
         quotes: 'Quotes',
@@ -6677,12 +6678,12 @@ export const en = {
       enable: 'Enable',
       disable: 'Disable',
       delete: 'Delete',
-      deleteConfirm: 'Permanently delete this key? Its record will be removed and the website service will stop.',
+      deleteConfirm:
+        'Permanently delete this key? Its record will be removed and the website service will stop.',
       revoke: 'Revoke',
       revokeConfirm: 'Revoke this key? The website using it stops finding documents at once.',
       limit: 'Two keys are live. Revoke one before making another.',
-      managerOnly:
-        'Only the terminal-created staff admin can permanently delete a website key.',
+      managerOnly: 'Only the terminal-created staff admin can permanently delete a website key.',
       secretTitle: 'Copy this key now',
       secretBody:
         'It is shown only this once. Put it in the website server’s environment as INTEGR8_WEBSITE_KEY.',

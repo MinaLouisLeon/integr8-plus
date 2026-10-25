@@ -860,8 +860,7 @@ export function customRolePermissions(
   return [
     ...new Set([
       ...permissionsFor(base).filter(
-        (permission) =>
-          !removed.has(permission) && !OWNER_ADMIN_ONLY_PERMISSIONS.has(permission),
+        (permission) => !removed.has(permission) && !OWNER_ADMIN_ONLY_PERMISSIONS.has(permission),
       ),
       ...overlay.added.filter(customRoleMayHold),
     ]),

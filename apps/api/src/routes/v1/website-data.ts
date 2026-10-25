@@ -1,4 +1,8 @@
-import { formatInvoiceReference, formatQuoteReference, formatWorkOrderReference } from '@integr8/core';
+import {
+  formatInvoiceReference,
+  formatQuoteReference,
+  formatWorkOrderReference,
+} from '@integr8/core';
 import { getPlatformDataSource, linkOpens, withTenant } from '@integr8/db';
 import { z } from 'zod';
 import { ApiError, notFound } from '../../http/errors.js';
@@ -44,11 +48,19 @@ async function authorize(
   const control = capabilities[capability];
   const platformFlags = await getPlatformDataSource().settings.flagsFor(live.tenantId);
   if (platformFlags[control.grant] !== true) {
-    throw new ApiError(403, 'feature_disabled', `Website ${capability} access is disabled by Integr8.`);
+    throw new ApiError(
+      403,
+      'feature_disabled',
+      `Website ${capability} access is disabled by Integr8.`,
+    );
   }
   const company = await withTenant(live.tenantId, (tx) => tx.settings.get());
   if (!company[control.setting]) {
-    throw new ApiError(403, 'feature_disabled', `Website ${capability} access is disabled by the company.`);
+    throw new ApiError(
+      403,
+      'feature_disabled',
+      `Website ${capability} access is disabled by the company.`,
+    );
   }
   if (control.module !== undefined && !(await isFeatureEnabled(live.tenantId, control.module))) {
     throw new ApiError(403, 'feature_disabled', `The ${control.module} module is not enabled.`);
@@ -71,7 +83,8 @@ export const websiteJobRoute = defineRoute({
   path: '/v1/website/jobs/:workOrderId',
   operationId: 'getWebsiteJobStatus',
   summary: 'Get one job status for a company website',
-  description: 'Server-side website key required. Returns a customer-safe status summary for one company job; never a job list or internal instructions.',
+  description:
+    'Server-side website key required. Returns a customer-safe status summary for one company job; never a job list or internal instructions.',
   tags: TAGS,
   security: 'public',
   websiteKeyAuth: true,
@@ -112,10 +125,25 @@ const quoteSchema = z.object({
   status: z.string(),
   currencyCode: z.string(),
   validUntil: z.iso.date().nullable(),
-  totals: z.object({ gross: z.string(), discount: z.string(), net: z.string(), tax: z.string(), total: z.string() }),
+  totals: z.object({
+    gross: z.string(),
+    discount: z.string(),
+    net: z.string(),
+    tax: z.string(),
+    total: z.string(),
+  }),
   introduction: z.string().nullable(),
   terms: z.string().nullable(),
-  lines: z.array(z.object({ position: z.number().int(), description: z.string(), quantity: z.string(), unit: z.string(), unitPrice: z.string(), total: z.string() })),
+  lines: z.array(
+    z.object({
+      position: z.number().int(),
+      description: z.string(),
+      quantity: z.string(),
+      unit: z.string(),
+      unitPrice: z.string(),
+      total: z.string(),
+    }),
+  ),
   updatedAt: z.iso.datetime(),
 });
 
@@ -124,7 +152,8 @@ export const websiteQuoteRoute = defineRoute({
   path: '/v1/website/quotes/:quoteId',
   operationId: 'getWebsiteQuote',
   summary: 'Get one quote for a company website',
-  description: 'Server-side website key required. Returns the customer-visible issued quote and its lines; drafts and internal notes are never exposed.',
+  description:
+    'Server-side website key required. Returns the customer-visible issued quote and its lines; drafts and internal notes are never exposed.',
   tags: TAGS,
   security: 'public',
   websiteKeyAuth: true,
@@ -141,7 +170,8 @@ export const websiteQuoteRoute = defineRoute({
     const live = await authorize(context, 'quotes');
     const result = await withTenant(live.tenantId, async (tx) => {
       const quote = await tx.salesQuotes.findQuote(params.quoteId);
-      if (quote === undefined || quote.issuedAt === null || quote.status === 'draft') return undefined;
+      if (quote === undefined || quote.issuedAt === null || quote.status === 'draft')
+        return undefined;
       const [summary] = await quoteSummaries(tx, [quote], await companyToday(tx));
       const lines = await tx.salesQuotes.quoteLines(quote.id);
       return { quote, summary: summary!, lines };
@@ -160,7 +190,16 @@ export const websiteQuoteRoute = defineRoute({
         totals: result.summary.totals,
         introduction: result.quote.introduction,
         terms: result.quote.terms,
-        lines: lineBodies(result.lines).map(({ position, description, quantity, unit, unitPrice, total }) => ({ position, description, quantity, unit, unitPrice, total })),
+        lines: lineBodies(result.lines).map(
+          ({ position, description, quantity, unit, unitPrice, total }) => ({
+            position,
+            description,
+            quantity,
+            unit,
+            unitPrice,
+            total,
+          }),
+        ),
         updatedAt: iso(result.quote.updatedAt),
       },
       headers: { 'cache-control': 'no-store' },
@@ -185,7 +224,8 @@ export const websiteInvoiceRoute = defineRoute({
   path: '/v1/website/invoices/:invoiceId',
   operationId: 'getWebsiteInvoice',
   summary: 'Get one invoice status for a company website',
-  description: 'Server-side website key required. Returns a customer-safe issued invoice summary; drafts and internal notes are never exposed.',
+  description:
+    'Server-side website key required. Returns a customer-safe issued invoice summary; drafts and internal notes are never exposed.',
   tags: TAGS,
   security: 'public',
   websiteKeyAuth: true,
@@ -202,7 +242,8 @@ export const websiteInvoiceRoute = defineRoute({
     const live = await authorize(context, 'invoices');
     const result = await withTenant(live.tenantId, async (tx) => {
       const invoice = await tx.financeInvoices.findInvoice(params.invoiceId);
-      if (invoice === undefined || invoice.issuedAt === null || invoice.reference === null) return undefined;
+      if (invoice === undefined || invoice.issuedAt === null || invoice.reference === null)
+        return undefined;
       const [summary] = await invoiceSummaries(tx, [invoice], await companyToday(tx));
       return { invoice, summary: summary! };
     });
@@ -240,7 +281,8 @@ export const websiteFileRoute = defineRoute({
   path: '/v1/website/files/:documentId',
   operationId: 'getWebsiteFile',
   summary: 'Get short-lived links to one customer document',
-  description: 'Server-side website key required. The document ID must already be known to the company website. Returns five-minute links; never a file listing.',
+  description:
+    'Server-side website key required. The document ID must already be known to the company website. Returns five-minute links; never a file listing.',
   tags: TAGS,
   security: 'public',
   websiteKeyAuth: true,
@@ -278,4 +320,9 @@ export const websiteFileRoute = defineRoute({
   },
 });
 
-export const websiteDataRoutes = [websiteJobRoute, websiteQuoteRoute, websiteInvoiceRoute, websiteFileRoute];
+export const websiteDataRoutes = [
+  websiteJobRoute,
+  websiteQuoteRoute,
+  websiteInvoiceRoute,
+  websiteFileRoute,
+];

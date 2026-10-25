@@ -229,7 +229,10 @@ export const updateWebsiteAccessSettingsRoute = defineRoute({
       message: 'At least one website-access switch must be provided.',
     }),
   responses: {
-    200: { description: 'The updated company website-access switches.', schema: websiteAccessSchema },
+    200: {
+      description: 'The updated company website-access switches.',
+      schema: websiteAccessSchema,
+    },
     403: { description: 'This role cannot manage company website access.' },
   },
   handler: async ({ body }, context) => {

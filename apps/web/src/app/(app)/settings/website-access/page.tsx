@@ -81,9 +81,7 @@ function WebsiteAccessForm({ initial }: { initial: WebsiteAccessSettings }) {
         <h1 className="text-2xl font-semibold text-content">
           {t('workspace.settings.websiteAccess.title')}
         </h1>
-        <p className="text-sm text-content-muted">
-          {t('workspace.settings.websiteAccess.intro')}
-        </p>
+        <p className="text-sm text-content-muted">{t('workspace.settings.websiteAccess.intro')}</p>
       </header>
 
       <form

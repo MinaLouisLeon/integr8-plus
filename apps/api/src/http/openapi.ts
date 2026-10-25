@@ -80,7 +80,8 @@ export function buildOpenApiDocument(
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'Integr8 Website Key',
-          description: 'A website key created by Integr8 staff. Keep it in the company website server environment; never expose it to browser code.',
+          description:
+            'A website key created by Integr8 staff. Keep it in the company website server environment; never expose it to browser code.',
         },
       },
       schemas: {

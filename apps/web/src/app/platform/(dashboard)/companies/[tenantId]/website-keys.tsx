@@ -53,9 +53,12 @@ export function WebsiteKeysPanel({ tenantId }: { tenantId: string }) {
   const revoke = useMutation({
     mutationFn: async (keyId: string) =>
       (
-        await platformClient().POST('/v1/platform/companies/{tenantId}/website-keys/{keyId}/revoke', {
-          params: { path: { tenantId, keyId } },
-        })
+        await platformClient().POST(
+          '/v1/platform/companies/{tenantId}/website-keys/{keyId}/revoke',
+          {
+            params: { path: { tenantId, keyId } },
+          },
+        )
       ).data!,
     onSuccess: () => void queries.invalidateQueries({ queryKey }),
   });

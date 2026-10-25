@@ -221,13 +221,13 @@ The OpenAPI source of truth is `apps/api/openapi.json`. Every request uses the
 same `Authorization: Bearer <website key>` header. These endpoints return one
 known record by its UUID; they do not list or search across company records.
 
-| Method | Endpoint | Returns |
-| ------ | -------- | ------- |
-| `POST` | `/v1/website/documents/lookup` | One document found by the agreed template field and optional confirmation field. |
-| `GET` | `/v1/website/files/{documentId}` | Five-minute view and download links for one ready customer document. |
-| `GET` | `/v1/website/jobs/{workOrderId}` | Customer-safe job reference, status, title and due dates. |
-| `GET` | `/v1/website/quotes/{quoteId}` | One issued quote with customer-visible terms, totals and lines. Drafts and internal notes are excluded. |
-| `GET` | `/v1/website/invoices/{invoiceId}` | One issued invoice summary. Drafts and internal notes are excluded. |
+| Method | Endpoint                           | Returns                                                                                                 |
+| ------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `POST` | `/v1/website/documents/lookup`     | One document found by the agreed template field and optional confirmation field.                        |
+| `GET`  | `/v1/website/files/{documentId}`   | Five-minute view and download links for one ready customer document.                                    |
+| `GET`  | `/v1/website/jobs/{workOrderId}`   | Customer-safe job reference, status, title and due dates.                                               |
+| `GET`  | `/v1/website/quotes/{quoteId}`     | One issued quote with customer-visible terms, totals and lines. Drafts and internal notes are excluded. |
+| `GET`  | `/v1/website/invoices/{invoiceId}` | One issued invoice summary. Drafts and internal notes are excluded.                                     |
 
 Each capability is checked separately against the company and Integr8 switches;
 documents, quotes and invoices also require their existing product module to

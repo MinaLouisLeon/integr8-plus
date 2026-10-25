@@ -134,10 +134,18 @@ export class TenantSettingsRepository {
         ? {}
         : { ai_desktop_enabled: input.aiDesktopEnabled }),
       ...(input.aiMobileEnabled === undefined ? {} : { ai_mobile_enabled: input.aiMobileEnabled }),
-      ...(input.websiteFilesEnabled === undefined ? {} : { website_files_enabled: input.websiteFilesEnabled }),
-      ...(input.websiteJobsEnabled === undefined ? {} : { website_jobs_enabled: input.websiteJobsEnabled }),
-      ...(input.websiteQuotesEnabled === undefined ? {} : { website_quotes_enabled: input.websiteQuotesEnabled }),
-      ...(input.websiteInvoicesEnabled === undefined ? {} : { website_invoices_enabled: input.websiteInvoicesEnabled }),
+      ...(input.websiteFilesEnabled === undefined
+        ? {}
+        : { website_files_enabled: input.websiteFilesEnabled }),
+      ...(input.websiteJobsEnabled === undefined
+        ? {}
+        : { website_jobs_enabled: input.websiteJobsEnabled }),
+      ...(input.websiteQuotesEnabled === undefined
+        ? {}
+        : { website_quotes_enabled: input.websiteQuotesEnabled }),
+      ...(input.websiteInvoicesEnabled === undefined
+        ? {}
+        : { website_invoices_enabled: input.websiteInvoicesEnabled }),
     };
 
     const row = await this.db
