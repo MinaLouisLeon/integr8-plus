@@ -164,7 +164,14 @@ const NAV_GLYPHS: Record<NavIcon, Glyph> = {
 };
 
 export type ChromeIcon =
-  'menu' | 'close' | 'chevron-start' | 'chevron-end' | 'arrow-start' | 'sign-out' | 'globe';
+  | 'menu'
+  | 'close'
+  | 'chevron-start'
+  | 'chevron-end'
+  | 'arrow-start'
+  | 'sign-out'
+  | 'globe'
+  | 'refresh';
 
 const CHROME_GLYPHS: Record<ChromeIcon, Glyph> = {
   menu: ['M4 7h16M4 12h16M4 17h16'],
@@ -177,6 +184,12 @@ const CHROME_GLYPHS: Record<ChromeIcon, Glyph> = {
     'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
     'M3 12h18',
     'M12 3a14 14 0 0 1 0 18A14 14 0 0 1 12 3z',
+  ],
+  refresh: [
+    'M3 12a9 9 0 0 1 15.4-6.4L21 8',
+    'M21 3v5h-5',
+    'M21 12a9 9 0 0 1-15.4 6.4L3 16',
+    'M3 21v-5h5',
   ],
 };
 
