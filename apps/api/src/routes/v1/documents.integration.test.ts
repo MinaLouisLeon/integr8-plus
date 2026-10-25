@@ -19,7 +19,7 @@ import {
  * templates only for staff, checked against the form; making a document from
  * a submission with typed and taken fields; the worker printing it into the
  * company's bucket and ledger; the register's search, expiry and deletion;
- * the QR code's public link; website keys issued only by the terminal account;
+ * the QR code's public link; website-key lifecycle controls;
  * and the website lookup that finds one document or none.
  */
 
@@ -73,6 +73,19 @@ async function setFlag(enabled: boolean) {
     payload: { enabled },
   });
   expect(response.statusCode, response.body).toBe(200);
+}
+
+async function setWebsiteFileAccess(enabled: boolean) {
+  const staff = await api.call(admin.accessToken, {
+    method: 'PUT',
+    url: `/v1/platform/companies/${api.tenantId}/flags/website_files`,
+    payload: { enabled },
+  });
+  expect(staff.statusCode, staff.body).toBe(200);
+  const company = await as(owner, 'PATCH', '/v1/settings/website-access', {
+    websiteFilesEnabled: enabled,
+  });
+  expect(company.statusCode, company.body).toBe(200);
 }
 
 async function upload(who: Member | string, bytes: Buffer, contentType: string) {
@@ -515,11 +528,16 @@ describe('website keys and the website lookup', () => {
       payload: body,
     });
 
-  it('are made only by the terminal account, and shown once', async () => {
+  it('can be made by staff, and the secret is shown once', async () => {
+    await setFlag(true);
+    await setWebsiteFileAccess(true);
     const url = `/v1/platform/companies/${api.tenantId}/website-keys`;
-    const refused = await api.call(admin.accessToken, { method: 'POST', url, payload: {} });
-    expect(refused.statusCode).toBe(403);
-    expect(code(refused)).toBe('staff_manager_only');
+    const first = await api.call(admin.accessToken, {
+      method: 'POST',
+      url,
+      payload: { label: 'ops-website' },
+    });
+    expect(first.statusCode, first.body).toBe(201);
 
     const made = await api.call(manager.accessToken, {
       method: 'POST',
@@ -533,17 +551,39 @@ describe('website keys and the website lookup', () => {
     expect(secret).toMatch(/^i8wk_[A-Za-z0-9_-]{43}$/u);
     expect(body.key.hint).toBe(secret.slice(-4));
 
-    const listed = json<{ items: { hint: string }[]; canManage: boolean }>(
-      await api.call(admin.accessToken, { method: 'GET', url }),
+    const listed = json<{
+      items: { hint: string }[];
+      canManage: boolean;
+      canDelete: boolean;
+    }>(await api.call(admin.accessToken, { method: 'GET', url }));
+    expect(listed.canManage).toBe(true);
+    expect(listed.canDelete).toBe(false);
+    expect(listed.items.map((item) => item.hint)).toEqual(
+      expect.arrayContaining([secret.slice(-4), json<{ key: { hint: string } }>(first).key.hint]),
     );
-    expect(listed.canManage).toBe(false);
-    expect(listed.items.map((item) => item.hint)).toEqual([secret.slice(-4)]);
     expect(JSON.stringify(listed)).not.toContain(secret);
 
-    await api.call(manager.accessToken, { method: 'POST', url, payload: {} });
-    const third = await api.call(manager.accessToken, { method: 'POST', url, payload: {} });
+    const managerListed = json<{ canManage: boolean; canDelete: boolean }>(
+      await api.call(manager.accessToken, { method: 'GET', url }),
+    );
+    expect(managerListed).toEqual({ canManage: true, canDelete: true });
+
+    const third = await api.call(admin.accessToken, { method: 'POST', url, payload: {} });
     expect(third.statusCode).toBe(409);
     expect(code(third)).toBe('website_key_limit');
+
+    const firstKeyId = json<{ key: { id: string } }>(first).key.id;
+    const refusedDelete = await api.call(admin.accessToken, {
+      method: 'DELETE',
+      url: `${url}/${firstKeyId}`,
+    });
+    expect(refusedDelete.statusCode).toBe(403);
+    expect(code(refusedDelete)).toBe('staff_manager_only');
+    const deleted = await api.call(manager.accessToken, {
+      method: 'DELETE',
+      url: `${url}/${firstKeyId}`,
+    });
+    expect(deleted.statusCode, deleted.body).toBe(200);
   });
 
   it('finds one document by its key field and the confirming field, or none', async () => {
@@ -589,9 +629,10 @@ describe('website keys and the website lookup', () => {
       expect(refused.statusCode).toBe(401);
       expect(code(refused)).toBe('website_key_invalid');
     }
-    const revoked = await api.call(manager.accessToken, {
-      method: 'DELETE',
-      url: `/v1/platform/companies/${api.tenantId}/website-keys/${keyId}`,
+    const revoked = await api.call(admin.accessToken, {
+      method: 'POST',
+      url: `/v1/platform/companies/${api.tenantId}/website-keys/${keyId}/revoke`,
+      payload: {},
     });
     expect(revoked.statusCode, revoked.body).toBe(200);
     expect((await lookup(secret, body)).statusCode).toBe(401);
