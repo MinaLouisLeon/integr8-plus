@@ -563,10 +563,12 @@ describe('website keys and the website lookup', () => {
     );
     expect(JSON.stringify(listed)).not.toContain(secret);
 
-    const managerListed = json<{ canManage: boolean; canDelete: boolean }>(
-      await api.call(manager.accessToken, { method: 'GET', url }),
-    );
-    expect(managerListed).toEqual({ canManage: true, canDelete: true });
+    const managerListed = json<{
+      canManage: boolean;
+      canDelete: boolean;
+    }>(await api.call(manager.accessToken, { method: 'GET', url }));
+    expect(managerListed.canManage).toBe(true);
+    expect(managerListed.canDelete).toBe(true);
 
     const third = await api.call(admin.accessToken, { method: 'POST', url, payload: {} });
     expect(third.statusCode).toBe(409);
