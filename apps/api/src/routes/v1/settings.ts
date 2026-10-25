@@ -47,10 +47,6 @@ const settingsSchema = z.object({
   aiWebEnabled: z.boolean(),
   aiDesktopEnabled: z.boolean(),
   aiMobileEnabled: z.boolean(),
-  websiteFilesEnabled: z.boolean(),
-  websiteJobsEnabled: z.boolean(),
-  websiteQuotesEnabled: z.boolean(),
-  websiteInvoicesEnabled: z.boolean(),
 });
 
 export const getSettingsRoute = defineRoute({
@@ -112,10 +108,6 @@ export const updateSettingsRoute = defineRoute({
     aiWebEnabled: z.boolean().optional(),
     aiDesktopEnabled: z.boolean().optional(),
     aiMobileEnabled: z.boolean().optional(),
-    websiteFilesEnabled: z.boolean().optional(),
-    websiteJobsEnabled: z.boolean().optional(),
-    websiteQuotesEnabled: z.boolean().optional(),
-    websiteInvoicesEnabled: z.boolean().optional(),
   }),
   responses: {
     200: { description: 'The settings, as they now are.', schema: settingsSchema },
@@ -175,6 +167,94 @@ export const updateSettingsRoute = defineRoute({
     });
 
     return { status: 200, body: toBody(settings) };
+  },
+});
+
+const websiteAccessSchema = z.object({
+  websiteFilesEnabled: z.boolean(),
+  websiteJobsEnabled: z.boolean(),
+  websiteQuotesEnabled: z.boolean(),
+  websiteInvoicesEnabled: z.boolean(),
+});
+
+export const getWebsiteAccessSettingsRoute = defineRoute({
+  method: 'get',
+  path: '/v1/settings/website-access',
+  operationId: 'getWebsiteAccessSettings',
+  summary: 'Read the company website-access switches',
+  description: 'Only the company owner or admin can read these switches.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'website.access.manage',
+  params: noSchema,
+  query: noSchema,
+  body: noSchema,
+  responses: {
+    200: { description: 'The four company-side access switches.', schema: websiteAccessSchema },
+  },
+  handler: async (_input, context) => {
+    const settings = await withTenant(context.principal.tenantId, (tx) => tx.settings.get());
+    return {
+      status: 200,
+      body: {
+        websiteFilesEnabled: settings.websiteFilesEnabled,
+        websiteJobsEnabled: settings.websiteJobsEnabled,
+        websiteQuotesEnabled: settings.websiteQuotesEnabled,
+        websiteInvoicesEnabled: settings.websiteInvoicesEnabled,
+      },
+    };
+  },
+});
+
+export const updateWebsiteAccessSettingsRoute = defineRoute({
+  method: 'patch',
+  path: '/v1/settings/website-access',
+  operationId: 'updateWebsiteAccessSettings',
+  summary: 'Change the company website-access switches',
+  description:
+    'Only the company owner or admin can change these switches. Each capability also requires Integr8 to enable it.',
+  tags: TAGS,
+  security: 'authenticated',
+  permission: 'website.access.manage',
+  params: noSchema,
+  query: noSchema,
+  body: z
+    .object({
+      websiteFilesEnabled: z.boolean().optional(),
+      websiteJobsEnabled: z.boolean().optional(),
+      websiteQuotesEnabled: z.boolean().optional(),
+      websiteInvoicesEnabled: z.boolean().optional(),
+    })
+    .refine((body) => Object.values(body).some((value) => value !== undefined), {
+      message: 'At least one website-access switch must be provided.',
+    }),
+  responses: {
+    200: { description: 'The updated company website-access switches.', schema: websiteAccessSchema },
+    403: { description: 'This role cannot manage company website access.' },
+  },
+  handler: async ({ body }, context) => {
+    const settings = await withTenant(context.principal.tenantId, async (tx) => {
+      const updated = await tx.settings.update(body);
+      await tx.auditLog.append({
+        actorKind: 'tenant_user',
+        actorId: context.principal.userId,
+        actorLabel: context.principal.userId,
+        action: 'website_access.updated',
+        resourceType: 'tenant',
+        resourceId: context.principal.tenantId,
+        metadata: { fields: Object.keys(body) },
+      });
+      return updated;
+    });
+    return {
+      status: 200,
+      body: {
+        websiteFilesEnabled: settings.websiteFilesEnabled,
+        websiteJobsEnabled: settings.websiteJobsEnabled,
+        websiteQuotesEnabled: settings.websiteQuotesEnabled,
+        websiteInvoicesEnabled: settings.websiteInvoicesEnabled,
+      },
+    };
   },
 });
 
@@ -294,10 +374,6 @@ function toBody(settings: {
   aiWebEnabled: boolean;
   aiDesktopEnabled: boolean;
   aiMobileEnabled: boolean;
-  websiteFilesEnabled: boolean;
-  websiteJobsEnabled: boolean;
-  websiteQuotesEnabled: boolean;
-  websiteInvoicesEnabled: boolean;
 }) {
   return {
     logoMediaId: settings.logoMediaId,
@@ -316,10 +392,6 @@ function toBody(settings: {
     aiWebEnabled: settings.aiWebEnabled,
     aiDesktopEnabled: settings.aiDesktopEnabled,
     aiMobileEnabled: settings.aiMobileEnabled,
-    websiteFilesEnabled: settings.websiteFilesEnabled,
-    websiteJobsEnabled: settings.websiteJobsEnabled,
-    websiteQuotesEnabled: settings.websiteQuotesEnabled,
-    websiteInvoicesEnabled: settings.websiteInvoicesEnabled,
   };
 }
 
@@ -345,4 +417,10 @@ function unprocessableTimezone(name: string) {
   ]);
 }
 
-export const settingsRoutes = [getSettingsRoute, updateSettingsRoute, publicPlansRoute];
+export const settingsRoutes = [
+  getSettingsRoute,
+  updateSettingsRoute,
+  getWebsiteAccessSettingsRoute,
+  updateWebsiteAccessSettingsRoute,
+  publicPlansRoute,
+];

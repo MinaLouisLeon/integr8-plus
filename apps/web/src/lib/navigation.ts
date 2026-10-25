@@ -28,6 +28,7 @@ export const NAV_PATHS: Readonly<
   getStarted: '/get-started',
   people: '/settings/people',
   companySettings: '/settings/company',
+  websiteAccess: '/settings/website-access',
   storage: '/storage',
   billing: '/billing',
   crm: '/crm',

@@ -104,6 +104,9 @@ export default function DashboardPage() {
             ...(person?.permissions.includes('tenant.update') === true
               ? ([['/settings/company', 'companySettings', 'companySettingsHint']] as const)
               : []),
+            ...(person?.permissions.includes('website.access.manage') === true
+              ? ([['/settings/website-access', 'websiteAccess', 'websiteAccessHint']] as const)
+              : []),
           ] as const
         ).map(([href, label, hint]) => (
           <Link

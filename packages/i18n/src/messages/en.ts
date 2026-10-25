@@ -677,6 +677,7 @@ export const en = {
     // One per permission prefix (`crm.`, `inventory.` and so on).
     group: {
       tenant: 'Company',
+      website: 'Website access',
       branding: 'Branding',
       member: 'People',
       invitation: 'Invitations',
@@ -708,6 +709,7 @@ export const en = {
     // One per permission in `PERMISSIONS` (@integr8/core), nested as named.
     permission: {
       tenant: { read: 'See the company record', update: 'Change company settings' },
+      website: { access: { manage: 'Manage customer website access' } },
       branding: { manage: 'Change company branding' },
       member: {
         read: 'See people',
@@ -1644,6 +1646,8 @@ export const en = {
       peopleHint: 'Invite engineers, change roles, remove somebody.',
       companySettings: 'Company settings',
       companySettingsHint: 'Branding, timezone, currency and working hours.',
+      websiteAccess: 'Website access',
+      websiteAccessHint: 'Choose which customer records your website can request.',
     },
     duration: {
       hoursMinutes: '{{hours}} h {{minutes}} min',
@@ -6901,6 +6905,7 @@ export const en = {
       getStarted: 'Get set up',
       people: 'People',
       companySettings: 'Company settings',
+      websiteAccess: 'Website access',
       storage: 'Storage',
       billing: 'Billing',
       crm: 'CRM overview',
@@ -6955,6 +6960,7 @@ export const en = {
       getStarted: 'Five things to do, and sample data to look around with.',
       people: 'Invite engineers, change roles, remove somebody.',
       companySettings: 'Timezone, currency and working hours.',
+      websiteAccess: 'Control which customer records your company website can request.',
       storage: 'What you are using, and how much is left.',
       billing: 'Your plan, your limits and your card.',
       crm: 'Leads, opportunities and follow-ups.',

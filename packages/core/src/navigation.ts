@@ -114,6 +114,7 @@ export type NavPath =
   | 'getStarted'
   | 'people'
   | 'companySettings'
+  | 'websiteAccess'
   | 'storage'
   | 'billing'
   | 'crm'
@@ -547,6 +548,14 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'companySettings',
     icon: 'building',
     permission: 'tenant.update',
+    webOnly: true,
+  },
+  {
+    key: 'websiteAccess',
+    group: 'company',
+    path: 'websiteAccess',
+    icon: 'building',
+    permission: 'website.access.manage',
     webOnly: true,
   },
   {

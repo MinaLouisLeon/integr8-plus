@@ -646,6 +646,7 @@ export const ar: Catalogue<Messages> = {
     },
     group: {
       tenant: 'الشركة',
+      website: 'وصول الموقع',
       branding: 'الهوية',
       member: 'الأشخاص',
       invitation: 'الدعوات',
@@ -676,6 +677,7 @@ export const ar: Catalogue<Messages> = {
     },
     permission: {
       tenant: { read: 'عرض بيانات الشركة', update: 'تغيير إعدادات الشركة' },
+      website: { access: { manage: 'إدارة وصول موقع العملاء' } },
       branding: { manage: 'تغيير هوية الشركة' },
       member: {
         read: 'عرض الأشخاص',
@@ -1597,6 +1599,8 @@ export const ar: Catalogue<Messages> = {
       peopleHint: 'دعوة المهندسين، وتغيير الأدوار، وإزالة الأشخاص.',
       companySettings: 'إعدادات الشركة',
       companySettingsHint: 'الهوية البصرية والمنطقة الزمنية والعملة وساعات العمل.',
+      websiteAccess: 'وصول الموقع',
+      websiteAccessHint: 'اختر سجلات العملاء التي يمكن لموقعك طلبها.',
     },
     duration: {
       hoursMinutes: '{{hours}} س {{minutes}} د',
@@ -6952,6 +6956,7 @@ export const ar: Catalogue<Messages> = {
       getStarted: 'ابدأ الإعداد',
       people: 'الأشخاص',
       companySettings: 'إعدادات الشركة',
+      websiteAccess: 'وصول الموقع',
       storage: 'التخزين',
       billing: 'الفوترة',
       crm: 'نظرة عامة على إدارة علاقات العملاء',
@@ -7006,6 +7011,7 @@ export const ar: Catalogue<Messages> = {
       getStarted: 'خمسة أمور للقيام بها، وبيانات تجريبية للاستكشاف.',
       people: 'ادعُ المهندسين، وغيّر الأدوار، وأزل شخصًا.',
       companySettings: 'المنطقة الزمنية والعملة وساعات العمل.',
+      websiteAccess: 'التحكم في سجلات العملاء التي يمكن لموقع الشركة طلبها.',
       storage: 'ما تستخدمه، وما تبقّى.',
       billing: 'خطتك وحدودك وبطاقتك.',
       crm: 'العملاء المحتملون والفرص والمتابعات.',

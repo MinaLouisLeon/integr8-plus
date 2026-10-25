@@ -64,10 +64,6 @@ interface Settings {
   aiWebEnabled: boolean;
   aiDesktopEnabled: boolean;
   aiMobileEnabled: boolean;
-  websiteFilesEnabled: boolean;
-  websiteJobsEnabled: boolean;
-  websiteQuotesEnabled: boolean;
-  websiteInvoicesEnabled: boolean;
   brandColour: string | null;
   shellColour: string | null;
   defaultTheme: 'light' | 'dark' | 'system';
@@ -120,10 +116,6 @@ function SettingsForm({ initial }: { initial: Settings }) {
   const [aiWeb, setAiWeb] = useState(initial.aiWebEnabled);
   const [aiDesktop, setAiDesktop] = useState(initial.aiDesktopEnabled);
   const [aiMobile, setAiMobile] = useState(initial.aiMobileEnabled);
-  const [websiteFiles, setWebsiteFiles] = useState(initial.websiteFilesEnabled);
-  const [websiteJobs, setWebsiteJobs] = useState(initial.websiteJobsEnabled);
-  const [websiteQuotes, setWebsiteQuotes] = useState(initial.websiteQuotesEnabled);
-  const [websiteInvoices, setWebsiteInvoices] = useState(initial.websiteInvoicesEnabled);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
 
@@ -140,10 +132,6 @@ function SettingsForm({ initial }: { initial: Settings }) {
           aiWebEnabled: aiWeb,
           aiDesktopEnabled: aiDesktop,
           aiMobileEnabled: aiMobile,
-          websiteFilesEnabled: websiteFiles,
-          websiteJobsEnabled: websiteJobs,
-          websiteQuotesEnabled: websiteQuotes,
-          websiteInvoicesEnabled: websiteInvoices,
         },
       });
     },
@@ -283,32 +271,6 @@ function SettingsForm({ initial }: { initial: Settings }) {
                   onChange={(event) => channel.set(event.target.checked)}
                 />
                 {t(`workspace.settings.ai.${channel.key}`)}
-              </label>
-            ))}
-          </div>
-        </section>
-
-        <section className="flex flex-col gap-4">
-          <h2 className="text-base font-semibold text-content">
-            {t('workspace.settings.websiteAccess.title')}
-          </h2>
-          <p className="text-sm text-content-muted">
-            {t('workspace.settings.websiteAccess.intro')}
-          </p>
-          <div className="flex flex-col gap-2">
-            {([
-              { label: 'files', checked: websiteFiles, set: setWebsiteFiles },
-              { label: 'jobs', checked: websiteJobs, set: setWebsiteJobs },
-              { label: 'quotes', checked: websiteQuotes, set: setWebsiteQuotes },
-              { label: 'invoices', checked: websiteInvoices, set: setWebsiteInvoices },
-            ] as const).map((item) => (
-              <label key={item.label} className="flex items-center gap-2 text-sm text-content">
-                <input
-                  type="checkbox"
-                  checked={item.checked}
-                  onChange={(event) => item.set(event.target.checked)}
-                />
-                {t(`workspace.settings.websiteAccess.${item.label}`)}
               </label>
             ))}
           </div>

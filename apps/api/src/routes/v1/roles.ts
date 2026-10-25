@@ -6,7 +6,6 @@ import {
   holds,
   type Permission,
   PERMISSIONS,
-  permissionsFor,
   type Principal,
   roleRank,
   toUserId,
@@ -155,7 +154,10 @@ export const roleCatalogueRoute = defineRoute({
     Promise.resolve({
       status: 200 as const,
       body: {
-        bases: CUSTOM_ROLE_BASES.map((role) => ({ role, permissions: permissionsFor(role) })),
+        bases: CUSTOM_ROLE_BASES.map((role) => ({
+          role,
+          permissions: customRolePermissions(role, { added: [], removed: [] }),
+        })),
         addable: PERMISSIONS.filter(customRoleMayHold),
       },
     }),
@@ -207,7 +209,7 @@ function checkedLists(
   base: CustomRoleBase,
   input: { added: readonly Permission[]; removed: readonly Permission[] },
 ): { added: Permission[]; removed: Permission[] } {
-  const baseHolds = new Set(permissionsFor(base));
+  const baseHolds = new Set(customRolePermissions(base, { added: [], removed: [] }));
   const refused = input.added.filter((permission) => !customRoleMayHold(permission));
   if (refused.length > 0) {
     throw unprocessable('permission_not_addable', 'A company role cannot hold that.', [

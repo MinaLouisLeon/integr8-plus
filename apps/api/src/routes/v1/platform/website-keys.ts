@@ -160,7 +160,11 @@ export const createWebsiteKeyRoute = defineRoute({
       targetId: key.id,
       metadata: { hint: key.keyHint, label: key.label },
     });
-    return { status: 201, body: { key: keyBody(key, await names()), secret } };
+    return {
+      status: 201,
+      body: { key: keyBody(key, await names()), secret },
+      headers: { 'cache-control': 'no-store' },
+    };
   },
 });
 

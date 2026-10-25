@@ -6092,18 +6092,6 @@
                     },
                     "aiMobileEnabled": {
                       "type": "boolean"
-                    },
-                    "websiteFilesEnabled": {
-                      "type": "boolean"
-                    },
-                    "websiteJobsEnabled": {
-                      "type": "boolean"
-                    },
-                    "websiteQuotesEnabled": {
-                      "type": "boolean"
-                    },
-                    "websiteInvoicesEnabled": {
-                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -6122,11 +6110,7 @@
                     "workingDays",
                     "aiWebEnabled",
                     "aiDesktopEnabled",
-                    "aiMobileEnabled",
-                    "websiteFilesEnabled",
-                    "websiteJobsEnabled",
-                    "websiteQuotesEnabled",
-                    "websiteInvoicesEnabled"
+                    "aiMobileEnabled"
                   ],
                   "additionalProperties": false
                 }
@@ -6294,18 +6278,6 @@
                   },
                   "aiMobileEnabled": {
                     "type": "boolean"
-                  },
-                  "websiteFilesEnabled": {
-                    "type": "boolean"
-                  },
-                  "websiteJobsEnabled": {
-                    "type": "boolean"
-                  },
-                  "websiteQuotesEnabled": {
-                    "type": "boolean"
-                  },
-                  "websiteInvoicesEnabled": {
-                    "type": "boolean"
                   }
                 }
               }
@@ -6390,18 +6362,6 @@
                     },
                     "aiMobileEnabled": {
                       "type": "boolean"
-                    },
-                    "websiteFilesEnabled": {
-                      "type": "boolean"
-                    },
-                    "websiteJobsEnabled": {
-                      "type": "boolean"
-                    },
-                    "websiteQuotesEnabled": {
-                      "type": "boolean"
-                    },
-                    "websiteInvoicesEnabled": {
-                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -6420,11 +6380,7 @@
                     "workingDays",
                     "aiWebEnabled",
                     "aiDesktopEnabled",
-                    "aiMobileEnabled",
-                    "websiteFilesEnabled",
-                    "websiteJobsEnabled",
-                    "websiteQuotesEnabled",
-                    "websiteInvoicesEnabled"
+                    "aiMobileEnabled"
                   ],
                   "additionalProperties": false
                 }
@@ -6446,6 +6402,237 @@
           },
           "422": {
             "description": "An unknown timezone (`unknown_timezone`), or a logo or app icon that is not a stored image of this company’s (`logo_not_found`, `app_icon_not_found`)."
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/settings/website-access": {
+      "get": {
+        "operationId": "getWebsiteAccessSettings",
+        "summary": "Read the company website-access switches",
+        "description": "Only the company owner or admin can read these switches.",
+        "tags": [
+          "workspace"
+        ],
+        "responses": {
+          "200": {
+            "description": "The four company-side access switches.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "websiteFilesEnabled": {
+                      "type": "boolean"
+                    },
+                    "websiteJobsEnabled": {
+                      "type": "boolean"
+                    },
+                    "websiteQuotesEnabled": {
+                      "type": "boolean"
+                    },
+                    "websiteInvoicesEnabled": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "websiteFilesEnabled",
+                    "websiteJobsEnabled",
+                    "websiteQuotesEnabled",
+                    "websiteInvoicesEnabled"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "updateWebsiteAccessSettings",
+        "summary": "Change the company website-access switches",
+        "description": "Only the company owner or admin can change these switches. Each capability also requires Integr8 to enable it.",
+        "tags": [
+          "workspace"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "websiteFilesEnabled": {
+                    "type": "boolean"
+                  },
+                  "websiteJobsEnabled": {
+                    "type": "boolean"
+                  },
+                  "websiteQuotesEnabled": {
+                    "type": "boolean"
+                  },
+                  "websiteInvoicesEnabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated company website-access switches.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "websiteFilesEnabled": {
+                      "type": "boolean"
+                    },
+                    "websiteJobsEnabled": {
+                      "type": "boolean"
+                    },
+                    "websiteQuotesEnabled": {
+                      "type": "boolean"
+                    },
+                    "websiteInvoicesEnabled": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "websiteFilesEnabled",
+                    "websiteJobsEnabled",
+                    "websiteQuotesEnabled",
+                    "websiteInvoicesEnabled"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This role cannot manage company website access."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "429": {
             "description": "Rate limit exceeded.",
@@ -7458,6 +7645,7 @@
                         "enum": [
                           "tenant.read",
                           "tenant.update",
+                          "website.access.manage",
                           "branding.manage",
                           "member.read",
                           "member.invite",
@@ -42118,6 +42306,7 @@
                               "enum": [
                                 "tenant.read",
                                 "tenant.update",
+                                "website.access.manage",
                                 "branding.manage",
                                 "member.read",
                                 "member.invite",
@@ -42209,6 +42398,7 @@
                         "enum": [
                           "tenant.read",
                           "tenant.update",
+                          "website.access.manage",
                           "branding.manage",
                           "member.read",
                           "member.invite",
@@ -42428,6 +42618,7 @@
                               "enum": [
                                 "tenant.read",
                                 "tenant.update",
+                                "website.access.manage",
                                 "branding.manage",
                                 "member.read",
                                 "member.invite",
@@ -42511,6 +42702,7 @@
                               "enum": [
                                 "tenant.read",
                                 "tenant.update",
+                                "website.access.manage",
                                 "branding.manage",
                                 "member.read",
                                 "member.invite",
@@ -42594,6 +42786,7 @@
                               "enum": [
                                 "tenant.read",
                                 "tenant.update",
+                                "website.access.manage",
                                 "branding.manage",
                                 "member.read",
                                 "member.invite",
@@ -42843,6 +43036,7 @@
                       "enum": [
                         "tenant.read",
                         "tenant.update",
+                        "website.access.manage",
                         "branding.manage",
                         "member.read",
                         "member.invite",
@@ -42928,6 +43122,7 @@
                       "enum": [
                         "tenant.read",
                         "tenant.update",
+                        "website.access.manage",
                         "branding.manage",
                         "member.read",
                         "member.invite",
@@ -43062,6 +43257,7 @@
                         "enum": [
                           "tenant.read",
                           "tenant.update",
+                          "website.access.manage",
                           "branding.manage",
                           "member.read",
                           "member.invite",
@@ -43145,6 +43341,7 @@
                         "enum": [
                           "tenant.read",
                           "tenant.update",
+                          "website.access.manage",
                           "branding.manage",
                           "member.read",
                           "member.invite",
@@ -43228,6 +43425,7 @@
                         "enum": [
                           "tenant.read",
                           "tenant.update",
+                          "website.access.manage",
                           "branding.manage",
                           "member.read",
                           "member.invite",
@@ -43455,6 +43653,7 @@
                       "enum": [
                         "tenant.read",
                         "tenant.update",
+                        "website.access.manage",
                         "branding.manage",
                         "member.read",
                         "member.invite",
@@ -43540,6 +43739,7 @@
                       "enum": [
                         "tenant.read",
                         "tenant.update",
+                        "website.access.manage",
                         "branding.manage",
                         "member.read",
                         "member.invite",
@@ -43668,6 +43868,7 @@
                         "enum": [
                           "tenant.read",
                           "tenant.update",
+                          "website.access.manage",
                           "branding.manage",
                           "member.read",
                           "member.invite",
@@ -43751,6 +43952,7 @@
                         "enum": [
                           "tenant.read",
                           "tenant.update",
+                          "website.access.manage",
                           "branding.manage",
                           "member.read",
                           "member.invite",
@@ -43834,6 +44036,7 @@
                         "enum": [
                           "tenant.read",
                           "tenant.update",
+                          "website.access.manage",
                           "branding.manage",
                           "member.read",
                           "member.invite",
@@ -44095,6 +44298,7 @@
                         "enum": [
                           "tenant.read",
                           "tenant.update",
+                          "website.access.manage",
                           "branding.manage",
                           "member.read",
                           "member.invite",
@@ -44178,6 +44382,7 @@
                         "enum": [
                           "tenant.read",
                           "tenant.update",
+                          "website.access.manage",
                           "branding.manage",
                           "member.read",
                           "member.invite",
@@ -44261,6 +44466,7 @@
                         "enum": [
                           "tenant.read",
                           "tenant.update",
+                          "website.access.manage",
                           "branding.manage",
                           "member.read",
                           "member.invite",

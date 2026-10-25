@@ -19,7 +19,7 @@ the key identifies the company website, not an individual customer.
   `certificate`) and, if the template asks for one, a second field that must
   match too (for example `customer`).
 - **Capability switches.** The company owner or admin controls its switches in
-  **Settings → Company → Customer website access**. Integr8 controls four
+  **Settings → Website access** (owners and admins). Integr8 controls four
   independent grants (`website_files`, `website_jobs`, `website_quotes`, and
   `website_invoices`) on the company's **Features** panel. Both sides must be
   on for that capability to work.
