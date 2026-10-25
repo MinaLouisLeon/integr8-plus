@@ -1,18 +1,24 @@
 # Roadmap — the version ladder
 
+This is the original sequencing plan, written before the CRM/ERP expansion and
+the current 1.1.2 release. For shipped modules and current readiness status, see
+[`version2.md`](../version2.md); do not read this version ladder as a live
+release-status report. The AI assistant has shipped; P30 below is the separate
+planned feature for AI-assisted form authoring.
+
 Each version answers one question. Do not start the next until the current one's
 question is answered honestly.
 
-| Version                 | Question it answers                            | Rough size |
-| ----------------------- | ---------------------------------------------- | ---------- |
-| **v0.1 Foundation**     | Can we build safely on this?                   | 3–4 weeks  |
-| **v0.2 Form Engine**    | Can a non-developer build a form that works?   | 4–6 weeks  |
-| **v0.3 Field Loop**     | Does it work in a basement with no signal?     | 6–8 weeks  |
-| **v1.0 Launch**         | Will someone pay for it?                       | 6–8 weeks  |
-| **v1.1 Inventory**      | Can they stop using their spreadsheet?         | 3–4 weeks  |
-| **v1.2 Scheduling**     | Can the dispatcher run their whole day here?   | 3–4 weeks  |
-| **v1.3 Reporting & AI** | Why would they renew?                          | 4–6 weeks  |
-| **v2.0 Scale**          | Can we sell to a company with a security team? | open-ended |
+| Version                                | Question it answers                            | Rough size |
+| -------------------------------------- | ---------------------------------------------- | ---------- |
+| **v0.1 Foundation**                    | Can we build safely on this?                   | 3–4 weeks  |
+| **v0.2 Form Engine**                   | Can a non-developer build a form that works?   | 4–6 weeks  |
+| **v0.3 Field Loop**                    | Does it work in a basement with no signal?     | 6–8 weeks  |
+| **v1.0 Launch**                        | Will someone pay for it?                       | 6–8 weeks  |
+| **v1.1 Inventory**                     | Can they stop using their spreadsheet?         | 3–4 weeks  |
+| **v1.2 Scheduling**                    | Can the dispatcher run their whole day here?   | 3–4 weeks  |
+| **v1.3 Reporting & AI form authoring** | Why would they renew?                          | 4–6 weeks  |
+| **v2.0 Scale**                         | Can we sell to a company with a security team? | open-ended |
 
 Sizes assume one experienced full-stack developer working steadily. They are for
 sequencing, not for promising dates to anyone.

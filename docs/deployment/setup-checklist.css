@@ -1,5 +1,5 @@
 /* Integr8 Plus Setup Checklist: styles.
-   Kept in step with setup-checklist.md and the published page (see AGENTS.md).
+   Supports the HTML version of setup-checklist.md (see AGENTS.md).
    The first rules are the base reset the page was published with. */
 :root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}

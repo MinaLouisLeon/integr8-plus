@@ -11,10 +11,11 @@ This block is written and re-added by `turbo` before repository-scoped commands 
 
 # The setup guide
 
-The setup guide exists in several copies that are one document. Whenever you change one, change all of them in the same piece of work, and say so in the summary:
+The deployment checklist has two maintained content versions:
 
-1. **The published page** (the Claude artifact that the owner opens and shares, one fixed link; update it by publishing the same file path again).
-2. **`docs/deployment/setup-checklist.md`**: the same stages, parts and tick boxes in Markdown.
-3. **`docs/deployment/setup-checklist.html`**, **`setup-checklist.css`** and **`setup-checklist.js`**: the page as three files the owner downloads and opens locally. They must render the same as the published page.
+1. **`docs/deployment/setup-checklist.md`**: the Markdown checklist.
+2. **`docs/deployment/setup-checklist.html`**: the downloadable interactive checklist. Its `setup-checklist.css` and `setup-checklist.js` files support the HTML presentation and behavior; they are assets, not additional checklist content versions.
 
-Run `pnpm guide:check` before you commit: it fails if the Markdown and the HTML differ in stages, parts, tick boxes or their words, or if the page does not load its stylesheet and script. It cannot see the published page, so republish it yourself. Do not pad one copy with steps the others lack; if a step belongs in the guide, it belongs in every copy.
+Update the Markdown and HTML together whenever a feature adds or changes deployment, configuration, migration, rollout, or recovery steps. Keep their stages, parts, tick boxes, and wording aligned. Update CSS or JavaScript only when the HTML's presentation or behavior needs to change. Keep the guide's stated current release synchronized with the root `package.json` version.
+
+Run `pnpm guide:check` before committing: it checks that Markdown and HTML agree on stages, parts, tick boxes, and their words, and that the HTML loads its stylesheet and script.
