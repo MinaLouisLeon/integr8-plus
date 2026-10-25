@@ -170,7 +170,7 @@ export const websiteQuoteRoute = defineRoute({
     const live = await authorize(context, 'quotes');
     const result = await withTenant(live.tenantId, async (tx) => {
       const quote = await tx.salesQuotes.findQuote(params.quoteId);
-      if (quote === undefined || quote.issuedAt === null || quote.status === 'draft')
+      if (quote?.issuedAt == null || quote.status === 'draft')
         return undefined;
       const [summary] = await quoteSummaries(tx, [quote], await companyToday(tx));
       const lines = await tx.salesQuotes.quoteLines(quote.id);
@@ -242,7 +242,7 @@ export const websiteInvoiceRoute = defineRoute({
     const live = await authorize(context, 'invoices');
     const result = await withTenant(live.tenantId, async (tx) => {
       const invoice = await tx.financeInvoices.findInvoice(params.invoiceId);
-      if (invoice === undefined || invoice.issuedAt === null || invoice.reference === null)
+      if (invoice?.issuedAt == null || invoice.reference === null)
         return undefined;
       const [summary] = await invoiceSummaries(tx, [invoice], await companyToday(tx));
       return { invoice, summary: summary! };
@@ -298,7 +298,7 @@ export const websiteFileRoute = defineRoute({
   handler: async ({ params }, context: PublicRequestContext) => {
     const live = await authorize(context, 'files');
     const document = await withTenant(live.tenantId, (tx) => tx.documents.find(params.documentId));
-    const available = document !== undefined && document.status === 'ready' && linkOpens(document);
+    const available = document?.status === 'ready' && linkOpens(document);
     await getPlatformDataSource().websiteKeys.recordUse(live.id, available);
     if (!available || document === undefined) throw notFound('No available customer document.');
     const [view, download] = await Promise.all([
