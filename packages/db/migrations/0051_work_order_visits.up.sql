@@ -414,14 +414,15 @@ create trigger work_order_visit_assignees_record
   after insert or update on work_order_visit_assignees
   for each row execute function record_work_order_visit_assignee();
 
--- As in 0013, plus visit events. A visit taken off someone because they left the
--- crew, or called off because its job closed, is not pushed: the job's own event
--- already was.
+-- As in 0013, plus visit events. A new visit is announced to each person on it
+-- by their 'visit_assigned' event, not by 'visit_scheduled'. A visit taken off
+-- someone because they left the crew, or called off because its job closed, is
+-- not pushed: the job's own event already was.
 create or replace function queue_work_order_push() returns trigger
 language plpgsql
 as $$
 begin
-  if new.kind in ('assigned', 'rescheduled', 'visit_scheduled', 'visit_rescheduled', 'visit_assigned')
+  if new.kind in ('assigned', 'rescheduled', 'visit_rescheduled', 'visit_assigned')
      or (new.kind = 'visit_cancelled' and not coalesce((new.details ->> 'viaJob')::boolean, false))
      or (new.kind = 'visit_unassigned' and not coalesce((new.details ->> 'viaCrew')::boolean, false))
      or (new.kind = 'transitioned' and new.to_state in ('dispatched', 'cancelled'))
@@ -434,7 +435,7 @@ end;
 $$;
 
 comment on function queue_work_order_push() is
-  'Queues push.work_order_event for an assignment, a reschedule, a dispatch or cancellation, a priority change, and a visit scheduled, moved, cancelled, or given or taken from someone.';
+  'Queues push.work_order_event for an assignment, a reschedule, a dispatch or cancellation, a priority change, and a visit moved, cancelled, or given to or taken from someone.';
 
 -- ---------------------------------------------------------------------------
 -- Sync: a visit is part of its job

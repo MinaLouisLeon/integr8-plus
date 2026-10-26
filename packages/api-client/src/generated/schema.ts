@@ -6641,6 +6641,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Visits in a window, for the calendar
+         * @description Every visit overlapping `from`–`to` (at most 45 days), planned and done, with the jobs they belong to and warnings worth noticing. `userId` narrows to visits with any of those people on them. `includeCancelled` adds called-off visits.
+         */
+        get: operations["getSchedule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/schedule/unscheduled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Open jobs with no planned visit
+         * @description Urgent first, then oldest. A job whose visits are all done or cancelled is here too: it still needs a visit, or closing.
+         */
+        get: operations["listUnscheduledWorkOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work-orders/{workOrderId}/visits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Plan a visit to a job
+         * @description Plans one trip with its own times and people. People must be on the job’s crew; `addToCrew` puts anyone who is not on it first. Refused when someone would be on another job at the same time.
+         */
+        post: operations["createVisit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/visits/{visitId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Move a visit, or change who goes
+         * @description Refused when the visit changed since `expectedRevision`, when it is done or cancelled, or when someone would be on another job at the same time. `assigneeIds` replaces who goes; `addToCrew` puts newcomers on the job’s crew first.
+         */
+        patch: operations["updateVisit"];
+        trace?: never;
+    };
+    "/v1/visits/{visitId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Call a visit off
+         * @description Final: a cancelled visit stays in the job’s history and frees its people.
+         */
+        post: operations["cancelVisit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/visits/{visitId}/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark a visit done
+         * @description By the crew or the office. `completedAt` is when it was done, if not now; never later than now. Doing it twice is harmless. The job itself moves on separately.
+         */
+        post: operations["completeVisit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/visits/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reassign, move or cancel many visits
+         * @description Each visit is changed on its own, so one that cannot be — done, cancelled, a double booking — is reported and the rest go ahead. `reassign` hands the visits from `fromUserId` to `toUserId` (or makes `toUserId` the only person when `fromUserId` is left out); `shift` moves them by `shiftMinutes`; `cancel` calls them off.
+         */
+        post: operations["bulkVisits"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/imports": {
         parameters: {
             query?: never;
@@ -37937,6 +38077,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -37977,7 +38143,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -38400,6 +38566,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -38440,7 +38632,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -38849,6 +39041,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -38889,7 +39107,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -62918,6 +63136,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -62958,7 +63202,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -63464,6 +63708,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -63504,7 +63774,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -63906,6 +64176,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -63946,7 +64242,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -64346,6 +64642,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -64386,7 +64708,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -64784,6 +65106,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -64824,7 +65172,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -65224,6 +65572,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -65264,7 +65638,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -65661,6 +66035,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -65701,7 +66101,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -66092,6 +66492,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -66132,7 +66558,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -66522,6 +66948,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -66562,7 +67014,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -66945,6 +67397,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -66985,7 +67463,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -67387,6 +67865,32 @@ export interface operations {
                             lead: boolean;
                             assignedAt: string;
                         }[];
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -67427,7 +67931,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -67964,6 +68468,907 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getSchedule: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                userId?: string | string[];
+                includeCancelled?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The calendar. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        from: string;
+                        to: string;
+                        settings: {
+                            timezone: string;
+                            workDayStarts: number;
+                            workDayEnds: number;
+                            workingDays: number[];
+                        };
+                        visits: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        }[];
+                        workOrders: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        people: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            role: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The window is backwards or too wide (`schedule_range_invalid`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listUnscheduledWorkOrders: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The jobs. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: number;
+                                referenceLabel: string;
+                                title: string;
+                                /** @enum {string} */
+                                state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                                /** @enum {string} */
+                                priority: "low" | "normal" | "high" | "urgent";
+                                dueFrom: string | null;
+                                dueBy: string | null;
+                                customer: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                site: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    city: string | null;
+                                };
+                                jobType: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    code: string;
+                                };
+                                crew: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    lead: boolean;
+                                }[];
+                                revision: number;
+                                stateChangedAt: string;
+                                createdAt: string;
+                                updatedAt: string;
+                            };
+                            expectedDurationMinutes: number | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createVisit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date-time */
+                    startsAt: string;
+                    /** Format: date-time */
+                    endsAt: string;
+                    notes?: string | null;
+                    /** @default [] */
+                    assigneeIds?: string[];
+                    /** @default false */
+                    addToCrew?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The visit. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        visit: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such work order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Someone would be on two jobs at once (`visit_double_booked`, with a detail naming each clash), or the job is closed (`work_order_closed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The visit ends before it starts or lasts over a week (`visit_slot_invalid`), or someone is not on the crew (`visit_assignee_not_on_crew`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateVisit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                visitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedRevision: number;
+                    /** Format: date-time */
+                    startsAt?: string;
+                    /** Format: date-time */
+                    endsAt?: string;
+                    notes?: string | null;
+                    assigneeIds?: string[];
+                    /** @default false */
+                    addToCrew?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The visit. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        visit: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such visit. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere (`visit_changed`), done or cancelled (`visit_final`), a double booking (`visit_double_booked`), or the job is closed (`work_order_closed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The visit ends before it starts or lasts over a week (`visit_slot_invalid`), or someone is not on the crew (`visit_assignee_not_on_crew`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelVisit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                visitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedRevision: number;
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The visit, cancelled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        visit: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such visit. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere (`visit_changed`), or already done or cancelled (`visit_final`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    completeVisit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                visitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date-time */
+                    completedAt?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The visit, done. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        visit: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            workOrderId: string;
+                            startsAt: string;
+                            endsAt: string;
+                            /** @enum {string} */
+                            status: "planned" | "done" | "cancelled";
+                            notes: string | null;
+                            assignees: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            completedAt: string | null;
+                            completedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            revision: number;
+                            warnings: ("outside_due_window" | "no_engineer")[];
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not on this job’s crew, and not the office. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such visit this person may see. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The visit was cancelled (`visit_final`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    bulkVisits: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    action: "reassign";
+                    visitIds: string[];
+                    /** Format: uuid */
+                    fromUserId?: string;
+                    /** Format: uuid */
+                    toUserId: string;
+                    /** @default true */
+                    addToCrew?: boolean;
+                } | {
+                    /** @enum {string} */
+                    action: "shift";
+                    visitIds: string[];
+                    shiftMinutes: number;
+                } | {
+                    /** @enum {string} */
+                    action: "cancel";
+                    visitIds: string[];
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description What happened to each visit, in the order given. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        results: {
+                            /** Format: uuid */
+                            visitId: string;
+                            /** @enum {string} */
+                            outcome: "changed" | "refused";
+                            code: string | null;
+                            message: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
             /** @description The request failed validation. */
             422: {
@@ -68616,6 +70021,32 @@ export interface operations {
                                 lead: boolean;
                                 assignedAt: string;
                             }[];
+                            visits: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                workOrderId: string;
+                                startsAt: string;
+                                endsAt: string;
+                                /** @enum {string} */
+                                status: "planned" | "done" | "cancelled";
+                                notes: string | null;
+                                assignees: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                }[];
+                                completedAt: string | null;
+                                completedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                revision: number;
+                                warnings: ("outside_due_window" | "no_engineer")[];
+                            }[];
                             forms: {
                                 /** Format: uuid */
                                 formId: string;
@@ -68656,7 +70087,7 @@ export interface operations {
                             }[];
                             events: {
                                 /** @enum {string} */
-                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off";
+                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
                                 /** @enum {string|null} */
                                 fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                                 /** @enum {string|null} */

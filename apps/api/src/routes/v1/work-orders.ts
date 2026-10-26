@@ -43,6 +43,7 @@ import { isFeatureEnabled } from '../../http/features.js';
 import { materialBodies, materialSchema, seesCosts, vanBody } from './materials.js';
 import { deliverOnCompletion } from './sales-fulfilment.js';
 import { iso, isoOrNull } from './schemas.js';
+import { visitBody, visitSchema } from './visits-shared.js';
 
 /**
  * Work orders (P10): the job, who is on it, what must be done and filled in, and
@@ -79,6 +80,12 @@ const eventSchema = z.object({
     'unassigned',
     'lead_changed',
     'signed_off',
+    'visit_scheduled',
+    'visit_rescheduled',
+    'visit_done',
+    'visit_cancelled',
+    'visit_assigned',
+    'visit_unassigned',
   ]),
   fromState: workOrderStateSchema.nullable(),
   toState: workOrderStateSchema.nullable(),
@@ -144,6 +151,8 @@ export const detailSchema = z.object({
     expectedDurationMinutes: z.number().int().nullable(),
   }),
   crew: z.array(personSchema.extend({ lead: z.boolean(), assignedAt: z.string() })),
+  /** The trips planned for the job, earliest first, with done and cancelled ones kept (P25). */
+  visits: z.array(visitSchema),
   forms: z.array(
     z.object({
       formId: z.uuid(),
@@ -223,6 +232,7 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     attachments,
     previous,
     people,
+    visits,
   ] = await Promise.all([
     tx.sites.find(job.siteId),
     tx.customers.find(job.customerId),
@@ -235,6 +245,7 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     tx.attachments.list({ workOrderId: job.id }),
     tx.workOrders.listPreviousAtSite(job.siteId, job.id),
     peopleOf(tx),
+    tx.visits.listForWorkOrders([job.id]),
   ]);
   const missing = await tx.workOrders.completionMissing(job);
   const contacts = site?.contactId == null ? [] : await tx.customers.findContacts([site.contactId]);
@@ -296,6 +307,7 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
       lead: member.lead,
       assignedAt: iso(member.assignedAt),
     })),
+    visits: (visits.get(job.id) ?? []).map((visit) => visitBody(visit, job, people)),
     forms: forms.map((form) => ({
       formId: form.formId,
       title: form.title,
@@ -486,7 +498,7 @@ export async function audit(
 }
 
 /** Everyone on a crew must be an active member of the company. */
-async function requireCrew(tx: TenantTransaction, crew: readonly { userId: string }[]) {
+export async function requireCrew(tx: TenantTransaction, crew: readonly { userId: string }[]) {
   if (crew.length === 0) {
     return;
   }
