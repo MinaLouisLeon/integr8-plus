@@ -767,6 +767,15 @@ The desktop **Schedule** plans engineers' visits on a calendar, and each enginee
 - [ ] **Move it, and try a clash.** Drag the visit to another time and drag its bottom edge to make it longer. Then plan another job's visit for the same engineer at the same time: it is refused, saying the engineer is already on another job then. Two visits of the same job may overlap.
 - [ ] **See it on the phone.** On the engineer's phone, after the next sync (open the app, or pull the job list), **Your visits today** shows the visit. Once it has started, **Mark visit done**; the schedule shows it done after the phone syncs.
 
+### Skills and certificates for this company
+
+The desktop **Skills and certificates** keeps people's qualifications, and the schedule asks for a reason when nobody on a visit holds what the job needs. Nothing to switch on: owners, admins and HR managers keep the records, and dispatchers see them.
+
+- [ ] **Add a certificate.** As the owner, in the company's desktop app: side menu → Work → **Skills and certificates**. Under the company's list, add a certificate, then record it for the test engineer with an expiry date a week from today.
+- [ ] **Make a job type need it.** Side menu → **Job types**: on a job type, change its required qualifications and choose the certificate. Then create a job of that type.
+- [ ] **Try the warning.** On the **Schedule**, plan a visit of that job for someone who does not hold the certificate: the visit dialog lists who lacks what and asks for a reason. Give one and save; the job's history shows it. A visit for the test engineer before the expiry date needs no reason; one after it does.
+- [ ] **See it on the phone.** After the test engineer's phone syncs, **My qualifications** on the home screen shows the certificate and its expiry, and the job shows what it needs.
+
 ### E-invoicing (ETA) for this company
 
 Only once e-invoicing has been tested, and only on the ETA's test system (PreProd). It stays off for every company until Integr8 switches it on, and the company needs `finance` on as well. You need the company's ETA registration details, the client ID and secret of its ERP system from the ETA portal, and the public certificate of its signing token; `docs/e-invoicing/ACCOUNTANT-CHECKLIST.md` is the list to send the company's accountant.
@@ -1141,8 +1150,6 @@ The website data API is included in v1.2.0 and adds migration 0050. It needs no 
 - [ ] **Confirm key lifecycle and rollback.** Any Integr8 staff can create, enable, disable or revoke keys. Revocation stops the service and retains the audit record; only the terminal-created staff admin can permanently delete a key. Before rolling back to code that predates this feature, revoke website keys or turn off website access; older code does not enforce the new disabled state or the two switch layers. Keep migration 0050 applied.
 - [ ] **Update the website integrations** using `apps/api/openapi.json`; keep the key server-side and verify each enabled endpoint from the company's Vercel deployment.
 
-> [!NOTE]
-
 ### N. The schedule (next release)
 
 The schedule adds migration 0051 and needs no new server setting. It ships in the release that follows v1.2.0.
@@ -1154,6 +1161,18 @@ The schedule adds migration 0051 and needs no new server setting. It ships in th
 > [!WARNING]
 > **Rolling back with the schedule.** Fix forward rather than going back to the previous code once visits have been planned: an older version does not know the new history entries, so a job with visit history would not open in it. If you must roll back (part I), leave migration 0051 applied; its `.down.sql` deletes every visit and is for development databases only.
 
+### O. Skills and certificates (next release)
+
+Skills and certificates add migration 0052 and need no new server setting. They ship in the release that follows v1.2.0.
+
+- [ ] **Migration 0052 applied** during the normal update. It adds the qualifications tables and a warning period for each company (30 days). Nothing changes for planning until a company records qualifications and says what its job types need.
+- [ ] **Expiry alerts.** The worker sends them once a day, once per certificate: to the holder by email and on their phone, and one email to the owners, admins and HR managers. They use the email sender from part F and link to `WEB_APP_URL`; without a sender they are only logged. After the first certificate falls within its warning period, the worker log says **Qualification expiry finished**.
+- [ ] **Update the apps** (part G) before companies record requirements: the new desktop apps have **Skills and certificates** and ask for a reason when nobody on a visit is qualified, and the new phone builds have **My qualifications**. An older desktop app cannot give a reason, so it cannot plan a visit nobody is qualified for; an older phone keeps working without the new screen.
+
+> [!WARNING]
+> **Rolling back with skills and certificates.** Fix forward once a visit has gone ahead with a reason: an older version does not know that history entry, so the job would not open in it. If you must roll back (part I), leave migration 0052 applied; its `.down.sql` deletes every qualification record and is for development databases only.
+
+> [!NOTE]
 > **The test box (Stage 11)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout and `pull` its `:staging` images. Updating it first, the day before, is the cheapest rehearsal there is.
 
 ---

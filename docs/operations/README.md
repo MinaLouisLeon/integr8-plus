@@ -195,6 +195,62 @@ engineer's visits and reassigning them is how an unavailable engineer's day is r
 The job screen lists its visits. On the phone, the Today screen lists the engineer's visits
 and a started one can be marked done offline ([sync](../sync/README.md)).
 
+## Skills and certificates (P26)
+
+A company keeps a list of the qualifications it tracks (`qualification_types`, migration 0052):
+a **skill**, which never expires, or a **certificate**, which may. People hold them
+(`member_qualifications`): a record has an issue date, an expiry date (the last day it is
+valid), a number, notes and scans attached as files. A renewal is a new record; the old one
+stays, expired, as the history of what was held. Records are removed, never deleted, and a
+removed record no longer counts. Qualifications belong to the company member, not to the HR
+profile, so a company without the HR module has them too.
+
+Who does what:
+
+- Owners, admins and HR managers keep the list and the records (`qualification.manage`), and
+  set how many days before expiry people are warned (30 by default).
+- The dispatcher and viewers read them (`qualification.read`). Everyone reads their own.
+- A job type lists the qualifications its jobs need (`job_type_qualifications`), set by Integr8
+  staff or by the company's managers (product decision, 2026-10-27). Each new job copies the
+  list (`work_order_qualifications`), and the office can change it for that job alone.
+
+**The check on visits.** For each requirement, at least one person on each visit must hold that
+qualification, valid on every day of the visit in the company's time zone; helpers without it
+can join. When a plan, move or reassignment leaves nobody holding one, the API refuses it with
+`visit_unqualified`, with a detail per person and requirement saying whether it is `missing`,
+`expired` or `expires_before_visit`. Sent again with a reason (`qualificationOverride`, or one
+`qualificationOverrideReason` for a bulk change), it goes ahead: the reason is kept in
+`work_order_qualification_overrides`, append-only, which writes a `qualification_override`
+event into the job's history. Only gaps a change opens ask for a reason: moving a visit with
+the same people does not ask twice, putting someone else on it does. Nothing is ever refused
+for good, and a visit with a gap carries an `unqualified` warning and its `qualificationGaps`.
+
+The check is in the API, not the database: a certificate valid when the visit was planned can
+lapse on its own, and the visit then shows the warning.
+
+**Expiry alerts.** Once a day the worker finds certificates expiring within the warning period
+and certificates that have lapsed, in every company. Each is announced once: to the holder by
+email and on their phone, and to the people who keep the records in one email listing
+everything. A lapse also lists the planned visits of the next 60 days that need that
+certificate. A certificate already renewed, or held by someone no longer active, is passed
+over. Changing a record's expiry date lets its alerts go out again. Emails need the
+deployment's email sender; the managers' email links to `WEB_APP_URL/qualifications`.
+
+| Request                                       | Who                                         | Does                                                    |
+| --------------------------------------------- | ------------------------------------------- | ------------------------------------------------------- |
+| `GET /v1/qualification-types`                 | `qualification.read`                        | The company's list, with the warning period             |
+| `POST`, `PATCH /v1/qualification-types[/:id]` | `qualification.manage`                      | Add, rename, archive or restore; the kind never changes |
+| `PATCH /v1/qualification-settings`            | `qualification.manage`                      | The warning period, 1 to 365 days                       |
+| `GET /v1/qualifications`                      | `qualification.read`                        | Who holds what, with where each stands today            |
+| `GET /v1/me/qualifications`                   | everyone                                    | One's own; the phone also gets them with every sync     |
+| `POST`, `PATCH /v1/qualifications[/:id]`      | `qualification.manage`                      | Record or correct one; renewals are new records         |
+| `POST /v1/qualifications/:id/remove`          | `qualification.manage`                      | Take one away, kept in the history                      |
+| `PUT /v1/job-types/:id/qualifications`        | `job_type.manage` or `qualification.manage` | What a job type's jobs need                             |
+| `PUT /v1/work-orders/:id/qualifications`      | `work_order.manage`                         | What one job needs                                      |
+| `GET /v1/work-orders/:id/eligibility`         | `work_order.read_all`                       | Everyone ranked by what they hold for a visit's dates   |
+
+A scan is attached with `POST /v1/attachments` and `{ memberQualificationId }`.
+
 ## CSV import
 
 `POST /v1/imports { kind, fileName, csv, timeZone }` stores the file (up to 5 MB and 20,000
