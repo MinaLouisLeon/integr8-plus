@@ -187,6 +187,12 @@ function Jobs() {
         />
       ) : null}
 
+      <Button
+        label={t('mobile.qualifications.title')}
+        variant="secondary"
+        onPress={() => router.push('/qualifications')}
+      />
+
       {assistant.status === 'ready' && assistant.data.level !== 'off' ? (
         <Button
           label={t('mobile.ai.title')}

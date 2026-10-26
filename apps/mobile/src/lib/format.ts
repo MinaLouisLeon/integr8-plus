@@ -71,3 +71,16 @@ export function formatMoney(amount: string, currency: string | null, locale: str
     return currency === null ? amount : `${amount} ${currency}`;
   }
 }
+
+/**
+ * A calendar day, `YYYY-MM-DD`, as words: "14 Jan 2028". A certificate's expiry
+ * is a day, not an instant, so it is read in UTC and never shifts with the zone.
+ */
+export function formatDay(day: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T00:00:00Z`));
+}

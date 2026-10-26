@@ -36,6 +36,7 @@ function visit(overrides: Partial<Visit> & Pick<Visit, 'startsAt' | 'endsAt'>): 
     cancelReason: null,
     revision: 1,
     warnings: [],
+    qualificationGaps: [],
     ...overrides,
   };
 }

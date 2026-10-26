@@ -197,6 +197,7 @@ export function workOrderDetail(
       { id: ENGINEER, name: 'Ed Engineer', lead: true, assignedAt: '2026-09-01T09:00:00.000Z' },
     ],
     visits: overrides.visits ?? [],
+    requiredQualifications: [],
     forms: (overrides.formIds ?? []).map((formId) => ({
       formId,
       title: 'Gas safety check',
