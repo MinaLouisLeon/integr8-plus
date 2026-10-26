@@ -46,6 +46,12 @@ import {
   usePermissions,
 } from '../ui.js';
 import {
+  isUnqualified,
+  type UnqualifiedDetail,
+  unqualifiedDetails,
+} from '../qualifications/model.js';
+import { GapList, gapsFromDetails, UnqualifiedPrompt } from '../qualifications/override.js';
+import {
   addDays,
   addMinutes,
   DAY_MINUTES,
@@ -80,7 +86,9 @@ import { VisitDialog, type VisitDialogTarget } from './visit-dialog.js';
  * A move shows at once and is undone if the server refuses it, with the
  * reason: most often that someone would be on another job at the same time,
  * which the database never allows. Work at any hour is fine: the company's
- * working day only shades the grid.
+ * working day only shades the grid. A move that would leave nobody on the
+ * visit holding a qualification the job needs (P26) stays on screen while the
+ * dispatcher is asked why; cancelling puts it back.
  *
  * Everything dragging does, the visit dialog also does from the keyboard.
  */
@@ -131,6 +139,16 @@ type Dragging =
   | { kind: 'resize'; visit: ScheduleVisit }
   | { kind: 'job'; entry: UnscheduledJob };
 
+/** A move on the calendar, and on its second try the reason for going ahead (P26). */
+interface MoveChange {
+  visit: ScheduleVisit;
+  startsAt: Date;
+  endsAt: Date;
+  reason?: string;
+  /** The board before the first try, to put back if the move is given up. */
+  before?: Schedule | undefined;
+}
+
 export function ScheduleScreen() {
   const { t } = useTranslation();
   const { client, locale } = useOperations();
@@ -179,6 +197,10 @@ export function ScheduleScreen() {
   const [dragging, setDragging] = useState<Dragging | undefined>();
   const [resizeBy, setResizeBy] = useState(0);
   const [moveError, setMoveError] = useState<unknown>();
+  /** A move the server refused for want of a qualification, waiting for a reason. */
+  const [unqualifiedMove, setUnqualifiedMove] = useState<
+    { change: MoveChange; details: UnqualifiedDetail[] } | undefined
+  >();
 
   const people = useMemo(
     () => [...(schedule.data?.people ?? [])].sort((a, b) => a.name.localeCompare(b.name, locale)),
@@ -206,6 +228,12 @@ export function ScheduleScreen() {
     return byId;
   }, [schedule.data?.workOrders, unscheduled.data]);
   const referenceOf = (workOrderId: string) => jobs.get(workOrderId)?.referenceLabel ?? '';
+  const personName = (id: string) =>
+    people.find((person) => person.id === id)?.name ??
+    (schedule.data?.visits ?? [])
+      .flatMap((visit) => visit.assignees)
+      .find((person) => person.id === id)?.name ??
+    '';
 
   const allVisits = schedule.data?.visits ?? [];
   const visits = allVisits.filter(
@@ -224,7 +252,7 @@ export function ScheduleScreen() {
 
   const scheduleKey = keys.schedule(rangeKey);
   const move = useMutation({
-    mutationFn: async (change: { visit: ScheduleVisit; startsAt: Date; endsAt: Date }) =>
+    mutationFn: async (change: MoveChange) =>
       (
         await client.PATCH('/v1/visits/{visitId}', {
           params: { path: { visitId: change.visit.id } },
@@ -232,13 +260,16 @@ export function ScheduleScreen() {
             expectedRevision: change.visit.revision,
             startsAt: change.startsAt.toISOString(),
             endsAt: change.endsAt.toISOString(),
+            ...(change.reason === undefined
+              ? {}
+              : { qualificationOverride: { reason: change.reason } }),
           },
         })
       ).data!.visit,
     onMutate: async (change) => {
       setMoveError(undefined);
       await queryClient.cancelQueries({ queryKey: scheduleKey });
-      const before = queryClient.getQueryData<Schedule>(scheduleKey);
+      const before = change.before ?? queryClient.getQueryData<Schedule>(scheduleKey);
       queryClient.setQueryData<Schedule>(scheduleKey, (current) =>
         current === undefined
           ? current
@@ -257,7 +288,15 @@ export function ScheduleScreen() {
       );
       return { before };
     },
-    onError: (error, _change, context) => {
+    onError: (error, change, context) => {
+      if (change.reason === undefined && isUnqualified(error)) {
+        // Keep the move on screen and ask why; cancelling puts it back.
+        setUnqualifiedMove({
+          change: { ...change, before: context?.before },
+          details: unqualifiedDetails(error),
+        });
+        return;
+      }
       if (context?.before !== undefined) {
         queryClient.setQueryData(scheduleKey, context.before);
       }
@@ -519,6 +558,7 @@ export function ScheduleScreen() {
           people={people}
           from={selectionFrom}
           referenceOf={referenceOf}
+          personName={personName}
           onClear={() => {
             setSelected(new Set());
             setSelectionFrom(undefined);
@@ -613,6 +653,31 @@ export function ScheduleScreen() {
             )}
           </DragOverlay>
         </DndContext>
+      )}
+
+      {unqualifiedMove === undefined ? null : (
+        <UnqualifiedPrompt
+          intro={t('operations.qualifications.override.moveIntro', {
+            reference: referenceOf(unqualifiedMove.change.visit.workOrderId),
+          })}
+          cancelLabel={t('operations.qualifications.override.undoMove')}
+          pending={move.isPending}
+          onCancel={() => {
+            const { before } = unqualifiedMove.change;
+            if (before !== undefined) {
+              queryClient.setQueryData(scheduleKey, before);
+            }
+            setUnqualifiedMove(undefined);
+            refresh();
+          }}
+          onConfirm={(reason) => {
+            const { change } = unqualifiedMove;
+            setUnqualifiedMove(undefined);
+            move.mutate({ ...change, reason });
+          }}
+        >
+          <GapList gaps={gapsFromDetails(unqualifiedMove.details, personName)} />
+        </UnqualifiedPrompt>
       )}
 
       {dialog === undefined ? null : (
@@ -1076,7 +1141,15 @@ function useVisitText(visit: ScheduleVisit, job: ScheduleJob | undefined) {
       : visit.status === 'cancelled'
         ? t('operations.schedule.cancelled')
         : '';
-  const warnings = visit.warnings.map((warning) => t(`operations.schedule.warning.${warning}`));
+  const warnings = visit.warnings.map((warning) =>
+    warning === 'unqualified' && visit.qualificationGaps.length > 0
+      ? t('operations.schedule.warning.unqualifiedNamed', {
+          list: visit.qualificationGaps
+            .map((gap) => gap.name)
+            .join(t('operations.qualifications.listSeparator')),
+        })
+      : t(`operations.schedule.warning.${warning}`),
+  );
   const label = [
     t('operations.schedule.visitLabel', {
       reference: job?.referenceLabel ?? '',
@@ -1418,6 +1491,7 @@ function SelectionBar({
   people,
   from,
   referenceOf,
+  personName,
   onClear,
   onDone,
 }: {
@@ -1426,46 +1500,78 @@ function SelectionBar({
   people: readonly SchedulePerson[];
   from: string | undefined;
   referenceOf: (workOrderId: string) => string;
+  personName: (id: string) => string;
   onClear: () => void;
   onDone: () => void;
 }) {
   const { t } = useTranslation();
-  const { client } = useOperations();
+  const { client, locale } = useOperations();
   const [action, setAction] = useState<'reassign' | 'move' | 'cancel'>('reassign');
   const [replace, setReplace] = useState(from ?? '');
   const [withPerson, setWithPerson] = useState('');
   const [shift, setShift] = useState<number>(60);
   const [reason, setReason] = useState('');
   const [results, setResults] = useState<BulkVisitResult[] | undefined>();
+  /** Visits refused for want of a qualification (P26), waiting for one reason for them all. */
+  const [asking, setAsking] = useState<{ visitIds: string[]; direction: 1 | -1 } | undefined>();
 
   const run = useMutation({
-    mutationFn: async (direction: 1 | -1) => {
+    mutationFn: async (input: {
+      direction: 1 | -1;
+      visitIds?: readonly string[];
+      overrideReason?: string;
+    }) => {
       const header = { 'Idempotency-Key': crypto.randomUUID() };
+      const visitIds = [...(input.visitIds ?? selected)];
+      const override =
+        input.overrideReason === undefined
+          ? {}
+          : { qualificationOverrideReason: input.overrideReason };
       const body =
         action === 'reassign'
           ? {
               action: 'reassign' as const,
-              visitIds: [...selected],
+              visitIds,
               toUserId: withPerson,
               ...(replace === '' ? {} : { fromUserId: replace }),
+              ...override,
             }
           : action === 'move'
-            ? { action: 'shift' as const, visitIds: [...selected], shiftMinutes: shift * direction }
+            ? {
+                action: 'shift' as const,
+                visitIds,
+                shiftMinutes: shift * input.direction,
+                ...override,
+              }
             : {
                 action: 'cancel' as const,
-                visitIds: [...selected],
+                visitIds,
                 reason: reason.trim() === '' ? null : reason.trim(),
               };
       return (await client.POST('/v1/visits/bulk', { params: { header }, body })).data!.results;
     },
-    onSuccess: (outcome) => {
-      setResults(outcome);
+    onSuccess: (outcome, input) => {
+      // A second try for some visits replaces what the first said about them.
+      const merged =
+        input.visitIds === undefined || results === undefined
+          ? outcome
+          : results.map(
+              (result) => outcome.find((next) => next.visitId === result.visitId) ?? result,
+            );
+      setResults(merged);
       onDone();
-      if (outcome.every((result) => result.outcome === 'changed')) {
+      const unqualified = outcome
+        .filter((result) => result.outcome === 'refused' && result.code === 'visit_unqualified')
+        .map((result) => result.visitId);
+      if (input.overrideReason === undefined && unqualified.length > 0) {
+        setAsking({ visitIds: unqualified, direction: input.direction });
+      }
+      if (merged.every((result) => result.outcome === 'changed')) {
         onClear();
       }
     },
   });
+  const time = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
 
   const refused = (results ?? []).filter((result) => result.outcome === 'refused');
   const workOrderOf = (visitId: string) =>
@@ -1547,7 +1653,7 @@ function SelectionBar({
               type="button"
               className={buttonClass.primary}
               disabled={withPerson === '' || run.isPending}
-              onClick={() => run.mutate(1)}
+              onClick={() => run.mutate({ direction: 1 })}
             >
               {t('operations.schedule.selection.apply')}
             </button>
@@ -1574,7 +1680,7 @@ function SelectionBar({
               type="button"
               className={buttonClass.secondary}
               disabled={run.isPending}
-              onClick={() => run.mutate(-1)}
+              onClick={() => run.mutate({ direction: -1 })}
             >
               {t('operations.schedule.selection.earlier')}
             </button>
@@ -1582,7 +1688,7 @@ function SelectionBar({
               type="button"
               className={buttonClass.secondary}
               disabled={run.isPending}
-              onClick={() => run.mutate(1)}
+              onClick={() => run.mutate({ direction: 1 })}
             >
               {t('operations.schedule.selection.later')}
             </button>
@@ -1604,7 +1710,7 @@ function SelectionBar({
               type="button"
               className={buttonClass.danger}
               disabled={run.isPending}
-              onClick={() => run.mutate(1)}
+              onClick={() => run.mutate({ direction: 1 })}
             >
               {t('operations.schedule.selection.cancel')}
             </button>
@@ -1635,6 +1741,40 @@ function SelectionBar({
             </ul>
           ) : null}
         </div>
+      )}
+
+      {asking === undefined ? null : (
+        <UnqualifiedPrompt
+          intro={t('operations.qualifications.override.bulkIntro', {
+            count: asking.visitIds.length,
+          })}
+          confirmLabel={t('operations.qualifications.override.confirmBulk')}
+          pending={run.isPending}
+          onCancel={() => setAsking(undefined)}
+          onConfirm={(overrideReason) => {
+            const { visitIds, direction } = asking;
+            setAsking(undefined);
+            run.mutate({ direction, visitIds, overrideReason });
+          }}
+        >
+          <ul className="flex flex-col gap-1">
+            {asking.visitIds.map((visitId) => {
+              const visit = visits.find((entry) => entry.id === visitId);
+              return (
+                <li key={visitId} dir="auto">
+                  {t('operations.qualifications.override.bulkLine', {
+                    reference: referenceOf(visit?.workOrderId ?? ''),
+                    time: visit === undefined ? '' : time.format(new Date(visit.startsAt)),
+                    people:
+                      action === 'reassign'
+                        ? personName(withPerson)
+                        : (visit?.assignees ?? []).map((person) => person.name).join(', '),
+                  })}
+                </li>
+              );
+            })}
+          </ul>
+        </UnqualifiedPrompt>
       )}
     </section>
   );

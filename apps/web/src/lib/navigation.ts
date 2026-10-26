@@ -22,6 +22,7 @@ export const NAV_PATHS: Readonly<
   submissions: '/submissions',
   workOrders: '/work-orders',
   timesheets: '/timesheets',
+  qualifications: '/qualifications',
   customers: '/customers',
   imports: '/imports',
   jobTypes: '/settings/job-types',

@@ -46,6 +46,7 @@ export function OperationsScreens({ children }: { children: ReactNode }) {
             ? '/work-orders/new'
             : `/work-orders/new?customerId=${options.customerId}`,
         workOrder: (id) => `/work-orders/${id}`,
+        qualifications: '/qualifications',
         customers: '/customers',
         customer: (id) => `/customers/${id}`,
         site: (id) => `/sites/${id}`,

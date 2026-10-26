@@ -87,6 +87,7 @@ function detail(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
     },
     crew: [{ ...ENGINEER, lead: true, assignedAt: '2026-09-30T09:00:00.000Z' }],
     visits: [],
+    requiredQualifications: [],
     forms: [{ formId: FORM, title: 'Gas safety record', required: true, submission: null }],
     checklist: [
       {
@@ -489,6 +490,7 @@ describe('job types', () => {
         beforePhotos: 2,
         afterPhotos: 1,
         signatureRequired: true,
+        requiredQualifications: [],
       };
       const { client, calls } = fakeApi({
         'GET /v1/me': () => ({
@@ -1399,6 +1401,223 @@ describe('parts used on the job', { timeout: 20_000 }, () => {
     expect(await within(parts).findByRole('link', { name: 'SN-2' })).toHaveAttribute(
       'href',
       `/inventory/lots/${SN_2}`,
+    );
+  });
+});
+
+describe('qualifications a job needs', { timeout: 20_000 }, () => {
+  const GAS = '00000000-0000-4000-8000-000000000901';
+  const HEIGHTS = '00000000-0000-4000-8000-000000000902';
+  const types = {
+    items: [
+      {
+        id: GAS,
+        name: 'Gas Safe',
+        kind: 'certificate',
+        description: null,
+        version: 1,
+        archived: false,
+        archivedAt: null,
+        createdAt: '2026-10-01T09:00:00.000Z',
+      },
+      {
+        id: HEIGHTS,
+        name: 'Working at heights',
+        kind: 'certificate',
+        description: null,
+        version: 1,
+        archived: false,
+        archivedAt: null,
+        createdAt: '2026-10-01T09:00:00.000Z',
+      },
+    ],
+    settings: { warningDays: 30 },
+    can: { manage: false },
+  };
+  const needsGas = (overrides: Partial<WorkOrderDetail> = {}) =>
+    detail({
+      requiredQualifications: [{ qualificationTypeId: GAS, name: 'Gas Safe' }],
+      ...overrides,
+    });
+
+  it('lets a planner change what an open job needs', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = fakeApi({
+      'GET /v1/work-orders/:id': () => ({ body: needsGas() }),
+      'GET /v1/qualification-types': () => ({ body: types }),
+      'PUT /v1/work-orders/:id/qualifications': () => ({
+        body: {
+          requiredQualifications: [
+            {
+              qualificationTypeId: HEIGHTS,
+              name: 'Working at heights',
+              kind: 'certificate',
+              archived: false,
+            },
+          ],
+        },
+      }),
+    });
+    renderScreen(<WorkOrderScreen workOrderId={JOB} />, client, {
+      permissions: ['work_order.manage'],
+    });
+
+    const section = await screen.findByRole('region', { name: 'Qualifications needed' });
+    expect(within(section).getByText('Gas Safe')).toBeInTheDocument();
+    await user.click(within(section).getByRole('button', { name: 'Change what this job needs' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Change what this job needs' });
+    await user.click(await within(dialog).findByRole('checkbox', { name: /Gas Safe/u }));
+    await user.click(within(dialog).getByRole('checkbox', { name: /Working at heights/u }));
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(calls.find((call) => call.method === 'PUT')?.body).toEqual({
+        qualificationTypeIds: [HEIGHTS],
+      }),
+    );
+    expect(calls.find((call) => call.method === 'PUT')!.path).toBe(
+      `/v1/work-orders/${JOB}/qualifications`,
+    );
+  });
+
+  it('does not offer to change a closed job’s, or to someone who does not plan', async () => {
+    const { client } = fakeApi({
+      'GET /v1/work-orders/:id': () => ({
+        body: needsGas({ workOrder: { ...detail().workOrder, state: 'complete' } }),
+      }),
+    });
+    const first = renderScreen(<WorkOrderScreen workOrderId={JOB} />, client, {
+      permissions: ['work_order.manage'],
+    });
+    const section = await screen.findByRole('region', { name: 'Qualifications needed' });
+    expect(within(section).getByText('Gas Safe')).toBeInTheDocument();
+    expect(within(section).queryByRole('button')).not.toBeInTheDocument();
+    first.unmount();
+
+    const { client: other } = fakeApi({ 'GET /v1/work-orders/:id': () => ({ body: needsGas() }) });
+    renderScreen(<WorkOrderScreen workOrderId={JOB} />, other, {
+      permissions: ['work_order.progress'],
+    });
+    const readOnly = await screen.findByRole('region', { name: 'Qualifications needed' });
+    expect(within(readOnly).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('says which visit lacks what, and names going ahead anyway in the history', async () => {
+    const { client } = fakeApi({
+      'GET /v1/work-orders/:id': () => ({
+        body: needsGas({
+          visits: [
+            {
+              id: '00000000-0000-4000-8000-000000000c01',
+              workOrderId: JOB,
+              startsAt: '2026-11-02T09:00:00.000Z',
+              endsAt: '2026-11-02T11:00:00.000Z',
+              status: 'planned',
+              notes: null,
+              assignees: [ENGINEER],
+              completedAt: null,
+              completedBy: null,
+              cancelledAt: null,
+              cancelReason: null,
+              revision: 1,
+              warnings: ['unqualified'],
+              qualificationGaps: [
+                {
+                  qualificationTypeId: GAS,
+                  name: 'Gas Safe',
+                  people: [{ ...ENGINEER, status: 'missing' }],
+                },
+              ],
+            },
+          ],
+          events: [
+            {
+              kind: 'qualification_override',
+              fromState: null,
+              toState: null,
+              person: null,
+              actor: ENGINEER,
+              reason: 'Supervisor on site',
+              details: {
+                visitId: '00000000-0000-4000-8000-000000000c01',
+                startsAt: '2026-11-02T09:00:00.000Z',
+                endsAt: '2026-11-02T11:00:00.000Z',
+                missing: [{ qualificationTypeId: GAS, name: 'Gas Safe' }],
+                assigneeIds: [ENGINEER.id],
+              },
+              occurredAt: '2026-10-27T09:00:00.000Z',
+              recordedAt: '2026-10-27T09:00:00.000Z',
+            },
+          ],
+        }),
+      }),
+    });
+    renderScreen(<WorkOrderScreen workOrderId={JOB} />, client, { permissions: [] });
+
+    const visits = await screen.findByRole('region', { name: 'Visits' });
+    expect(
+      within(visits).getByText('Nobody on this visit holds a qualification the job needs'),
+    ).toBeInTheDocument();
+    expect(within(visits).getByText('Sam Carter does not hold it')).toBeInTheDocument();
+    const history = screen.getByRole('region', { name: 'History' });
+    expect(
+      within(history).getByText(
+        /^Sam Carter planned the visit of .* without anyone holding Gas Safe$/u,
+      ),
+    ).toBeInTheDocument();
+    expect(within(history).getByText(/Supervisor on site/u)).toBeInTheDocument();
+  });
+
+  it('lets a company manager set a job type’s qualifications without editing the job type', async () => {
+    const user = userEvent.setup();
+    const jobType = {
+      id: '00000000-0000-4000-8000-000000000601',
+      name: 'Boiler service',
+      code: 'BOILER',
+      description: null,
+      expectedDurationMinutes: null,
+      defaultPriority: 'normal',
+      instructions: null,
+      checklist: [],
+      forms: [],
+      archived: false,
+      beforePhotos: 0,
+      afterPhotos: 0,
+      signatureRequired: false,
+      requiredQualifications: [
+        { qualificationTypeId: GAS, name: 'Gas Safe', kind: 'certificate', archived: false },
+      ],
+    };
+    const { client, calls } = fakeApi({
+      'GET /v1/me': () => ({
+        body: {
+          userId: ENGINEER.id,
+          tenantId: CUSTOMER,
+          email: 'hr@x.example',
+          displayName: 'Hana',
+          role: 'hr_manager',
+          permissions: ['qualification.read', 'qualification.manage'],
+        },
+      }),
+      'GET /v1/job-types': () => ({ body: { items: [jobType] } }),
+      'GET /v1/qualification-types': () => ({ body: types }),
+      'PUT /v1/job-types/:id/qualifications': () => ({ body: { requiredQualifications: [] } }),
+    });
+    renderScreen(<JobTypesScreen />, client);
+
+    expect(await screen.findByText('Gas Safe')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New job type' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Change Boiler service' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Qualifications needed for Boiler service',
+    });
+    await user.click(await within(dialog).findByRole('checkbox', { name: /Working at heights/u }));
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(calls.find((call) => call.method === 'PUT')?.body).toEqual({
+        qualificationTypeIds: [GAS, HEIGHTS],
+      }),
     );
   });
 });

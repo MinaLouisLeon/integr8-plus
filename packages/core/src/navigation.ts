@@ -106,6 +106,7 @@ export type NavPath =
   | 'submissions'
   | 'workOrders'
   | 'schedule'
+  | 'qualifications'
   | 'customers'
   | 'imports'
   | 'timesheets'
@@ -206,6 +207,14 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     icon: 'calendar-check',
     permission: 'work_order.read_all',
     desktopOnly: true,
+  },
+  // Skills and certificates (P26): who holds what, and what is running out.
+  {
+    key: 'qualifications',
+    group: 'work',
+    path: 'qualifications',
+    icon: 'id-card',
+    permission: 'qualification.read',
   },
   {
     key: 'timesheets',

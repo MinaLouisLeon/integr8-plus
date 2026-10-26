@@ -503,6 +503,7 @@ const JOB_EVENTS = new Set([
   'visit_cancelled',
   'visit_assigned',
   'visit_unassigned',
+  'qualification_override',
 ]);
 const ACTIVITY_KINDS = new Set(['call', 'email', 'meeting', 'note', 'follow_up', 'task']);
 const QUOTE_ANSWERS = new Set(['accepted', 'rejected', 'converted', 'cancelled']);

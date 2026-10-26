@@ -706,6 +706,7 @@ export const en = {
       payroll: 'Payroll',
       manufacturing: 'Manufacturing',
       eta: 'E-invoicing (ETA)',
+      qualification: 'Skills and certificates',
     },
     // One per permission in `PERMISSIONS` (@integr8/core), nested as named.
     permission: {
@@ -796,6 +797,10 @@ export const en = {
         sign: 'Sign ETA documents with the company token',
         submit: 'Send documents to the tax authority',
         switch: 'Switch e-invoicing on or off (Integr8 staff)',
+      },
+      qualification: {
+        read: 'See who holds which skills and certificates',
+        manage: 'Keep skills and certificates',
       },
     },
     // Giving somebody a role on the People screen.
@@ -1862,6 +1867,15 @@ export const en = {
           cancelled: 'Cancelled',
         },
       },
+      requirements: {
+        title: 'Qualifications needed',
+        none: 'This job needs no particular skill or certificate.',
+        change: 'Change what this job needs',
+        whoHolds: 'Who holds what',
+        hint: 'Each visit needs at least one person holding each of these, valid on its dates.',
+        dialogIntro:
+          'Visits already planned are checked against the new list from now on. Nothing planned is changed.',
+      },
       previous: 'Earlier jobs at this site',
       noPrevious: 'No earlier jobs here.',
       changed: 'This job was changed elsewhere. It has been reloaded.',
@@ -1917,6 +1931,8 @@ export const en = {
         visit_cancelled: '{{actor}} cancelled the visit of {{when}}',
         visit_assigned: '{{actor}} put {{person}} on the visit of {{when}}',
         visit_unassigned: '{{actor}} took {{person}} off the visit of {{when}}',
+        qualification_override:
+          '{{actor}} planned the visit of {{when}} without anyone holding {{missing}}',
       },
       nobodySignedEvent: '{{actor}} recorded that nobody could sign: {{reason}}',
       recordedLater: 'Recorded on the phone at {{occurred}}, synced at {{recorded}}',
@@ -2043,6 +2059,12 @@ export const en = {
       afterPhotosCount_one: '{{count}} after photo',
       afterPhotosCount_other: '{{count}} after photos',
       signs: 'Customer signs off',
+      requirements: 'Qualifications needed',
+      noRequirements: 'No particular skill or certificate.',
+      changeRequirements: 'Change',
+      requirementsTitle: 'Qualifications needed for {{name}}',
+      requirementsIntro:
+        'Jobs created from now on copy this list. Jobs already created keep their own.',
     },
     imports: {
       title: 'Import from CSV',
@@ -2114,6 +2136,8 @@ export const en = {
       warning: {
         outside_due_window: 'Outside the job’s due window',
         no_engineer: 'Nobody is on this visit',
+        unqualified: 'Nobody on this visit holds a qualification the job needs',
+        unqualifiedNamed: 'Nobody on this visit holds {{list}}',
       },
       dialog: {
         newTitle: 'Plan a visit',
@@ -2136,6 +2160,10 @@ export const en = {
         endBeforeStart: 'Choose an end after the start.',
         doneBy: 'Done by {{name}}, {{time}}',
         cancelledBecause: 'Cancelled: {{reason}}',
+        needs: 'Needs: {{list}}',
+        qualifiedFirst: 'People who hold what the job needs for these dates are listed first.',
+        lacks: 'Lacks {{list}}',
+        unmet: 'Nobody chosen holds {{qualification}} for these dates.',
       },
       selection: {
         count: 'Visits selected: {{count}}',
@@ -2188,6 +2216,143 @@ export const en = {
       onSite: 'On site',
       working: 'Working',
       noJobs: 'No time on jobs.',
+    },
+    // Skills and certificates (P26).
+    qualifications: {
+      title: 'Skills and certificates',
+      intro:
+        'The company’s skills and certificates, who holds them, and what is running out. Jobs say which they need.',
+      readOnly: 'You can see who holds what but not change it.',
+      view: 'Show',
+      views: {
+        records: 'People’s records',
+        types: 'The company’s list',
+      },
+      state: {
+        valid: 'Valid',
+        no_expiry: 'Does not expire',
+        expiring: 'Expiring soon',
+        expired: 'Expired',
+        removed: 'Removed',
+      },
+      kind: {
+        skill: 'Skill',
+        certificate: 'Certificate',
+      },
+      archivedBadge: 'Archived',
+      someone: 'Someone',
+      listSeparator: ', ',
+      // Why nobody on a visit counts for a requirement.
+      gap: {
+        nobodyHolds: 'Nobody holds {{qualification}} for the visit’s dates',
+        missing: '{{name}} does not hold it',
+        expired: '{{name}}’s has expired',
+        expires_before_visit: '{{name}}’s runs out before the visit ends',
+      },
+      // What one person lacks, in the people picker.
+      holding: {
+        missing: '{{qualification}}',
+        expired: '{{qualification}} (expired)',
+        expires_before_visit: '{{qualification}} (runs out first)',
+      },
+      override: {
+        title: 'Go ahead without the qualification?',
+        visitIntro:
+          'Nobody on this visit would hold everything the job needs. You can still save it with a reason, which is kept in the job’s history.',
+        moveIntro:
+          'After this move nobody on the visit to {{reference}} would hold everything the job needs. Give a reason to keep the move, or put it back.',
+        bulkIntro:
+          'Visits that would have nobody holding what their job needs: {{count}}. One reason goes ahead with them all and is kept in each job’s history.',
+        bulkLine: '{{reference}}, {{time}}: {{people}}',
+        reason: 'Why go ahead anyway',
+        reasonHint: 'Kept in the job’s history.',
+        confirm: 'Save anyway',
+        confirmBulk: 'Go ahead with these visits',
+        cancel: 'Cancel',
+        back: 'Back',
+        undoMove: 'Put it back',
+      },
+      records: {
+        title: 'Who holds what',
+        add: 'Add a record',
+        person: 'Person',
+        everyone: 'Everyone',
+        qualification: 'Qualification',
+        allQualifications: 'All qualifications',
+        urgent: 'Expiring soon and expired only',
+        showRemoved: 'Show removed records',
+        judged: 'As of {{today}}. Certificates show as expiring {{days}} days before they run out.',
+        empty: 'No records yet.',
+        noneUrgent: 'Nothing is expiring soon or expired.',
+        reference: 'Number',
+        expiresOn: 'Valid until',
+        noExpiry: 'Does not expire',
+        state: 'Status',
+        actions: 'Actions',
+        open: 'Open',
+        renew: 'Renew',
+        rowName: '{{qualification}} of {{name}}',
+      },
+      record: {
+        newTitle: 'Add a record',
+        renewTitle: 'Renew {{qualification}} for {{name}}',
+        editTitle: '{{qualification}} of {{name}}',
+        renewHint:
+          'A renewal is a new record. The old one stays, as the history of what was held, and expires on its date.',
+        choosePerson: 'Choose a person',
+        chooseQualification: 'Choose a qualification',
+        issuedOn: 'Issued on',
+        expiresHint: 'The last day it is valid. Leave empty if it does not expire.',
+        skillNoExpiry: 'A skill does not expire.',
+        datesReversed: 'Choose an expiry on or after the issue date.',
+        notes: 'Notes',
+        scans: 'Scans of the certificate',
+        noScans: 'No scans attached.',
+        attachScan: 'Attach a scan (photo or PDF)',
+        save: 'Save record',
+        remove: 'Remove record',
+        removeHint:
+          'A removed record no longer counts for any visit. It stays in the history, and cannot be changed again.',
+        confirmRemove: 'Remove it',
+        keep: 'Keep it',
+        removedBy: 'Removed by {{name}}.',
+      },
+      types: {
+        title: 'The company’s list',
+        intro:
+          'A certificate may expire; a skill does not. Archive one the company no longer uses: records already held stay.',
+        add: 'Add a qualification',
+        showArchived: 'Show archived',
+        empty: 'No skills or certificates yet. Add the ones your jobs need.',
+        rename: 'Rename',
+        renameTitle: 'Rename {{name}}',
+        archive: 'Archive',
+        restore: 'Restore',
+        name: 'Name',
+        kind: 'Kind',
+        kindHint: {
+          certificate: 'Issued with a number, and usually valid until a date.',
+          skill: 'Something a person can do. It never expires.',
+        },
+        kindFixed: 'The kind cannot change once added.',
+        description: 'Description',
+      },
+      warning: {
+        title: 'Expiry warnings',
+        days: 'Warn this many days before',
+        hint: 'From {{min}} to {{max}} days. The holder and the managers are emailed.',
+        readOnly: 'Holders and managers are warned {{days}} days before a certificate runs out.',
+      },
+      requirements: {
+        noTypes: 'The company has no skills or certificates yet.',
+      },
+      mine: {
+        title: 'My skills and certificates',
+        intro: 'What the company has recorded that you hold, and until when.',
+        empty: 'Nothing recorded for you yet.',
+        expires: 'Valid until {{date}}',
+        askManager: 'Something missing or out of date? Ask your manager to update it.',
+      },
     },
     // The desktop app's right-click menu on a row: the same actions as the row's own buttons.
     rowActions: {
@@ -2404,6 +2569,7 @@ export const en = {
           visit_cancelled: 'Visit cancelled',
           visit_assigned: 'Engineer put on a visit',
           visit_unassigned: 'Engineer taken off a visit',
+          qualification_override: 'Visit planned without a qualification',
         },
       },
     },
@@ -5335,6 +5501,27 @@ export const en = {
   },
 
   mobile: {
+    qualifications: {
+      title: 'My qualifications',
+      intro:
+        'Your skills and certificates, as the office has recorded them. Send a renewed certificate to the office.',
+      empty: 'The office has not recorded any qualifications for you.',
+      notYet: 'Sync once with signal to see your qualifications.',
+      asOf: 'As of {{when}}',
+      skill: 'Skill, no expiry',
+      noExpiry: 'Does not expire',
+      expiresOn: 'Expires {{date}}',
+      expiredOn: 'Expired {{date}}',
+      issuedOn: 'Issued {{date}}',
+      reference: 'No. {{reference}}',
+      state: {
+        valid: 'Valid',
+        expiring: 'Expiring soon',
+        expired: 'Expired',
+        no_expiry: 'Held',
+        removed: 'Removed',
+      },
+    },
     documents: {
       title: 'Documents',
       search: 'Search documents',
@@ -5540,6 +5727,13 @@ export const en = {
       jobs: 'Jobs',
     },
     job: {
+      qualifications: 'Needs',
+      qualificationStanding: {
+        held: 'You hold this',
+        expiring: 'Yours expires soon',
+        expired: 'Yours has expired',
+        not_held: 'Not on your record',
+      },
       notOnPhone: 'This job is not on this phone.',
       details: 'Details',
       customer: 'Customer',
@@ -7015,6 +7209,7 @@ export const en = {
       workOrders: 'Work orders',
       timesheets: 'Timesheets',
       schedule: 'Schedule',
+      qualifications: 'Skills and certificates',
       customers: 'Customers',
       imports: 'Import from CSV',
       forms: 'Forms',
@@ -7071,6 +7266,7 @@ export const en = {
       workOrders: 'Jobs to schedule, dispatch, work and sign off.',
       timesheets: 'Shifts, travel and time on jobs, week by week.',
       schedule: 'Plan engineers’ visits on a calendar.',
+      qualifications: 'Who holds which skills and certificates, and what is running out.',
       customers: 'Customers, their contacts and sites.',
       imports: 'Bring in customers, sites and jobs from a spreadsheet.',
       forms: 'The forms your engineers fill in on site.',

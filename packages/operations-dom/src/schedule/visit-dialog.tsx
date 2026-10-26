@@ -1,8 +1,9 @@
 import { findDoubleBookings, type PlannedVisit, visitWarnings } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import {
+  keys,
   type ScheduleJob,
   type SchedulePerson,
   type ScheduleVisit,
@@ -19,6 +20,14 @@ import {
   toLocalInput,
   when,
 } from '../ui.js';
+import {
+  isUnqualified,
+  rankPeople,
+  uncovered,
+  type UnqualifiedDetail,
+  unqualifiedDetails,
+} from '../qualifications/model.js';
+import { GapList, gapsFromDetails, OverrideReasonField } from '../qualifications/override.js';
 import { personColour } from './model.js';
 
 /**
@@ -29,6 +38,11 @@ import { personColour } from './model.js';
  * when someone would be on another job at the same time — the server refuses
  * that anyway, for every client — and says when a visit falls outside the
  * job's due window, which is allowed.
+ *
+ * When the job needs qualifications (P26), the people who hold them for the
+ * visit's dates come first and the rest say what they lack. Saving a visit
+ * that leaves nobody qualified asks for a reason instead of failing, and goes
+ * ahead with it.
  */
 
 export type VisitDialogTarget =
@@ -86,6 +100,9 @@ export function VisitDialog({
   const [notes, setNotes] = useState(editing?.notes ?? '');
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState('');
+  /** Set when the server asked for a reason to go ahead without a qualification. */
+  const [override, setOverride] = useState<UnqualifiedDetail[] | undefined>();
+  const [overrideReason, setOverrideReason] = useState('');
 
   const start = fromLocalInput(startsAt);
   const end = fromLocalInput(endsAt);
@@ -99,6 +116,28 @@ export function VisitDialog({
       .map((person) => ({ ...person, role: '' })),
   ];
   const nameOf = (id: string) => listed.find((person) => person.id === id)?.name ?? '';
+
+  // Who holds what the job needs on these dates (P26): best first, nobody hidden.
+  const eligibility = useQuery({
+    queryKey: keys.eligibility(target.job.id, start ?? '', end ?? ''),
+    queryFn: async () =>
+      (
+        await client.GET('/v1/work-orders/{workOrderId}/eligibility', {
+          params: {
+            path: { workOrderId: target.job.id },
+            query: { startsAt: start!, endsAt: end! },
+          },
+        })
+      ).data!,
+    enabled: slotValid && open,
+    placeholderData: (previous) => previous,
+  });
+  const requirements = eligibility.data?.requirements ?? [];
+  const requirementName = (id: string) =>
+    requirements.find((requirement) => requirement.qualificationTypeId === id)?.name ?? '';
+  const ranked = rankPeople(listed, eligibility.data);
+  const unmet = writable ? uncovered(requirements, chosen, eligibility.data?.people ?? []) : [];
+  const separator = t('operations.qualifications.listSeparator');
 
   const candidate: PlannedVisit | undefined = slotValid
     ? {
@@ -123,8 +162,10 @@ export function VisitDialog({
         });
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (overrideWith: string | undefined) => {
       const addToCrew = chosen.some((id) => !crew.has(id));
+      const qualificationOverride =
+        overrideWith === undefined ? {} : { qualificationOverride: { reason: overrideWith } };
       if (editing === undefined) {
         return client.POST('/v1/work-orders/{workOrderId}/visits', {
           params: { path: { workOrderId: target.job.id } },
@@ -134,6 +175,7 @@ export function VisitDialog({
             assigneeIds: chosen,
             notes: notes.trim() === '' ? null : notes.trim(),
             addToCrew,
+            ...qualificationOverride,
           },
         });
       }
@@ -146,10 +188,16 @@ export function VisitDialog({
           assigneeIds: chosen,
           notes: notes.trim() === '' ? null : notes.trim(),
           addToCrew,
+          ...qualificationOverride,
         },
       });
     },
     onSuccess: onSaved,
+    onError: (error, overrideWith) => {
+      if (overrideWith === undefined && isUnqualified(error)) {
+        setOverride(unqualifiedDetails(error));
+      }
+    },
   });
 
   const cancel = useMutation({
@@ -167,7 +215,7 @@ export function VisitDialog({
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (writable && slotValid && !save.isPending) {
-      save.mutate();
+      save.mutate(undefined);
     }
   };
 
@@ -183,7 +231,29 @@ export function VisitDialog({
       onClose={onClose}
       wide
       footer={
-        cancelling ? (
+        override !== undefined ? (
+          <>
+            <button
+              type="button"
+              className={buttonClass.secondary}
+              onClick={() => {
+                setOverride(undefined);
+                save.reset();
+              }}
+            >
+              {t('operations.qualifications.override.back')}
+            </button>
+            <button
+              type="button"
+              className={buttonClass.primary}
+              disabled={overrideReason.trim() === '' || save.isPending}
+              aria-busy={save.isPending}
+              onClick={() => save.mutate(overrideReason.trim())}
+            >
+              {t('operations.qualifications.override.confirm')}
+            </button>
+          </>
+        ) : cancelling ? (
           <>
             <button
               type="button"
@@ -221,6 +291,7 @@ export function VisitDialog({
                 form={formId}
                 className={buttonClass.primary}
                 disabled={!slotValid || save.isPending}
+                aria-busy={save.isPending}
               >
                 {t('operations.schedule.dialog.save')}
               </button>
@@ -252,6 +323,13 @@ export function VisitDialog({
         >
           {t('operations.schedule.dialog.openJob')}
         </a>
+        {requirements.length === 0 ? null : (
+          <span dir="auto" className="text-sm text-content">
+            {t('operations.schedule.dialog.needs', {
+              list: requirements.map((requirement) => requirement.name).join(separator),
+            })}
+          </span>
+        )}
       </div>
 
       {editing?.status === 'done' && editing.completedAt !== null ? (
@@ -270,7 +348,15 @@ export function VisitDialog({
         </p>
       ) : null}
 
-      {cancelling ? (
+      {override !== undefined ? (
+        <div className="flex flex-col gap-3">
+          <p className="text-content">{t('operations.qualifications.override.visitIntro')}</p>
+          <div className="rounded-md border border-warning bg-warning-subtle px-3 py-2">
+            <GapList gaps={gapsFromDetails(override, nameOf)} />
+          </div>
+          <OverrideReasonField value={overrideReason} onChange={setOverrideReason} />
+        </div>
+      ) : cancelling ? (
         <Field label={t('operations.schedule.dialog.cancelReason')}>
           {(id) => (
             <input
@@ -323,10 +409,15 @@ export function VisitDialog({
             <legend className="text-sm font-medium text-content">
               {t('operations.schedule.dialog.people')}
             </legend>
+            {requirements.length === 0 ? null : (
+              <p className="text-xs text-content-muted">
+                {t('operations.schedule.dialog.qualifiedFirst')}
+              </p>
+            )}
             <ul className="grid gap-1 sm:grid-cols-2">
-              {listed.map((person) => (
+              {ranked.map(({ person, qualified, problems }) => (
                 <li key={person.id}>
-                  <label className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-surface-muted">
+                  <label className="flex flex-wrap items-center gap-x-2 rounded-md px-2 py-1 hover:bg-surface-muted">
                     <input
                       type="checkbox"
                       checked={chosen.includes(person.id)}
@@ -350,6 +441,24 @@ export function VisitDialog({
                     {crew.has(person.id) ? (
                       <span className="text-xs text-content-muted">
                         {t('operations.schedule.dialog.onCrew')}
+                      </span>
+                    ) : null}
+                    {requirements.length > 0 && !qualified ? (
+                      <span className="flex basis-full items-center gap-1 ps-6 text-xs">
+                        <span aria-hidden="true" className="text-warning">
+                          ⚠
+                        </span>
+                        <span dir="auto" className="text-content-muted">
+                          {t('operations.schedule.dialog.lacks', {
+                            list: problems
+                              .map((problem) =>
+                                t(`operations.qualifications.holding.${problem.status}`, {
+                                  qualification: requirementName(problem.qualificationTypeId),
+                                }),
+                              )
+                              .join(separator),
+                          })}
+                        </span>
                       </span>
                     ) : null}
                   </label>
@@ -377,7 +486,7 @@ export function VisitDialog({
             )}
           </Field>
 
-          {clashes.length > 0 || warnings.length > 0 ? (
+          {clashes.length > 0 || warnings.length > 0 || unmet.length > 0 ? (
             <ul className="flex flex-col gap-1 rounded-md border border-warning bg-warning-subtle px-3 py-2 text-content">
               {clashes.map((clash) => (
                 <li key={`${clash.userId}-${clash.conflictingVisitId}`}>
@@ -390,12 +499,19 @@ export function VisitDialog({
               {warnings.map((warning) => (
                 <li key={warning}>{t(`operations.schedule.warning.${warning}`)}</li>
               ))}
+              {unmet.map((requirement) => (
+                <li key={requirement.qualificationTypeId} dir="auto">
+                  {t('operations.schedule.dialog.unmet', { qualification: requirement.name })}
+                </li>
+              ))}
             </ul>
           ) : null}
         </form>
       )}
 
-      {save.isError ? <Failure error={save.error} /> : null}
+      {save.isError && !(override === undefined && isUnqualified(save.error)) ? (
+        <Failure error={save.error} />
+      ) : null}
       {cancel.isError ? <Failure error={cancel.error} /> : null}
     </Dialog>
   );

@@ -107,3 +107,4 @@ export { PayTermsSection } from './payroll/pay-terms.js';
 export { AssistantScreen } from './ai/assistant-screen.js';
 export type { VoiceInput } from './ai/voice.js';
 export { ScheduleScreen } from './schedule/schedule-screen.js';
+export { QualificationsScreen } from './qualifications/qualifications-screen.js';
