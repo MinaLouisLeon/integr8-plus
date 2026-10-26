@@ -161,8 +161,11 @@ out, or the session being revoked, stops notifications to it. So does
 | Priority changed to urgent | the crew                  | `urgent`                      |
 
 - The person who made the change is never told about it.
-- Notification text carries the job's reference and site, never a time: the company has no
-  time zone yet.
+- Notification text carries the job's reference and site, never a time: the job screen shows
+  times in the phone's own time zone, which may not be the company's.
+- Visits (P25): the person put on a visit or taken off one hears it, and the people on a visit
+  hear when it moves or is called off. Someone added to the crew and a visit in one change
+  hears about the visit only.
 - Expo's receipts are checked 15 minutes later (`push.receipts`). A token Expo reports as no
   longer registered is disabled, so an uninstalled app is not tried again.
 

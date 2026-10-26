@@ -48,6 +48,7 @@ import {
   ASSEMBLY_DIRECTIONS,
   WORK_ORDER_PRIORITIES,
   WORK_ORDER_STATES,
+  VISIT_STATUSES,
 } from '@integr8/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -509,6 +510,7 @@ describe('vocabularies shared with the application', () => {
   it('knows exactly the work order states and priorities @integr8/core defines', async () => {
     for (const [constraint, vocabulary] of [
       ['work_orders_state_known', WORK_ORDER_STATES],
+      ['work_order_visits_status_known', VISIT_STATUSES],
       ['work_orders_priority_known', WORK_ORDER_PRIORITIES],
       ['job_types_priority_known', WORK_ORDER_PRIORITIES],
       // CRM (0024): the lead vocabulary the screens offer is the one the

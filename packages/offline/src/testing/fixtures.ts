@@ -138,6 +138,8 @@ export function workOrderDetail(
     beforePhotos?: number;
     afterPhotos?: number;
     signatureRequired?: boolean;
+    /** The job's visits (P25). */
+    visits?: WorkOrderDetail['visits'];
   } = {},
 ): WorkOrderDetail {
   counter += 1;
@@ -194,6 +196,7 @@ export function workOrderDetail(
     crew: [
       { id: ENGINEER, name: 'Ed Engineer', lead: true, assignedAt: '2026-09-01T09:00:00.000Z' },
     ],
+    visits: overrides.visits ?? [],
     forms: (overrides.formIds ?? []).map((formId) => ({
       formId,
       title: 'Gas safety check',

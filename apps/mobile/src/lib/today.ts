@@ -1,5 +1,5 @@
 import { nextStates, type WorkOrderState } from '@integr8/core';
-import { type JobListItem, sectionJobs } from '@integr8/offline';
+import { type JobListItem, sectionJobs, type VisitListItem } from '@integr8/offline';
 
 /**
  * The engineer's day, decided from the jobs on the phone (P14): which job is
@@ -18,16 +18,42 @@ export function dayJobs(open: readonly JobListItem[], now: Date): JobListItem[] 
 }
 
 /**
+ * The visit that matters now (P25): the one under way, else the next to start.
+ * Done visits and visits already over are passed.
+ */
+export function currentVisit(
+  visits: readonly VisitListItem[],
+  now: Date,
+): VisitListItem | undefined {
+  return visits.find(
+    (visit) =>
+      visit.status === 'planned' &&
+      visit.job.closedAt === null &&
+      Date.parse(visit.endsAt) > now.getTime(),
+  );
+}
+
+/**
  * The job to show first. One the engineer is travelling to or working on wins,
- * whatever its date: it is where they are. After that, the first job of the day
+ * whatever its date: it is where they are. Then the job of their current or
+ * next visit, as the office planned it. After that, the first job of the day
  * that is theirs to start.
  */
-export function nextJob(open: readonly JobListItem[], now: Date): JobListItem | undefined {
+export function nextJob(
+  open: readonly JobListItem[],
+  now: Date,
+  visits: readonly VisitListItem[] = [],
+): JobListItem | undefined {
   for (const state of UNDER_WAY) {
     const found = open.find((job) => job.state === state);
     if (found !== undefined) {
       return found;
     }
+  }
+  const visit = currentVisit(visits, now);
+  const planned = open.find((job) => job.id === visit?.job.id);
+  if (planned !== undefined) {
+    return planned;
   }
   const day = dayJobs(open, now);
   return (

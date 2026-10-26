@@ -232,6 +232,8 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
         <Crew job={job} onChanged={refresh} />
       </div>
 
+      <Visits job={job} />
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Forms job={job} onChanged={refresh} />
         <Checklist job={job} onChanged={refresh} />
@@ -1467,6 +1469,66 @@ function Comments({
   );
 }
 
+/**
+ * The job's visits (P25), earliest first: when, who, and whether each is
+ * planned, done or cancelled. Planned and moved on the schedule.
+ */
+function Visits({ job }: { job: WorkOrderDetail }) {
+  const { t } = useTranslation();
+  const { locale, navigate, paths } = useOperations();
+  const time = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  return (
+    <section aria-labelledby="visits-heading" className={cardClass}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="visits-heading" className="text-lg font-semibold text-content">
+          {t('operations.workOrder.visits.title')}
+        </h2>
+        {paths.schedule === undefined || !job.can.assign ? null : (
+          <a
+            href={paths.schedule}
+            className="text-sm text-accent underline-offset-4 hover:underline"
+            onClick={(event) => {
+              event.preventDefault();
+              navigate(paths.schedule!);
+            }}
+          >
+            {t('operations.workOrder.visits.openSchedule')}
+          </a>
+        )}
+      </div>
+      {job.visits.length === 0 ? (
+        <p className="text-sm text-content-muted">{t('operations.workOrder.visits.empty')}</p>
+      ) : (
+        <ol className="flex flex-col divide-y divide-border-subtle text-sm">
+          {job.visits.map((visit) => (
+            <li key={visit.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+              <div className="flex flex-col">
+                <span
+                  className={
+                    visit.status === 'cancelled'
+                      ? 'text-content-muted line-through'
+                      : 'text-content'
+                  }
+                >
+                  {time.formatRange(new Date(visit.startsAt), new Date(visit.endsAt))}
+                </span>
+                <span dir="auto" className="text-content-muted">
+                  {visit.assignees.length === 0
+                    ? t('operations.workOrder.visits.nobody')
+                    : visit.assignees.map((person) => person.name).join(', ')}
+                </span>
+              </div>
+              <span className="text-xs font-medium text-content-muted">
+                {t(`operations.workOrder.visits.status.${visit.status}`)}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
 /** How far behind `occurredAt` an event may be recorded before the history says so. */
 const RECORDED_LATE_MS = 60_000;
 
@@ -1501,6 +1563,11 @@ function History({ job }: { job: WorkOrderDetail }) {
                       fields: Array.isArray(event.details.fields)
                         ? (event.details.fields as string[]).join(', ')
                         : '',
+                      // Visit events (P25) say which visit by its time.
+                      when:
+                        typeof event.details.startsAt === 'string'
+                          ? when(event.details.startsAt, locale)
+                          : '',
                     })
                   : t('operations.workOrder.nobodySignedEvent', {
                       actor: event.actor.name,

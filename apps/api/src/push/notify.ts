@@ -15,6 +15,11 @@ import type { PushMessage, PushSender } from './sender.js';
  * - **Assigned:** the person assigned. "Urgent callout" when the job is urgent.
  * - **Rescheduled, dispatched, cancelled:** everyone on the crew.
  * - **Priority changed:** the crew, only when the job became urgent.
+ * - **Visits (P25):** a person put on a visit, or taken off one, hears it; the
+ *   people on a visit hear when it moves or is called off. Someone added to the
+ *   crew and a visit in one change hears about the visit only. A visit called
+ *   off because its job closed, or taken off someone who left the crew, is
+ *   covered by the job's own message and never queued (migration 0051).
  *
  * Whoever made the change is not told about it. A notification names the job
  * and its site and nothing else about the customer: it can be read from a locked
@@ -52,9 +57,18 @@ async function plan(
   const urgent = job.priority === 'urgent';
   const closed = ['complete', 'reviewed', 'cancelled'].includes(job.state);
 
+  const visitId = typeof event.details.visitId === 'string' ? event.details.visitId : null;
+  const visit = visitId === null ? undefined : await tx.visits.find(visitId);
+  const onVisit = visit?.status === 'planned' ? visit.assigneeIds : [];
+  const openJob =
+    where === '' ? 'Open the job for its time.' : `${where} · open the job for its time.`;
+
   switch (event.kind) {
     case 'assigned':
       if (closed || event.userId === null || !crew.includes(event.userId)) {
+        return undefined;
+      }
+      if (await alsoPutOnVisit(tx, job.id, event)) {
         return undefined;
       }
       return {
@@ -92,9 +106,59 @@ async function plan(
       return urgent && !closed
         ? { recipients: others(crew), title: `Now urgent: ${label}`, body: where, urgent: true }
         : undefined;
+    case 'visit_assigned':
+      if (closed || event.userId === null || !onVisit.includes(event.userId)) {
+        return undefined;
+      }
+      return {
+        recipients: others([event.userId]),
+        title: urgent ? `Urgent visit: ${label}` : `New visit: ${label}`,
+        body: openJob,
+        urgent,
+      };
+    case 'visit_rescheduled':
+      return closed || onVisit.length === 0
+        ? undefined
+        : { recipients: others(onVisit), title: `Visit moved: ${label}`, body: openJob, urgent };
+    case 'visit_cancelled':
+      return visit === undefined || closed
+        ? undefined
+        : {
+            recipients: others(visit.assigneeIds),
+            title: `Visit cancelled: ${label}`,
+            body: event.reason ?? where,
+            urgent: false,
+          };
+    case 'visit_unassigned':
+      return closed || event.userId === null
+        ? undefined
+        : {
+            recipients: others([event.userId]),
+            title: `Taken off a visit: ${label}`,
+            body: where,
+            urgent: false,
+          };
     default:
       return undefined;
   }
+}
+
+/**
+ * Whether the person was put on one of the job's visits in the same change that
+ * put them on its crew: events from one transaction share `occurredAt`.
+ */
+async function alsoPutOnVisit(
+  tx: TenantTransaction,
+  workOrderId: string,
+  event: { userId: UserId | null; occurredAt: Date },
+): Promise<boolean> {
+  const events = await tx.workOrders.listEvents(workOrderId);
+  return events.some(
+    (other) =>
+      other.kind === 'visit_assigned' &&
+      other.userId === event.userId &&
+      other.occurredAt.getTime() === event.occurredAt.getTime(),
+  );
 }
 
 export async function notifyWorkOrderEvent(
@@ -118,7 +182,11 @@ export async function notifyWorkOrderEvent(
       to: device.token,
       title: decided.title,
       body: decided.body,
-      data: { workOrderId: job.id, event: event.kind },
+      data: {
+        workOrderId: job.id,
+        event: event.kind,
+        ...(typeof event.details.visitId === 'string' ? { visitId: event.details.visitId } : {}),
+      },
       channelId: decided.urgent ? 'urgent' : 'jobs',
       priority: decided.urgent ? 'high' : 'default',
     }));

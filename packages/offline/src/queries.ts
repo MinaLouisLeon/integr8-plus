@@ -81,6 +81,55 @@ export async function recentlyClosedJobs(sql: SqlConnection, limit = 50): Promis
   return rows.map(toJob);
 }
 
+/** One of this person's visits (P25), with the job it is for. */
+export interface VisitListItem {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  status: 'planned' | 'done' | 'cancelled';
+  notes: string | null;
+  /** Everyone on the visit, this person included. */
+  people: string[];
+  job: JobListItem;
+}
+
+/**
+ * This person's visits overlapping a window, earliest first: the day's
+ * timeline. Read from each job as the phone holds it, so a visit marked done
+ * offline shows done at once. Cancelled visits are left out.
+ */
+export async function myVisits(
+  sql: SqlConnection,
+  options: { userId: string; from: Date; to: Date },
+): Promise<VisitListItem[]> {
+  const rows = await sql.all<JobRow & { visit: string }>(
+    `select ${JOB_COLUMNS}, visit.value as visit
+       from ${JOBS_FROM}, json_each(work_orders.data, '$.visits') as visit
+      where json_extract(visit.value, '$.status') <> 'cancelled'
+        and json_extract(visit.value, '$.startsAt') < ?
+        and json_extract(visit.value, '$.endsAt') > ?
+        and exists (
+          select 1 from json_each(visit.value, '$.assignees') as person
+           where json_extract(person.value, '$.id') = ?
+        )`,
+    [options.to.toISOString(), options.from.toISOString(), options.userId],
+  );
+  return rows
+    .map((row) => {
+      const visit = JSON.parse(row.visit) as WorkOrderDetail['visits'][number];
+      return {
+        id: visit.id,
+        startsAt: visit.startsAt,
+        endsAt: visit.endsAt,
+        status: visit.status,
+        notes: visit.notes,
+        people: visit.assignees.map((person) => person.name),
+        job: toJob(row),
+      };
+    })
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt) || a.id.localeCompare(b.id));
+}
+
 export interface JobSections {
   overdue: JobListItem[];
   today: JobListItem[];

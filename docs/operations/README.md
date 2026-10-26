@@ -151,6 +151,50 @@ is a named set of exactly those parameters, one's own or shared. `POST /v1/work-
 reassigns, reschedules (set a window, or shift by minutes) or cancels up to 200 jobs, each on
 its own: the result lists every job it could not change and why.
 
+## Scheduling: visits and the schedule (P25)
+
+A job can take several trips. Each is a **visit** (`work_order_visits`, migration 0051): a
+start, an end, notes, and the people from the job's crew who go
+(`work_order_visit_assignees`). The job keeps its own workflow; a visit is only `planned`,
+`done` or `cancelled`, and done and cancelled are final. The job's due window stays what the
+customer was promised; a visit outside it is allowed, with a warning.
+
+Rules the database enforces for every client:
+
+- **Nobody is on two jobs at once.** An exclusion constraint (`btree_gist`) refuses the same
+  person on overlapping planned visits of different jobs. Visits of the same job may overlap,
+  and visits that only touch (one ends at 10:00, the next starts at 10:00) do not clash. The
+  API says `visit_double_booked`, with a detail naming each clash.
+- **Only the crew goes.** A visit's people must be on the job's crew; leaving the crew takes
+  someone off the job's planned visits.
+- **A closed job has no planned visits.** Completing a job marks its started visits done and
+  cancels the rest; cancelling it cancels them all.
+- **Work at any hour is fine.** Companies run 24/7 teams and flexible hours: the company's
+  working day only shades the calendar.
+
+Each visit change writes `work_order_events` (`visit_scheduled`, `visit_rescheduled`,
+`visit_done`, `visit_cancelled`, `visit_assigned`, `visit_unassigned`), touches its job for
+sync and tells the people on it by push, once: someone put on the crew and a visit together
+hears about the visit only.
+
+| Request                           | Who                     | Does                                                 |
+| --------------------------------- | ----------------------- | ---------------------------------------------------- |
+| `GET /v1/schedule?from&to&userId` | `work_order.read_all`   | Visits in a window of up to 45 days, with their jobs |
+| `GET /v1/schedule/unscheduled`    | `work_order.read_all`   | Open jobs with no planned visit, urgent first        |
+| `POST /v1/work-orders/:id/visits` | `work_order.manage`     | Plan a visit; `addToCrew` puts people on the crew    |
+| `PATCH /v1/visits/:id`            | `work_order.manage`     | Move it or change who goes, by `expectedRevision`    |
+| `POST /v1/visits/:id/cancel`      | `work_order.manage`     | Call it off                                          |
+| `POST /v1/visits/:id/done`        | the crew, or the office | Mark it done (the phone uses sync instead)           |
+| `POST /v1/visits/bulk`            | `work_order.manage`     | Reassign, shift or cancel up to 200, one by one      |
+
+The desktop **Schedule** (`packages/operations-dom/src/schedule`) shows day, week and month
+views, coloured by person, with a sidebar to show or hide people and a "Needs a visit" list.
+Dragging moves a visit, its bottom edge changes when it ends, and a job dropped on a day opens
+the visit dialog, which also does everything dragging does from the keyboard. Selecting an
+engineer's visits and reassigning them is how an unavailable engineer's day is redistributed.
+The job screen lists its visits. On the phone, the Today screen lists the engineer's visits
+and a started one can be marked done offline ([sync](../sync/README.md)).
+
 ## CSV import
 
 `POST /v1/imports { kind, fileName, csv, timeZone }` stores the file (up to 5 MB and 20,000

@@ -26,7 +26,7 @@ the phone gives it SQLite, files, `fetch`, the battery and the clock
 Screens never send anything. They call `recordTransition`, `recordChecklist`, `recordComment`,
 `recordAccessChange`, `recordFormStarted`, `recordAnswers`, `recordSubmit`, `queueUpload` and,
 for the working day (P14), `recordShiftStart`, `recordShiftEnd`, `recordPhoto`,
-`recordPhotoRemoved` and `recordSignoff`,
+`recordPhotoRemoved` and `recordSignoff`, and for visits (P25) `recordVisitDone`,
 each of which writes the change to the phone's copy of the record **and** to the outbox in one
 SQLite transaction. The screen shows it at once; it cannot be lost between the two.
 
@@ -42,6 +42,7 @@ SQLite transaction. The screen shows it at once; it cannot be lost between the t
 | Clock in / out         | `shift.start` / `shift.end`                    | — (the shift's id is chosen on the phone) |
 | Before / after photo   | `work_order.photo` / `work_order.photo_remove` | — (waits for its file)                    |
 | Customer sign-off      | `work_order.signoff`                           | — (waits for the signature's file)        |
+| Mark a visit done      | `work_order.visit_done`                        | — (already done is agreement)             |
 
 Every change has a **UUIDv7** id made on the phone. Autosaves of a form that have not been sent
 are folded into one — never into a change the engine has already handed to the network, which it

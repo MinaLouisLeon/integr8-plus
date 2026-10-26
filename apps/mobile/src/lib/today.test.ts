@@ -1,7 +1,7 @@
-import type { JobListItem } from '@integr8/offline';
+import type { JobListItem, VisitListItem } from '@integr8/offline';
 import { describe, expect, it } from 'vitest';
 import { navigationLinks } from './navigation';
-import { dayJobs, hoursAndMinutes, jobSteps, nextJob } from './today';
+import { currentVisit, dayJobs, hoursAndMinutes, jobSteps, nextJob } from './today';
 
 const now = new Date('2026-09-15T08:00:00');
 
@@ -56,6 +56,43 @@ describe('the engineer’s day', () => {
   it('rounds spans down to the minute', () => {
     expect(hoursAndMinutes(2 * 3_600_000 + 5 * 60_000 + 59_000)).toEqual({ hours: 2, minutes: 5 });
     expect(hoursAndMinutes(-1)).toEqual({ hours: 0, minutes: 0 });
+  });
+});
+
+describe('the day as the office planned it', () => {
+  const visit = (
+    forJob: JobListItem,
+    from: string,
+    to: string,
+    status: VisitListItem['status'] = 'planned',
+  ): VisitListItem => ({
+    id: `visit-${forJob.id}-${from}`,
+    startsAt: `2026-09-15T${from}:00`,
+    endsAt: `2026-09-15T${to}:00`,
+    status,
+    notes: null,
+    people: ['Ed'],
+    job: forJob,
+  });
+
+  it('shows the job of the visit under way or next, before what is merely due', () => {
+    const dueFirst = job({ dueBy: '2026-09-15T09:00:00' });
+    const visited = job({ dueBy: '2026-09-15T17:00:00' });
+    const done = job({ dueBy: '2026-09-15T17:00:00' });
+    const visits = [visit(done, '06:00', '07:30', 'done'), visit(visited, '07:30', '09:30')];
+    expect(currentVisit(visits, now)?.job.id).toBe(visited.id);
+    expect(nextJob([dueFirst, visited, done], now, visits)?.id).toBe(visited.id);
+  });
+
+  it('still puts a job they are on first', () => {
+    const onSite = job({ state: 'on_site' });
+    const visited = job({});
+    expect(nextJob([onSite, visited], now, [visit(visited, '08:00', '09:00')])?.id).toBe(onSite.id);
+  });
+
+  it('passes visits that are over', () => {
+    const visited = job({});
+    expect(currentVisit([visit(visited, '06:00', '07:00')], now)).toBeUndefined();
   });
 });
 

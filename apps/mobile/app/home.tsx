@@ -5,6 +5,7 @@ import {
   assetsEnabled,
   expensesEnabled,
   identity,
+  myVisits,
   openJobs,
   recentlyClosedJobs,
   searchLocal,
@@ -21,6 +22,7 @@ import { JobRow } from '~/components/job-row';
 import { LocalGate } from '~/components/local-gate';
 import { SyncBanner } from '~/components/sync-banner';
 import { Today } from '~/components/today';
+import { VisitTimeline } from '~/components/visit-timeline';
 import {
   Body,
   Button,
@@ -92,8 +94,24 @@ function Jobs() {
   const { state: assistant } = useOnlineRequest('assistant-capabilities', fetchAiCapabilities);
 
   const person = me.status === 'ready' ? me.data : undefined;
+  // This person's visits today (P25), from the jobs on the phone.
+  const visits = useLocalQuery(
+    `visits:${person?.userId ?? ''}:${new Date().toDateString()}`,
+    ['work_orders', 'sites'],
+    (sql) => {
+      if (person === undefined) {
+        return Promise.resolve([]);
+      }
+      const from = new Date();
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(from);
+      to.setDate(to.getDate() + 1);
+      return myVisits(sql, { userId: person.userId, from, to });
+    },
+  );
+  const todaysVisits = visits.status === 'ready' ? visits.data : [];
   const sections = sectionJobs(open.status === 'ready' ? open.data : [], new Date());
-  const failed = [me, open, closed, results].some((query) => query.status === 'error');
+  const failed = [me, open, closed, results, visits].some((query) => query.status === 'error');
 
   return (
     <ScrollScreen>
@@ -179,7 +197,12 @@ function Jobs() {
 
       {failed ? <LocalReadError /> : null}
 
-      {searching || open.status !== 'ready' ? null : <Today open={open.data} />}
+      {searching || open.status !== 'ready' ? null : (
+        <>
+          <Today open={open.data} visits={todaysVisits} />
+          <VisitTimeline visits={todaysVisits} />
+        </>
+      )}
 
       <Field
         label={t('mobile.jobs.searchLabel')}

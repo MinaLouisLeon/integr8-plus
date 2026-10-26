@@ -75,7 +75,8 @@ async function withPendingChanges(
   const pending = await sql.all<{ kind: string; payload: string; recorded_at: string }>(
     `select kind, payload, recorded_at from outbox
      where state = 'pending'
-       and kind in ('work_order.transition', 'work_order.checklist', 'work_order.comment', 'site.access',
+       and kind in ('work_order.transition', 'work_order.checklist', 'work_order.visit_done',
+                    'work_order.comment', 'site.access',
                     'work_order.photo', 'work_order.photo_remove', 'work_order.signoff',
                     'work_order.material')
        and (work_order_id = ? or (kind = 'site.access' and entity_id = ?))

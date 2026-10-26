@@ -150,6 +150,7 @@ export const apiErrorsEn = {
   document_template_invalid: 'The template has problems. Each one is listed below.',
   document_template_problem: 'This part of the template needs fixing.',
   document_template_wrong_form: 'This template belongs to another form.',
+  double_booked: 'This person is on another job at that time.',
   draft_changed:
     'The draft was saved again since you reviewed it. Review it again before publishing.',
   draft_conflict:
@@ -313,6 +314,7 @@ export const apiErrorsEn = {
   not_a_warehouse: 'Pick from one of our warehouses.',
   not_approved: 'Only an approved claim is paid back. Reload it to see where it is.',
   not_draft: 'Only a draft written by hand can be changed, posted or discarded.',
+  not_on_crew: 'This person is not on the job’s crew. Add them to the crew first.',
   not_own_claim: 'Only the person who claimed can withdraw a claim.',
   not_pending: 'This document no longer waits.',
   not_posted: 'Only something posted is reversed or returned; a draft is discarded.',
@@ -396,6 +398,7 @@ export const apiErrorsEn = {
   same_location: 'Transfer to a different location.',
   same_site: 'The asset is already at this site. Choose another.',
   same_status: 'The asset already has this status. Choose another.',
+  schedule_range_invalid: 'Choose a window of up to 45 days that ends after it starts.',
   seat_limit_reached:
     'Every seat on this plan is taken. Remove somebody, or move to a larger plan.',
   self_approval: 'Somebody other than whoever prepared this approves it.',
@@ -473,6 +476,16 @@ export const apiErrorsEn = {
   version_conflict:
     'Somebody else changed this while you were looking at it. Reload it and try again.',
   view_name_taken: 'You already have a view with this name. Choose another.',
+  visit_assignee_missing: 'The person being replaced is not on this visit.',
+  visit_assignee_not_on_crew:
+    'Only people on the job’s crew can go on its visits. Add them to the crew first.',
+  visit_changed: 'This visit was changed elsewhere since you loaded it. Reload and try again.',
+  visit_double_booked:
+    'Someone on this visit is already on another job at that time. Choose another time or person.',
+  visit_final: 'This visit is done or cancelled, so it can no longer change.',
+  visit_slot_invalid:
+    'A visit must end after it starts and last at most a week. Plan longer work as several visits.',
+  visit_unknown: 'This visit is no longer on the job. Pull to refresh it.',
   waits_for_invoice: 'Post or set aside the invoice it follows first.',
   website_key_invalid: 'This website key is not valid. Ask Integr8 for a new one.',
   website_key_limit:

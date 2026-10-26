@@ -497,6 +497,12 @@ const JOB_EVENTS = new Set([
   'unassigned',
   'lead_changed',
   'signed_off',
+  'visit_scheduled',
+  'visit_rescheduled',
+  'visit_done',
+  'visit_cancelled',
+  'visit_assigned',
+  'visit_unassigned',
 ]);
 const ACTIVITY_KINDS = new Set(['call', 'email', 'meeting', 'note', 'follow_up', 'task']);
 const QUOTE_ANSWERS = new Set(['accepted', 'rejected', 'converted', 'cancelled']);

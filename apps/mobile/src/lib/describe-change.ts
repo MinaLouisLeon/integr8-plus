@@ -23,6 +23,8 @@ export function describeChange(t: TFunction, change: DescribedChange): string {
           item: change.checklistLabel ?? '',
         },
       );
+    case 'work_order.visit_done':
+      return t('mobile.change.visitDone', { job });
     case 'work_order.comment':
       return t('mobile.change.comment', { job });
     case 'site.access':

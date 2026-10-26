@@ -1,6 +1,12 @@
 import { shiftDurationMs } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
-import { addressText, currentShift, job, type JobListItem } from '@integr8/offline';
+import {
+  addressText,
+  currentShift,
+  job,
+  type JobListItem,
+  type VisitListItem,
+} from '@integr8/offline';
 import { radii, spacing } from '@integr8/tokens';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -18,13 +24,20 @@ import { refusalMessage } from '~/lib/refusals';
  * The top of the engineer's day (P14): clocked in or not and for how long, the
  * job to do next with the one step forward on it, and directions there.
  */
-export function Today({ open }: { open: readonly JobListItem[] }) {
+export function Today({
+  open,
+  visits = [],
+}: {
+  open: readonly JobListItem[];
+  /** This person's visits today (P25): the next job is the next visit's. */
+  visits?: readonly VisitListItem[];
+}) {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const now = useNow(30_000);
   const shift = useLocalQuery('shift', ['shifts'], currentShift);
   const [clocking, setClocking] = useState(false);
-  const next = nextJob(open, now);
+  const next = nextJob(open, now, visits);
   const nextDetail = useLocalQuery(`today-job:${next?.id ?? ''}`, ['work_orders'], (sql) =>
     next === undefined ? Promise.resolve(undefined) : job(sql, next.id),
   );

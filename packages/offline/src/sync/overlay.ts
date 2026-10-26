@@ -14,6 +14,8 @@ export type LocalChange =
       payload: { to: WorkOrderDetail['workOrder']['state']; reason?: string };
     }
   | { kind: 'work_order.checklist'; payload: { itemId: string; done: boolean } }
+  /** A visit marked done (P25). */
+  | { kind: 'work_order.visit_done'; payload: { visitId: string } }
   | {
       kind: 'work_order.comment';
       payload: { commentId: string; body: string; visibility: 'internal' | 'customer' };
@@ -105,6 +107,21 @@ export function applyToJob(
               ],
       };
     }
+    case 'work_order.visit_done':
+      return {
+        ...detail,
+        visits: detail.visits.map((visit) =>
+          visit.id === change.payload.visitId && visit.status === 'planned'
+            ? {
+                ...visit,
+                status: 'done' as const,
+                completedAt: at,
+                completedBy: actor,
+                warnings: [],
+              }
+            : visit,
+        ),
+      };
     case 'work_order.checklist':
       return {
         ...detail,
