@@ -81,6 +81,8 @@ export const LOCAL_CHANGE_ERROR_CODES = [
   'spent_in_future',
   'transition_not_allowed',
   'unit_price_invalid',
+  'visit_final',
+  'visit_unknown',
   'work_order_not_on_phone',
 ] as const;
 export type LocalChangeErrorCode = (typeof LOCAL_CHANGE_ERROR_CODES)[number];
@@ -343,6 +345,46 @@ export async function recordChecklist(
     await insertChange(sql, {
       id,
       kind: 'work_order.checklist',
+      entityKey: `work_order:${input.workOrderId}`,
+      entityId: input.workOrderId,
+      workOrderId: input.workOrderId,
+      payload,
+      base: null,
+      at,
+    });
+    return id;
+  });
+}
+
+/**
+ * Marks one of the job's visits done (P25), at the phone's time. A visit that
+ * is already done is left alone; a cancelled one cannot be done.
+ */
+export async function recordVisitDone(
+  context: ChangeContext,
+  input: { workOrderId: string; visitId: string },
+): Promise<string | undefined> {
+  const { db, clock, random } = context;
+  return db.write(OUTBOX_TABLES, async (sql) => {
+    const detail = await jobDetail(sql, input.workOrderId);
+    const visit = detail.visits.find((candidate) => candidate.id === input.visitId);
+    if (visit === undefined) {
+      throw new LocalChangeError('visit_unknown', 'This visit is not on the job.');
+    }
+    if (visit.status === 'done') {
+      return undefined;
+    }
+    if (visit.status === 'cancelled') {
+      throw new LocalChangeError('visit_final', 'This visit was cancelled.');
+    }
+    const now = clock.now();
+    const at = now.toISOString();
+    const id = uuidv7(now.getTime(), random);
+    const payload = { visitId: input.visitId };
+    await applyLocally(sql, input.workOrderId, { kind: 'work_order.visit_done', payload }, at);
+    await insertChange(sql, {
+      id,
+      kind: 'work_order.visit_done',
       entityKey: `work_order:${input.workOrderId}`,
       entityId: input.workOrderId,
       workOrderId: input.workOrderId,

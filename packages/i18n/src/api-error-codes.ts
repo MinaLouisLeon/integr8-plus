@@ -403,6 +403,7 @@ export const API_ERROR_CODES = [
   'visit_double_booked',
   'visit_final',
   'visit_slot_invalid',
+  'visit_unknown',
   'waits_for_invoice',
   'website_key_invalid',
   'website_key_limit',

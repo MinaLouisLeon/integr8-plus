@@ -98,6 +98,12 @@ export const mutationSchema = z.discriminatedUnion('kind', [
   }),
   z.object({
     ...common,
+    // A visit marked done on the phone (P25). The job itself moves on separately.
+    kind: z.literal('work_order.visit_done'),
+    payload: z.object({ visitId: z.uuid() }),
+  }),
+  z.object({
+    ...common,
     kind: z.literal('work_order.comment'),
     payload: z.object({
       commentId: z.uuid(),
@@ -610,6 +616,8 @@ async function apply(
       return transition(tx, mutation, push);
     case 'work_order.checklist':
       return checklist(tx, mutation, push);
+    case 'work_order.visit_done':
+      return visitDone(tx, mutation, push);
     case 'work_order.comment':
       return comment(tx, mutation, push);
     case 'site.access':
@@ -811,6 +819,37 @@ async function checklist(
   }
   await tx.workOrders.setChecklistItem(job.id, item.id, mutation.payload.done, principal.userId);
   return applied(null);
+}
+
+/**
+ * A visit done, at the time the phone recorded it. Already done is agreement;
+ * cancelled in the meantime is the office's decision, and the engineer is told.
+ */
+async function visitDone(
+  tx: TenantTransaction,
+  mutation: Extract<Mutation, { kind: 'work_order.visit_done' }>,
+  { context, recordedAt }: PushContext,
+): Promise<Outcome> {
+  const { principal } = context;
+  const job = await jobFor(tx, principal, mutation.entityId);
+  if (job === undefined) {
+    return unavailable();
+  }
+  await requireWork(tx, principal, job);
+  const visit = await tx.visits.find(mutation.payload.visitId);
+  if (visit?.workOrderId !== job.id) {
+    return rejected('visit_unknown', 'This visit is no longer on the job.');
+  }
+  if (visit.status === 'done') {
+    return applied(null, true);
+  }
+  const result = await tx.visits.markDone(visit.id, recordedAt(mutation), principal.userId);
+  if (result.outcome === 'written') {
+    return applied(null);
+  }
+  return result.outcome === 'final'
+    ? rejected('visit_final', 'This visit was cancelled by the office.')
+    : rejected('visit_unknown', 'This visit is no longer on the job.');
 }
 
 async function comment(

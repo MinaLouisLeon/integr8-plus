@@ -55,6 +55,8 @@ export const LOCAL_CODES_SAID_AS_THE_APIS = [
   'asset_not_at_site',
   'asset_retired',
   'spent_in_future',
+  'visit_unknown',
+  'visit_final',
 ] as const;
 
 /** A dynamic catalogue key; the keys above are checked by this app's tests. */

@@ -37,6 +37,7 @@ interface VisitBody {
   startsAt: string;
   endsAt: string;
   status: string;
+  completedAt: string | null;
   revision: number;
   assignees: { id: string; name: string }[];
   warnings: string[];
@@ -383,6 +384,42 @@ describe('who may do what', () => {
     expect(done.visit.status).toBe('done');
     // Someone not on the job cannot see the visit at all.
     await call(tokens.sara, 'POST', `/v1/visits/${visit.id}/done`, {}, 404);
+  });
+});
+
+describe('a visit done on the phone', () => {
+  it('is applied once from the sync push, at the time the phone recorded it', async () => {
+    const job = await newJob([people.ahmed]);
+    const visit = await planned(job, 26, '08:00', '09:00', [people.ahmed]);
+    const recordedAt = new Date(Date.now() - 60_000).toISOString();
+    const mutation = {
+      id: crypto.randomUUID(),
+      kind: 'work_order.visit_done',
+      entityId: job.workOrder.id,
+      recordedAt,
+      payload: { visitId: visit.id },
+    };
+    const push = () =>
+      call<{ results: { outcome: string; code?: string }[] }>(
+        tokens.ahmed,
+        'POST',
+        '/v1/sync/push',
+        {
+          sentAt: new Date().toISOString(),
+          mutations: [mutation],
+        },
+      );
+    expect((await push()).results[0]?.outcome).toBe('applied');
+    expect((await push()).results[0]?.outcome).toBe('applied');
+
+    const detail = await call<Detail>(
+      tokens.dispatcher,
+      'GET',
+      `/v1/work-orders/${job.workOrder.id}`,
+    );
+    const done = detail.visits.find((found) => found.id === visit.id)!;
+    expect(done.status).toBe('done');
+    expect(Math.abs(Date.parse(done.completedAt!) - Date.parse(recordedAt))).toBeLessThan(5_000);
   });
 });
 

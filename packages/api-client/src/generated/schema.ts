@@ -70995,6 +70995,19 @@ export interface operations {
                         /** Format: date-time */
                         recordedAt: string;
                         /** @enum {string} */
+                        kind: "work_order.visit_done";
+                        payload: {
+                            /** Format: uuid */
+                            visitId: string;
+                        };
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        entityId: string;
+                        /** Format: date-time */
+                        recordedAt: string;
+                        /** @enum {string} */
                         kind: "work_order.comment";
                         payload: {
                             /** Format: uuid */

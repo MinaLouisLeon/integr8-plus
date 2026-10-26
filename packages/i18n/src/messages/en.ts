@@ -6047,11 +6047,18 @@ export const en = {
       open: 'Show the breakdown',
       close: 'Hide the breakdown',
     },
+    visits: {
+      title: 'Your visits today',
+      with: 'With {{people}}',
+      done: 'Done',
+      markDone: 'Mark visit done',
+    },
     change: {
       transition: 'Marked {{job}} as {{state}}',
       checklistDone: 'Ticked “{{item}}” on {{job}}',
       checklistUndone: 'Unticked “{{item}}” on {{job}}',
       comment: 'Added a note to {{job}}',
+      visitDone: 'Marked a visit done on {{job}}',
       access: 'Changed the access notes for {{site}}',
       formStarted: 'Started {{form}} on {{job}}',
       formAnswers: 'Filled in {{form}} on {{job}}',

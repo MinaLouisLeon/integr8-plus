@@ -485,6 +485,7 @@ export const apiErrorsEn = {
   visit_final: 'This visit is done or cancelled, so it can no longer change.',
   visit_slot_invalid:
     'A visit must end after it starts and last at most a week. Plan longer work as several visits.',
+  visit_unknown: 'This visit is no longer on the job. Pull to refresh it.',
   waits_for_invoice: 'Post or set aside the invoice it follows first.',
   website_key_invalid: 'This website key is not valid. Ask Integr8 for a new one.',
   website_key_limit:

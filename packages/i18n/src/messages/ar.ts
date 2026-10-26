@@ -6135,11 +6135,18 @@ export const ar: Catalogue<Messages> = {
       open: 'عرض التفاصيل',
       close: 'إخفاء التفاصيل',
     },
+    visits: {
+      title: 'زياراتك اليوم',
+      with: 'مع {{people}}',
+      done: 'منجزة',
+      markDone: 'سجّل إنجاز الزيارة',
+    },
     change: {
       transition: 'تعليم {{job}} بالحالة {{state}}',
       checklistDone: 'تحديد «{{item}}» في {{job}}',
       checklistUndone: 'إلغاء تحديد «{{item}}» في {{job}}',
       comment: 'إضافة ملاحظة إلى {{job}}',
+      visitDone: 'تسجيل إنجاز زيارة في {{job}}',
       access: 'تغيير ملاحظات الدخول إلى {{site}}',
       formStarted: 'بدء {{form}} في {{job}}',
       formAnswers: 'ملء {{form}} في {{job}}',

@@ -18,6 +18,7 @@ import {
   recordShiftStart,
   recordSignoff,
   recordTransition,
+  recordVisitDone,
   type SubmitLocation,
   syncApiFor,
   type WorkOrderDetail,
@@ -201,6 +202,13 @@ export async function openAssetFile(
     dialogTitle: file.title,
   });
   return true;
+}
+
+/** A visit marked done (P25): recorded now, sent when there is signal. */
+export async function markVisitDone(workOrderId: string, visitId: string): Promise<void> {
+  if ((await recordVisitDone(context(), { workOrderId, visitId })) !== undefined) {
+    sent();
+  }
 }
 
 export async function moveJob(workOrderId: string, to: WorkOrderState): Promise<void> {
