@@ -99,6 +99,7 @@ import {
   ImportsRoute,
   JobTypesRoute,
   NewWorkOrderRoute,
+  ScheduleRoute,
   SiteRoute,
   TimesheetsRoute,
   WorkOrderRoute,
@@ -239,6 +240,7 @@ const SIGNED_IN_ROUTES: readonly { path: string; element: ReactNode }[] = [
   { path: '/settings/assistant', element: <AssistantSettingsRoute /> },
   { path: '/imports', element: <ImportsRoute /> },
   { path: '/timesheets', element: <TimesheetsRoute /> },
+  { path: '/schedule', element: <ScheduleRoute /> },
 ];
 
 export function App() {

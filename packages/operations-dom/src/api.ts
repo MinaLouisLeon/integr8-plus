@@ -23,6 +23,8 @@ export interface OperationsConfig {
     workOrders: string;
     newWorkOrder: (options?: { customerId?: string }) => string;
     workOrder: (id: string) => string;
+    /** The scheduling board (P25), where the host app has it (the desktop app). */
+    schedule?: string;
     customers: string;
     customer: (id: string) => string;
     site: (id: string) => string;
@@ -255,6 +257,13 @@ export type CustomerDetail = Json<'/v1/customers/{customerId}', 'get', 200>;
 export type Site = CustomerDetail['sites'][number];
 export type SiteDetail = Json<'/v1/sites/{siteId}', 'get', 200>;
 export type JobType = Json<'/v1/job-types', 'get', 200>['items'][number];
+/** The scheduling board (P25): a calendar's visits, and the jobs still waiting for one. */
+export type Schedule = Json<'/v1/schedule', 'get', 200>;
+export type ScheduleVisit = Schedule['visits'][number];
+export type SchedulePerson = Schedule['people'][number];
+export type ScheduleJob = Schedule['workOrders'][number];
+export type UnscheduledJob = Json<'/v1/schedule/unscheduled', 'get', 200>['items'][number];
+export type BulkVisitResult = Json<'/v1/visits/bulk', 'post', 200>['results'][number];
 export type SavedView = Json<'/v1/saved-views', 'get', 200>['items'][number];
 export type ImportRecord = Json<'/v1/imports', 'get', 200>['items'][number];
 export type ImportDetail = Json<'/v1/imports/{importId}', 'get', 200>;
@@ -572,6 +581,10 @@ export const keys = {
   jobTypes: (archived: boolean) => ['job-types', archived] as const,
   workOrders: (query: Record<string, unknown>) => ['work-orders', 'list', query] as const,
   workOrder: (id: string) => ['work-orders', id] as const,
+  // Under work-orders, so a change to a job also refreshes the board.
+  schedule: (range: { from: string; to: string; cancelled: boolean }) =>
+    ['work-orders', 'schedule', range] as const,
+  unscheduled: ['work-orders', 'unscheduled'] as const,
   views: ['saved-views'] as const,
   customers: (query: Record<string, unknown>) => ['customers', 'list', query] as const,
   customer: (id: string) => ['customers', id] as const,

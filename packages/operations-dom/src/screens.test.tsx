@@ -86,6 +86,7 @@ function detail(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
       expectedDurationMinutes: 90,
     },
     crew: [{ ...ENGINEER, lead: true, assignedAt: '2026-09-30T09:00:00.000Z' }],
+    visits: [],
     forms: [{ formId: FORM, title: 'Gas safety record', required: true, submission: null }],
     checklist: [
       {

@@ -23,6 +23,7 @@ export const NAV_ROUTES: Readonly<Record<NavPath, string | null>> = {
   fill: '/fill',
   submissions: '/submissions',
   workOrders: '/work-orders',
+  schedule: '/schedule',
   timesheets: '/timesheets',
   customers: '/customers',
   imports: '/imports',

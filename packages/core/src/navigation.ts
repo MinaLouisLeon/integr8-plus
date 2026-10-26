@@ -105,6 +105,7 @@ export type NavPath =
   | 'fill'
   | 'submissions'
   | 'workOrders'
+  | 'schedule'
   | 'customers'
   | 'imports'
   | 'timesheets'
@@ -197,6 +198,15 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     feature: 'documents',
   },
   { key: 'workOrders', group: 'work', path: 'workOrders', icon: 'briefcase' },
+  // The scheduling board (P25): a calendar of visits, on the desktop only.
+  {
+    key: 'schedule',
+    group: 'work',
+    path: 'schedule',
+    icon: 'calendar-check',
+    permission: 'work_order.read_all',
+    desktopOnly: true,
+  },
   {
     key: 'timesheets',
     group: 'work',
