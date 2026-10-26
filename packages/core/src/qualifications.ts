@@ -171,16 +171,23 @@ export function qualificationGaps(input: {
 }
 
 /**
- * The gaps a change opens: those after it that were not there before. Moving a
- * visit already planned without a qualification does not ask for a reason
- * again; putting a different crew on it, or moving it past an expiry, does.
+ * The gaps a change opens: those after it that were not there before. A gap
+ * counts as already there only for the same qualification and the same people:
+ * moving a visit already planned without a qualification does not ask for a
+ * reason again, but putting someone else on it does, since the reason given
+ * may have been about the person.
  */
 export function newGaps(
   before: readonly QualificationGap[],
   after: readonly QualificationGap[],
 ): QualificationGap[] {
-  const known = new Set(before.map((gap) => gap.qualificationTypeId));
-  return after.filter((gap) => !known.has(gap.qualificationTypeId));
+  const key = (gap: QualificationGap) =>
+    `${gap.qualificationTypeId}:${gap.people
+      .map((person) => person.userId)
+      .sort()
+      .join(',')}`;
+  const known = new Set(before.map(key));
+  return after.filter((gap) => !known.has(key(gap)));
 }
 
 /** Where a certificate stands today, for lists and the phone. */

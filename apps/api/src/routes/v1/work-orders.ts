@@ -43,6 +43,7 @@ import { isFeatureEnabled } from '../../http/features.js';
 import { materialBodies, materialSchema, seesCosts, vanBody } from './materials.js';
 import { deliverOnCompletion } from './sales-fulfilment.js';
 import { iso, isoOrNull } from './schemas.js';
+import { gapsForVisits } from './qualification-check.js';
 import { visitBody, visitSchema } from './visits-shared.js';
 
 /**
@@ -86,6 +87,7 @@ const eventSchema = z.object({
     'visit_cancelled',
     'visit_assigned',
     'visit_unassigned',
+    'qualification_override',
   ]),
   fromState: workOrderStateSchema.nullable(),
   toState: workOrderStateSchema.nullable(),
@@ -153,6 +155,11 @@ export const detailSchema = z.object({
   crew: z.array(personSchema.extend({ lead: z.boolean(), assignedAt: z.string() })),
   /** The trips planned for the job, earliest first, with done and cancelled ones kept (P25). */
   visits: z.array(visitSchema),
+  /**
+   * What the job needs (P26): at least one person on each visit holds each of
+   * these, valid on the visit's days. Copied from the job type, then the job's own.
+   */
+  requiredQualifications: z.array(z.object({ qualificationTypeId: z.uuid(), name: z.string() })),
   forms: z.array(
     z.object({
       formId: z.uuid(),
@@ -247,6 +254,11 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     peopleOf(tx),
     tx.visits.listForWorkOrders([job.id]),
   ]);
+  const jobVisits = visits.get(job.id) ?? [];
+  const [requirements, gaps] = await Promise.all([
+    tx.qualifications.workOrderRequirements([job.id]),
+    gapsForVisits(tx, jobVisits),
+  ]);
   const missing = await tx.workOrders.completionMissing(job);
   const contacts = site?.contactId == null ? [] : await tx.customers.findContacts([site.contactId]);
   const visiblePrevious = readAll
@@ -307,7 +319,8 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
       lead: member.lead,
       assignedAt: iso(member.assignedAt),
     })),
-    visits: (visits.get(job.id) ?? []).map((visit) => visitBody(visit, job, people)),
+    visits: jobVisits.map((visit) => visitBody(visit, job, people, gaps.get(visit.id) ?? [])),
+    requiredQualifications: requirements.get(job.id) ?? [],
     forms: forms.map((form) => ({
       formId: form.formId,
       title: form.title,

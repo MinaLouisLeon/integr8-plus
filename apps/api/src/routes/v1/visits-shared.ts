@@ -1,9 +1,36 @@
-import { type DueWindow, VISIT_STATUSES, visitWarnings } from '@integr8/core';
+import {
+  type DueWindow,
+  type QualificationGap,
+  VISIT_STATUSES,
+  visitWarnings,
+} from '@integr8/core';
 import type { Visit, VisitRefusal } from '@integr8/db';
 import { z } from 'zod';
 import { ApiError, conflict, notFound, unprocessable } from '../../http/errors.js';
 import { type People, personBody, personSchema } from './operations.js';
 import { iso, isoOrNull } from './schemas.js';
+
+export const holdingProblemSchema = z.enum(['expires_before_visit', 'expired', 'missing']);
+
+/** A job's requirement nobody on a visit meets (P26). */
+export const qualificationGapSchema = z.object({
+  qualificationTypeId: z.uuid(),
+  name: z.string(),
+  /** Everyone on the visit, and why none of them counts. */
+  people: z.array(personSchema.extend({ status: holdingProblemSchema })),
+});
+
+export function gapBodies(gaps: readonly QualificationGap[], people: People) {
+  return gaps.map((gap) => ({
+    qualificationTypeId: gap.qualificationTypeId,
+    name: gap.name,
+    people: gap.people.map((person) => ({
+      id: person.userId,
+      name: people.get(person.userId) ?? '',
+      status: person.status,
+    })),
+  }));
+}
 
 /**
  * A visit as every client sees it (P25): on the scheduling board, on the job
@@ -22,13 +49,23 @@ export const visitSchema = z.object({
   cancelledAt: z.string().nullable(),
   cancelReason: z.string().nullable(),
   revision: z.number().int(),
-  /** Worth a dispatcher's notice, never blocking. Working hours are deliberately not one. */
-  warnings: z.array(z.enum(['outside_due_window', 'no_engineer'])),
+  /**
+   * Worth a dispatcher's notice, never blocking. Working hours are deliberately
+   * not one. `unqualified`: nobody on it holds something the job needs (P26).
+   */
+  warnings: z.array(z.enum(['outside_due_window', 'no_engineer', 'unqualified'])),
+  /** The job's requirements nobody on this planned visit meets, as of today (P26). */
+  qualificationGaps: z.array(qualificationGapSchema),
 });
 
 export type VisitBody = z.infer<typeof visitSchema>;
 
-export function visitBody(visit: Visit, job: DueWindow, people: People): VisitBody {
+export function visitBody(
+  visit: Visit,
+  job: DueWindow,
+  people: People,
+  gaps: readonly QualificationGap[] = [],
+): VisitBody {
   return {
     id: visit.id,
     workOrderId: visit.workOrderId,
@@ -42,7 +79,11 @@ export function visitBody(visit: Visit, job: DueWindow, people: People): VisitBo
     cancelledAt: isoOrNull(visit.cancelledAt),
     cancelReason: visit.cancelReason,
     revision: visit.revision,
-    warnings: visitWarnings(visit, job),
+    warnings: [
+      ...visitWarnings(visit, job),
+      ...(gaps.length > 0 ? (['unqualified'] as const) : []),
+    ],
+    qualificationGaps: gapBodies(gaps, people),
   };
 }
 

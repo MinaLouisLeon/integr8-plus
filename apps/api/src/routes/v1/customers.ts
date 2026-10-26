@@ -725,6 +725,8 @@ const ownerSchema = z.union([
   z.object({ assetId: z.uuid() }).strict(),
   /** A receipt for a staff expense claim (ADR-0010); needs the `hr` module. */
   z.object({ expenseClaimId: z.uuid() }).strict(),
+  /** A scan of a member's certificate (P26). */
+  z.object({ memberQualificationId: z.uuid() }).strict(),
 ]);
 
 /** Whether this person may add to or remove from what `owner` names. */
@@ -734,6 +736,17 @@ export async function requireAttachable(
   owner: AttachmentOwner,
 ) {
   const { principal } = context;
+  if ('memberQualificationId' in owner) {
+    // A certificate's scan (P26): kept by those who keep the records.
+    if (!holds(principal, 'qualification.manage')) {
+      throw forbidden('Only those who keep qualifications can change a certificate’s scans.');
+    }
+    const record = await tx.qualifications.findRecord(owner.memberQualificationId);
+    if (record?.removedAt !== null) {
+      throw notFound('This qualification record does not exist.');
+    }
+    return;
+  }
   if ('expenseClaimId' in owner) {
     await assertFeatureEnabled(principal.tenantId, 'hr');
     const claim = await readableClaim(tx, principal, owner.expenseClaimId);
@@ -803,8 +816,8 @@ export const addAttachmentRoute = defineRoute({
     'The file must already be uploaded and confirmed (`/v1/media`). While attached, it cannot be deleted. Honours `Idempotency-Key`.',
   tags: TAGS,
   security: 'authenticated',
-  // Customer records, and receipts on expense claims (ADR-0010).
-  anyPermission: ['customer.read', 'expense.submit'],
+  // Customer records, receipts on expense claims (ADR-0010), certificate scans (P26).
+  anyPermission: ['customer.read', 'expense.submit', 'qualification.manage'],
   idempotent: true,
   params: noSchema,
   query: noSchema,
@@ -872,8 +885,8 @@ export const removeAttachmentRoute = defineRoute({
   description: 'The file itself stays in storage until it is deleted through `/v1/media`.',
   tags: TAGS,
   security: 'authenticated',
-  // Customer records, and receipts on expense claims (ADR-0010).
-  anyPermission: ['customer.read', 'expense.submit'],
+  // Customer records, receipts on expense claims (ADR-0010), certificate scans (P26).
+  anyPermission: ['customer.read', 'expense.submit', 'qualification.manage'],
   params: z.object({ attachmentId: z.uuid() }),
   query: noSchema,
   body: noSchema,

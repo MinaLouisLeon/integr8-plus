@@ -132,10 +132,26 @@ describe('gaps', () => {
   });
 
   it('asks again only for gaps a change opens', () => {
-    const elecGap = { qualificationTypeId: 'elec', name: 'E', people: [] };
-    const gasGap = { qualificationTypeId: 'gas', name: 'G', people: [] };
-    expect(newGaps([elecGap], [elecGap])).toEqual([]);
+    const elecGap = {
+      qualificationTypeId: 'elec',
+      name: 'E',
+      people: [{ userId: 'ahmed', status: 'missing' as const }],
+    };
+    const gasGap = { ...elecGap, qualificationTypeId: 'gas', name: 'G' };
+    expect(
+      newGaps([elecGap], [{ ...elecGap, people: [{ userId: 'ahmed', status: 'expired' }] }]),
+    ).toEqual([]);
     expect(newGaps([elecGap], [elecGap, gasGap])).toEqual([gasGap]);
+  });
+
+  it('asks again when someone else is on the visit', () => {
+    const before = {
+      qualificationTypeId: 'elec',
+      name: 'E',
+      people: [{ userId: 'ahmed', status: 'missing' as const }],
+    };
+    const after = { ...before, people: [{ userId: 'omar', status: 'missing' as const }] };
+    expect(newGaps([before], [after])).toEqual([after]);
   });
 });
 

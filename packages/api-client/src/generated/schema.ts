@@ -6692,7 +6692,7 @@ export interface paths {
         put?: never;
         /**
          * Plan a visit to a job
-         * @description Plans one trip with its own times and people. People must be on the job’s crew; `addToCrew` puts anyone who is not on it first. Refused when someone would be on another job at the same time.
+         * @description Plans one trip with its own times and people. People must be on the job’s crew; `addToCrew` puts anyone who is not on it first. Refused when someone would be on another job at the same time, and when nobody on it holds a qualification the job needs unless `qualificationOverride` says why.
          */
         post: operations["createVisit"];
         delete?: never;
@@ -6716,7 +6716,7 @@ export interface paths {
         head?: never;
         /**
          * Move a visit, or change who goes
-         * @description Refused when the visit changed since `expectedRevision`, when it is done or cancelled, or when someone would be on another job at the same time. `assigneeIds` replaces who goes; `addToCrew` puts newcomers on the job’s crew first.
+         * @description Refused when the visit changed since `expectedRevision`, when it is done or cancelled, or when someone would be on another job at the same time. `assigneeIds` replaces who goes; `addToCrew` puts newcomers on the job’s crew first. A change that leaves nobody holding a qualification the job needs, where somebody did before, needs `qualificationOverride`.
          */
         patch: operations["updateVisit"];
         trace?: never;
@@ -6772,9 +6772,217 @@ export interface paths {
         put?: never;
         /**
          * Reassign, move or cancel many visits
-         * @description Each visit is changed on its own, so one that cannot be — done, cancelled, a double booking — is reported and the rest go ahead. `reassign` hands the visits from `fromUserId` to `toUserId` (or makes `toUserId` the only person when `fromUserId` is left out); `shift` moves them by `shiftMinutes`; `cancel` calls them off.
+         * @description Each visit is changed on its own, so one that cannot be — done, cancelled, a double booking, nobody qualified — is reported and the rest go ahead. `reassign` hands the visits from `fromUserId` to `toUserId` (or makes `toUserId` the only person when `fromUserId` is left out); `shift` moves them by `shiftMinutes`; `cancel` calls them off. `qualificationOverrideReason` is the one reason for every visit the change leaves without a qualification its job needs; without it those visits are refused with `visit_unqualified`.
          */
         post: operations["bulkVisits"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/qualification-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The company’s skills and certificates
+         * @description By name. Archived ones only with `includeArchived`. With the expiry warning period, and whether this person may change them.
+         */
+        get: operations["listQualificationTypes"];
+        put?: never;
+        /**
+         * Add a skill or certificate to the company’s list
+         * @description A skill never expires; a certificate may. The kind cannot change afterwards. Names are unique, whatever their case.
+         */
+        post: operations["createQualificationType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/qualification-types/{qualificationTypeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename, describe, archive or restore a qualification
+         * @description An archived qualification takes no new records and stops being required by any job; records already held stay.
+         */
+        patch: operations["updateQualificationType"];
+        trace?: never;
+    };
+    "/v1/qualification-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * How early people hear that a certificate is expiring
+         * @description Between 1 and 365 days. Certificates already warned about are not warned again.
+         */
+        patch: operations["updateQualificationSettings"];
+        trace?: never;
+    };
+    "/v1/qualifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who holds what
+         * @description Every current record, or those of the people (`userId`) and qualifications (`qualificationTypeId`) asked for; removed ones only with `includeRemoved`. With the active members and the company’s list, so a screen can show who holds nothing.
+         */
+        get: operations["listQualifications"];
+        put?: never;
+        /**
+         * Record a skill or certificate someone holds
+         * @description A renewal is a new record: the old one stays, expired, as the history of what was held. Attach a scan with `POST /v1/attachments` and `{ memberQualificationId }`.
+         */
+        post: operations["addQualification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/qualifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The skills and certificates I hold
+         * @description Everyone may read their own. Current records only, with where each stands today. The phone also receives these with every sync.
+         */
+        get: operations["listMyQualifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/qualifications/{qualificationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Correct a record’s number, dates or notes
+         * @description For a mistake. A renewed certificate is a new record. New dates mean the expiry alerts go out again when due.
+         */
+        patch: operations["updateQualification"];
+        trace?: never;
+    };
+    "/v1/qualifications/{qualificationId}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take a record away
+         * @description Final. The record stays in the history, marked removed, and no longer counts for any visit.
+         */
+        post: operations["removeQualification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/job-types/{jobTypeId}/qualifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set what a job type’s jobs need
+         * @description Replaces the list. Jobs created afterwards copy it; jobs already created keep their own. Integr8 staff, and the company’s owners, admins and HR managers (product decision, 2026-10-27).
+         */
+        put: operations["setJobTypeQualifications"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work-orders/{workOrderId}/qualifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set what one job needs
+         * @description Replaces the job’s own list, copied from its job type when it was created. Visits already planned are checked against it from now on; nothing already planned is changed.
+         */
+        put: operations["setWorkOrderQualifications"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work-orders/{workOrderId}/eligibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who holds what a job needs, for a visit’s dates
+         * @description Every active member, with how many of the job’s requirements they meet on the visit’s days and where each stands: those meeting most first, then by name. For the people picker; nobody is left out, since going ahead with a reason is allowed.
+         */
+        get: operations["getWorkOrderEligibility"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -12342,7 +12550,7 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
-                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -24399,6 +24607,9 @@ export interface operations {
                     } | {
                         /** Format: uuid */
                         expenseClaimId: string;
+                    } | {
+                        /** Format: uuid */
+                        memberQualificationId: string;
                     };
                     /** Format: uuid */
                     fileId: string;
@@ -28238,9 +28449,9 @@ export interface operations {
                         bases: {
                             /** @enum {string} */
                             role: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                            permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                            permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         }[];
-                        addable: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        addable: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     };
                 };
             };
@@ -28325,9 +28536,9 @@ export interface operations {
                             description: string | null;
                             /** @enum {string} */
                             baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                            added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                            removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                            permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                            added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                            removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                            permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                             holders: number;
                             version: number;
                             /** Format: date-time */
@@ -28414,9 +28625,9 @@ export interface operations {
                     /** @default null */
                     description?: string | null;
                     /** @default [] */
-                    added?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                    added?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     /** @default [] */
-                    removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                    removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     /** @enum {string} */
                     baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                 };
@@ -28436,9 +28647,9 @@ export interface operations {
                         description: string | null;
                         /** @enum {string} */
                         baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         holders: number;
                         version: number;
                         /** Format: date-time */
@@ -28525,9 +28736,9 @@ export interface operations {
                     /** @default null */
                     description?: string | null;
                     /** @default [] */
-                    added?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                    added?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     /** @default [] */
-                    removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                    removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     expectedVersion: number;
                 };
             };
@@ -28546,9 +28757,9 @@ export interface operations {
                         description: string | null;
                         /** @enum {string} */
                         baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         holders: number;
                         version: number;
                         /** Format: date-time */
@@ -28656,9 +28867,9 @@ export interface operations {
                         description: string | null;
                         /** @enum {string} */
                         baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         holders: number;
                         version: number;
                         /** Format: date-time */
@@ -38101,7 +38312,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -38143,7 +38371,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -38590,7 +38818,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -38632,7 +38877,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -39065,7 +39310,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -39107,7 +39369,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -62399,6 +62661,14 @@ export interface operations {
                             beforePhotos: number;
                             afterPhotos: number;
                             signatureRequired: boolean;
+                            requiredQualifications: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "skill" | "certificate";
+                                archived: boolean;
+                            }[];
                             archived: boolean;
                             createdAt: string;
                             updatedAt: string;
@@ -62528,6 +62798,14 @@ export interface operations {
                         beforePhotos: number;
                         afterPhotos: number;
                         signatureRequired: boolean;
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "skill" | "certificate";
+                            archived: boolean;
+                        }[];
                         archived: boolean;
                         createdAt: string;
                         updatedAt: string;
@@ -62638,6 +62916,14 @@ export interface operations {
                         beforePhotos: number;
                         afterPhotos: number;
                         signatureRequired: boolean;
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "skill" | "certificate";
+                            archived: boolean;
+                        }[];
                         archived: boolean;
                         createdAt: string;
                         updatedAt: string;
@@ -62773,6 +63059,14 @@ export interface operations {
                         beforePhotos: number;
                         afterPhotos: number;
                         signatureRequired: boolean;
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "skill" | "certificate";
+                            archived: boolean;
+                        }[];
                         archived: boolean;
                         createdAt: string;
                         updatedAt: string;
@@ -63160,7 +63454,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -63202,7 +63513,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -63732,7 +64043,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -63774,7 +64102,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -64200,7 +64528,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -64242,7 +64587,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -64666,7 +65011,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -64708,7 +65070,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -65130,7 +65492,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -65172,7 +65551,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -65596,7 +65975,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -65638,7 +66034,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -66059,7 +66455,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -66101,7 +66514,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -66516,7 +66929,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -66558,7 +66988,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -66972,7 +67402,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -67014,7 +67461,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -67421,7 +67868,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -67463,7 +67927,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -67889,7 +68353,24 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
+                        }[];
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
                         }[];
                         forms: {
                             /** Format: uuid */
@@ -67931,7 +68412,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -68560,7 +69041,19 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
                         }[];
                         workOrders: {
                             /** Format: uuid */
@@ -68806,6 +69299,9 @@ export interface operations {
                     assigneeIds?: string[];
                     /** @default false */
                     addToCrew?: boolean;
+                    qualificationOverride?: {
+                        reason: string;
+                    };
                 };
             };
         };
@@ -68841,7 +69337,19 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
                         };
                     };
                 };
@@ -68871,7 +69379,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Someone would be on two jobs at once (`visit_double_booked`, with a detail naming each clash), or the job is closed (`work_order_closed`). */
+            /** @description Someone would be on two jobs at once (`visit_double_booked`, with a detail naming each clash), the job is closed (`work_order_closed`), or nobody on the visit would hold a qualification the job needs, and no reason was given (`visit_unqualified`, with a detail per person and qualification). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -68935,6 +69443,9 @@ export interface operations {
                     assigneeIds?: string[];
                     /** @default false */
                     addToCrew?: boolean;
+                    qualificationOverride?: {
+                        reason: string;
+                    };
                 };
             };
         };
@@ -68970,7 +69481,19 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
                         };
                     };
                 };
@@ -69000,7 +69523,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Changed elsewhere (`visit_changed`), done or cancelled (`visit_final`), a double booking (`visit_double_booked`), or the job is closed (`work_order_closed`). */
+            /** @description Changed elsewhere (`visit_changed`), done or cancelled (`visit_final`), a double booking (`visit_double_booked`), the job is closed (`work_order_closed`), or nobody on the visit would hold a qualification the job needs, and no reason was given (`visit_unqualified`, with a detail per person and qualification). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -69092,7 +69615,19 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
                         };
                     };
                 };
@@ -69216,7 +69751,19 @@ export interface operations {
                             cancelledAt: string | null;
                             cancelReason: string | null;
                             revision: number;
-                            warnings: ("outside_due_window" | "no_engineer")[];
+                            warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                            qualificationGaps: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
+                                people: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    status: "expires_before_visit" | "expired" | "missing";
+                                }[];
+                            }[];
                         };
                     };
                 };
@@ -69311,11 +69858,13 @@ export interface operations {
                     toUserId: string;
                     /** @default true */
                     addToCrew?: boolean;
+                    qualificationOverrideReason?: string;
                 } | {
                     /** @enum {string} */
                     action: "shift";
                     visitIds: string[];
                     shiftMinutes: number;
+                    qualificationOverrideReason?: string;
                 } | {
                     /** @enum {string} */
                     action: "cancel";
@@ -69369,6 +69918,1400 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listQualificationTypes: {
+        parameters: {
+            query?: {
+                includeArchived?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "skill" | "certificate";
+                            description: string | null;
+                            version: number;
+                            archived: boolean;
+                            archivedAt: string | null;
+                            createdAt: string;
+                        }[];
+                        settings: {
+                            warningDays: number;
+                        };
+                        can: {
+                            manage: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createQualificationType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @enum {string} */
+                    kind: "skill" | "certificate";
+                    description?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The qualification. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** @enum {string} */
+                        kind: "skill" | "certificate";
+                        description: string | null;
+                        version: number;
+                        archived: boolean;
+                        archivedAt: string | null;
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The name is taken (`qualification_name_taken`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateQualificationType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                qualificationTypeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    name?: string;
+                    description?: string | null;
+                    archived?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The qualification. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        /** @enum {string} */
+                        kind: "skill" | "certificate";
+                        description: string | null;
+                        version: number;
+                        archived: boolean;
+                        archivedAt: string | null;
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such qualification. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere (`qualification_type_changed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The name is taken (`qualification_name_taken`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateQualificationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    warningDays: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        warningDays: number;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listQualifications: {
+        parameters: {
+            query?: {
+                userId?: string | string[];
+                qualificationTypeId?: string | string[];
+                includeRemoved?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The records. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            person: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            qualificationType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "skill" | "certificate";
+                            };
+                            reference: string | null;
+                            issuedOn: string | null;
+                            expiresOn: string | null;
+                            notes: string | null;
+                            /** @enum {string} */
+                            state: "no_expiry" | "valid" | "expiring" | "expired" | "removed";
+                            version: number;
+                            attachments: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                fileId: string;
+                                title: string;
+                                /** @enum {string} */
+                                kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                                /** @enum {string|null} */
+                                stage: "before" | "after" | null;
+                                contentType: string;
+                                byteSize: number;
+                                addedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                createdAt: string;
+                            }[];
+                            createdAt: string;
+                            updatedAt: string;
+                            removedAt: string | null;
+                            removedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                        }[];
+                        people: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            role: string;
+                        }[];
+                        qualificationTypes: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "skill" | "certificate";
+                            description: string | null;
+                            version: number;
+                            archived: boolean;
+                            archivedAt: string | null;
+                            createdAt: string;
+                        }[];
+                        settings: {
+                            warningDays: number;
+                        };
+                        today: string;
+                        can: {
+                            manage: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    addQualification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    userId: string;
+                    /** Format: uuid */
+                    qualificationTypeId: string;
+                    reference?: string | null;
+                    /** Format: date */
+                    issuedOn?: string | null;
+                    /** Format: date */
+                    expiresOn?: string | null;
+                    notes?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The record. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        person: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        qualificationType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "skill" | "certificate";
+                        };
+                        reference: string | null;
+                        issuedOn: string | null;
+                        expiresOn: string | null;
+                        notes: string | null;
+                        /** @enum {string} */
+                        state: "no_expiry" | "valid" | "expiring" | "expired" | "removed";
+                        version: number;
+                        attachments: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        createdAt: string;
+                        updatedAt: string;
+                        removedAt: string | null;
+                        removedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such qualification (`qualification_type_unknown`) or it is archived (`qualification_type_archived`); no such member (`qualification_member_unknown`); an expiry on a skill (`qualification_skill_expires`); an expiry before the issue date (`qualification_dates_reversed`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listMyQualifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Their records. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            person: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            qualificationType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "skill" | "certificate";
+                            };
+                            reference: string | null;
+                            issuedOn: string | null;
+                            expiresOn: string | null;
+                            notes: string | null;
+                            /** @enum {string} */
+                            state: "no_expiry" | "valid" | "expiring" | "expired" | "removed";
+                            version: number;
+                            attachments: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                fileId: string;
+                                title: string;
+                                /** @enum {string} */
+                                kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                                /** @enum {string|null} */
+                                stage: "before" | "after" | null;
+                                contentType: string;
+                                byteSize: number;
+                                addedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                createdAt: string;
+                            }[];
+                            createdAt: string;
+                            updatedAt: string;
+                            removedAt: string | null;
+                            removedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                        }[];
+                        settings: {
+                            warningDays: number;
+                        };
+                        today: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateQualification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                qualificationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    reference?: string | null;
+                    /** Format: date */
+                    issuedOn?: string | null;
+                    /** Format: date */
+                    expiresOn?: string | null;
+                    notes?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The record. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        person: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        qualificationType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "skill" | "certificate";
+                        };
+                        reference: string | null;
+                        issuedOn: string | null;
+                        expiresOn: string | null;
+                        notes: string | null;
+                        /** @enum {string} */
+                        state: "no_expiry" | "valid" | "expiring" | "expired" | "removed";
+                        version: number;
+                        attachments: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        createdAt: string;
+                        updatedAt: string;
+                        removedAt: string | null;
+                        removedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such record. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere (`qualification_changed`), or removed (`qualification_removed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An expiry on a skill (`qualification_skill_expires`), or before the issue date (`qualification_dates_reversed`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    removeQualification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                qualificationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The record, removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        person: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        qualificationType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "skill" | "certificate";
+                        };
+                        reference: string | null;
+                        issuedOn: string | null;
+                        expiresOn: string | null;
+                        notes: string | null;
+                        /** @enum {string} */
+                        state: "no_expiry" | "valid" | "expiring" | "expired" | "removed";
+                        version: number;
+                        attachments: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            fileId: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                            /** @enum {string|null} */
+                            stage: "before" | "after" | null;
+                            contentType: string;
+                            byteSize: number;
+                            addedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            createdAt: string;
+                        }[];
+                        createdAt: string;
+                        updatedAt: string;
+                        removedAt: string | null;
+                        removedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such record. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere (`qualification_changed`), or already removed (`qualification_removed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setJobTypeQualifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobTypeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    qualificationTypeIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description The job type’s requirements. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "skill" | "certificate";
+                            archived: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such job type. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A qualification does not exist (`qualification_type_unknown`) or is archived (`qualification_type_archived`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setWorkOrderQualifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    qualificationTypeIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description The job’s requirements. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        requiredQualifications: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "skill" | "certificate";
+                            archived: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such work order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The job is closed (`work_order_closed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A qualification does not exist (`qualification_type_unknown`) or is archived (`qualification_type_archived`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getWorkOrderEligibility: {
+        parameters: {
+            query: {
+                startsAt: string;
+                endsAt: string;
+            };
+            header?: never;
+            path: {
+                workOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The requirements, and everyone ranked against them. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        requirements: {
+                            /** Format: uuid */
+                            qualificationTypeId: string;
+                            name: string;
+                        }[];
+                        people: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            role: string;
+                            met: number;
+                            statuses: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                /** @enum {string} */
+                                status: "valid" | "expires_before_visit" | "expired" | "missing";
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such work order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed validation. */
             422: {
@@ -70045,7 +71988,24 @@ export interface operations {
                                 cancelledAt: string | null;
                                 cancelReason: string | null;
                                 revision: number;
-                                warnings: ("outside_due_window" | "no_engineer")[];
+                                warnings: ("outside_due_window" | "no_engineer" | "unqualified")[];
+                                qualificationGaps: {
+                                    /** Format: uuid */
+                                    qualificationTypeId: string;
+                                    name: string;
+                                    people: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        /** @enum {string} */
+                                        status: "expires_before_visit" | "expired" | "missing";
+                                    }[];
+                                }[];
+                            }[];
+                            requiredQualifications: {
+                                /** Format: uuid */
+                                qualificationTypeId: string;
+                                name: string;
                             }[];
                             forms: {
                                 /** Format: uuid */
@@ -70087,7 +72047,7 @@ export interface operations {
                             }[];
                             events: {
                                 /** @enum {string} */
-                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned";
+                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
                                 /** @enum {string|null} */
                                 fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                                 /** @enum {string|null} */
@@ -70880,6 +72840,62 @@ export interface operations {
                                 };
                             }[];
                         }[];
+                        myQualifications: {
+                            items: {
+                                /** Format: uuid */
+                                id: string;
+                                person: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                qualificationType: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    kind: "skill" | "certificate";
+                                };
+                                reference: string | null;
+                                issuedOn: string | null;
+                                expiresOn: string | null;
+                                notes: string | null;
+                                /** @enum {string} */
+                                state: "no_expiry" | "valid" | "expiring" | "expired" | "removed";
+                                version: number;
+                                attachments: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    fileId: string;
+                                    title: string;
+                                    /** @enum {string} */
+                                    kind: "site_plan" | "manual" | "report" | "photo" | "other";
+                                    /** @enum {string|null} */
+                                    stage: "before" | "after" | null;
+                                    contentType: string;
+                                    byteSize: number;
+                                    addedBy: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                    createdAt: string;
+                                }[];
+                                createdAt: string;
+                                updatedAt: string;
+                                removedAt: string | null;
+                                removedBy: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                            }[];
+                            settings: {
+                                warningDays: number;
+                            };
+                            today: string;
+                        } | null;
                         expenseCategories: {
                             /** Format: uuid */
                             id: string;

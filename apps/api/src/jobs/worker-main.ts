@@ -8,6 +8,7 @@ import { runMetering } from '../media/metering.js';
 import { runDunning } from '../billing/dunning.js';
 import { runAiReconciliation } from '../ai/reconcile.js';
 import { runSignupExpiry } from '../signup/expire.js';
+import { runQualificationExpiry } from '../qualifications/expiry.js';
 import { purgeDueTenants } from '../platform/purge.js';
 import { runSyncMaintenance } from '../sync/maintenance.js';
 import { buildJobHandlers } from './handlers.js';
@@ -125,6 +126,25 @@ async function main(): Promise<void> {
       // Signups nobody verified (P18). Nothing was created for them, so this
       // only closes live tokens.
       await runSignupExpiry({ logger, workerId: worker.id });
+
+      // Certificates expiring or lapsed (P26): warned once each, by email and
+      // to the holder's phone. Same timer, same turn-claiming.
+      const expiring = await runQualificationExpiry({
+        config,
+        logger,
+        workerId: worker.id,
+        email: services.email,
+        push: services.push,
+      });
+      if (expiring.warned + expiring.lapsed + expiring.failures.length > 0) {
+        logger.info('Qualification expiry finished', {
+          companies: expiring.companies,
+          warned: expiring.warned,
+          lapsed: expiring.lapsed,
+          passedOver: expiring.passedOver,
+          failures: expiring.failures.length,
+        });
+      }
 
       // The assistant (docs/ai): slots held by requests that never settled,
       // proposals nobody confirmed, chats past their retention.

@@ -32,3 +32,9 @@ export function billingUrl(webAppUrl: string | undefined): string | null {
   const root = base(webAppUrl);
   return root === null ? null : `${root}/billing`;
 }
+
+/** The company's skills and certificates screen (P26), for an expiry alert to point at. */
+export function qualificationsUrl(webAppUrl: string | undefined): string | null {
+  const root = base(webAppUrl);
+  return root === null ? null : `${root}/qualifications`;
+}
