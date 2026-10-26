@@ -301,6 +301,30 @@ export class WorkOrdersRepository extends TenantScopedRepository {
         .execute();
     }
 
+    // The qualifications the job type needs (P26, 0052), still current ones only.
+    await this.db
+      .insertInto('work_order_qualifications')
+      .columns(['tenant_id', 'work_order_id', 'qualification_type_id', 'added_by'])
+      .expression((eb) =>
+        eb
+          .selectFrom('job_type_qualifications as j')
+          .innerJoin('qualification_types as t', (join) =>
+            join
+              .onRef('t.id', '=', 'j.qualification_type_id')
+              .onRef('t.tenant_id', '=', 'j.tenant_id'),
+          )
+          .select([
+            'j.tenant_id',
+            sql<string>`${row.id}::uuid`.as('work_order_id'),
+            'j.qualification_type_id',
+            sql<string>`${toUserId(actor)}::uuid`.as('added_by'),
+          ])
+          .where('j.tenant_id', '=', this.tenantId)
+          .where('j.job_type_id', '=', input.jobTypeId)
+          .where('t.archived_at', 'is', null),
+      )
+      .execute();
+
     if (input.crew !== undefined && input.crew.length > 0) {
       await this.setCrew(row.id, input.crew, actor);
     }

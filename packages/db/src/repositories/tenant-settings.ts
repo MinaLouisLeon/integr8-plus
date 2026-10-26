@@ -45,6 +45,8 @@ export interface TenantSettings {
   websiteJobsEnabled: boolean;
   websiteQuotesEnabled: boolean;
   websiteInvoicesEnabled: boolean;
+  /** Days before a certificate expires that its holder and the managers are warned (0052). */
+  qualificationWarningDays: number;
 }
 
 export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
@@ -69,6 +71,7 @@ export const DEFAULT_SETTINGS: Omit<TenantSettings, 'tenantId'> = {
   websiteJobsEnabled: false,
   websiteQuotesEnabled: false,
   websiteInvoicesEnabled: false,
+  qualificationWarningDays: 30,
 };
 
 export class TenantSettingsRepository {
@@ -114,6 +117,7 @@ export class TenantSettingsRepository {
     websiteJobsEnabled?: boolean | undefined;
     websiteQuotesEnabled?: boolean | undefined;
     websiteInvoicesEnabled?: boolean | undefined;
+    qualificationWarningDays?: number | undefined;
   }): Promise<TenantSettings> {
     const values = {
       ...(input.logoMediaId === undefined ? {} : { logo_media_id: input.logoMediaId }),
@@ -129,6 +133,9 @@ export class TenantSettingsRepository {
       ...(input.workDayStarts === undefined ? {} : { work_day_starts: input.workDayStarts }),
       ...(input.workDayEnds === undefined ? {} : { work_day_ends: input.workDayEnds }),
       ...(input.workingDays === undefined ? {} : { working_days: input.workingDays }),
+      ...(input.qualificationWarningDays === undefined
+        ? {}
+        : { qualification_warning_days: input.qualificationWarningDays }),
       ...(input.aiWebEnabled === undefined ? {} : { ai_web_enabled: input.aiWebEnabled }),
       ...(input.aiDesktopEnabled === undefined
         ? {}
@@ -275,5 +282,6 @@ function toSettings(row: Selectable<TenantSettingsTable>): TenantSettings {
     websiteJobsEnabled: row.website_jobs_enabled,
     websiteQuotesEnabled: row.website_quotes_enabled,
     websiteInvoicesEnabled: row.website_invoices_enabled,
+    qualificationWarningDays: row.qualification_warning_days,
   };
 }

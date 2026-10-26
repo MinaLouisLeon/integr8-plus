@@ -341,6 +341,28 @@ describe('HR, payroll and the store (ADR-0010, ADR-0011)', () => {
   });
 });
 
+describe('skills and certificates (P26)', () => {
+  const holders = (permission: Parameters<typeof can>[1]) =>
+    ROLES.filter((role) => can(role, permission));
+
+  it('lets owners, admins and HR managers record them, and the planners read them', () => {
+    expect(holders('qualification.manage')).toEqual(['owner', 'admin', 'hr_manager']);
+    expect(holders('qualification.read')).toEqual([
+      'owner',
+      'admin',
+      'hr_manager',
+      'dispatcher',
+      'viewer',
+    ]);
+  });
+
+  it('gives an HR manager grant the same area', () => {
+    expect(holds({ role: 'dispatcher', grants: ['hr_manager'] }, 'qualification.manage')).toBe(
+      true,
+    );
+  });
+});
+
 describe('custom roles (ADR-0013)', () => {
   const base = {
     role: 'dispatcher' as const,

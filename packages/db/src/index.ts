@@ -732,6 +732,19 @@ export {
   type VisitWrite,
   type WorkOrderVisitsRepository,
 } from './repositories/work-order-visits.js';
+export {
+  type ExpiryAlert,
+  type MemberQualification,
+  type MemberQualificationChanges,
+  type MemberQualificationInput,
+  type MemberQualificationWrite,
+  type QualificationOverride,
+  type QualificationOverrideInput,
+  type QualificationType,
+  type QualificationTypeInput,
+  type QualificationTypeWrite,
+  type QualificationsRepository,
+} from './repositories/qualifications.js';
 
 export type {
   Attachment,

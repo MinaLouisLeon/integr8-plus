@@ -269,6 +269,19 @@ export const PERMISSIONS = [
   /** Approve a pay run someone else prepared, and confirm a rule set before use. */
   'payroll.approve',
 
+  // Skills and certificates (P26). Not part of the HR module: the dispatcher
+  // needs them to plan, and a company without HR needs them too. Everyone sees
+  // their own without either permission.
+
+  /** See everyone's skills and certificates, the company's list of them, and what jobs need. */
+  'qualification.read',
+  /**
+   * Keep the company's list of qualifications, record and remove what people
+   * hold, set what each job type needs and the expiry warning period. Owners,
+   * admins and HR managers (product decision, 2026-10-27).
+   */
+  'qualification.manage',
+
   // Bills of materials, assembly and planning (seventh round; ADR-0011). Each
   // also needs the company's `manufacturing` module.
 
@@ -406,6 +419,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'expense.approve',
     'payroll.run',
     'payroll.approve',
+    'qualification.read',
+    'qualification.manage',
     'manufacturing.read',
     'manufacturing.manage',
     'document.read',
@@ -481,6 +496,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'hr.read',
     'expense.submit',
     'expense.approve',
+    'qualification.read',
+    'qualification.manage',
     'manufacturing.read',
     'manufacturing.manage',
     'document.read',
@@ -507,6 +524,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'expense.approve',
     'payroll.run',
     'payroll.approve',
+    'qualification.read',
+    'qualification.manage',
   ],
 
   // Keeps the store (ADR-0010, ADR-0011): the catalogue, stock, vans,
@@ -572,6 +591,9 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'asset.record',
     'asset.manage',
     'expense.submit',
+    // Product decision (2026-10-27): plans with people's qualifications in
+    // view; recording them is left to owners, admins and HR managers.
+    'qualification.read',
     'document.read',
     'document.create',
     'eta.read',
@@ -615,6 +637,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'asset.read',
     'ledger.read',
     'expense.submit',
+    'qualification.read',
     'manufacturing.read',
     'document.read',
     'eta.read',
@@ -732,6 +755,8 @@ export const GRANT_PERMISSIONS: Readonly<Record<Grant, readonly Permission[]>> =
     'expense.approve',
     'payroll.run',
     'payroll.approve',
+    'qualification.read',
+    'qualification.manage',
   ],
   inventory_manager: [
     'inventory.read',
