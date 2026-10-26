@@ -37,6 +37,7 @@ import {
   type StageOutcome,
   type WorkOrderPriority,
   type WorkOrderState,
+  type VisitStatus,
   type AssetCondition,
   type AssetEventKind,
   type AssetStatus,
@@ -932,6 +933,13 @@ export const WORK_ORDER_EVENT_KINDS = [
   'unassigned',
   'lead_changed',
   'signed_off',
+  // Visits (0051).
+  'visit_scheduled',
+  'visit_rescheduled',
+  'visit_done',
+  'visit_cancelled',
+  'visit_assigned',
+  'visit_unassigned',
 ] as const;
 export type WorkOrderEventKind = (typeof WORK_ORDER_EVENT_KINDS)[number];
 
@@ -2281,6 +2289,48 @@ export interface WorkOrderAssignmentsTable {
   unassigned_by: string | null;
 }
 
+/** One trip to do a job (0051). Planned, done or cancelled; done and cancelled are final. */
+export interface WorkOrderVisitsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  work_order_id: string;
+  starts_at: Date;
+  ends_at: Date;
+  status: Generated<VisitStatus>;
+  notes: string | null;
+  completed_at: Date | null;
+  completed_by: string | null;
+  cancelled_at: Date | null;
+  cancelled_by: string | null;
+  cancel_reason: string | null;
+  last_actor: string;
+  /** Counted by trigger. */
+  revision: ColumnType<number, never, never>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+/**
+ * Who goes on a visit (0051). The job, times and `planned` are copied from the
+ * visit by trigger, whatever is written, so the database can refuse a double
+ * booking across jobs.
+ */
+export interface WorkOrderVisitAssigneesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  visit_id: string;
+  user_id: string;
+  work_order_id: ColumnType<string, string | undefined, never>;
+  starts_at: ColumnType<Date, Date | undefined, never>;
+  ends_at: ColumnType<Date, Date | undefined, never>;
+  planned: ColumnType<boolean, boolean | undefined, never>;
+  assigned_by: string;
+  assigned_at: CreatedAt;
+  removed_at: Date | null;
+  removed_by: string | null;
+}
+
 export interface WorkOrderCommentsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -3303,6 +3353,8 @@ export interface Database {
   work_order_forms: WorkOrderFormsTable;
   work_order_checklist_items: WorkOrderChecklistItemsTable;
   work_order_assignments: WorkOrderAssignmentsTable;
+  work_order_visits: WorkOrderVisitsTable;
+  work_order_visit_assignees: WorkOrderVisitAssigneesTable;
   work_order_comments: WorkOrderCommentsTable;
   work_order_events: WorkOrderEventsTable;
   attachments: AttachmentsTable;
@@ -3440,6 +3492,9 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // Write work order history, which the runtime role can only read; see 0010.
   'record_work_order_change',
   'record_work_order_assignment',
+  // The same for visits and who goes on them; see 0051.
+  'record_work_order_visit_change',
+  'record_work_order_visit_assignee',
   // Write and prune the sync change log, which the runtime role can only read; see 0011.
   'touch_sync',
   'prune_sync_touches',
@@ -3632,6 +3687,8 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   work_order_forms: true,
   work_order_checklist_items: true,
   work_order_assignments: true,
+  work_order_visits: true,
+  work_order_visit_assignees: true,
   work_order_comments: true,
   work_order_events: true,
   attachments: true,

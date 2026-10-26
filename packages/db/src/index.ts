@@ -722,6 +722,16 @@ export {
   type WorkOrdersRepository,
   type WorkOrderWrite,
 } from './repositories/work-orders.js';
+export {
+  type CreateVisitInput,
+  type UnscheduledJob,
+  type Visit,
+  type VisitChanges,
+  type VisitRangeQuery,
+  type VisitRefusal,
+  type VisitWrite,
+  type WorkOrderVisitsRepository,
+} from './repositories/work-order-visits.js';
 
 export type {
   Attachment,

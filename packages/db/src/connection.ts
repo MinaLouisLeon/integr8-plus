@@ -69,6 +69,7 @@ import { JobTypesRepository } from './repositories/job-types.js';
 import { SavedViewsRepository } from './repositories/saved-views.js';
 import { SitesRepository } from './repositories/sites.js';
 import { WorkOrdersRepository } from './repositories/work-orders.js';
+import { WorkOrderVisitsRepository } from './repositories/work-order-visits.js';
 import { StorageRegistry } from './repositories/storage-registry.js';
 import { SubmissionsRepository } from './repositories/submissions.js';
 import { InvitationsRepository } from './repositories/invitations.js';
@@ -185,6 +186,7 @@ export interface TenantTransaction {
   readonly sites: SitesRepository;
   readonly jobTypes: JobTypesRepository;
   readonly workOrders: WorkOrdersRepository;
+  readonly visits: WorkOrderVisitsRepository;
   readonly attachments: AttachmentsRepository;
   readonly savedViews: SavedViewsRepository;
   readonly imports: ImportsRepository;
@@ -474,6 +476,7 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     sites: new SitesRepository(scope),
     jobTypes: new JobTypesRepository(scope),
     workOrders: new WorkOrdersRepository(scope),
+    visits: new WorkOrderVisitsRepository(scope),
     attachments: new AttachmentsRepository(scope),
     savedViews: new SavedViewsRepository(scope),
     imports: new ImportsRepository(scope),

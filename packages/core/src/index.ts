@@ -123,6 +123,26 @@ export {
 } from './work-orders.js';
 
 export {
+  VISIT_STATUSES,
+  visitStatusSchema,
+  type VisitStatus,
+  VISIT_MAX_DURATION_MS,
+  DEFAULT_VISIT_DURATION_MINUTES,
+  VISIT_SNAP_MINUTES,
+  type VisitSlot,
+  type SlotProblem,
+  slotProblem,
+  slotsOverlap,
+  type PlannedVisit,
+  type DoubleBooking,
+  findDoubleBookings,
+  type VisitWarning,
+  type DueWindow,
+  visitWarnings,
+  snapToMinutes,
+} from './scheduling.js';
+
+export {
   canComplete,
   completionMissing,
   jobTimes,
