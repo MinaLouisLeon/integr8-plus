@@ -759,6 +759,14 @@ The company's own website can request one known file/document, job status, quote
 - [ ] **Give the website developer the Vercel setup** in `docs/documents/WEBSITE-LOOKUP.md` and `apps/api/openapi.json`. In Vercel's server environment set `INTEGR8_API_URL` and `INTEGR8_WEBSITE_KEY`. Never use `NEXT_PUBLIC_` or put the key in browser code. Use `POST /v1/website/documents/lookup` for field-based document search, or `GET /v1/website/files/{documentId}`, `/v1/website/jobs/{workOrderId}`, `/v1/website/quotes/{quoteId}` and `/v1/website/invoices/{invoiceId}` for one known record by UUID; there are no list endpoints.
 - [ ] **Agree the customer sign-in and record lookup with the company**. Its website validates the customer before using the company-wide key and requests only records that customer may access. Test a valid record, an unknown record, a disabled company switch, a disabled Integr8 grant and a disabled/revoked key before launch.
 
+### The schedule for this company
+
+The desktop **Schedule** plans engineers' visits on a calendar, and each engineer's phone shows their visits on the Today screen. Nothing to switch on: whoever can see every job sees the schedule, and whoever can assign jobs can plan on it.
+
+- [ ] **Plan a visit.** In the company's desktop app, as the owner or a dispatcher: side menu → Work → **Schedule**. Drag a job from **Needs a visit** onto today, tick the test engineer in the dialog and **Save visit**.
+- [ ] **Move it, and try a clash.** Drag the visit to another time and drag its bottom edge to make it longer. Then plan another job's visit for the same engineer at the same time: it is refused, saying the engineer is already on another job then. Two visits of the same job may overlap.
+- [ ] **See it on the phone.** On the engineer's phone, after the next sync (open the app, or pull the job list), **Your visits today** shows the visit. Once it has started, **Mark visit done**; the schedule shows it done after the phone syncs.
+
 ### E-invoicing (ETA) for this company
 
 Only once e-invoicing has been tested, and only on the ETA's test system (PreProd). It stays off for every company until Integr8 switches it on, and the company needs `finance` on as well. You need the company's ETA registration details, the client ID and secret of its ERP system from the ETA portal, and the public certificate of its signing token; `docs/e-invoicing/ACCOUNTANT-CHECKLIST.md` is the list to send the company's accountant.
@@ -1134,6 +1142,18 @@ The website data API is included in v1.2.0 and adds migration 0050. It needs no 
 - [ ] **Update the website integrations** using `apps/api/openapi.json`; keep the key server-side and verify each enabled endpoint from the company's Vercel deployment.
 
 > [!NOTE]
+
+### N. The schedule (next release)
+
+The schedule adds migration 0051 and needs no new server setting. It ships in the release that follows v1.2.0.
+
+- [ ] **Migration 0051 applied** during the normal update. It adds the job visits tables and installs the `btree_gist` Postgres extension, which is what stops anyone being booked on two jobs at once. The migration installs it by itself on the Oracle machine's Postgres and on Supabase; if the update stops with a permission error naming `btree_gist`, enable it under Supabase → Database → Extensions and run the update again. Do not run its down migration on a production database: it deletes every visit.
+- [ ] **Existing jobs are unchanged.** They have no visits yet, so they wait under **Needs a visit** until someone plans one, and the phones show them as before.
+- [ ] **Update the apps** (part G): the schedule is in the new desktop apps and the visit timeline in the new phone builds. An older phone keeps working; it just does not show visits.
+
+> [!WARNING]
+> **Rolling back with the schedule.** Fix forward rather than going back to the previous code once visits have been planned: an older version does not know the new history entries, so a job with visit history would not open in it. If you must roll back (part I), leave migration 0051 applied; its `.down.sql` deletes every visit and is for development databases only.
+
 > **The test box (Stage 11)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout and `pull` its `:staging` images. Updating it first, the day before, is the cheapest rehearsal there is.
 
 ---
