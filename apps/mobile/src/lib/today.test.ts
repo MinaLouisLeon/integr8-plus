@@ -21,6 +21,9 @@ function job(overrides: Partial<JobListItem>): JobListItem {
     dueBy: null,
     closedAt: null,
     hazards: false,
+    deadlines: null,
+    coverage: null,
+    maintenance: false,
     ...overrides,
   };
 }

@@ -516,15 +516,16 @@ async function deadlineAlertsFor(
         return [];
       }
       const label = formatWorkOrderReference(job.reference);
-      const what = notice.kind === 'response' ? 'Response' : 'Completion';
+      const what = notice.kind === 'response' ? 'response' : 'completion';
       return (crews.get(notice.workOrderId) ?? []).flatMap((member) =>
         (tokens.get(member.userId) ?? []).map((token) => ({
           to: token,
           title:
             notice.stage === 'missed'
-              ? `${label}: ${what.toLowerCase()} deadline missed`
-              : `${label}: ${what.toLowerCase()} due soon`,
-          body: `${what} was due by ${when.format(notice.dueAt)}. ${job.title}`,
+              ? `${label}: ${what} deadline missed`
+              : `${label}: ${what} deadline soon`,
+          // No time: the phone shows it in its own time zone, which may not be the company's.
+          body: job.title,
           data: { kind: 'deadline_alert', workOrderId: job.id },
           channelId: 'jobs' as const,
           priority: notice.stage === 'missed' ? ('high' as const) : ('default' as const),

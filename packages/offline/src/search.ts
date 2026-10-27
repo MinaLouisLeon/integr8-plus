@@ -1,4 +1,4 @@
-import type { JobListItem } from './queries.js';
+import { JOB_COLUMNS, type JobListItem, type JobRow, toJob } from './queries.js';
 import type { SqlConnection } from './sql.js';
 
 /**
@@ -36,23 +36,8 @@ export async function searchLocal(
     return { workOrders: [], customers: [] };
   }
 
-  const workOrders = await sql.all<{
-    id: string;
-    reference_label: string;
-    title: string;
-    state: JobListItem['state'];
-    priority: JobListItem['priority'];
-    customer_name: string;
-    site_name: string;
-    site_address: string;
-    due_from: string | null;
-    due_by: string | null;
-    closed_at: string | null;
-    hazards: string | null;
-  }>(
-    `select work_orders.id, work_orders.reference_label, work_orders.title, work_orders.state,
-            work_orders.priority, work_orders.customer_name, work_orders.site_name, work_orders.site_address,
-            work_orders.due_from, work_orders.due_by, work_orders.closed_at, sites.hazards
+  const workOrders = await sql.all<JobRow>(
+    `select ${JOB_COLUMNS}
      from search
      join work_orders on work_orders.id = search.entity_id
      left join sites on sites.id = work_orders.site_id
@@ -78,20 +63,7 @@ export async function searchLocal(
   );
 
   return {
-    workOrders: workOrders.map((row) => ({
-      id: row.id,
-      referenceLabel: row.reference_label,
-      title: row.title,
-      state: row.state,
-      priority: row.priority,
-      customerName: row.customer_name,
-      siteName: row.site_name,
-      siteAddress: row.site_address,
-      dueFrom: row.due_from,
-      dueBy: row.due_by,
-      closedAt: row.closed_at,
-      hazards: row.hazards !== null && row.hazards.trim() !== '',
-    })),
+    workOrders: workOrders.map(toJob),
     customers: customers.map((row) => ({
       id: row.id,
       name: row.name,

@@ -140,6 +140,10 @@ export function workOrderDetail(
     signatureRequired?: boolean;
     /** The job's visits (P25). */
     visits?: WorkOrderDetail['visits'];
+    /** Contract coverage, deadlines and the plans that made it (P27). */
+    coverage?: WorkOrderDetail['coverage'];
+    deadlines?: WorkOrderDetail['deadlines'];
+    maintenancePlans?: WorkOrderDetail['maintenancePlans'];
   } = {},
 ): WorkOrderDetail {
   counter += 1;
@@ -164,6 +168,16 @@ export function workOrderDetail(
       stateChangedAt: '2026-09-10T09:00:00.000Z',
       createdAt: '2026-09-01T09:00:00.000Z',
       updatedAt: '2026-09-10T09:00:00.000Z',
+      coverage:
+        overrides.coverage == null
+          ? null
+          : {
+              status: overrides.coverage.status,
+              reason: overrides.coverage.reason,
+              contract: overrides.coverage.contract,
+            },
+      deadline: null,
+      maintenance: (overrides.maintenancePlans ?? []).length > 0,
       description: 'Annual service, flat 4',
       instructions: 'Record the working pressure.',
       lastReason: null,
@@ -198,6 +212,9 @@ export function workOrderDetail(
     ],
     visits: overrides.visits ?? [],
     requiredQualifications: [],
+    coverage: overrides.coverage ?? null,
+    deadlines: overrides.deadlines ?? null,
+    maintenancePlans: overrides.maintenancePlans ?? [],
     forms: (overrides.formIds ?? []).map((formId) => ({
       formId,
       title: 'Gas safety check',
@@ -232,6 +249,7 @@ export function workOrderDetail(
       comment: true,
       transitions: [],
       recordParts: false,
+      overrideCoverage: false,
     },
   };
 }
@@ -294,6 +312,9 @@ export function summaryOf(detail: WorkOrderDetail): WorkOrderSummary {
     stateChangedAt: workOrder.stateChangedAt,
     createdAt: workOrder.createdAt,
     updatedAt: workOrder.updatedAt,
+    coverage: workOrder.coverage,
+    deadline: workOrder.deadline,
+    maintenance: workOrder.maintenance,
   };
 }
 

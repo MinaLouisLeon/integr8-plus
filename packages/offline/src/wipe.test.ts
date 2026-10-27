@@ -46,6 +46,9 @@ describe('the job list’s sections', () => {
     dueBy,
     closedAt: null,
     hazards: false,
+    deadlines: null,
+    coverage: null,
+    maintenance: false,
   });
 
   it('splits open jobs into overdue, today, upcoming and unscheduled by the phone’s day', () => {
