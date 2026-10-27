@@ -71,6 +71,9 @@ import { SitesRepository } from './repositories/sites.js';
 import { WorkOrdersRepository } from './repositories/work-orders.js';
 import { WorkOrderVisitsRepository } from './repositories/work-order-visits.js';
 import { QualificationsRepository } from './repositories/qualifications.js';
+import { ContractsRepository } from './repositories/contracts.js';
+import { MaintenanceRepository } from './repositories/maintenance.js';
+import { DeadlinesRepository } from './repositories/deadlines.js';
 import { StorageRegistry } from './repositories/storage-registry.js';
 import { SubmissionsRepository } from './repositories/submissions.js';
 import { InvitationsRepository } from './repositories/invitations.js';
@@ -190,6 +193,12 @@ export interface TenantTransaction {
   readonly visits: WorkOrderVisitsRepository;
   /** Skills and certificates, and what jobs need (P26). */
   readonly qualifications: QualificationsRepository;
+  /** Service contracts and each job's coverage (P27). */
+  readonly contracts: ContractsRepository;
+  /** Maintenance plans and the jobs they make (P27). */
+  readonly maintenance: MaintenanceRepository;
+  /** Response deadlines: the rules and each job's (P27). */
+  readonly deadlines: DeadlinesRepository;
   readonly attachments: AttachmentsRepository;
   readonly savedViews: SavedViewsRepository;
   readonly imports: ImportsRepository;
@@ -481,6 +490,9 @@ export function buildTenantTransaction(scope: TenantScope): InternalTenantTransa
     workOrders: new WorkOrdersRepository(scope),
     visits: new WorkOrderVisitsRepository(scope),
     qualifications: new QualificationsRepository(scope),
+    contracts: new ContractsRepository(scope),
+    maintenance: new MaintenanceRepository(scope),
+    deadlines: new DeadlinesRepository(scope),
     attachments: new AttachmentsRepository(scope),
     savedViews: new SavedViewsRepository(scope),
     imports: new ImportsRepository(scope),

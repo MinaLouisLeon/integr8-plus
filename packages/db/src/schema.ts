@@ -39,6 +39,14 @@ import {
   type WorkOrderState,
   type VisitStatus,
   type QualificationKind,
+  type IntervalUnit,
+  type PlanCounting,
+  type PlanStatus,
+  type OccurrenceStatus,
+  type OccurrenceSkipReason,
+  type CoverageStatus,
+  type CoverageReason,
+  type DeadlineClock,
   type AssetCondition,
   type AssetEventKind,
   type AssetStatus,
@@ -945,6 +953,10 @@ export const WORK_ORDER_EVENT_KINDS = [
   'visit_unassigned',
   // Going ahead without a required qualification (0052).
   'qualification_override',
+  // Maintenance plans, coverage and deadlines (0053).
+  'maintenance_planned',
+  'coverage_changed',
+  'deadline_missed',
 ] as const;
 export type WorkOrderEventKind = (typeof WORK_ORDER_EVENT_KINDS)[number];
 
@@ -2409,6 +2421,163 @@ export interface WorkOrderQualificationOverridesTable {
   created_at: CreatedAt;
 }
 
+/** The last contract number handed out per company (0053). */
+export interface ServiceContractCountersTable {
+  tenant_id: string;
+  last_reference: number;
+}
+
+/**
+ * A customer's service agreement (0053). Dates are calendar days,
+ * `YYYY-MM-DD`. Cancelled rather than deleted.
+ */
+export interface ServiceContractsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  /** Given by trigger on insert. */
+  reference: Generated<number>;
+  customer_id: string;
+  title: string;
+  starts_on: ColumnType<string, string, string>;
+  ends_on: ColumnType<string, string, string>;
+  /** numeric(14,2), as text. */
+  value: ColumnType<string | null, string | null | undefined, string | null>;
+  notes: string | null;
+  renewal_notice_days: Generated<number>;
+  all_sites: Generated<boolean>;
+  all_assets: Generated<boolean>;
+  all_job_types: Generated<boolean>;
+  included_callouts: number | null;
+  renewed_from_id: string | null;
+  cancelled_on: ColumnType<string | null, string | null | undefined, string | null>;
+  cancelled_at: Date | null;
+  cancelled_by: string | null;
+  cancel_reason: string | null;
+  /** Cleared by trigger when the end date changes. */
+  renewal_warned_at: Date | null;
+  end_alerted_at: Date | null;
+  /** Counted by trigger. */
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+export interface ServiceContractSitesTable {
+  tenant_id: string;
+  contract_id: string;
+  customer_id: string;
+  site_id: string;
+  created_at: CreatedAt;
+}
+
+export interface ServiceContractAssetsTable {
+  tenant_id: string;
+  contract_id: string;
+  asset_id: string;
+  created_at: CreatedAt;
+}
+
+export interface ServiceContractJobTypesTable {
+  tenant_id: string;
+  contract_id: string;
+  job_type_id: string;
+  created_at: CreatedAt;
+}
+
+/** Recurring servicing of one asset (0053). Ended rather than deleted. */
+export interface MaintenancePlansTable {
+  id: Generated<string>;
+  tenant_id: string;
+  asset_id: string;
+  job_type_id: string;
+  contract_id: string | null;
+  title: string;
+  instructions: string | null;
+  interval_count: number;
+  interval_unit: IntervalUnit;
+  counting: PlanCounting;
+  starts_on: ColumnType<string, string, string>;
+  ends_on: ColumnType<string | null, string | null | undefined, string | null>;
+  window_before_days: Generated<number>;
+  window_after_days: Generated<number>;
+  lead_days: Generated<number>;
+  can_share: Generated<boolean>;
+  status: Generated<PlanStatus>;
+  /** Null while a completion plan waits for its open job. */
+  next_due_on: ColumnType<string | null, string | null | undefined, string | null>;
+  next_sequence: Generated<number>;
+  /** Counted by trigger. */
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  ended_at: Date | null;
+  ended_by: string | null;
+}
+
+/** Each due date a plan produced (0053). Append-only. */
+export interface MaintenanceOccurrencesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  plan_id: string;
+  due_on: ColumnType<string, string, string>;
+  work_order_id: string | null;
+  status: OccurrenceStatus;
+  skip_reason: OccurrenceSkipReason | null;
+  created_at: CreatedAt;
+}
+
+/** Whether a job is covered by a contract (0053). */
+export interface WorkOrderCoverageTable {
+  tenant_id: string;
+  work_order_id: string;
+  contract_id: string | null;
+  status: CoverageStatus;
+  reason: CoverageReason;
+  override_reason: string | null;
+  overridden_by: string | null;
+  overridden_at: Date | null;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+/** A company's deadlines for one priority (0053). */
+export interface DeadlineRulesTable {
+  tenant_id: string;
+  priority: WorkOrderPriority;
+  response_minutes: number | null;
+  completion_minutes: number | null;
+  clock: DeadlineClock;
+  warn_minutes: number;
+  version: Generated<number>;
+  updated_by: string;
+  updated_at: Generated<Date>;
+}
+
+/**
+ * One job's deadlines (0053). Met and missed times are kept by trigger: a
+ * recorded miss is never cleared.
+ */
+export interface WorkOrderDeadlinesTable {
+  tenant_id: string;
+  work_order_id: string;
+  priority: WorkOrderPriority;
+  clock: DeadlineClock;
+  warn_minutes: number;
+  response_due_at: Date | null;
+  completion_due_at: Date | null;
+  responded_at: ColumnType<Date | null, never, Date | null>;
+  completed_at: ColumnType<Date | null, never, Date | null>;
+  response_warned_at: ColumnType<Date | null, never, Date | null>;
+  completion_warned_at: ColumnType<Date | null, never, Date | null>;
+  response_missed_at: ColumnType<Date | null, never, Date | null>;
+  completion_missed_at: ColumnType<Date | null, never, Date | null>;
+  closed_at: ColumnType<Date | null, never, Date | null>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
 export interface WorkOrderCommentsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -3440,6 +3609,16 @@ export interface Database {
   job_type_qualifications: JobTypeQualificationsTable;
   work_order_qualifications: WorkOrderQualificationsTable;
   work_order_qualification_overrides: WorkOrderQualificationOverridesTable;
+  service_contract_counters: ServiceContractCountersTable;
+  service_contracts: ServiceContractsTable;
+  service_contract_sites: ServiceContractSitesTable;
+  service_contract_assets: ServiceContractAssetsTable;
+  service_contract_job_types: ServiceContractJobTypesTable;
+  maintenance_plans: MaintenancePlansTable;
+  maintenance_occurrences: MaintenanceOccurrencesTable;
+  work_order_coverage: WorkOrderCoverageTable;
+  deadline_rules: DeadlineRulesTable;
+  work_order_deadlines: WorkOrderDeadlinesTable;
   work_order_comments: WorkOrderCommentsTable;
   work_order_events: WorkOrderEventsTable;
   attachments: AttachmentsTable;
@@ -3583,6 +3762,13 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // Writes a job's history when a visit goes ahead without a required
   // qualification; see 0052.
   'record_qualification_override',
+  // Numbers contracts from a counter the runtime role cannot write, and writes
+  // a job's history for maintenance, coverage overrides and missed deadlines;
+  // see 0053.
+  'assign_service_contract_reference',
+  'record_maintenance_occurrence',
+  'record_coverage_change',
+  'record_deadline_miss',
   // Write and prune the sync change log, which the runtime role can only read; see 0011.
   'touch_sync',
   'prune_sync_touches',
@@ -3782,6 +3968,16 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   job_type_qualifications: true,
   work_order_qualifications: true,
   work_order_qualification_overrides: true,
+  service_contract_counters: true,
+  service_contracts: true,
+  service_contract_sites: true,
+  service_contract_assets: true,
+  service_contract_job_types: true,
+  maintenance_plans: true,
+  maintenance_occurrences: true,
+  work_order_coverage: true,
+  deadline_rules: true,
+  work_order_deadlines: true,
   work_order_comments: true,
   work_order_events: true,
   attachments: true,

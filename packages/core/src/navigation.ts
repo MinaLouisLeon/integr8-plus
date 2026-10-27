@@ -107,6 +107,9 @@ export type NavPath =
   | 'workOrders'
   | 'schedule'
   | 'qualifications'
+  | 'maintenance'
+  | 'contracts'
+  | 'deadlines'
   | 'customers'
   | 'imports'
   | 'timesheets'
@@ -215,6 +218,24 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'qualifications',
     icon: 'id-card',
     permission: 'qualification.read',
+  },
+  // Maintenance plans (P27): recurring servicing of assets, so it needs the
+  // assets module.
+  {
+    key: 'maintenance',
+    group: 'work',
+    path: 'maintenance',
+    icon: 'clipboard-check',
+    permission: 'asset.read',
+    feature: 'assets',
+  },
+  // Response deadlines (P27): the record against them, per customer, and the rules.
+  {
+    key: 'deadlines',
+    group: 'work',
+    path: 'deadlines',
+    icon: 'clock',
+    permission: 'work_order.read_all',
   },
   {
     key: 'timesheets',
@@ -506,6 +527,14 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     path: 'customers',
     icon: 'users',
     permission: 'customer.read',
+  },
+  // Service contracts (P27): what each customer has agreed to.
+  {
+    key: 'contracts',
+    group: 'operations',
+    path: 'contracts',
+    icon: 'file-text',
+    permission: 'contract.read',
   },
   // Assets (CRM/ERP plan, phase E3): the company's `assets` module.
   {

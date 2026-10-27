@@ -282,6 +282,18 @@ export const PERMISSIONS = [
    */
   'qualification.manage',
 
+  // Service contracts (P27): what a customer has agreed to, and whether each
+  // job is covered. Maintenance plans use the asset permissions instead.
+
+  /** See contracts and what they cover. Engineers see coverage on their own jobs without it. */
+  'contract.read',
+  /**
+   * Add, change, renew and cancel contracts, and override a job's coverage.
+   * Owners, admins and dispatchers, who also run sales and assets (product
+   * decision, 2026-10-27).
+   */
+  'contract.manage',
+
   // Bills of materials, assembly and planning (seventh round; ADR-0011). Each
   // also needs the company's `manufacturing` module.
 
@@ -421,6 +433,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'payroll.approve',
     'qualification.read',
     'qualification.manage',
+    'contract.read',
+    'contract.manage',
     'manufacturing.read',
     'manufacturing.manage',
     'document.read',
@@ -498,6 +512,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'expense.approve',
     'qualification.read',
     'qualification.manage',
+    'contract.read',
+    'contract.manage',
     'manufacturing.read',
     'manufacturing.manage',
     'document.read',
@@ -594,6 +610,8 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     // Product decision (2026-10-27): plans with people's qualifications in
     // view; recording them is left to owners, admins and HR managers.
     'qualification.read',
+    'contract.read',
+    'contract.manage',
     'document.read',
     'document.create',
     'eta.read',
@@ -638,6 +656,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'ledger.read',
     'expense.submit',
     'qualification.read',
+    'contract.read',
     'manufacturing.read',
     'document.read',
     'eta.read',

@@ -1,4 +1,6 @@
 import {
+  calendarDay,
+  coverageFor,
   canComplete,
   CLOSED_WORK_ORDER_STATES,
   type CompletionMissing,
@@ -22,7 +24,9 @@ import type {
   WorkOrderEventsTable,
   WorkOrdersTable,
 } from '../schema.js';
+import { ContractsRepository } from './contracts.js';
 import { prefixQuery } from './customers.js';
+import { DeadlinesRepository } from './deadlines.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
 export interface WorkOrder {
@@ -135,6 +139,14 @@ export interface CreateWorkOrderInput {
   dueFrom?: Date | null;
   dueBy?: Date | null;
   crew?: readonly CrewMember[];
+  /** The assets the job is for (P24), linked as it is created so its coverage can see them. */
+  assetIds?: readonly string[];
+  /**
+   * Set when a maintenance plan makes the job (P27): the plan's contract. Such
+   * a job has no response deadline — its due window is its target — and never
+   * uses up a contract's included call-outs.
+   */
+  maintenance?: { contractId: string | null };
 }
 
 export interface WorkOrderChanges {
@@ -327,6 +339,46 @@ export class WorkOrdersRepository extends TenantScopedRepository {
 
     if (input.crew !== undefined && input.crew.length > 0) {
       await this.setCrew(row.id, input.crew, actor);
+    }
+
+    const assetIds = [...new Set(input.assetIds ?? [])];
+    if (assetIds.length > 0) {
+      await this.db
+        .insertInto('erp_work_order_assets')
+        .values(
+          assetIds.map((assetId) => ({
+            tenant_id: this.tenantId,
+            work_order_id: row.id,
+            asset_id: assetId,
+            linked_by: toUserId(actor),
+          })),
+        )
+        .onConflict((conflict) =>
+          conflict.columns(['tenant_id', 'work_order_id', 'asset_id']).doNothing(),
+        )
+        .execute();
+    }
+
+    // Coverage and deadlines (P27), worked out once, here, so every way of
+    // making a job — the screens, imports, sales orders, maintenance plans —
+    // gets them alike.
+    const deadlines = new DeadlinesRepository(this.scope);
+    const hours = await deadlines.workingHours();
+    const day = calendarDay(row.created_at, hours.timeZone);
+    const contracts = new ContractsRepository(this.scope);
+    const coverage = coverageFor({
+      day,
+      siteId: row.site_id,
+      assetIds,
+      jobTypeId: row.job_type_id,
+      fromPlan: input.maintenance,
+      contracts: await contracts.termsForCustomer(row.customer_id, day),
+    });
+    if (coverage !== undefined) {
+      await contracts.setCoverage(row.id, coverage);
+    }
+    if (input.maintenance === undefined) {
+      await deadlines.applyToJob(row.id, row.priority, row.created_at, { hours });
     }
     return toWorkOrder(row);
   }
@@ -568,11 +620,36 @@ export class WorkOrdersRepository extends TenantScopedRepository {
       ...(changes.dueFrom === undefined ? {} : { due_from: changes.dueFrom }),
       ...(changes.dueBy === undefined ? {} : { due_by: changes.dueBy }),
     };
-    return this.#write(workOrderId, expectedRevision, {
+    const written = await this.#write(workOrderId, expectedRevision, {
       ...columns,
       last_actor: toUserId(actor),
       last_reason: textOrNull(reason),
     });
+    // A new priority brings its own deadlines, still counted from creation
+    // (P27). A job a maintenance plan made has none to change.
+    if (
+      written.outcome === 'written' &&
+      changes.priority !== undefined &&
+      changes.priority !== current.priority &&
+      !(await this.#fromMaintenance(workOrderId))
+    ) {
+      await new DeadlinesRepository(this.scope).applyToJob(
+        workOrderId,
+        changes.priority,
+        current.createdAt,
+      );
+    }
+    return written;
+  }
+
+  async #fromMaintenance(workOrderId: string): Promise<boolean> {
+    const row = await this.db
+      .selectFrom('maintenance_occurrences')
+      .select('id')
+      .where('tenant_id', '=', this.tenantId)
+      .where('work_order_id', '=', workOrderId)
+      .executeTakeFirst();
+    return row !== undefined;
   }
 
   /**

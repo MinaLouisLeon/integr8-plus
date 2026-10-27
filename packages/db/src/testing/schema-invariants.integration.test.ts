@@ -50,6 +50,14 @@ import {
   WORK_ORDER_STATES,
   VISIT_STATUSES,
   QUALIFICATION_KINDS,
+  INTERVAL_UNITS,
+  PLAN_COUNTINGS,
+  PLAN_STATUSES,
+  OCCURRENCE_STATUSES,
+  OCCURRENCE_SKIP_REASONS,
+  COVERAGE_STATUSES,
+  COVERAGE_REASONS,
+  DEADLINE_CLOCKS,
 } from '@integr8/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -582,6 +590,18 @@ describe('vocabularies shared with the application', () => {
       ['eta_attempts_outcome_known', ETA_ATTEMPT_OUTCOMES],
       ['eta_signing_requests_status_known', ETA_SIGNING_STATUSES],
       ['eta_schemas_environment_known', ETA_ENVIRONMENTS],
+      // Maintenance plans, contracts and deadlines (0053).
+      ['maintenance_plans_interval_unit_known', INTERVAL_UNITS],
+      ['maintenance_plans_counting_known', PLAN_COUNTINGS],
+      ['maintenance_plans_status_known', PLAN_STATUSES],
+      ['maintenance_occurrences_status_known', OCCURRENCE_STATUSES],
+      ['maintenance_occurrences_skip_reason_known', OCCURRENCE_SKIP_REASONS],
+      ['work_order_coverage_status_known', COVERAGE_STATUSES],
+      ['work_order_coverage_reason_known', COVERAGE_REASONS],
+      ['deadline_rules_priority_known', WORK_ORDER_PRIORITIES],
+      ['deadline_rules_clock_known', DEADLINE_CLOCKS],
+      ['work_order_deadlines_priority_known', WORK_ORDER_PRIORITIES],
+      ['work_order_deadlines_clock_known', DEADLINE_CLOCKS],
     ] as const) {
       const result = await owner.query<{ definition: string }>(
         `select pg_get_constraintdef(oid)::text as definition from pg_constraint where conname = $1`,

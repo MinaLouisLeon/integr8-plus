@@ -745,6 +745,36 @@ export {
   type QualificationTypeWrite,
   type QualificationsRepository,
 } from './repositories/qualifications.js';
+export {
+  type ContractQuery,
+  type ContractsRepository,
+  type JobCoverage,
+  type RenewalAlert,
+  type ServiceContract,
+  type ServiceContractChanges,
+  type ServiceContractInput,
+  type ServiceContractWrite,
+} from './repositories/contracts.js';
+export {
+  type DuePlan,
+  type JobPlan,
+  type LastOccurrence,
+  type MaintenancePlan,
+  type MaintenancePlanChanges,
+  type MaintenancePlanInput,
+  type MaintenancePlanWrite,
+  type MaintenanceRepository,
+  type OccurrenceQuery,
+  type OccurrenceRow,
+  type PlanQuery,
+} from './repositories/maintenance.js';
+export {
+  type DeadlineNotice,
+  type DeadlineReportRow,
+  type DeadlinesRepository,
+  type JobDeadline,
+  type StoredDeadlineRule,
+} from './repositories/deadlines.js';
 
 export type {
   Attachment,
