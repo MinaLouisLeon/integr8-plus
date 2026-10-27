@@ -231,23 +231,39 @@ describe('contracts', () => {
 
 describe('coverage of a new job', () => {
   it('covers a job at a covered site, and says why one elsewhere is chargeable', async () => {
+    // A customer of its own: the contracts above would cover these jobs too.
+    const { ownCustomer, siteA, siteB } = await inTenant(async (tx) => {
+      const customer = await tx.customers.create({ name: 'Harbour Flats' }, MANAGER);
+      const address = { line1: '3 Quay Street', city: 'Hull', countryCode: 'gb' };
+      return {
+        ownCustomer: customer.id,
+        siteA: (await tx.sites.create(customer.id, { name: 'North', address }, MANAGER)).id,
+        siteB: (await tx.sites.create(customer.id, { name: 'South', address }, MANAGER)).id,
+      };
+    });
     const contract = await inTenant(async (tx) =>
       contractOf(
         await tx.contracts.create(
           {
-            customerId,
-            title: 'Block A only',
+            customerId: ownCustomer,
+            title: 'North only',
             startsOn: daysFromToday(-30),
             endsOn: daysFromToday(300),
-            siteIds: [siteId],
+            siteIds: [siteA],
           },
           MANAGER,
         ),
       ),
     );
     const [inside, outside] = await inTenant(async (tx) => {
-      const a = await tx.workOrders.create({ customerId, siteId, jobTypeId }, MANAGER);
-      const b = await tx.workOrders.create({ customerId, siteId: otherSiteId, jobTypeId }, MANAGER);
+      const a = await tx.workOrders.create(
+        { customerId: ownCustomer, siteId: siteA, jobTypeId },
+        MANAGER,
+      );
+      const b = await tx.workOrders.create(
+        { customerId: ownCustomer, siteId: siteB, jobTypeId },
+        MANAGER,
+      );
       const coverage = await tx.contracts.coverageOf([a.id, b.id]);
       return [coverage.get(a.id), coverage.get(b.id)];
     });
@@ -432,9 +448,15 @@ describe('maintenance plans', () => {
       }),
     );
     expect([first, again]).toEqual([true, false]);
+    // The runtime role may not delete at all; even the owner is refused by the trigger.
     await expect(
       asTenant(app, northwind.id, () =>
         app.query('delete from maintenance_occurrences where plan_id = $1', [plan.id]),
+      ),
+    ).rejects.toThrow(/permission denied/u);
+    await expect(
+      asTenant(owner, northwind.id, () =>
+        owner.query('delete from maintenance_occurrences where plan_id = $1', [plan.id]),
       ),
     ).rejects.toThrow(/append-only/u);
 
