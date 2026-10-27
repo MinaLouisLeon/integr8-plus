@@ -145,6 +145,9 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
 
 The product uses Supabase only for identity: passwords and magic links. Companies, roles and sessions live in the product's own database, which runs on your machine until Stage 10.
 
+> [!NOTE]
+> **Skip this part if the server keeps passwords itself.** With `IDENTITY_PROVIDER=local` (Stage 3) company people's passwords are kept, hashed, in the product's own database, and Supabase is not used at all. Integr8 staff never sign in through Supabase either way.
+
 - [ ] **Create an account** at `supabase.com` (GitHub sign-in is fine), then **New project** named `integr8-production` in the region nearest your customers (cannot be changed). Save the **database password** it shows once; Stage 10 needs it.
 - [ ] **Copy the Project URL**: Project Settings → **API** → "Project URL", like `https://abcdefghij.supabase.co`. Key sheet: `SUPABASE_URL`.
 - [ ] **Copy the service role key**: same page, reveal **service_role** (on newer dashboards under "Legacy API keys", or the **secret** key, `sb_secret_…`). Key sheet: `SUPABASE_SERVICE_ROLE_KEY`. It can do anything to your users and only ever goes in the machine's env file.
@@ -426,7 +429,8 @@ DATABASE_URL_AUTH=postgres://integr8_auth:cccc…@postgres:5432/integr8     ┘
 ```
 
 - [ ] **Signing keys.** Below the database lines is a block headed `# Tokens and secrets`. It has four variables with nothing after the `=`: `AUTH_SIGNING_KEY_ID=`, `AUTH_SIGNING_KEY=`, `AUTH_VERIFICATION_KEYS=`, `PLATFORM_SECRET_KEY=`. The key generator in Stage 0, Part B produced exactly these four lines, each already in the form `NAME=value`. For each one, delete the empty line in the file and paste the whole line from your password manager in its place; the names must match and nothing else on the line changes. The values are long (the second is a few hundred characters) and must stay on one line each. The `AUTH_ISSUER` line just above them was already set in step 2.
-- [ ] **Supabase.** The next block, headed `# Identity (Supabase Auth)`, has two lines. Replace `https://PROJECT_REF.supabase.co` on the `SUPABASE_URL=` line with your Project URL from Stage 0, Part E, and paste the service role key after `SUPABASE_SERVICE_ROLE_KEY=`. Afterwards the block reads like this, with your own values:
+- [ ] **Sign-in: built in, or Supabase.** The block headed `# Identity` starts with `IDENTITY_PROVIDER=supabase`. To keep company people's passwords on this server with no outside service, change it to `local` and skip the next step; the two Supabase lines are then not read, and sign-in links go out through the email settings below. To use Supabase, leave it as it is and do the next step.
+- [ ] **Supabase.** The next block, headed `# Identity`, has two Supabase lines under `IDENTITY_PROVIDER`. Replace `https://PROJECT_REF.supabase.co` on the `SUPABASE_URL=` line with your Project URL from Stage 0, Part E, and paste the service role key after `SUPABASE_SERVICE_ROLE_KEY=`. Afterwards the block reads like this, with your own values:
 
 ```text
 AUTH_ISSUER=https://api.integr8-media.com
@@ -1196,6 +1200,28 @@ Contracts, maintenance plans and deadlines add migration 0053 and need no new se
 > [!WARNING]
 > **Rolling back with contracts, plans and deadlines.** Fix forward once a plan has made a job or a deadline has been missed: an older version does not know those history entries, so the job would not open in it. If you must roll back (part I), leave migration 0053 applied; its `.down.sql` deletes every contract, plan and deadline and is for development databases only.
 
+### Q. Sign-in without Supabase (next release)
+
+The built-in sign-in adds migration 0054 and one setting. Nothing changes until you change the setting.
+
+- [ ] **Migration 0054 applied** during the normal update. It adds two tables for company people's sign-ins, reachable only by the sign-in database role. While `IDENTITY_PROVIDER` is `supabase` (the default) they stay empty.
+- [ ] **Switch over.** In `deploy/.env` set `IDENTITY_PROVIDER=local` (part C's check lists it as new), then restart with the usual `up -d`. The API then starts without `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; leave the two lines or delete them.
+- [ ] **People who signed in through Supabase before** have no password on this server yet. For each of them run the `user-password` command below: it keeps the user id their companies already know and prints a new password once, to send them privately. People who join from now on set their own when they accept their invitation.
+- [ ] **A forgotten password**: the same command gives the address a new one. Staff accounts are unchanged: `admin-cli create` as in Stage 5.
+
+```bash
+# machine (SSH session), from /opt/integr8
+nano deploy/.env                   # IDENTITY_PROVIDER=local
+docker compose -f deploy/compose.yml --env-file deploy/.env up -d
+
+# a password for one company person (prints it once)
+docker compose -f deploy/compose.yml --env-file deploy/.env \
+  run --rm api node dist/platform/admin-cli.js user-password someone@example.com
+```
+
+> [!WARNING]
+> **Going back to Supabase.** Set `IDENTITY_PROVIDER=supabase` again, with its two lines, and `up -d`. Passwords set on this server are not copied to Supabase, so people who joined while it was `local` need a Supabase password before they can sign in. Leave migration 0054 applied either way: its `.down.sql` deletes every password kept here, and is for development databases only.
+
 > [!NOTE]
 > **The test box (Stage 11)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout and `pull` its `:staging` images. Updating it first, the day before, is the cheapest rehearsal there is.
 
@@ -1582,7 +1608,7 @@ _about 20 minutes_
 One command on the machine creates a new company, **Nile Delta Facilities (Demo)**, and fills every section of it, so you can test the screens without typing anything in first. It is onboarded the way the dashboard onboards a real company (Enterprise plan, invoiced, its own storage bucket), every module is switched on, and it gets nine people: you as the owner, plus an admin, an HR manager, an inventory manager, a dispatcher, three engineers and a viewer. Then it fills the company through the API, as those people: settings, roles and certificates; customers, contacts and sites; suppliers, stock items, a warehouse and three vans; purchase orders and receipts; bills of materials and assembly orders; assets, contracts, maintenance plans and deadlines; work orders in every state with visits and parts used; forms and submissions; leads, opportunities and activities; quotes, sales orders and deliveries; employees, expense claims and pay runs; invoices, credit notes and payments; e-invoicing settings and codes; ledger journals and postings. Dates are relative to the day you run it: last month's jobs are done, next week's are booked.
 
 > [!WARNING]
-> **It writes made-up data into the database the machine serves**, and makes nine sign-in accounts in Supabase. No other company is touched, and it never sends anything to the Tax Authority, Stripe or a customer. It is safest on the test box (Stage 11), or on Oracle before real customers arrive. Part D removes it.
+> **It writes made-up data into the database the machine serves**, and makes nine sign-in accounts (in this server's own database with `IDENTITY_PROVIDER=local`, or in Supabase). No other company is touched, and it never sends anything to the Tax Authority, Stripe or a customer. It is safest on the test box (Stage 11), or on Oracle before real customers arrive. Part D removes it.
 
 ### A. Put the seeder on the machine
 
@@ -1618,7 +1644,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 - [ ] **Read the end of the output.** `Done` with nothing after the sign-ins means every section went in. "Item(s) were skipped" lists small things the API refused, one per line; the rest is there. "Section(s) did not finish" names the section and the request that was refused; every other section still ran. Running it again makes a second company, so give it a new `--slug`.
 
 > [!NOTE]
-> **"A company with the slug … already exists"**: pick another `--slug`. **"SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required"**: the env file's Supabase lines are missing (Stage 3); the seeder needs them to create the sign-in accounts. **"Refusing …" or "APP_ENV is production"**: add `--confirm-production`. A fresh database with no super admin yet works too: the company's history then names a "Demo seed" staff account that cannot sign in.
+> **"A company with the slug … already exists"**: pick another `--slug`. **"SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required"**: the server is set to use Supabase but has no Supabase lines; set `IDENTITY_PROVIDER=local` (Stage 12, part Q) or fill them in (Stage 3). **"Refusing …" or "APP_ENV is production"**: add `--confirm-production`. A fresh database with no super admin yet works too: the company's history then names a "Demo seed" staff account that cannot sign in.
 
 ### C. Look around
 
@@ -1629,7 +1655,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 ### D. Remove it when you are done
 
 - [ ] **Close the company** from the dashboard, as for any company: its page → **Closing this company**: **Suspend**, then **Export their data** and wait for it to be ready, then **Close this company** with a reason. It is deleted for good seven days later, with its storage bucket.
-- [ ] **Delete the eight demo sign-ins** in Supabase → **Authentication** → **Users**: search for `+demo-nile`, select them, **Delete users**. Leave your own address alone if it signs in to other companies.
+- [ ] **The eight demo sign-ins** stop working once the company is closed: nobody can sign in to a company that is gone. With Supabase, delete them there too: **Authentication** → **Users**, search for `+demo-nile`, select them, **Delete users**. Leave your own address alone if it signs in to other companies.
 
 ---
 

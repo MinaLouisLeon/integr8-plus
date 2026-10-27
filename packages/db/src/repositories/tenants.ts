@@ -285,6 +285,26 @@ export class TenantsRepository {
   }
 
   /**
+   * The user ids an address is a member under, in any company.
+   *
+   * For moving a server from Supabase to its own sign-in (0054): the identity
+   * made for an existing member must keep the id their memberships already
+   * name, or they would sign in to no company at all.
+   */
+  async memberUserIdsByEmail(email: string): Promise<string[]> {
+    const rows = await this.db
+      .selectFrom('tenant_users')
+      .select('user_id')
+      .distinct()
+      .where((eb) =>
+        eb(eb.fn('lower', [eb.fn('btrim', ['email'])]), '=', email.trim().toLowerCase()),
+      )
+      .where('deleted_at', 'is', null)
+      .execute();
+    return rows.map((row) => row.user_id);
+  }
+
+  /**
    * Removes a company that never got off the ground (P15).
    *
    * Only for the seconds between creating the row and finishing onboarding: if

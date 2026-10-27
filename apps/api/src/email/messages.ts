@@ -127,6 +127,23 @@ export function invitationEmail(input: {
 }
 
 /**
+ * A one-time sign-in link, when this server keeps passwords itself
+ * (`IDENTITY_PROVIDER=local`). Supabase sends its own otherwise.
+ */
+export function magicLinkEmail(input: { to: string; url: string; expiresAt: Date }): EmailMessage {
+  return compose({
+    to: input.to,
+    subject: 'Your sign-in link',
+    title: 'Sign in to Integr8 Plus',
+    paragraphs: [
+      'Somebody asked for a sign-in link for this address. It works once, until a quarter of an hour from when it was sent.',
+      'If that was not you, ignore this message: nobody can sign in without the link.',
+    ],
+    action: { label: 'Sign in', url: input.url },
+  });
+}
+
+/**
  * Somebody has signed up and has to prove they own the address.
  *
  * Nothing is created until they click: no company, no bucket, no trial. Said in

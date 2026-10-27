@@ -383,6 +383,25 @@ export interface LoginAttemptsTable {
   occurred_at: Generated<Date>;
 }
 
+/** Credentials for people who sign in to companies, with IDENTITY_PROVIDER=local (0054). */
+export interface IdentitiesTable {
+  id: Generated<string>;
+  email: string;
+  password_hash: string | null;
+  email_verified_at: Date | null;
+  created_at: CreatedAt;
+  updated_at: ColumnType<Date, never, Date>;
+}
+
+/** One-time sign-in links, as hashes (0054). */
+export interface IdentityMagicLinksTable {
+  token_hash: string;
+  identity_id: string;
+  expires_at: Date;
+  used_at: Date | null;
+  created_at: CreatedAt;
+}
+
 export interface AccountLocksTable {
   email: string;
   failed_count: Generated<number>;
@@ -3482,6 +3501,8 @@ export interface Database {
   impersonation_grants: ImpersonationGrantsTable;
   login_attempts: LoginAttemptsTable;
   account_locks: AccountLocksTable;
+  identities: IdentitiesTable;
+  identity_magic_links: IdentityMagicLinksTable;
   idempotency_keys: IdempotencyKeysTable;
   jobs: JobsTable;
   forms: FormsTable;
@@ -3673,6 +3694,10 @@ export const PLATFORM_TABLES = [
   // the pre-authentication role that does holds nothing else; see 0003.
   'login_attempts',
   'account_locks',
+  // Sign-in credentials when the server keeps them itself (0054): the same
+  // reason as the two above. Only the pre-authentication role reaches them.
+  'identities',
+  'identity_magic_links',
   // Rate limiting runs before the handler and, for an unauthenticated request,
   // before there is any tenant to scope by. Keyed on an opaque bucket string
   // and reached only by the pre-authentication role; see 0004.
