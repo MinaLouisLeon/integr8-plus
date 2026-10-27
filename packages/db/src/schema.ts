@@ -38,6 +38,7 @@ import {
   type WorkOrderPriority,
   type WorkOrderState,
   type VisitStatus,
+  type QualificationKind,
   type AssetCondition,
   type AssetEventKind,
   type AssetStatus,
@@ -887,6 +888,8 @@ export interface TenantSettingsTable {
   website_jobs_enabled: Generated<boolean>;
   website_quotes_enabled: Generated<boolean>;
   website_invoices_enabled: Generated<boolean>;
+  /** Days before a certificate expires that its holder and the managers are warned (0052). */
+  qualification_warning_days: Generated<number>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
@@ -940,6 +943,8 @@ export const WORK_ORDER_EVENT_KINDS = [
   'visit_cancelled',
   'visit_assigned',
   'visit_unassigned',
+  // Going ahead without a required qualification (0052).
+  'qualification_override',
 ] as const;
 export type WorkOrderEventKind = (typeof WORK_ORDER_EVENT_KINDS)[number];
 
@@ -2331,6 +2336,79 @@ export interface WorkOrderVisitAssigneesTable {
   removed_by: string | null;
 }
 
+/** A skill or certificate the company tracks (0052). */
+export interface QualificationTypesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  kind: QualificationKind;
+  description: string | null;
+  /** Counted by trigger. */
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  archived_at: Date | null;
+}
+
+/**
+ * A qualification a member holds (0052). Renewal adds a record; removed rather
+ * than deleted. Dates are calendar days, `YYYY-MM-DD`.
+ */
+export interface MemberQualificationsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  user_id: string;
+  qualification_type_id: string;
+  reference: string | null;
+  issued_on: ColumnType<string | null, string | null | undefined, string | null>;
+  /** The last day it is valid; null when it does not expire. */
+  expires_on: ColumnType<string | null, string | null | undefined, string | null>;
+  notes: string | null;
+  /** When each expiry alert went out; cleared by trigger when the expiry changes. */
+  expiry_warned_at: Date | null;
+  lapse_alerted_at: Date | null;
+  version: Generated<number>;
+  created_by: string;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  removed_at: Date | null;
+  removed_by: string | null;
+}
+
+/** What a job type's jobs need (0052). */
+export interface JobTypeQualificationsTable {
+  tenant_id: string;
+  job_type_id: string;
+  qualification_type_id: string;
+  created_by: string;
+  created_at: CreatedAt;
+}
+
+/** What one job needs (0052): copied from its job type, then its own. */
+export interface WorkOrderQualificationsTable {
+  tenant_id: string;
+  work_order_id: string;
+  qualification_type_id: string;
+  added_by: string;
+  created_at: CreatedAt;
+}
+
+/** A visit planned without a required qualification, and why (0052). Append-only. */
+export interface WorkOrderQualificationOverridesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  work_order_id: string;
+  visit_id: string;
+  reason: string;
+  missing: Jsonb<{ qualificationTypeId: string; name: string }[]>;
+  assignee_ids: string[];
+  starts_at: Date;
+  ends_at: Date;
+  created_by: string;
+  created_at: CreatedAt;
+}
+
 export interface WorkOrderCommentsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -2375,6 +2453,8 @@ export interface AttachmentsTable {
   item_id: Generated<string | null>;
   /** The merchant purchase it is a receipt for (0040). */
   work_order_purchase_id: Generated<string | null>;
+  /** The certificate it is a scan of (0052). */
+  member_qualification_id: Generated<string | null>;
   /** The item's main image (0040). */
   is_main: Generated<boolean>;
   title: string;
@@ -3355,6 +3435,11 @@ export interface Database {
   work_order_assignments: WorkOrderAssignmentsTable;
   work_order_visits: WorkOrderVisitsTable;
   work_order_visit_assignees: WorkOrderVisitAssigneesTable;
+  qualification_types: QualificationTypesTable;
+  member_qualifications: MemberQualificationsTable;
+  job_type_qualifications: JobTypeQualificationsTable;
+  work_order_qualifications: WorkOrderQualificationsTable;
+  work_order_qualification_overrides: WorkOrderQualificationOverridesTable;
   work_order_comments: WorkOrderCommentsTable;
   work_order_events: WorkOrderEventsTable;
   attachments: AttachmentsTable;
@@ -3495,6 +3580,9 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   // The same for visits and who goes on them; see 0051.
   'record_work_order_visit_change',
   'record_work_order_visit_assignee',
+  // Writes a job's history when a visit goes ahead without a required
+  // qualification; see 0052.
+  'record_qualification_override',
   // Write and prune the sync change log, which the runtime role can only read; see 0011.
   'touch_sync',
   'prune_sync_touches',
@@ -3689,6 +3777,11 @@ const TENANT_SCOPED: Readonly<Record<TenantScopedTable, true>> = {
   work_order_assignments: true,
   work_order_visits: true,
   work_order_visit_assignees: true,
+  qualification_types: true,
+  member_qualifications: true,
+  job_type_qualifications: true,
+  work_order_qualifications: true,
+  work_order_qualification_overrides: true,
   work_order_comments: true,
   work_order_events: true,
   attachments: true,

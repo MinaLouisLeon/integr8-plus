@@ -2,6 +2,7 @@ import { useTranslation } from '@integr8/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { type JobType, keys, type Priority, useOperations } from '../api.js';
+import { RequirementList, RequirementsDialog } from '../qualifications/requirements.js';
 import {
   buttonClass,
   cardClass,
@@ -73,13 +74,20 @@ function toDraft(type: JobType): Draft {
 /**
  * The kinds of job a company does, and what each carries onto a new job: its
  * forms (some required before the job can complete), a checklist,
- * instructions, and how long it usually takes.
+ * instructions, how long it usually takes, and the skills and certificates
+ * its people must hold (P26).
+ *
+ * Job types are set up by Integr8 staff (`job_type.manage`); the company's
+ * owners, admins and HR managers (`qualification.manage`) may still say which
+ * qualifications each needs.
  */
 export function JobTypesScreen() {
   const { t } = useTranslation();
   const { client } = useOperations();
+  const queryClient = useQueryClient();
   const [archived, setArchived] = useState(false);
   const [editing, setEditing] = useState<Draft | undefined>(undefined);
+  const [requirementsOf, setRequirementsOf] = useState<JobType | undefined>();
   const types = useQuery({
     queryKey: keys.jobTypes(archived),
     queryFn: async () =>
@@ -94,6 +102,8 @@ export function JobTypesScreen() {
     queryFn: async () => (await client.GET('/v1/me')).data!,
   });
   const manage = me.data?.permissions.includes('job_type.manage') ?? false;
+  const setsRequirements =
+    manage || (me.data?.permissions.includes('qualification.manage') ?? false);
   const rowMenu = useRowMenu();
 
   return (
@@ -211,6 +221,29 @@ export function JobTypesScreen() {
                   </li>
                 ))}
               </ul>
+              {type.requiredQualifications.length === 0 && !setsRequirements ? null : (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-medium text-content">
+                      {t('operations.jobTypes.requirements')}
+                    </h3>
+                    {setsRequirements && !type.archived ? (
+                      <button
+                        type="button"
+                        className={buttonClass.ghost}
+                        onClick={() => setRequirementsOf(type)}
+                      >
+                        {t('operations.jobTypes.changeRequirements')}{' '}
+                        <span className="sr-only">{type.name}</span>
+                      </button>
+                    ) : null}
+                  </div>
+                  <RequirementList
+                    requirements={type.requiredQualifications}
+                    emptyText={t('operations.jobTypes.noRequirements')}
+                  />
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -218,6 +251,24 @@ export function JobTypesScreen() {
 
       {editing === undefined ? null : (
         <JobTypeDialog draft={editing} onClose={() => setEditing(undefined)} />
+      )}
+      {requirementsOf === undefined ? null : (
+        <RequirementsDialog
+          title={t('operations.jobTypes.requirementsTitle', { name: requirementsOf.name })}
+          intro={t('operations.jobTypes.requirementsIntro')}
+          current={requirementsOf.requiredQualifications}
+          onSave={async (qualificationTypeIds) =>
+            client.PUT('/v1/job-types/{jobTypeId}/qualifications', {
+              params: { path: { jobTypeId: requirementsOf.id } },
+              body: { qualificationTypeIds },
+            })
+          }
+          onClose={() => setRequirementsOf(undefined)}
+          onSaved={() => {
+            setRequirementsOf(undefined);
+            void queryClient.invalidateQueries({ queryKey: ['job-types'] });
+          }}
+        />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import type { Principal } from '@integr8/core';
+import type { Principal, QualificationGap } from '@integr8/core';
 import type { TenantTransaction, Visit, WorkOrder } from '@integr8/db';
 import { withTenant } from '@integr8/db';
 import { z } from 'zod';
@@ -14,6 +14,12 @@ import {
   workOrderSummarySchema,
 } from './operations.js';
 import { audit, requireCrew } from './work-orders.js';
+import {
+  enforceQualifications,
+  gapsForVisit,
+  gapsForVisits,
+  qualificationOverrideSchema,
+} from './qualification-check.js';
 import { visitBody, visitRefusal, visitSchema } from './visits-shared.js';
 
 /**
@@ -25,6 +31,11 @@ import { visitBody, visitRefusal, visitSchema } from './visits-shared.js';
  * different jobs for every client, so two dispatchers dropping a visit at once
  * cannot double-book anyone. Work outside office hours is never refused or
  * warned about: companies run 24/7 teams and flexible hours.
+ *
+ * Skills and certificates (P26): when nobody on a visit holds something its job
+ * needs, valid on the visit's days, the change is refused with
+ * `visit_unqualified` unless it carries a reason (`qualificationOverride`),
+ * which is kept with the job. Only gaps the change opens ask for one.
  *
  * The office (`work_order.manage`) plans, moves, reassigns and cancels visits.
  * Anyone who reads every job (`work_order.read_all`) sees the board. The crew
@@ -128,9 +139,25 @@ async function joinCrew(
   );
 }
 
-async function respond(tx: TenantTransaction, visit: Visit, job: WorkOrder, people?: People) {
-  return { visit: visitBody(visit, job, people ?? (await peopleOf(tx))) };
+async function respond(
+  tx: TenantTransaction,
+  visit: Visit,
+  job: WorkOrder,
+  people?: People,
+  gaps?: readonly QualificationGap[],
+) {
+  return {
+    visit: visitBody(
+      visit,
+      job,
+      people ?? (await peopleOf(tx)),
+      gaps ?? (await gapsForVisit(tx, visit)),
+    ),
+  };
 }
+
+const UNQUALIFIED_409 =
+  'nobody on the visit would hold a qualification the job needs, and no reason was given (`visit_unqualified`, with a detail per person and qualification)';
 
 // ---------------------------------------------------------------------------
 // Reading the board
@@ -180,6 +207,7 @@ export const getScheduleRoute = defineRoute({
       ]);
       const jobs = await tx.workOrders.findMany(visits.map((visit) => visit.workOrderId));
       const jobById = new Map(jobs.map((job) => [job.id, job]));
+      const gaps = await gapsForVisits(tx, visits);
       return {
         from: from.toISOString(),
         to: to.toISOString(),
@@ -194,6 +222,7 @@ export const getScheduleRoute = defineRoute({
             visit,
             jobById.get(visit.workOrderId) ?? { dueFrom: null, dueBy: null },
             people,
+            gaps.get(visit.id) ?? [],
           ),
         ),
         workOrders: await workOrderSummaries(tx, jobs, people),
@@ -252,7 +281,7 @@ export const createVisitRoute = defineRoute({
   operationId: 'createVisit',
   summary: 'Plan a visit to a job',
   description:
-    'Plans one trip with its own times and people. People must be on the job’s crew; `addToCrew` puts anyone who is not on it first. Refused when someone would be on another job at the same time.',
+    'Plans one trip with its own times and people. People must be on the job’s crew; `addToCrew` puts anyone who is not on it first. Refused when someone would be on another job at the same time, and when nobody on it holds a qualification the job needs unless `qualificationOverride` says why.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'work_order.manage',
@@ -264,13 +293,14 @@ export const createVisitRoute = defineRoute({
     notes: z.string().trim().max(2000).nullable().optional(),
     assigneeIds: assigneeIdsSchema.default([]),
     addToCrew: z.boolean().default(false),
+    /** Going ahead although nobody holds a qualification the job needs (P26). */
+    qualificationOverride: qualificationOverrideSchema.optional(),
   }),
   responses: {
     201: { description: 'The visit.', schema: visitResponseSchema },
     404: { description: 'No such work order.' },
     409: {
-      description:
-        'Someone would be on two jobs at once (`visit_double_booked`, with a detail naming each clash), or the job is closed (`work_order_closed`).',
+      description: `Someone would be on two jobs at once (\`visit_double_booked\`, with a detail naming each clash), the job is closed (\`work_order_closed\`), or ${UNQUALIFIED_409}.`,
     },
     422: {
       description:
@@ -298,13 +328,19 @@ export const createVisitRoute = defineRoute({
       if (written.outcome !== 'written') {
         visitRefusal(written, people);
       }
+      const gaps = await enforceQualifications(tx, context, {
+        before: [],
+        visit: written.visit,
+        reason: body.qualificationOverride?.reason,
+        people,
+      });
       await audit(tx, context, 'work_order.visit_scheduled', job.id, {
         visitId: written.visit.id,
         startsAt: body.startsAt,
         endsAt: body.endsAt,
         assigneeIds: body.assigneeIds,
       });
-      return respond(tx, written.visit, job, people);
+      return respond(tx, written.visit, job, people, gaps);
     });
     return { status: 201, body: result };
   },
@@ -316,7 +352,7 @@ export const updateVisitRoute = defineRoute({
   operationId: 'updateVisit',
   summary: 'Move a visit, or change who goes',
   description:
-    'Refused when the visit changed since `expectedRevision`, when it is done or cancelled, or when someone would be on another job at the same time. `assigneeIds` replaces who goes; `addToCrew` puts newcomers on the job’s crew first.',
+    'Refused when the visit changed since `expectedRevision`, when it is done or cancelled, or when someone would be on another job at the same time. `assigneeIds` replaces who goes; `addToCrew` puts newcomers on the job’s crew first. A change that leaves nobody holding a qualification the job needs, where somebody did before, needs `qualificationOverride`.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'work_order.manage',
@@ -330,6 +366,8 @@ export const updateVisitRoute = defineRoute({
       notes: z.string().trim().max(2000).nullable().optional(),
       assigneeIds: assigneeIdsSchema.optional(),
       addToCrew: z.boolean().default(false),
+      /** Going ahead although nobody holds a qualification the job needs (P26). */
+      qualificationOverride: qualificationOverrideSchema.optional(),
     })
     .refine(
       (value) =>
@@ -343,8 +381,7 @@ export const updateVisitRoute = defineRoute({
     200: { description: 'The visit.', schema: visitResponseSchema },
     404: { description: 'No such visit.' },
     409: {
-      description:
-        'Changed elsewhere (`visit_changed`), done or cancelled (`visit_final`), a double booking (`visit_double_booked`), or the job is closed (`work_order_closed`).',
+      description: `Changed elsewhere (\`visit_changed\`), done or cancelled (\`visit_final\`), a double booking (\`visit_double_booked\`), the job is closed (\`work_order_closed\`), or ${UNQUALIFIED_409}.`,
     },
     422: {
       description:
@@ -355,6 +392,7 @@ export const updateVisitRoute = defineRoute({
     const { principal } = context;
     const result = await withTenant(principal.tenantId, async (tx) => {
       const { visit, job } = await readableVisit(tx, principal, params.visitId);
+      const before = await gapsForVisit(tx, visit);
       if (body.addToCrew && body.assigneeIds !== undefined) {
         await joinCrew(tx, job, body.assigneeIds, principal.userId);
       }
@@ -373,13 +411,19 @@ export const updateVisitRoute = defineRoute({
       if (written.outcome !== 'written') {
         visitRefusal(written, people);
       }
+      const gaps = await enforceQualifications(tx, context, {
+        before,
+        visit: written.visit,
+        reason: body.qualificationOverride?.reason,
+        people,
+      });
       await audit(tx, context, 'work_order.visit_changed', job.id, {
         visitId: visit.id,
         ...(body.startsAt === undefined ? {} : { startsAt: body.startsAt }),
         ...(body.endsAt === undefined ? {} : { endsAt: body.endsAt }),
         ...(body.assigneeIds === undefined ? {} : { assigneeIds: body.assigneeIds }),
       });
-      return respond(tx, written.visit, job, people);
+      return respond(tx, written.visit, job, people, gaps);
     });
     return { status: 200, body: result };
   },
@@ -426,7 +470,7 @@ export const cancelVisitRoute = defineRoute({
         visitId: visit.id,
         ...(body.reason == null ? {} : { reason: body.reason }),
       });
-      return respond(tx, written.visit, job, people);
+      return respond(tx, written.visit, job, people, []);
     });
     return { status: 200, body: result };
   },
@@ -468,7 +512,7 @@ export const completeVisitRoute = defineRoute({
       if (visit.status !== 'done') {
         await audit(tx, context, 'work_order.visit_done', job.id, { visitId: visit.id });
       }
-      return respond(tx, written.visit, job, people);
+      return respond(tx, written.visit, job, people, []);
     });
     return { status: 200, body: result };
   },
@@ -484,7 +528,7 @@ export const bulkVisitsRoute = defineRoute({
   operationId: 'bulkVisits',
   summary: 'Reassign, move or cancel many visits',
   description:
-    'Each visit is changed on its own, so one that cannot be — done, cancelled, a double booking — is reported and the rest go ahead. `reassign` hands the visits from `fromUserId` to `toUserId` (or makes `toUserId` the only person when `fromUserId` is left out); `shift` moves them by `shiftMinutes`; `cancel` calls them off.',
+    'Each visit is changed on its own, so one that cannot be — done, cancelled, a double booking, nobody qualified — is reported and the rest go ahead. `reassign` hands the visits from `fromUserId` to `toUserId` (or makes `toUserId` the only person when `fromUserId` is left out); `shift` moves them by `shiftMinutes`; `cancel` calls them off. `qualificationOverrideReason` is the one reason for every visit the change leaves without a qualification its job needs; without it those visits are refused with `visit_unqualified`.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'work_order.manage',
@@ -498,11 +542,13 @@ export const bulkVisitsRoute = defineRoute({
       fromUserId: z.uuid().optional(),
       toUserId: z.uuid(),
       addToCrew: z.boolean().default(true),
+      qualificationOverrideReason: qualificationOverrideSchema.shape.reason.optional(),
     }),
     z.object({
       action: z.literal('shift'),
       visitIds: z.array(z.uuid()).min(1).max(200),
       shiftMinutes: z.number().int().min(-525_600).max(525_600),
+      qualificationOverrideReason: qualificationOverrideSchema.shape.reason.optional(),
     }),
     z.object({
       action: z.literal('cancel'),
@@ -549,8 +595,14 @@ export const bulkVisitsRoute = defineRoute({
 });
 
 type BulkAction =
-  | { action: 'reassign'; fromUserId?: string | undefined; toUserId: string; addToCrew: boolean }
-  | { action: 'shift'; shiftMinutes: number }
+  | {
+      action: 'reassign';
+      fromUserId?: string | undefined;
+      toUserId: string;
+      addToCrew: boolean;
+      qualificationOverrideReason?: string | undefined;
+    }
+  | { action: 'shift'; shiftMinutes: number; qualificationOverrideReason?: string | undefined }
   | { action: 'cancel'; reason?: string | null | undefined };
 
 async function changeOne(
@@ -575,6 +627,7 @@ async function changeOne(
     await audit(tx, context, 'work_order.visit_cancelled', job.id, { visitId, bulk: true });
     return;
   }
+  const before = await gapsForVisit(tx, visit);
   if (body.action === 'shift') {
     const by = body.shiftMinutes * 60_000;
     const written = await tx.visits.update(
@@ -589,6 +642,13 @@ async function changeOne(
     if (written.outcome !== 'written') {
       visitRefusal(written, people);
     }
+    await enforceQualifications(tx, context, {
+      before,
+      visit: written.visit,
+      reason: body.qualificationOverrideReason,
+      people,
+      bulk: true,
+    });
     await audit(tx, context, 'work_order.visit_changed', job.id, {
       visitId,
       shiftMinutes: body.shiftMinutes,
@@ -621,6 +681,13 @@ async function changeOne(
   if (written.outcome !== 'written') {
     visitRefusal(written, people);
   }
+  await enforceQualifications(tx, context, {
+    before,
+    visit: written.visit,
+    reason: body.qualificationOverrideReason,
+    people,
+    bulk: true,
+  });
   await audit(tx, context, 'work_order.visit_changed', job.id, {
     visitId,
     assigneeIds,

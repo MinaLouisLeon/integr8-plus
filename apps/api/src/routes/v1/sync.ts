@@ -7,6 +7,7 @@ import { applyMutations, mutationSchema, resultSchema } from '../../sync/push.js
 import { customerDetailSchema } from './customers.js';
 import { formDetailSchema } from './forms.js';
 import { itemSummarySchema } from './inventory.js';
+import { myQualificationsSchema } from './qualifications.js';
 import { answersSchema } from './submissions.js';
 import { shiftSchema } from './time.js';
 import { detailSchema as workOrderDetailSchema } from './work-orders.js';
@@ -101,6 +102,11 @@ export const pullRoute = defineRoute({
         assetSiteIds: z.array(z.uuid()),
         /** The assets of those sites, each with its whole history. */
         assets: z.array(assetSyncSchema),
+        /**
+         * The caller's own skills and certificates (P26), on the first page
+         * only; null on later pages. The phone replaces what it holds.
+         */
+        myQualifications: myQualificationsSchema.nullable(),
         /**
          * The expense categories a claim may name, on the first page only; null
          * on later pages, and when expenses are not open to the caller (ADR-0012).

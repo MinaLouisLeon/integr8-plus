@@ -122,6 +122,10 @@ live versions and the person's submissions, plus jobs they were taken off.
 - **Reset.** No cursor, or one older than the pruned log (`SYNC_LOG_RETENTION_DAYS`, 45), returns
   everything in scope; the phone removes what was not in it.
 - The engineer's pending changes are applied again on top of whatever arrives.
+- **The person's own things** come whole with the first page: their recent shifts, their van's
+  stock, the expense categories they may claim, and their skills and certificates (P26,
+  `myQualifications`), which the phone keeps in `meta` for **My qualifications**. A server that
+  says nothing about one leaves the phone's copy as it was.
 
 ## Files
 

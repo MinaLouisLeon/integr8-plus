@@ -10,8 +10,10 @@ apps/mobile
   app/home.tsx                 Today: the clock, the next job and its one step forward, then the day's jobs
   app/jobs/[id].tsx            one job, in the order it is worked
   app/jobs/complete/[id].tsx   what completing still needs, the sign-off, Complete
+  app/qualifications.tsx       My qualifications: the engineer's skills and certificates, read only
   src/lib/today.ts             which job is next; which steps are the engineer's       ← unit tested
   src/lib/navigation.ts        directions links for each maps app                      ← unit tested
+  src/lib/qualifications.ts    whether the engineer holds what a job needs              ← unit tested
   src/local/job-actions.ts     clock, steps, photos, sign-off, opening files — all local
   src/local/push.ts            registering for notifications, and opening their job
   src/local/resume.ts          the screen to return to after a force close              ← unit tested
@@ -50,12 +52,15 @@ How to get in comes first, then what to do:
    **Start work**, **Complete job**), then **Directions** and the other steps the engineer may
    take (**Stop travelling**, **Waiting for parts**);
 5. instructions;
-6. forms;
-7. photos;
-8. checklist, ticked on the phone;
-9. files;
-10. time on this job;
-11. then the customer, site, contact, due window, description, sign-off, crew, notes and earlier
+6. what the job needs (P26): each required qualification beside whether the engineer holds it,
+   as the phone last heard: held, expiring, expired or not held. It is for raising a lapsed
+   certificate before setting off; the office decides who goes;
+7. forms;
+8. photos;
+9. checklist, ticked on the phone;
+10. files;
+11. time on this job;
+12. then the customer, site, contact, due window, description, sign-off, crew, notes and earlier
     jobs.
 
 **Only the engineer's own transitions are offered.** `jobSteps` filters the core state machine
@@ -143,6 +148,13 @@ outbox for the job's forms, photos and sign-off to be sent first. If the server 
 (a form was reopened in the office meanwhile), the Sync screen shows an `incomplete` conflict
 that lists what is missing, opens the job, and sends again once it is fixed.
 
+## My qualifications
+
+**My qualifications** on the home screen (P26) lists the engineer's own skills and
+certificates: expired first, then expiring, each with its expiry date, issue date and number.
+They come whole with every sync and are kept on the phone, so the screen opens with no signal.
+It is read only: the office records them, and a renewed certificate is sent to the office.
+
 ## Push notifications
 
 The phone registers its Expo push token for its session (`PUT /v1/me/push-device`). Signing
@@ -166,6 +178,8 @@ out, or the session being revoked, stops notifications to it. So does
 - Visits (P25): the person put on a visit or taken off one hears it, and the people on a visit
   hear when it moves or is called off. Someone added to the crew and a visit in one change
   hears about the visit only.
+- Certificates (P26): the holder hears once when a certificate is about to expire, within the
+  company's warning period, and once when it has expired. The office hears by email.
 - Expo's receipts are checked 15 minutes later (`push.receipts`). A token Expo reports as no
   longer registered is disabled, so an uninstalled app is not tried again.
 

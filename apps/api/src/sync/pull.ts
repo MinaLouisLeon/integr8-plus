@@ -7,6 +7,7 @@ import { formDetailBody } from '../routes/v1/forms.js';
 import { isFeatureEnabled } from '../http/features.js';
 import { availability, itemSummary, reservedAt } from '../routes/v1/inventory.js';
 import { peopleOf } from '../routes/v1/operations.js';
+import { myQualificationsBody } from '../routes/v1/qualifications.js';
 import { carryOverFor, mayRead } from '../routes/v1/submissions.js';
 import { detailBody } from '../routes/v1/work-orders.js';
 
@@ -220,6 +221,10 @@ export async function pullPage(
     vanStock,
     assetSiteIds: holdsAssets(principal) ? assetSiteIds : [],
     assets,
+    // The caller's own skills and certificates (P26), with the first page: few,
+    // and the phone shows them with no signal.
+    myQualifications:
+      options.page === undefined ? await myQualificationsBody(tx, principal.userId) : null,
     expenseCategories:
       options.page === undefined &&
       holds(principal, 'expense.submit') &&

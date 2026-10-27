@@ -25,6 +25,8 @@ export interface OperationsConfig {
     workOrder: (id: string) => string;
     /** The scheduling board (P25), where the host app has it (the desktop app). */
     schedule?: string;
+    /** People's skills and certificates (P26), where the host app has it. */
+    qualifications?: string;
     customers: string;
     customer: (id: string) => string;
     site: (id: string) => string;
@@ -264,6 +266,13 @@ export type SchedulePerson = Schedule['people'][number];
 export type ScheduleJob = Schedule['workOrders'][number];
 export type UnscheduledJob = Json<'/v1/schedule/unscheduled', 'get', 200>['items'][number];
 export type BulkVisitResult = Json<'/v1/visits/bulk', 'post', 200>['results'][number];
+/** Skills and certificates (P26): the company's list, who holds what, who can go on a visit. */
+export type QualificationTypeList = Json<'/v1/qualification-types', 'get', 200>;
+export type QualificationType = QualificationTypeList['items'][number];
+export type QualificationList = Json<'/v1/qualifications', 'get', 200>;
+export type QualificationRecord = QualificationList['items'][number];
+export type Eligibility = Json<'/v1/work-orders/{workOrderId}/eligibility', 'get', 200>;
+export type JobTypeRequirement = JobType['requiredQualifications'][number];
 export type SavedView = Json<'/v1/saved-views', 'get', 200>['items'][number];
 export type ImportRecord = Json<'/v1/imports', 'get', 200>['items'][number];
 export type ImportDetail = Json<'/v1/imports/{importId}', 'get', 200>;
@@ -585,6 +594,10 @@ export const keys = {
   schedule: (range: { from: string; to: string; cancelled: boolean }) =>
     ['work-orders', 'schedule', range] as const,
   unscheduled: ['work-orders', 'unscheduled'] as const,
+  eligibility: (workOrderId: string, startsAt: string, endsAt: string) =>
+    ['work-orders', 'eligibility', workOrderId, startsAt, endsAt] as const,
+  qualificationTypes: (archived: boolean) => ['qualifications', 'types', archived] as const,
+  qualifications: (query: Record<string, unknown>) => ['qualifications', 'records', query] as const,
   views: ['saved-views'] as const,
   customers: (query: Record<string, unknown>) => ['customers', 'list', query] as const,
   customer: (id: string) => ['customers', id] as const,

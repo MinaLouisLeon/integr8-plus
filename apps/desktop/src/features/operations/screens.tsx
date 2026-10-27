@@ -80,6 +80,7 @@ import {
   LeadScreen,
   type OperationsConfig,
   OperationsContext,
+  QualificationsScreen,
   ScheduleScreen,
   SiteScreen,
   TimesheetsScreen,
@@ -124,6 +125,7 @@ function OperationsScreens({ children }: { children: ReactNode }) {
             : `/work-orders/new?customerId=${options.customerId}`,
         workOrder: (id) => `/work-orders/${id}`,
         schedule: '/schedule',
+        qualifications: '/qualifications',
         customers: '/customers',
         customer: (id) => `/customers/${id}`,
         site: (id) => `/sites/${id}`,
@@ -522,6 +524,14 @@ export function ScheduleRoute() {
   return (
     <OperationsScreens>
       <ScheduleScreen />
+    </OperationsScreens>
+  );
+}
+
+export function QualificationsRoute() {
+  return (
+    <OperationsScreens>
+      <QualificationsScreen />
     </OperationsScreens>
   );
 }

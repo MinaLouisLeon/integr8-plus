@@ -34,6 +34,8 @@ import { Parts } from './work-order-parts.js';
 import { JobFinancePanel } from '../finance/job-finance.js';
 import { JobAssetsPanel } from '../assets/job-assets.js';
 import { useAssetAccess } from '../assets/asset-parts.js';
+import { GapList } from '../qualifications/override.js';
+import { RequirementList, RequirementsDialog } from '../qualifications/requirements.js';
 
 /**
  * One job.
@@ -233,6 +235,7 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
       </div>
 
       <Visits job={job} />
+      <Requirements job={job} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Forms job={job} onChanged={refresh} />
@@ -1517,6 +1520,19 @@ function Visits({ job }: { job: WorkOrderDetail }) {
                     ? t('operations.workOrder.visits.nobody')
                     : visit.assignees.map((person) => person.name).join(', ')}
                 </span>
+                {visit.warnings.includes('unqualified') && visit.qualificationGaps.length > 0 ? (
+                  <div className="mt-1 flex items-start gap-1.5 rounded-md border border-warning bg-warning-subtle px-2 py-1 text-xs">
+                    <span aria-hidden="true" className="text-warning">
+                      ⚠
+                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium text-content">
+                        {t('operations.schedule.warning.unqualified')}
+                      </span>
+                      <GapList gaps={visit.qualificationGaps} />
+                    </div>
+                  </div>
+                ) : null}
               </div>
               <span className="text-xs font-medium text-content-muted">
                 {t(`operations.workOrder.visits.status.${visit.status}`)}
@@ -1526,6 +1542,94 @@ function Visits({ job }: { job: WorkOrderDetail }) {
         </ol>
       )}
     </section>
+  );
+}
+
+/**
+ * What a job needs its people to hold (P26), copied from its job type when it
+ * was created. Whoever plans the job may change it while the job is open;
+ * visits already planned are checked against the new list from then on.
+ */
+function Requirements({ job }: { job: WorkOrderDetail }) {
+  const { t } = useTranslation();
+  const { client, navigate, paths } = useOperations();
+  const queryClient = useQueryClient();
+  const permissions = usePermissions();
+  const [editing, setEditing] = useState(false);
+  const closed = ['complete', 'reviewed', 'cancelled'].includes(job.workOrder.state);
+  const mayChange = permissions.includes('work_order.manage') && !closed;
+
+  if (job.requiredQualifications.length === 0 && !mayChange) {
+    return null;
+  }
+  return (
+    <section aria-labelledby="requirements-heading" className={cardClass}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="requirements-heading" className="text-lg font-semibold text-content">
+          {t('operations.workOrder.requirements.title')}
+        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          {paths.qualifications === undefined ||
+          !permissions.includes('qualification.read') ? null : (
+            <a
+              href={paths.qualifications}
+              className="text-sm text-accent underline-offset-4 hover:underline"
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(paths.qualifications!);
+              }}
+            >
+              {t('operations.workOrder.requirements.whoHolds')}
+            </a>
+          )}
+          {mayChange ? (
+            <button type="button" className={buttonClass.ghost} onClick={() => setEditing(true)}>
+              {t('operations.workOrder.requirements.change')}
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <RequirementList
+        requirements={job.requiredQualifications}
+        emptyText={t('operations.workOrder.requirements.none')}
+      />
+      {closed ? null : (
+        <p className="text-xs text-content-muted">{t('operations.workOrder.requirements.hint')}</p>
+      )}
+      {editing ? (
+        <RequirementsDialog
+          title={t('operations.workOrder.requirements.change')}
+          intro={t('operations.workOrder.requirements.dialogIntro')}
+          current={job.requiredQualifications}
+          onSave={async (qualificationTypeIds) =>
+            client.PUT('/v1/work-orders/{workOrderId}/qualifications', {
+              params: { path: { workOrderId: job.workOrder.id } },
+              body: { qualificationTypeIds },
+            })
+          }
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            // The job, its visits' warnings and the board all change.
+            void queryClient.invalidateQueries({ queryKey: ['work-orders'] });
+          }}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+/** The names in a `qualification_override` event's `missing` list. */
+function missingNames(missing: unknown): string[] {
+  if (!Array.isArray(missing)) {
+    return [];
+  }
+  return missing.flatMap((entry: unknown) =>
+    typeof entry === 'object' &&
+    entry !== null &&
+    typeof (entry as { name?: unknown }).name === 'string'
+      ? [(entry as { name: string }).name]
+      : [],
   );
 }
 
@@ -1568,6 +1672,10 @@ function History({ job }: { job: WorkOrderDetail }) {
                         typeof event.details.startsAt === 'string'
                           ? when(event.details.startsAt, locale)
                           : '',
+                      // Going ahead without a qualification (P26) names what was missing.
+                      missing: missingNames(event.details.missing).join(
+                        t('operations.qualifications.listSeparator'),
+                      ),
                     })
                   : t('operations.workOrder.nobodySignedEvent', {
                       actor: event.actor.name,

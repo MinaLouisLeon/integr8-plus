@@ -366,6 +366,18 @@ export const apiErrorsEn = {
   purchase_id_taken: 'This purchase belongs to another job.',
   purchase_not_ready:
     'The purchase this receipt belongs to has not arrived yet. It will be sent again.',
+  qualification_changed:
+    'This record was changed elsewhere since you loaded it. Reload and try again.',
+  qualification_dates_reversed: 'The expiry date must be on or after the issue date.',
+  qualification_member_unknown: 'This person is not in the company.',
+  qualification_name_taken: 'Another qualification already has this name.',
+  qualification_removed:
+    'This record was removed, so it can no longer change. Add a new one instead.',
+  qualification_skill_expires: 'A skill does not expire. Leave the expiry date empty.',
+  qualification_type_archived: 'This qualification is archived. Restore it first.',
+  qualification_type_changed:
+    'This qualification was changed elsewhere since you loaded it. Reload and try again.',
+  qualification_type_unknown: 'This qualification does not exist.',
   quote_closed: 'This quote is no longer open.',
   quote_converted: 'This quote has already become a sales order.',
   quote_empty: 'Add at least one line before issuing.',
@@ -486,6 +498,8 @@ export const apiErrorsEn = {
   visit_slot_invalid:
     'A visit must end after it starts and last at most a week. Plan longer work as several visits.',
   visit_unknown: 'This visit is no longer on the job. Pull to refresh it.',
+  visit_unqualified:
+    'Nobody on this visit holds a qualification the job needs for its dates. Give a reason to go ahead anyway.',
   waits_for_invoice: 'Post or set aside the invoice it follows first.',
   website_key_invalid: 'This website key is not valid. Ask Integr8 for a new one.',
   website_key_limit:

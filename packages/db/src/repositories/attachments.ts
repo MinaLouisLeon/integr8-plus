@@ -14,7 +14,9 @@ export type AttachmentOwner =
   /** An item's image or datasheet (0040). */
   | { itemId: string }
   /** A receipt for a part bought from a merchant for a job (0040). */
-  | { workOrderPurchaseId: string };
+  | { workOrderPurchaseId: string }
+  /** A scan of a member's certificate (0052). */
+  | { memberQualificationId: string };
 
 export interface Attachment {
   id: string;
@@ -48,6 +50,9 @@ function ownerColumn(owner: AttachmentOwner) {
   }
   if ('workOrderPurchaseId' in owner) {
     return { column: 'work_order_purchase_id' as const, id: owner.workOrderPurchaseId };
+  }
+  if ('memberQualificationId' in owner) {
+    return { column: 'member_qualification_id' as const, id: owner.memberQualificationId };
   }
   return { column: 'work_order_id' as const, id: owner.workOrderId };
 }
@@ -197,7 +202,9 @@ export function toAttachment(row: Selectable<AttachmentsTable>): Attachment {
               ? { itemId: row.item_id }
               : row.work_order_purchase_id !== null
                 ? { workOrderPurchaseId: row.work_order_purchase_id }
-                : { workOrderId: row.work_order_id! };
+                : row.member_qualification_id !== null
+                  ? { memberQualificationId: row.member_qualification_id }
+                  : { workOrderId: row.work_order_id! };
   return {
     id: row.id,
     fileId: row.file_id,

@@ -49,6 +49,7 @@ const page = (cursor: string, vanStock: PullPage['vanStock']): PullPage => ({
   assetSiteIds: [],
   assets: [],
   expenseCategories: null,
+  myQualifications: null,
 });
 
 const policy = { closedJobDays: 30, downloadedFileBytes: 500 * 1024 * 1024 };

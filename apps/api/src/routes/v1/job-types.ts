@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { notFound, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 import { booleanQuery, prioritySchema } from './operations.js';
+import { jobTypeRequirementBodies } from './qualifications.js';
 import { iso, isoOrNull } from './schemas.js';
 
 /**
@@ -35,6 +36,18 @@ const jobTypeSchema = z.object({
   afterPhotos: z.number().int(),
   /** Whether the customer signs off before a job of this type completes. */
   signatureRequired: z.boolean(),
+  /**
+   * What its jobs need (P26), copied onto each new job. Set with
+   * `PUT /v1/job-types/:jobTypeId/qualifications`.
+   */
+  requiredQualifications: z.array(
+    z.object({
+      qualificationTypeId: z.uuid(),
+      name: z.string(),
+      kind: z.enum(['skill', 'certificate']),
+      archived: z.boolean(),
+    }),
+  ),
   archived: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -91,6 +104,7 @@ async function jobTypeBody(tx: TenantTransaction, jobType: JobType) {
     beforePhotos: jobType.beforePhotos,
     afterPhotos: jobType.afterPhotos,
     signatureRequired: jobType.signatureRequired,
+    requiredQualifications: await jobTypeRequirementBodies(tx, jobType.id),
     archived: jobType.archivedAt !== null,
     createdAt: iso(jobType.createdAt),
     updatedAt: iso(jobType.updatedAt),

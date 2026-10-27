@@ -55,4 +55,4 @@ Agreed on 2026-10-26 (idea 2 in `new-idea.md`):
 
 - Watch a dispatcher work before designing this. They optimise for keystrokes and glance
   time, not for discoverability.
-- Per-engineer working hours, leave and skills stay in P26.
+- Skills and certificates are P26. Working hours and leave go to idea 6 in `new-idea.md`.

@@ -55,6 +55,12 @@ export const EXPORTED_TABLES = [
   'work_order_assignments',
   'work_order_comments',
   'work_order_events',
+  // Skills and certificates (0052): what people hold and what jobs need.
+  'qualification_types',
+  'member_qualifications',
+  'job_type_qualifications',
+  'work_order_qualifications',
+  'work_order_qualification_overrides',
   'forms',
   'form_versions',
   'submissions',

@@ -325,6 +325,7 @@ describe('the categories the phone keeps', () => {
     assetSiteIds: [],
     assets: [],
     expenseCategories: null,
+    myQualifications: null,
     ...overrides,
   });
   const pulling = (...pages: PullPage[]) => {

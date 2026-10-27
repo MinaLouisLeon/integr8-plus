@@ -22,6 +22,7 @@ Recurrence, contracts and SLA timing.
 - [ ] Follow-up job creation from a completed job, carrying context forward
 - [ ] Capacity view: booked against available hours per week
 - [ ] Customer self-booking link with a slot picker
+- [ ] Automatic reminders to the engineer and customer before a job (moved from P26)
 
 ## Exit criteria
 

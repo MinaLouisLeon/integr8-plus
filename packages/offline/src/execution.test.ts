@@ -225,6 +225,7 @@ describe('syncing the day', () => {
       assetSiteIds: [],
       assets: [],
       expenseCategories: null,
+      myQualifications: null,
     };
     const downloads: string[] = [];
     const api = {

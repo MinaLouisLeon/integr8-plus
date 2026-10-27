@@ -190,3 +190,71 @@ export function dunningEmail(input: {
     action: { label: 'Update your card', url: input.billingUrl },
   });
 }
+
+/** `14 January 2028` for a calendar day, which has no time zone to get wrong. */
+function calendarDayWords(value: string): string {
+  return day(new Date(`${value}T00:00:00Z`));
+}
+
+/** One certificate an expiry alert is about (P26). */
+export interface ExpiryItem {
+  /** Whose it is; left out of the holder's own message. */
+  person?: string;
+  qualification: string;
+  expiresOn: string;
+  stage: 'warning' | 'lapsed';
+  /** Planned visits that now lack it, already written in the company's time zone. */
+  affectedVisits: readonly string[];
+}
+
+/**
+ * Certificates that are about to expire, or have (P26).
+ *
+ * One message per person per day, listing everything: a manager whose team has
+ * five certificates lapsing reads one email, not five. The holder's own message
+ * says only what is theirs.
+ */
+export function qualificationExpiryEmail(input: {
+  to: string;
+  companyName: string;
+  items: readonly ExpiryItem[];
+  own: boolean;
+  url: string | null;
+}): EmailMessage {
+  const lapsed = input.items.filter((item) => item.stage === 'lapsed');
+  const line = (item: ExpiryItem) => {
+    const whose = item.person === undefined ? '' : `${item.person}: `;
+    const when =
+      item.stage === 'lapsed'
+        ? `expired on ${calendarDayWords(item.expiresOn)}`
+        : `expires on ${calendarDayWords(item.expiresOn)}`;
+    const visits =
+      item.affectedVisits.length === 0
+        ? ''
+        : ` Planned visits that now need someone else, or a reason: ${item.affectedVisits.join('; ')}.`;
+    return `${whose}${item.qualification} ${when}.${visits}`;
+  };
+  const paragraphs = [
+    input.own
+      ? lapsed.length > 0
+        ? `A certificate of yours on ${input.companyName} has expired or is about to.`
+        : `A certificate of yours on ${input.companyName} is about to expire.`
+      : `Certificates held by people at ${input.companyName} have expired or are about to.`,
+    ...input.items.map(line),
+    input.own
+      ? 'Once it is renewed, send the new certificate to the office so they can record it.'
+      : 'Record each renewal as a new certificate, so the old one stays in the history.',
+  ];
+  return compose({
+    to: input.to,
+    subject:
+      lapsed.length > 0
+        ? `Certificates expired — ${input.companyName}`
+        : `Certificates expiring soon — ${input.companyName}`,
+    title: lapsed.length > 0 ? 'Certificates have expired' : 'Certificates expiring soon',
+    paragraphs,
+    ...(input.url === null || input.own
+      ? {}
+      : { action: { label: 'Open qualifications', url: input.url } }),
+  });
+}

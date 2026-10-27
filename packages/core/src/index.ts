@@ -143,6 +143,32 @@ export {
 } from './scheduling.js';
 
 export {
+  QUALIFICATION_KINDS,
+  qualificationKindSchema,
+  type QualificationKind,
+  DEFAULT_QUALIFICATION_WARNING_DAYS,
+  QUALIFICATION_WARNING_DAYS_MIN,
+  QUALIFICATION_WARNING_DAYS_MAX,
+  QUALIFICATION_OVERRIDE_REASON_MAX,
+  calendarDaySchema,
+  type QualificationHolding,
+  type QualificationRequirement,
+  type DaySpan,
+  HOLDING_STATUSES,
+  type HoldingStatus,
+  type QualificationGap,
+  calendarDay,
+  visitDays,
+  coversDays,
+  holdingStatus,
+  qualificationGaps,
+  newGaps,
+  type ExpiryState,
+  expiryState,
+  requirementsMet,
+} from './qualifications.js';
+
+export {
   canComplete,
   completionMissing,
   jobTimes,

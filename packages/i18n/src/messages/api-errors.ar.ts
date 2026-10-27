@@ -324,6 +324,16 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   purchase_cancelled: 'سبق رفع هذا الشراء من المهمة.',
   purchase_id_taken: 'هذا الشراء يخص مهمة أخرى.',
   purchase_not_ready: 'لم يصل بعد الشراء الذي يخصه هذا الإيصال. سيُرسل مرة أخرى.',
+  qualification_changed: 'تغيّر هذا السجل في مكان آخر منذ حمّلته. أعد التحميل وحاول مرة أخرى.',
+  qualification_dates_reversed: 'يجب أن يكون تاريخ الانتهاء في يوم الإصدار أو بعده.',
+  qualification_member_unknown: 'هذا الشخص ليس من أعضاء الشركة.',
+  qualification_name_taken: 'يوجد مؤهل آخر بهذا الاسم.',
+  qualification_removed: 'أُزيل هذا السجل، فلا يمكن تغييره. أضف سجلًا جديدًا بدلًا منه.',
+  qualification_skill_expires: 'المهارة لا تنتهي صلاحيتها. اترك تاريخ الانتهاء فارغًا.',
+  qualification_type_archived: 'هذا المؤهل مؤرشف. استعده أولًا.',
+  qualification_type_changed:
+    'تغيّر هذا المؤهل في مكان آخر منذ حمّلته. أعد التحميل وحاول مرة أخرى.',
+  qualification_type_unknown: 'هذا المؤهل غير موجود.',
   quote_closed: 'لم يعد عرض السعر هذا مفتوحًا.',
   quote_converted: 'أصبح عرض السعر هذا طلب بيع بالفعل.',
   quote_empty: 'أضف سطرًا واحدًا على الأقل قبل الإصدار.',
@@ -432,6 +442,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   visit_slot_invalid:
     'يجب أن تنتهي الزيارة بعد بدايتها وألا تتجاوز أسبوعًا. خطّط للعمل الأطول على عدة زيارات.',
   visit_unknown: 'لم تعد هذه الزيارة ضمن المهمة. حدّث البيانات.',
+  visit_unqualified:
+    'لا أحد في هذه الزيارة يحمل مؤهلًا تحتاجه المهمة في مواعيدها. اذكر سببًا للمتابعة رغم ذلك.',
   waits_for_invoice: 'رحّل الفاتورة التي يتبعها أو استبعدها أولًا.',
   website_key_invalid: 'مفتاح الموقع هذا غير صالح. اطلب مفتاحًا جديدًا من Integr8.',
   website_key_limit: 'لدى هذه الشركة مفتاحا موقع فعّالان. ألغِ أحدهما قبل إنشاء مفتاح جديد.',

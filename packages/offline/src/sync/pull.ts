@@ -4,6 +4,7 @@ import { applyPulledAssets } from '../assets.js';
 import type { LocalDatabase } from '../database.js';
 import { evict, type EvictionOutcome, type RetentionPolicy } from '../eviction.js';
 import { saveExpenseCategories } from '../expenses.js';
+import { saveMyQualifications } from '../qualifications.js';
 import { identity } from '../queries.js';
 import { upsertCustomer, upsertForm, upsertSite, upsertWorkOrder } from '../snapshot.js';
 import type { SqlConnection } from '../sql.js';
@@ -220,6 +221,12 @@ async function applyPage(
   const categories = (page as Partial<PullPage>).expenseCategories;
   if (firstPage && categories !== undefined) {
     await saveExpenseCategories(sql, categories, at);
+  }
+
+  // The engineer's own skills and certificates (P26), whole, with the first page.
+  const qualifications = (page as Partial<PullPage>).myQualifications;
+  if (firstPage && qualifications !== undefined && qualifications !== null) {
+    await saveMyQualifications(sql, qualifications, at);
   }
 
   // The assets of the page's sites, each with its whole history (phase E3).
