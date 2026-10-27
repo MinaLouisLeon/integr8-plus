@@ -6,6 +6,9 @@ _Integr8 Plus 1.1.2 · everything you do, in order · Oracle Cloud edition_
 
 Stage 0 creates every account and collects every key and secret before anything is installed. Stages 1 to 5 put the stack on Oracle Cloud's Always Free ARM machine with your domain. Stage 6 has GitHub build the staff desktop app. Stage 7 walks a customer's day through all of it, and Stage 8 is how every company gets desktop installers and a phone app of its own. Stage 9 is the production switch. Nothing in any stage needs something from a later stage, and nothing is ever built on your laptop.
 
+> [!NOTE]
+> **New: a demo company full of test data.** One command on the machine creates a company with something in every section (customers, jobs, stock, sales, finance, HR, the ledger and the rest) and nine people to sign in as, one per role. The steps are in [Stage 15](#stage-15--a-demo-company-full-of-test-data).
+
 > [!WARNING]
 > **Destroying the Oracle machine and building a new one?** Start at [Stage 14](#stage-14--destroy-the-oracle-machine-or-empty-it-and-keep-it): it says what to save before the machine goes, which stages to redo on the new one, and which of Stage 0's accounts and keys carry over unchanged.
 
@@ -1569,6 +1572,64 @@ df -h /                                   # most of the disk is free again
 
 - [ ] **To use the machine again**, run Stage 1 from "Connect and run the setup script" (it installs Docker again and re-checks the firewall and Caddy), clone the repository, then continue with part D of this stage: the settings file back, the dump restored if you are keeping the data, the stack started.
 - [ ] **Outside the machine** nothing changed. If you start empty rather than restoring, tidy the old people in Supabase, the old companies' R2 buckets and Stripe test data as Stage 13, part E describes; if you restore, leave them alone.
+
+---
+
+## Stage 15 — A demo company full of test data
+
+_about 20 minutes_
+
+One command on the machine creates a new company, **Nile Delta Facilities (Demo)**, and fills every section of it, so you can test the screens without typing anything in first. It is onboarded the way the dashboard onboards a real company (Enterprise plan, invoiced, its own storage bucket), every module is switched on, and it gets nine people: you as the owner, plus an admin, an HR manager, an inventory manager, a dispatcher, three engineers and a viewer. Then it fills the company through the API, as those people: settings, roles and certificates; customers, contacts and sites; suppliers, stock items, a warehouse and three vans; purchase orders and receipts; bills of materials and assembly orders; assets, contracts, maintenance plans and deadlines; work orders in every state with visits and parts used; forms and submissions; leads, opportunities and activities; quotes, sales orders and deliveries; employees, expense claims and pay runs; invoices, credit notes and payments; e-invoicing settings and codes; ledger journals and postings. Dates are relative to the day you run it: last month's jobs are done, next week's are booked.
+
+> [!WARNING]
+> **It writes made-up data into the database the machine serves**, and makes nine sign-in accounts in Supabase. No other company is touched, and it never sends anything to the Tax Authority, Stripe or a customer. It is safest on the test box (Stage 11), or on Oracle before real customers arrive. Part D removes it.
+
+### A. Put the seeder on the machine
+
+- [ ] **Get the seeder into the repository.** It is the folder `apps/api/src/demo/` (the command, `cli.ts`, and one file per section under `sections/`) plus one line in `apps/api/package.json`, `"demo-company"`. Merge it into the branch the machine runs (`main`, or `staging` on the test box). The API image builds everything under `apps/api/src`, so nothing else changes.
+- [ ] **Rebuild the API on the machine.** Pull the code and rebuild the API and worker images, the same way as a normal update (Stage 12, part D). If the machine pulls GitHub's images instead, wait for "Publish images" to go green, then `pull` and `up -d`.
+
+```bash
+# machine (SSH session)
+cd /opt/integr8
+git pull
+docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build api worker
+
+# check the seeder is in the image: it prints its help
+docker compose -f deploy/compose.yml --env-file deploy/.env \
+  run --rm api node dist/demo/cli.js --help
+```
+
+### B. Run it
+
+```bash
+# machine (SSH session), from /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env \
+  run --rm api node dist/demo/cli.js \
+  --owner-email you@YOUR-EMAIL.com \
+  --owner-name "Your Name" \
+  --slug demo-nile \
+  --confirm-production
+```
+
+- [ ] **Choose the owner's address.** `--owner-email` is you, the company's owner. If that address already signs in to another company, it keeps its own password and the demo company is added to the companies you can switch between. `--confirm-production` is required whenever `APP_ENV` is `staging` or `production`, so the command cannot add test data by accident. `--slug` is the company's short name; leave it out for a random `demo-…` one.
+- [ ] **Optional settings.** `--password "…"` sets the password of every new sign-in account (otherwise one is generated and printed once); `--name "…"` renames the company; `--only crm,sales` fills only some sections (setup, customers and stock always run, because the others need them). `--help` lists everything.
+- [ ] **Save what it prints.** It takes a minute or two, printing a line per section, and ends with a table of nine sign-ins: role, email address and password. The other eight people get addresses made from yours, like `you+demo-nile-omar@YOUR-EMAIL.com`, so any mail for them reaches your own inbox (Gmail and most providers deliver `+` addresses). Put the password in your password manager.
+- [ ] **Read the end of the output.** `Done` with nothing after the sign-ins means every section went in. "Item(s) were skipped" lists small things the API refused, one per line; the rest is there. "Section(s) did not finish" names the section and the request that was refused; every other section still ran. Running it again makes a second company, so give it a new `--slug`.
+
+> [!NOTE]
+> **"A company with the slug … already exists"**: pick another `--slug`. **"SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required"**: the env file's Supabase lines are missing (Stage 3); the seeder needs them to create the sign-in accounts. **"Refusing …" or "APP_ENV is production"**: add `--confirm-production`. A fresh database with no super admin yet works too: the company's history then names a "Demo seed" staff account that cannot sign in.
+
+### C. Look around
+
+- [ ] **Sign in as the owner** at `https://app.integr8-media.com`. The dashboard has numbers, and every group in the side menu (Work, CRM, Sales, Finance, Accounting, HR, Inventory, Operations) has records in several states: open the lists, then a few records.
+- [ ] **Sign in as the other roles**, in a private window, with the addresses and password it printed: an engineer sees the jobs they are on, the viewer cannot change anything, the HR manager sees HR and payroll. The company has no apps of its own yet; to try the phone app, build them with Stage 8 using the demo company's short name.
+- [ ] **Check the dashboard**: Companies lists the demo company on Enterprise, Invoiced, with every module on under **Features** and the seed's staff session in its history.
+
+### D. Remove it when you are done
+
+- [ ] **Close the company** from the dashboard, as for any company: its page → **Closing this company**: **Suspend**, then **Export their data** and wait for it to be ready, then **Close this company** with a reason. It is deleted for good seven days later, with its storage bucket.
+- [ ] **Delete the eight demo sign-ins** in Supabase → **Authentication** → **Users**: search for `+demo-nile`, select them, **Delete users**. Leave your own address alone if it signs in to other companies.
 
 ---
 

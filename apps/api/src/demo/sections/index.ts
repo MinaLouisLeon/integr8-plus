@@ -5,7 +5,7 @@ import { holdCustomers, seedCustomers } from './customers.js';
 import { seedEInvoicing } from './e-invoicing.js';
 import { seedFieldService } from './field-service.js';
 import { seedFinance } from './finance.js';
-import { seedFormsAndDocuments } from './forms.js';
+import { seedDocuments, seedForms } from './forms.js';
 import { seedHr } from './hr.js';
 import { seedInventory } from './inventory.js';
 import { seedLedgerActivity, seedLedgerSetup } from './ledger.js';
@@ -41,8 +41,14 @@ export const DEMO_SECTIONS: readonly DemoSection[] = [
     run: seedManufacturing,
   },
   { key: 'assets', name: 'Assets, contracts and maintenance plans', run: seedAssetsAndContracts },
-  { key: 'field-service', name: 'Work orders, visits and parts used', run: seedFieldService },
-  { key: 'forms', name: 'Forms, submissions and documents', run: seedFormsAndDocuments },
+  // Forms before jobs, so engineers can fill the service report on the job.
+  { key: 'forms', name: 'Forms', run: seedForms },
+  {
+    key: 'field-service',
+    name: 'Work orders, visits, reports and parts used',
+    run: seedFieldService,
+  },
+  { key: 'documents', name: 'Submissions and PDF documents', run: seedDocuments },
   { key: 'crm', name: 'CRM: pipelines, leads, opportunities, activities', run: seedCrm },
   { key: 'sales', name: 'Sales: quotes, orders, deliveries', run: seedSales },
   { key: 'hr', name: 'HR: employees, expenses, payroll', run: seedHr },
