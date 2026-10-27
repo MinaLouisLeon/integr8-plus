@@ -170916,7 +170916,12 @@
                             "additionalProperties": false
                           },
                           "status": {
-                            "type": "string"
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "paused",
+                              "ended"
+                            ]
                           },
                           "nextDueOn": {
                             "nullable": true,

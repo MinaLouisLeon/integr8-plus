@@ -108,3 +108,6 @@ export { AssistantScreen } from './ai/assistant-screen.js';
 export type { VoiceInput } from './ai/voice.js';
 export { ScheduleScreen } from './schedule/schedule-screen.js';
 export { QualificationsScreen } from './qualifications/qualifications-screen.js';
+export { ContractScreen, ContractsScreen } from './contracts/contracts-screen.js';
+export { MaintenanceScreen } from './maintenance/maintenance-screen.js';
+export { DeadlinesScreen } from './deadlines/deadlines-screen.js';

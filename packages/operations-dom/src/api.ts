@@ -27,6 +27,11 @@ export interface OperationsConfig {
     schedule?: string;
     /** People's skills and certificates (P26), where the host app has it. */
     qualifications?: string;
+    /** Maintenance plans, service contracts and response deadlines (P27). */
+    maintenance: string;
+    contracts: string;
+    contract: (id: string) => string;
+    deadlines: string;
     customers: string;
     customer: (id: string) => string;
     site: (id: string) => string;
@@ -273,6 +278,26 @@ export type QualificationList = Json<'/v1/qualifications', 'get', 200>;
 export type QualificationRecord = QualificationList['items'][number];
 export type Eligibility = Json<'/v1/work-orders/{workOrderId}/eligibility', 'get', 200>;
 export type JobTypeRequirement = JobType['requiredQualifications'][number];
+/** Maintenance plans, service contracts and response deadlines (P27). */
+export type ContractList = Json<'/v1/contracts', 'get', 200>;
+export type Contract = ContractList['items'][number];
+export type ContractStanding = Contract['standing'];
+export type ContractDetail = Json<'/v1/contracts/{contractId}', 'get', 200>;
+export type MaintenancePlanList = Json<'/v1/maintenance-plans', 'get', 200>;
+export type MaintenancePlan = MaintenancePlanList['items'][number];
+export type MaintenanceList = Json<'/v1/maintenance', 'get', 200>;
+export type MaintenanceItem = MaintenanceList['items'][number];
+export type MaintenanceStanding = MaintenanceItem['standing'];
+export type DeadlineRules = Json<'/v1/deadline-rules', 'get', 200>;
+export type DeadlineRule = DeadlineRules['rules'][number];
+export type DeadlineReport = Json<'/v1/deadline-report', 'get', 200>;
+export type DeadlineSummary = DeadlineReport['totals'];
+export type DeadlineMiss = DeadlineReport['misses'][number];
+export type JobCoverage = NonNullable<WorkOrderSummary['coverage']>;
+export type CoverageReason = JobCoverage['reason'];
+export type JobDeadline = NonNullable<WorkOrderSummary['deadline']>;
+export type DeadlineState = JobDeadline['state'];
+export type JobDeadlines = NonNullable<WorkOrderDetail['deadlines']>;
 export type SavedView = Json<'/v1/saved-views', 'get', 200>['items'][number];
 export type ImportRecord = Json<'/v1/imports', 'get', 200>['items'][number];
 export type ImportDetail = Json<'/v1/imports/{importId}', 'get', 200>;
@@ -598,6 +623,12 @@ export const keys = {
     ['work-orders', 'eligibility', workOrderId, startsAt, endsAt] as const,
   qualificationTypes: (archived: boolean) => ['qualifications', 'types', archived] as const,
   qualifications: (query: Record<string, unknown>) => ['qualifications', 'records', query] as const,
+  contracts: (query: Record<string, unknown>) => ['contracts', 'list', query] as const,
+  contract: (id: string) => ['contracts', 'contract', id] as const,
+  maintenancePlans: (query: Record<string, unknown>) => ['maintenance', 'plans', query] as const,
+  maintenance: (query: Record<string, unknown>) => ['maintenance', 'list', query] as const,
+  deadlineRules: ['deadlines', 'rules'] as const,
+  deadlineReport: (query: Record<string, unknown>) => ['deadlines', 'report', query] as const,
   views: ['saved-views'] as const,
   customers: (query: Record<string, unknown>) => ['customers', 'list', query] as const,
   customer: (id: string) => ['customers', id] as const,

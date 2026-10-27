@@ -4,6 +4,7 @@ import { jobTimes } from '@integr8/core';
 import {
   apiErrorCodeMessage,
   apiErrorMessage,
+  formatCalendarDate,
   formatDateTime,
   type TFunction,
   useTranslation,
@@ -36,6 +37,9 @@ import { JobAssetsPanel } from '../assets/job-assets.js';
 import { useAssetAccess } from '../assets/asset-parts.js';
 import { GapList } from '../qualifications/override.js';
 import { RequirementList, RequirementsDialog } from '../qualifications/requirements.js';
+import { CoverageCard } from '../contracts/job-coverage.js';
+import { DeadlinesCard } from '../deadlines/deadline-parts.js';
+import { PlannedMaintenance } from '../maintenance/maintenance-parts.js';
 
 /**
  * One job.
@@ -193,6 +197,7 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
             <Detail label={t('operations.workOrder.dueWindow')}>
               <DueWindow from={workOrder.dueFrom} by={workOrder.dueBy} locale={locale} />
             </Detail>
+            <PlannedMaintenance job={job} />
             {job.salesOrders.length === 0 ? null : (
               <Detail label={t('sales.orders.onJob')}>
                 {job.salesOrders.map((order) => (
@@ -233,6 +238,13 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
 
         <Crew job={job} onChanged={refresh} />
       </div>
+
+      {job.coverage === null && job.deadlines === null ? null : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <CoverageCard job={job} />
+          <DeadlinesCard deadlines={job.deadlines} />
+        </div>
+      )}
 
       <Visits job={job} />
       <Requirements job={job} />
@@ -1633,6 +1645,15 @@ function missingNames(missing: unknown): string[] {
   );
 }
 
+/** The coverage a `coverage_changed` event moved to, in words. */
+function coverageWord(to: unknown, t: TFunction): string {
+  const status =
+    typeof to === 'object' && to !== null ? (to as { status?: unknown }).status : undefined;
+  return status === 'covered' || status === 'chargeable'
+    ? t(`operations.coverage.word.${status}`)
+    : '';
+}
+
 /** How far behind `occurredAt` an event may be recorded before the history says so. */
 const RECORDED_LATE_MS = 60_000;
 
@@ -1676,6 +1697,22 @@ function History({ job }: { job: WorkOrderDetail }) {
                       missing: missingNames(event.details.missing).join(
                         t('operations.qualifications.listSeparator'),
                       ),
+                      // Maintenance, coverage and deadline events (P27).
+                      title: typeof event.details.title === 'string' ? event.details.title : '',
+                      day:
+                        typeof event.details.dueOn === 'string'
+                          ? formatCalendarDate(event.details.dueOn, { locale })
+                          : '',
+                      coverage: coverageWord(event.details.to, t),
+                      deadline:
+                        event.details.deadline === 'response' ||
+                        event.details.deadline === 'completion'
+                          ? t(`operations.deadlines.kind.${event.details.deadline}`)
+                          : '',
+                      due:
+                        typeof event.details.dueAt === 'string'
+                          ? when(event.details.dueAt, locale)
+                          : '',
                     })
                   : t('operations.workOrder.nobodySignedEvent', {
                       actor: event.actor.name,

@@ -20,6 +20,8 @@ import {
   useRowMenu,
   when,
 } from '../ui.js';
+import { CoverageBadge } from '../contracts/contract-parts.js';
+import { DeadlineChip } from '../deadlines/deadline-parts.js';
 
 /**
  * Finding and managing jobs: tabs by state with counts, filters, saved views,
@@ -525,7 +527,14 @@ export function WorkOrderListScreen({
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <StateBadge state={item.state} />
                       <PriorityBadge priority={item.priority} />
+                      <DeadlineChip deadline={item.deadline} />
+                      <CoverageBadge coverage={item.coverage} />
                       <span className="text-xs text-content-muted">{item.jobType.name}</span>
+                      {item.maintenance ? (
+                        <span className="text-xs text-content-muted">
+                          {t('operations.maintenance.planned')}
+                        </span>
+                      ) : null}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-content">

@@ -8,6 +8,7 @@ import {
   DEFAULT_RENEWAL_NOTICE_DAYS,
   formatContractReference,
   holds,
+  PLAN_STATUSES,
   RENEWAL_NOTICE_DAYS_MAX,
   renewalTerm,
 } from '@integr8/core';
@@ -305,7 +306,7 @@ export const getContractRoute = defineRoute({
             id: z.uuid(),
             title: z.string(),
             asset: z.object({ id: z.uuid(), name: z.string() }),
-            status: z.string(),
+            status: z.enum(PLAN_STATUSES),
             nextDueOn: z.string().nullable(),
           }),
         ),

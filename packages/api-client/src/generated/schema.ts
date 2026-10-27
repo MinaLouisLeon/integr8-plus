@@ -73621,7 +73621,8 @@ export interface operations {
                                 id: string;
                                 name: string;
                             };
-                            status: string;
+                            /** @enum {string} */
+                            status: "active" | "paused" | "ended";
                             nextDueOn: string | null;
                         }[];
                         jobs: {

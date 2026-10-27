@@ -30,6 +30,7 @@ import {
 import { CustomerRecordsSection } from '../crm/customer-360.js';
 import { CustomerCrmSection } from '../crm/customer-crm.js';
 import { CustomerAccountSection } from '../finance/customer-account.js';
+import { CustomerContractsSection } from '../contracts/customer-contracts.js';
 
 /** A customer: details, contacts, sites, and recent jobs. */
 export function CustomerScreen({ customerId }: { customerId: string }) {
@@ -228,6 +229,7 @@ export function CustomerScreen({ customerId }: { customerId: string }) {
         )}
       </section>
 
+      <CustomerContractsSection customerId={customerId} customerName={customer.name} />
       <CustomerCrmSection customerId={customerId} customerName={customer.name} />
       <CustomerAccountSection customerId={customerId} customerName={customer.name} />
       <CustomerRecordsSection customerId={customerId} />
