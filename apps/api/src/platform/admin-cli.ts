@@ -1,4 +1,5 @@
 import {
+  hashPassword,
   loadAuthConfig,
   loadSigningKey,
   loadVerificationKeys,
@@ -9,6 +10,7 @@ import {
 import {
   closeDatabase,
   configureDatabase,
+  getAuthDataSource,
   getPlatformDataSource,
   loadDatabaseConfig,
 } from '@integr8/db';
@@ -41,6 +43,15 @@ import { loadApiConfig } from '../config.js';
  *
  * Takes any account off the staff, terminal-made ones included, which the
  * dashboard cannot do. It ends every session the account has.
+ *
+ *   node dist/platform/admin-cli.js user-password <email>
+ *
+ * For company people, when this server keeps their passwords itself
+ * (IDENTITY_PROVIDER=local): gives the address a new generated password and
+ * prints it once, making its sign-in identity if it has none. The person still
+ * needs a membership to get into a company (an invitation, or onboarding); this
+ * only sets what they type. Under Supabase it refuses, because Supabase holds
+ * the password.
  */
 
 const USAGE = `
@@ -52,6 +63,9 @@ Usage:
   admin-cli remove <email>                      Take an account off the staff and
                                                end its sessions.
   admin-cli list                                Every platform account.
+  admin-cli user-password <email>               With IDENTITY_PROVIDER=local: give a
+                                               company person's sign-in a new
+                                               password, and print it once.
 `.trim();
 
 async function main(argv: string[]): Promise<number> {
@@ -179,6 +193,62 @@ async function main(argv: string[]): Promise<number> {
           metadata: { email: account.email, sessions: ended },
         });
         console.log(`Removed ${account.email}; ended ${ended} session(s).`);
+        return 0;
+      }
+
+      case 'user-password': {
+        const [email] = rest;
+        if (!email?.includes('@')) {
+          console.error(USAGE);
+          return 1;
+        }
+        if (config.IDENTITY_PROVIDER !== 'local') {
+          console.error(
+            'IDENTITY_PROVIDER is supabase: Supabase holds company passwords. Reset it there, or set IDENTITY_PROVIDER=local.',
+          );
+          return 1;
+        }
+
+        const identities = (await getAuthDataSource()).identities;
+        const password = randomBytes(18).toString('base64url');
+        const hash = await hashPassword(password);
+        const existing = await identities.findByEmail(email);
+        if (existing === undefined) {
+          // Somebody already in a company (signed in through Supabase until
+          // now) keeps the user id their memberships name.
+          const memberIds = await platform.tenants.memberUserIdsByEmail(email);
+          if (memberIds.length > 1) {
+            console.error(
+              `${email} is a member under ${String(memberIds.length)} different user ids; nothing was changed. Ask a developer to merge them first.`,
+            );
+            return 1;
+          }
+          await identities.create({
+            ...(memberIds[0] === undefined ? {} : { id: memberIds[0] }),
+            email,
+            passwordHash: hash,
+            emailVerified: true,
+          });
+        } else {
+          await identities.setPassword(existing.id, hash);
+        }
+
+        console.log(
+          [
+            existing === undefined
+              ? `Created a sign-in for ${email.trim().toLowerCase()}.`
+              : `Set a new password for ${existing.email}.`,
+            '',
+            'Shown once. Send it privately; they sign in with it at',
+            `${config.WEB_APP_URL ?? '<WEB_APP_URL>'}/sign-in.`,
+            '',
+            `  Password:  ${password}`,
+            '',
+            existing === undefined
+              ? 'If they are not in a company yet, invite this address from the company, or onboard a company with it as the owner.'
+              : 'Sessions already signed in stay signed in until they expire or are revoked.',
+          ].join('\n'),
+        );
         return 0;
       }
 

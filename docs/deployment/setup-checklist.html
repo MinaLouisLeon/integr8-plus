@@ -18,6 +18,7 @@
     <div class="note"><p><b>New: the AI assistant, with or without AI.</b> It is off until you turn it on. Each company answers either with an <b>AI model</b> from the one provider the server uses (OpenAI, Groq, Google Gemini or Anthropic) or from the <b>help library</b>, with no AI, no key and no cost; you choose per plan or per company. The steps are spread through the stages where they belong: <a href="#ai-account">Stage 0, Part M</a> (choosing a provider, or none, and its key), <a href="#ai-env">Stage 3</a> (the server's settings), <a href="#ai-dashboard">Stage 5</a> (what each plan allows, and where answers come from), <a href="#ai-company">Stage 7</a> (a company's apps, and each person's percentage share) and <a href="#ai-update">Stage 12</a> (getting it onto a running machine and into the apps). AI answers need a <b>share</b> per person; help-library answers do not. <b>Voice</b> needs nothing on the server: members can speak a question (AI-model companies) and have answers read aloud (every company), with the device's own speech tools; the steps are in Stage 7 (try it) and Stage 8 (the phone apps need a rebuild).</p></div>
     <div class="note"><p><b>New: PDF documents.</b> Integr8 staff design PDF templates for a company's forms in the staff desktop app. The company turns a submission into a PDF with a QR code, keeps it in its own storage, and finds it again in a <b>Documents</b> register; its own website can look documents up with a <b>website key</b>. Nothing to set up on the server: the image brings what it needs. The steps: <a href="#docs-env">Stage 3</a> (one line to check), <a href="#docs-company">Stage 7</a> (switching it on, a template, a first PDF, a website key) and <a href="#docs-update">Stage 12</a> (bringing it to a running machine). The operator's details are in <code>docs/documents/RUNBOOK.md</code>.</p></div>
     <div class="note"><p><b>New in <code>main</code>: e-invoicing for the Egyptian Tax Authority (ETA).</b> A company prepares an ETA document from an issued invoice, signs it with its own token on the accountant's computer, and sends it; Integr8 follows its status until the ETA says it is valid. Each company enters its own ETA credentials, which are locked on the server. It is <b>not ready for real tax documents</b>: nothing has been sent to the ETA yet, and the desktop app cannot sign until a driver for the company's token is added. It reached <code>main</code> in pull request 109; its desktop installers come from builds after pull request 110. The steps: <a href="#eta-key">Stage 0, Part B</a> (one more key), <a href="#eta-env">Stage 3</a> (where it goes), <a href="#eta-company">Stage 7</a> (setting a company up on the ETA's test system) and <a href="#eta-update">Stage 12</a> (bringing it to a running machine). The operator's details are in <code>docs/e-invoicing/RUNBOOK.md</code>.</p></div>
+    <div class="note"><p><b>New: a demo company full of test data.</b> One command on the machine creates a company with something in every section (customers, jobs, stock, sales, finance, HR, the ledger and the rest) and nine people to sign in as, one per role. The steps are in <a href="#demo">Stage 15</a>.</p></div>
     <div class="note warn"><p><b>Destroying the Oracle machine and building a new one?</b> Start at <a href="#rebuild">Stage 14</a>: it says what to save before the machine goes, which stages to redo on the new one, and which of Stage 0's accounts and keys carry over unchanged.</p></div>
     <div class="progress" aria-live="polite"><span id="progress-text">0 of 0 steps ticked</span><div class="bar" aria-hidden="true"><span id="progress-bar"></span></div><button type="button" class="clear" id="clear-ticks">Clear all ticks</button><button type="button" class="clear-cancel" id="clear-cancel" hidden>Cancel</button></div>
   </header>
@@ -39,6 +40,7 @@
       <a class="later" href="#update"><span class="n">12</span>Updating to a new version</a>
       <a class="later" href="#fresh"><span class="n">13</span>Wipe the machine and start fresh</a>
       <a href="#rebuild"><span class="n">14</span>Destroy or empty the machine</a>
+      <a class="later" href="#demo"><span class="n">15</span>A demo company to test with</a>
     </nav>
 
     <main>
@@ -123,6 +125,7 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
 
         <h3>E. Supabase, for sign-in</h3>
         <p>The product uses Supabase only for identity: passwords and magic links. Companies, roles and sessions live in the product's own database, which runs on your machine until Stage 10.</p>
+        <div class="note"><p><b>Skip this part if the server keeps passwords itself.</b> With <code>IDENTITY_PROVIDER=local</code> (Stage 3) company people's passwords are kept, hashed, in the product's own database, and Supabase is not used at all. Integr8 staff never sign in through Supabase either way.</p></div>
         <ul class="check" data-stage="a4">
           <li><input type="checkbox" id="a4-1"><label for="a4-1"><b>Create an account</b> at <code>supabase.com</code> (GitHub sign-in is fine), then <b>New project</b> named <code>integr8-production</code> in the region nearest your customers (cannot be changed). Save the <b>database password</b> it shows once; Stage 10 needs it.</label></li>
           <li><input type="checkbox" id="a4-2"><label for="a4-2"><b>Copy the Project URL</b>: Project Settings → <b>API</b> → "Project URL", like <code>https://abcdefghij.supabase.co</code>. Key sheet: <code>SUPABASE_URL</code>.</label></li>
@@ -375,7 +378,8 @@ INTEGR8_AUTH_PASSWORD=cccc…             ┐ same value
 DATABASE_URL_AUTH=postgres://integr8_auth:cccc…@postgres:5432/integr8     ┘</code></pre>
         <ul class="check" data-stage="s3b">
           <li><input type="checkbox" id="s3-4"><label for="s3-4"><b>Signing keys.</b> Below the database lines is a block headed <code># Tokens and secrets</code>. It has four variables with nothing after the <code>=</code>: <code>AUTH_SIGNING_KEY_ID=</code>, <code>AUTH_SIGNING_KEY=</code>, <code>AUTH_VERIFICATION_KEYS=</code>, <code>PLATFORM_SECRET_KEY=</code>. The key generator in Stage 0, Part B produced exactly these four lines, each already in the form <code>NAME=value</code>. For each one, delete the empty line in the file and paste the whole line from your password manager in its place; the names must match and nothing else on the line changes. The values are long (the second is a few hundred characters) and must stay on one line each. The <code>AUTH_ISSUER</code> line just above them was already set in step 2.</label></li>
-          <li><input type="checkbox" id="s3-4b"><label for="s3-4b"><b>Supabase.</b> The next block, headed <code># Identity (Supabase Auth)</code>, has two lines. Replace <code>https://PROJECT_REF.supabase.co</code> on the <code>SUPABASE_URL=</code> line with your Project URL from Stage 0, Part E, and paste the service role key after <code>SUPABASE_SERVICE_ROLE_KEY=</code>. Afterwards the block reads like this, with your own values:</label></li>
+          <li><input type="checkbox" id="s3-4c"><label for="s3-4c"><b>Sign-in: built in, or Supabase.</b> The block headed <code># Identity</code> starts with <code>IDENTITY_PROVIDER=supabase</code>. To keep company people's passwords on this server with no outside service, change it to <code>local</code> and skip the next step; the two Supabase lines are then not read, and sign-in links go out through the email settings below. To use Supabase, leave it as it is and do the next step.</label></li>
+          <li><input type="checkbox" id="s3-4b"><label for="s3-4b"><b>Supabase.</b> The next block, headed <code># Identity</code>, has two Supabase lines under <code>IDENTITY_PROVIDER</code>. Replace <code>https://PROJECT_REF.supabase.co</code> on the <code>SUPABASE_URL=</code> line with your Project URL from Stage 0, Part E, and paste the service role key after <code>SUPABASE_SERVICE_ROLE_KEY=</code>. Afterwards the block reads like this, with your own values:</label></li>
         </ul>
         <pre><code>AUTH_ISSUER=https://api.integr8-media.com
 AUTH_SIGNING_KEY_ID=integr8-2026-10-09-4bv1e4          ← from keys.txt, line 1
@@ -1008,6 +1012,22 @@ git checkout main &amp;&amp; git pull</code></pre>
           <li><input type="checkbox" id="s12-57"><label for="s12-57"><b>Update the apps</b> (part G): the new desktop apps have <b>Contracts</b>, <b>Maintenance</b> and <b>Deadlines</b>, and the new phone builds show coverage, deadlines and planned maintenance on each job. An older app keeps working without them.</label></li>
         </ul>
         <div class="note warn"><p><b>Rolling back with contracts, plans and deadlines.</b> Fix forward once a plan has made a job or a deadline has been missed: an older version does not know those history entries, so the job would not open in it. If you must roll back (part I), leave migration 0053 applied; its <code>.down.sql</code> deletes every contract, plan and deadline and is for development databases only.</p></div>
+        <h3 id="identity-update">Q. Sign-in without Supabase (next release)</h3>
+        <p>The built-in sign-in adds migration 0054 and one setting. Nothing changes until you change the setting.</p>
+        <ul class="check" data-stage="s12q">
+          <li><input type="checkbox" id="s12-q1"><label for="s12-q1"><b>Migration 0054 applied</b> during the normal update. It adds two tables for company people's sign-ins, reachable only by the sign-in database role. While <code>IDENTITY_PROVIDER</code> is <code>supabase</code> (the default) they stay empty.</label></li>
+          <li><input type="checkbox" id="s12-q2"><label for="s12-q2"><b>Switch over.</b> In <code>deploy/.env</code> set <code>IDENTITY_PROVIDER=local</code> (part C's check lists it as new), then restart with the usual <code>up -d</code>. The API then starts without <code>SUPABASE_URL</code> and <code>SUPABASE_SERVICE_ROLE_KEY</code>; leave the two lines or delete them.</label></li>
+          <li><input type="checkbox" id="s12-q3"><label for="s12-q3"><b>People who signed in through Supabase before</b> have no password on this server yet. For each of them run the <code>user-password</code> command below: it keeps the user id their companies already know and prints a new password once, to send them privately. People who join from now on set their own when they accept their invitation.</label></li>
+          <li><input type="checkbox" id="s12-q4"><label for="s12-q4"><b>A forgotten password</b>: the same command gives the address a new one. Staff accounts are unchanged: <code>admin-cli create</code> as in Stage 5.</label></li>
+        </ul>
+        <pre><button class="copy" type="button">Copy</button><code># machine (SSH session), from /opt/integr8
+nano deploy/.env                   # IDENTITY_PROVIDER=local
+docker compose -f deploy/compose.yml --env-file deploy/.env up -d
+
+# a password for one company person (prints it once)
+docker compose -f deploy/compose.yml --env-file deploy/.env \
+  run --rm api node dist/platform/admin-cli.js user-password someone@example.com</code></pre>
+        <div class="note warn"><p><b>Going back to Supabase.</b> Set <code>IDENTITY_PROVIDER=supabase</code> again, with its two lines, and <code>up -d</code>. Passwords set on this server are not copied to Supabase, so people who joined while it was <code>local</code> need a Supabase password before they can sign in. Leave migration 0054 applied either way: its <code>.down.sql</code> deletes every password kept here, and is for development databases only.</p></div>
         <div class="note"><p><b>The test box (Stage 11)</b> updates the same way, from <code>staging</code> instead of <code>main</code>: <code>git pull</code> on its <code>staging</code> checkout and <code>pull</code> its <code>:staging</code> images. Updating it first, the day before, is the cheapest rehearsal there is.</p></div>
       </section>
 
@@ -1311,6 +1331,56 @@ df -h /                                   # most of the disk is free again</code
         <ul class="check" data-stage="s14f6">
           <li><input type="checkbox" id="s14-30"><label for="s14-30"><b>To use the machine again</b>, run Stage 1 from "Connect and run the setup script" (it installs Docker again and re-checks the firewall and Caddy), clone the repository, then continue with part D of this stage: the settings file back, the dump restored if you are keeping the data, the stack started.</label></li>
           <li><input type="checkbox" id="s14-31"><label for="s14-31"><b>Outside the machine</b> nothing changed. If you start empty rather than restoring, tidy the old people in Supabase, the old companies' R2 buckets and Stripe test data as Stage 13, part E describes; if you restore, leave them alone.</label></li>
+        </ul>
+      </section>
+
+      <!-- ================================================================ -->
+      <section id="demo">
+        <div class="head"><span class="num">15</span><h2>A demo company full of test data</h2><span class="time">about 20 minutes</span> <span class="pill later">optional</span></div>
+        <p>One command on the machine creates a new company, <b>Nile Delta Facilities (Demo)</b>, and fills every section of it, so you can test the screens without typing anything in first. It is onboarded the way the dashboard onboards a real company (Enterprise plan, invoiced, its own storage bucket), every module is switched on, and it gets nine people: you as the owner, plus an admin, an HR manager, an inventory manager, a dispatcher, three engineers and a viewer. Then it fills the company through the API, as those people: settings, roles and certificates; customers, contacts and sites; suppliers, stock items, a warehouse and three vans; purchase orders and receipts; bills of materials and assembly orders; assets, contracts, maintenance plans and deadlines; work orders in every state with visits and parts used; forms and submissions; leads, opportunities and activities; quotes, sales orders and deliveries; employees, expense claims and pay runs; invoices, credit notes and payments; e-invoicing settings and codes; ledger journals and postings. Dates are relative to the day you run it: last month's jobs are done, next week's are booked.</p>
+        <div class="note warn"><p><b>It writes made-up data into the database the machine serves</b>, and makes nine sign-in accounts (in this server's own database with <code>IDENTITY_PROVIDER=local</code>, or in Supabase). No other company is touched, and it never sends anything to the Tax Authority, Stripe or a customer. It is safest on the test box (Stage 11), or on Oracle before real customers arrive. Part D removes it.</p></div>
+
+        <h3>A. Put the seeder on the machine</h3>
+        <ul class="check" data-stage="s15a">
+          <li><input type="checkbox" id="s15-1"><label for="s15-1"><b>Get the seeder into the repository.</b> It is the folder <code>apps/api/src/demo/</code> (the command, <code>cli.ts</code>, and one file per section under <code>sections/</code>) plus one line in <code>apps/api/package.json</code>, <code>"demo-company"</code>. Merge it into the branch the machine runs (<code>main</code>, or <code>staging</code> on the test box). The API image builds everything under <code>apps/api/src</code>, so nothing else changes.</label></li>
+          <li><input type="checkbox" id="s15-2"><label for="s15-2"><b>Rebuild the API on the machine.</b> Pull the code and rebuild the API and worker images, the same way as a normal update (Stage 12, part D). If the machine pulls GitHub's images instead, wait for "Publish images" to go green, then <code>pull</code> and <code>up -d</code>.</label></li>
+        </ul>
+        <pre><button class="copy" type="button">Copy</button><code># machine (SSH session)
+cd /opt/integr8
+git pull
+docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build api worker
+
+# check the seeder is in the image: it prints its help
+docker compose -f deploy/compose.yml --env-file deploy/.env \
+  run --rm api node dist/demo/cli.js --help</code></pre>
+
+        <h3>B. Run it</h3>
+        <pre><button class="copy" type="button">Copy</button><code># machine (SSH session), from /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env \
+  run --rm api node dist/demo/cli.js \
+  --owner-email you@YOUR-EMAIL.com \
+  --owner-name "Your Name" \
+  --slug demo-nile \
+  --confirm-production</code></pre>
+        <ul class="check" data-stage="s15b">
+          <li><input type="checkbox" id="s15-3"><label for="s15-3"><b>Choose the owner's address.</b> <code>--owner-email</code> is you, the company's owner. If that address already signs in to another company, it keeps its own password and the demo company is added to the companies you can switch between. <code>--confirm-production</code> is required whenever <code>APP_ENV</code> is <code>staging</code> or <code>production</code>, so the command cannot add test data by accident. <code>--slug</code> is the company's short name; leave it out for a random <code>demo-…</code> one.</label></li>
+          <li><input type="checkbox" id="s15-4"><label for="s15-4"><b>Optional settings.</b> <code>--password "…"</code> sets the password of every new sign-in account (otherwise one is generated and printed once); <code>--name "…"</code> renames the company; <code>--only crm,sales</code> fills only some sections (setup, customers and stock always run, because the others need them). <code>--help</code> lists everything.</label></li>
+          <li><input type="checkbox" id="s15-5"><label for="s15-5"><b>Save what it prints.</b> It takes a minute or two, printing a line per section, and ends with a table of nine sign-ins: role, email address and password. The other eight people get addresses made from yours, like <code>you+demo-nile-omar@YOUR-EMAIL.com</code>, so any mail for them reaches your own inbox (Gmail and most providers deliver <code>+</code> addresses). Put the password in your password manager.</label></li>
+          <li><input type="checkbox" id="s15-6"><label for="s15-6"><b>Read the end of the output.</b> <code>Done</code> with nothing after the sign-ins means every section went in. "Item(s) were skipped" lists small things the API refused, one per line; the rest is there. "Section(s) did not finish" names the section and the request that was refused; every other section still ran. Running it again makes a second company, so give it a new <code>--slug</code>.</label></li>
+        </ul>
+        <div class="note"><p><b>"A company with the slug … already exists"</b>: pick another <code>--slug</code>. <b>"SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required"</b>: the server is set to use Supabase but has no Supabase lines; set <code>IDENTITY_PROVIDER=local</code> (Stage 12, part Q) or fill them in (Stage 3). <b>"Refusing …" or "APP_ENV is production"</b>: add <code>--confirm-production</code>. A fresh database with no super admin yet works too: the company's history then names a "Demo seed" staff account that cannot sign in.</p></div>
+
+        <h3>C. Look around</h3>
+        <ul class="check" data-stage="s15c">
+          <li><input type="checkbox" id="s15-7"><label for="s15-7"><b>Sign in as the owner</b> at <code>https://app.integr8-media.com</code>. The dashboard has numbers, and every group in the side menu (Work, CRM, Sales, Finance, Accounting, HR, Inventory, Operations) has records in several states: open the lists, then a few records.</label></li>
+          <li><input type="checkbox" id="s15-8"><label for="s15-8"><b>Sign in as the other roles</b>, in a private window, with the addresses and password it printed: an engineer sees the jobs they are on, the viewer cannot change anything, the HR manager sees HR and payroll. The company has no apps of its own yet; to try the phone app, build them with Stage 8 using the demo company's short name.</label></li>
+          <li><input type="checkbox" id="s15-9"><label for="s15-9"><b>Check the dashboard</b>: Companies lists the demo company on Enterprise, Invoiced, with every module on under <b>Features</b> and the seed's staff session in its history.</label></li>
+        </ul>
+
+        <h3>D. Remove it when you are done</h3>
+        <ul class="check" data-stage="s15d">
+          <li><input type="checkbox" id="s15-10"><label for="s15-10"><b>Close the company</b> from the dashboard, as for any company: its page → <b>Closing this company</b>: <b>Suspend</b>, then <b>Export their data</b> and wait for it to be ready, then <b>Close this company</b> with a reason. It is deleted for good seven days later, with its storage bucket.</label></li>
+          <li><input type="checkbox" id="s15-11"><label for="s15-11"><b>The eight demo sign-ins</b> stop working once the company is closed: nobody can sign in to a company that is gone. With Supabase, delete them there too: <b>Authentication</b> → <b>Users</b>, search for <code>+demo-nile</code>, select them, <b>Delete users</b>. Leave your own address alone if it signs in to other companies.</label></li>
         </ul>
       </section>
 

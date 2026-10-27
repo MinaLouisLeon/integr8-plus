@@ -289,6 +289,12 @@ export {
   type LoginAttemptInput,
   type LoginSecurityRepository,
 } from './repositories/login-security.js';
+export {
+  identityEmail,
+  type CreateIdentityInput,
+  type IdentitiesRepository,
+  type Identity,
+} from './repositories/identities.js';
 
 export {
   isUsableMembership,

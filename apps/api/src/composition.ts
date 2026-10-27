@@ -5,6 +5,7 @@ import {
   loadAuthConfig,
   loadSigningKey,
   loadVerificationKeys,
+  LocalIdentityProvider,
   type PasswordPolicy,
   PlatformSessionService,
   SessionService,
@@ -24,6 +25,7 @@ import {
 import { assertSeatAvailable } from './billing/entitlements.js';
 import { planFor } from './http/suspension.js';
 import { ExpoPushSender, type PushSender, RecordingPushSender } from './push/sender.js';
+import { magicLinkEmail } from './email/messages.js';
 import { type EmailSender, RecordingEmailSender, ResendEmailSender } from './email/sender.js';
 import { R2Storage } from './media/r2.js';
 import type { MediaStorage } from './media/storage.js';
@@ -124,7 +126,8 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     verificationKeys: await loadVerificationKeys(authConfig),
   });
 
-  const identity = options.identity ?? buildIdentityProvider(options.config, env);
+  const email = buildEmailSender(options.config);
+  const identity = options.identity ?? buildIdentityProvider(options.config, env, email);
   const sessions = new SessionService({ tokens, config: authConfig });
 
   return {
@@ -148,7 +151,7 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     geocoder: buildGeocoder(options.config),
     push: buildPushSender(options.config),
     billing: buildBillingProvider(options.config),
-    email: buildEmailSender(options.config),
+    email,
     ai: {
       provider: buildAiProvider(options.config),
       prices: new PriceTable(options.config),
@@ -234,13 +237,28 @@ export function buildMediaStorage(config: ApiConfig): MediaStorage {
 }
 
 /**
- * Builds the Supabase identity provider, or refuses to.
+ * Builds the identity provider: Supabase, or this server's own (0054).
  *
  * There is no silent fallback to a fake. A service that quietly accepts any
  * password when a variable is missing is a service that will do so in
- * production on the day somebody mistypes a secret name.
+ * production on the day somebody mistypes a secret name. `local` is not a
+ * fake: it keeps scrypt hashes in this database and checks them as strictly.
  */
-function buildIdentityProvider(config: ApiConfig, env: NodeJS.ProcessEnv): IdentityProvider {
+function buildIdentityProvider(
+  config: ApiConfig,
+  env: NodeJS.ProcessEnv,
+  email: EmailSender,
+): IdentityProvider {
+  if (config.IDENTITY_PROVIDER === 'local') {
+    return new LocalIdentityProvider({
+      deliverMagicLink: async (delivery) => {
+        await email.send(
+          magicLinkEmail({ to: delivery.email, url: delivery.url, expiresAt: delivery.expiresAt }),
+        );
+      },
+    });
+  }
+
   const url = env.SUPABASE_URL;
   const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -248,6 +266,7 @@ function buildIdentityProvider(config: ApiConfig, env: NodeJS.ProcessEnv): Ident
     throw new Error(
       [
         'SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required to serve sign-in.',
+        'To keep passwords on this server instead, set IDENTITY_PROVIDER=local.',
         '',
         `APP_ENV is "${config.APP_ENV}".`,
         'See docs/auth/README.md and docs/database/runbook-supabase-setup.md.',

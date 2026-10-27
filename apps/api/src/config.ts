@@ -206,6 +206,16 @@ export const apiConfigSchema = z.object({
    * loudly.
    */
   EMAIL_SENDER: z.enum(['recording', 'resend']).default('recording'),
+  /**
+   * Who checks company people's passwords.
+   *
+   * `supabase` (the default) asks Supabase Auth, with SUPABASE_URL and
+   * SUPABASE_SERVICE_ROLE_KEY. `local` keeps scrypt hashes in this database
+   * (0054) and needs no outside service; sign-in links then go out through
+   * EMAIL_SENDER. Integr8 staff sign in the same way under either: their
+   * passwords were always kept here.
+   */
+  IDENTITY_PROVIDER: z.enum(['supabase', 'local']).default('supabase'),
   /** Resend's API key. A secret: it can send mail as this domain. */
   RESEND_API_KEY: z.string().optional(),
   /** `Name <address@domain>`. The domain has to be verified at the provider. */

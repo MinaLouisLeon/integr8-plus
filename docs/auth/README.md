@@ -1,7 +1,8 @@
 # Authentication
 
-Supabase Auth holds credentials and sends magic links. Everything after a
-credential is accepted belongs to this service.
+Company people's credentials are held either by Supabase Auth or by this
+service itself (`IDENTITY_PROVIDER=local`; see below). Everything after a
+credential is accepted belongs to this service, whichever holds it.
 
 | Document                                  | When you need it                               |
 | ----------------------------------------- | ---------------------------------------------- |
@@ -111,12 +112,36 @@ The `TokenStore` interface and the refresh-timing helpers are in
 `packages/core/src/token-store.ts`. P05 implements them per client against a
 contract that already has tests.
 
+## Credentials kept here: `IDENTITY_PROVIDER=local`
+
+`IdentityProvider` (`packages/auth/src/identity-provider.ts`) is the only place
+sign-in touches a credential store, so it is the one thing that changes.
+`LocalIdentityProvider` implements it over two tables from migration 0054:
+
+- `identities`: one row per person, the address lower-cased and unique, the
+  password as an scrypt hash in the same format super admins use
+  (`passwords.ts`). Its id is the user id every company row carries, exactly
+  as a Supabase user id was.
+- `identity_magic_links`: one-time links, stored as SHA-256 hashes, spent by a
+  single update so two racing requests cannot both win.
+
+Both are reached only by `integr8_auth`, like the lockout tables: the tenant
+runtime role holds nothing on them. An unknown address costs the same scrypt
+work as a wrong password, and both give the same error. Lockout, rate limits,
+memberships and sessions are unchanged, because they sit after the provider.
+
+`admin-cli user-password <email>` sets a person's password from the server.
+For somebody who was already a member while Supabase held credentials, it
+reuses the user id their memberships name, which is how a server moves from
+`supabase` to `local` without anybody losing their companies.
+
 ## Sign-in has no tenant
 
 At the moment a sign-in arrives there is no company, and for an unknown address
 there cannot be one. Lockout, rate limiting and "which companies does this
 person belong to" therefore run over a third database role, `integr8_auth`,
-which reaches two tables and one view and nothing else.
+which reaches the lockout and rate-limit tables, the membership view and, for
+`IDENTITY_PROVIDER=local`, the two credential tables, and nothing else.
 
 That role exists so the tenant runtime role never needs a cross-tenant
 privilege. The schema-invariant suite fails the build if it gains one.

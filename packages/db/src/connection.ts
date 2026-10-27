@@ -10,6 +10,7 @@ import {
 import { AuditLogRepository } from './repositories/audit-log.js';
 import { AuthMembershipsRepository } from './repositories/auth-memberships.js';
 import { IdempotencyRepository } from './repositories/idempotency.js';
+import { IdentitiesRepository } from './repositories/identities.js';
 import { ImpersonationRepository } from './repositories/impersonation.js';
 import {
   type ClaimedJob,
@@ -327,6 +328,8 @@ export interface PlatformDataSource {
  * {@link assertAuthRoleIsNarrow} and again in the schema-invariant suite.
  */
 export interface AuthDataSource {
+  /** Company people's credentials, when the server keeps them (0054). */
+  readonly identities: IdentitiesRepository;
   readonly loginSecurity: LoginSecurityRepository;
   readonly memberships: AuthMembershipsRepository;
   readonly rateLimits: RateLimitRepository;
@@ -621,6 +624,7 @@ export function getPlatformDb(): Kysely<Database> {
 export async function getAuthDataSource(): Promise<AuthDataSource> {
   const db = await getAuthDb();
   return {
+    identities: new IdentitiesRepository(db),
     loginSecurity: new LoginSecurityRepository(db),
     memberships: new AuthMembershipsRepository(db),
     rateLimits: new RateLimitRepository(db),

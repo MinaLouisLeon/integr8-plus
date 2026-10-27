@@ -82,6 +82,13 @@ export {
 } from './identity-provider.js';
 
 export {
+  LocalIdentityProvider,
+  type IdentityStore,
+  type LocalIdentityProviderOptions,
+  type MagicLinkDelivery,
+} from './local-identity-provider.js';
+
+export {
   AccountLockedError,
   AuthError,
   IdentityProviderError,
