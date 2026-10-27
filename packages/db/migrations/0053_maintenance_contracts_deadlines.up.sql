@@ -666,8 +666,9 @@ create function record_coverage_change() returns trigger
 language plpgsql
 security definer
 set search_path = pg_catalog, public
+as $$
 declare
-  before jsonb;
+  previous jsonb;
 begin
   if tg_op = 'INSERT' then
     -- Worked out when the job was created: not a change. An override of a job
@@ -675,13 +676,13 @@ begin
     if new.reason <> 'override' then
       return null;
     end if;
-    before := null;
+    previous := null;
   else
     if (new.status, new.reason, new.contract_id) is not distinct from (old.status, old.reason, old.contract_id)
        and new.override_reason is not distinct from old.override_reason then
       return null;
     end if;
-    before := jsonb_build_object('status', old.status, 'reason', old.reason, 'contractId', old.contract_id);
+    previous := jsonb_build_object('status', old.status, 'reason', old.reason, 'contractId', old.contract_id);
   end if;
   insert into public.work_order_events (tenant_id, work_order_id, kind, actor_id, reason, details)
   values (new.tenant_id, new.work_order_id, 'coverage_changed',
@@ -689,7 +690,7 @@ begin
                    (select w.last_actor from public.work_orders w
                      where w.tenant_id = new.tenant_id and w.id = new.work_order_id)),
           new.override_reason,
-          jsonb_build_object('from', before,
+          jsonb_build_object('from', previous,
                              'to', jsonb_build_object('status', new.status, 'reason', new.reason,
                                                       'contractId', new.contract_id)));
   return null;
