@@ -251,6 +251,90 @@ deployment's email sender; the managers' email links to `WEB_APP_URL/qualificati
 
 A scan is attached with `POST /v1/attachments` and `{ memberQualificationId }`.
 
+## Contracts, maintenance plans and deadlines (P27)
+
+Migration 0053 adds three things that work together: service contracts say what a customer has
+agreed to, maintenance plans make an asset's servicing jobs ahead of time, and deadlines count
+down from when a job is created. The date rules are in `@integr8/core` (`calendar.ts`,
+`maintenance.ts`, `contracts.ts`, `deadlines.ts`).
+
+**Contracts.** A contract (`service_contracts`, numbered `CT-000001` per company) belongs to one
+customer and has a term: a start day and an end day, the last day it covers. It covers all the
+customer's sites, assets and job types, or the ones listed (`service_contract_sites`,
+`_assets`, `_job_types`). It may include a number of call-outs per contract year: jobs that did
+not come from a maintenance plan. Cancelling needs a reason, is final and ends coverage from the
+day given. Renewing makes the next contract with the same coverage, from the day after the end
+for as long again, names the old one (`renewed_from_id`, once only) and moves its maintenance
+plans across. Managers are emailed once when a contract enters its renewal notice period (60
+days by default) and once if it ends without being renewed.
+
+Owners, admins and dispatchers keep contracts (`contract.manage`); viewers read them
+(`contract.read`). Engineers see coverage on their own jobs.
+
+**Coverage.** When a job is created, by any route (the screens, imports, sales orders, plans),
+`WorkOrdersRepository.create` works out its coverage and stores it in `work_order_coverage`:
+**covered** by a contract (`contract`) or by a plan's contract (`maintenance_plan`), or
+**chargeable** with the reason (`no_contract`, `contract_ended`, `site_not_covered`,
+`asset_not_covered`, `job_type_not_covered`, `callouts_used`). A customer who never had a
+contract gets no coverage row, so a company that does not use contracts sees nothing. Linking or
+unlinking an asset works it out again. The office can override it with a reason (`override`),
+which writes a `coverage_changed` event into the job's history; an overridden job, or one a plan
+made, is not worked out again.
+
+**Maintenance plans.** A plan (`maintenance_plans`) belongs to one asset, so it needs the assets
+module, and uses the asset permissions: `asset.manage` keeps plans, `asset.read` sees them. It
+repeats every N days, weeks, months or years, counted one of two ways:
+
+- `calendar`: every interval from the start date, whatever happened. The n-th date is always
+  counted from the start date, so a plan that starts on the 31st comes back to the 31st after a
+  shorter month.
+- `completion`: one interval after the previous job was completed, or after the day it was due
+  if it was cancelled. Only one of its jobs is open at a time.
+
+Due dates are calendar days in the company's time zone. Once a day the worker makes each job
+`lead_days` before its due date (30 by default), unplanned, with a due window from
+`window_before_days` before to `window_after_days` after (7 each by default), so it waits under
+**Needs a visit** on the schedule. Plans at the same site with the same job type and contract,
+whose windows meet and which may share (`can_share`, on by default), become one job listing all
+their assets; a sharing plan also joins such a job another plan made earlier while it is still
+unplanned. Each due date is kept in `maintenance_occurrences`, unique per plan and date and
+append-only, which writes a `maintenance_planned` event: running the worker twice makes nothing
+twice. Dates from before a plan was created are not made; dates missed while the worker was
+down are made on its next run. A retired asset's dates are skipped. A plan stops at its own end
+date and at its contract's. Changing a plan only moves what has not been made yet. A paused
+plan makes nothing; resuming carries on from today.
+
+**Deadlines.** The company sets, per priority, how long it has to respond (to dispatch the job)
+and to complete it (`deadline_rules`), counted around the clock or in the company's working
+hours only, with a warning a set number of minutes before. Public holidays are not known. A new
+job gets its deadlines from its creation time (`work_order_deadlines`); a priority with no rule
+gives none, and a job a plan made gets none, since its due window is its target. Changing a
+job's priority works them out again from the creation time. The job's own state changes meet
+them, by trigger, whichever client makes the change: the first dispatch meets the response
+deadline, the first completion the completion deadline. The clock never pauses. A cancelled job
+closes its deadlines without a miss. A deadline met late, or passed unmet, is recorded once, is
+never cleared, and writes a `deadline_missed` event. Every ten minutes the worker records the
+deadlines that passed unmet and sends each warning and miss once, by email to the job's crew and
+to holders of `work_order.manage`, and by push to the crew.
+
+| Request                                     | Who                   | Does                                                      |
+| ------------------------------------------- | --------------------- | --------------------------------------------------------- |
+| `GET /v1/contracts[/:id]`                   | `contract.read`       | Contracts; one with its plans and the jobs it covered     |
+| `POST`, `PATCH /v1/contracts[/:id]`         | `contract.manage`     | Add or change one; existing jobs keep their coverage      |
+| `POST /v1/contracts/:id/cancel`, `/renew`   | `contract.manage`     | Cancel with a reason, or renew into the next term         |
+| `PUT /v1/work-orders/:id/coverage`          | `contract.manage`     | Override a job's coverage, with a reason                  |
+| `GET /v1/maintenance-plans`                 | `asset.read`          | Plans, with their next due dates                          |
+| `POST`, `PATCH /v1/maintenance-plans[/:id]` | `asset.manage`        | Add or change one                                         |
+| `POST /v1/maintenance-plans/:id/status`     | `asset.manage`        | Pause, resume or end one; ending is final                 |
+| `GET /v1/maintenance`                       | `asset.read`          | Upcoming, made, completed, overdue and skipped due dates  |
+| `GET /v1/deadline-rules`                    | `work_order.read_all` | The rules and the company's working week                  |
+| `PUT /v1/deadline-rules`                    | `job_type.manage`     | Replace the rules                                         |
+| `GET /v1/deadline-report`                   | `work_order.read_all` | Totals, totals per customer, and every miss, for a period |
+
+Every job summary carries `coverage`, the `deadline` that matters now and whether a plan made
+it (`maintenance`); the job screen, and the phone's copy, carry the full `coverage`,
+`deadlines` and `maintenancePlans`.
+
 ## CSV import
 
 `POST /v1/imports { kind, fileName, csv, timeZone }` stores the file (up to 5 MB and 20,000

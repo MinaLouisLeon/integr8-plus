@@ -776,6 +776,15 @@ The desktop **Skills and certificates** keeps people's qualifications, and the s
 - [ ] **Try the warning.** On the **Schedule**, plan a visit of that job for someone who does not hold the certificate: the visit dialog lists who lacks what and asks for a reason. Give one and save; the job's history shows it. A visit for the test engineer before the expiry date needs no reason; one after it does.
 - [ ] **See it on the phone.** After the test engineer's phone syncs, **My qualifications** on the home screen shows the certificate and its expiry, and the job shows what it needs.
 
+### Contracts, maintenance and deadlines for this company
+
+Contracts say which jobs a customer's agreement covers, maintenance plans make an asset's servicing jobs ahead of time, and deadlines count down from when a job is created. Nothing to switch on for contracts and deadlines; maintenance plans need the assets module.
+
+- [ ] **Set a deadline.** As the owner, in the company's desktop app: side menu → Work → **Deadlines** → rules. Give **Urgent** a response time of 2 hours, around the clock, and save. Create an urgent job: its screen shows the response deadline counting down. Dispatch it, and the deadline shows as met.
+- [ ] **Add a contract.** Side menu → Operations → **Contracts**: add a contract for the test customer that covers one of its sites only. Create a job at that site: it shows **Covered** with the contract's number. A job at another of the customer's sites shows **Chargeable** and why.
+- [ ] **Add a maintenance plan.** This needs the assets module switched on for the company (Stage 7, Features). On an asset's screen, under **Maintenance plans**, add a plan every 3 months starting a few days from today, made 30 days ahead. After the worker's next daily run the job waits under **Needs a visit** on the schedule, and Work → **Maintenance** shows it as made.
+- [ ] **See it on the phone.** Put the test engineer on that job. After the phone syncs, the job shows that it is planned maintenance, whether the contract covers it, and its deadline when it has one.
+
 ### E-invoicing (ETA) for this company
 
 Only once e-invoicing has been tested, and only on the ETA's test system (PreProd). It stays off for every company until Integr8 switches it on, and the company needs `finance` on as well. You need the company's ETA registration details, the client ID and secret of its ERP system from the ETA portal, and the public certificate of its signing token; `docs/e-invoicing/ACCOUNTANT-CHECKLIST.md` is the list to send the company's accountant.
@@ -1171,6 +1180,18 @@ Skills and certificates add migration 0052 and need no new server setting. They 
 
 > [!WARNING]
 > **Rolling back with skills and certificates.** Fix forward once a visit has gone ahead with a reason: an older version does not know that history entry, so the job would not open in it. If you must roll back (part I), leave migration 0052 applied; its `.down.sql` deletes every qualification record and is for development databases only.
+
+### P. Contracts, maintenance and deadlines (next release)
+
+Contracts, maintenance plans and deadlines add migration 0053 and need no new server setting. They ship in the release that follows v1.2.0.
+
+- [ ] **Migration 0053 applied** during the normal update. It adds service contracts, maintenance plans and response deadlines. Nothing changes for a company until it sets deadlines, adds a contract or adds a maintenance plan; existing jobs keep no deadlines and no coverage.
+- [ ] **The worker's new runs.** Once a day it makes the jobs maintenance plans are due to make and emails contract managers before a contract ends; every ten minutes it records missed deadlines and sends deadline warnings by email and to engineers' phones. They use the email sender from part F and link to `WEB_APP_URL`; without a sender they are only logged. The worker log says **Maintenance plans finished** and **Deadline alerts finished** when they had something to do.
+- [ ] **Certificate expiry alerts start.** Migration 0052 left out the line the daily certificate expiry run needs to take its turn, so no expiry alert was sent before this update. 0053 adds it: the first run after the update sends every warning that is due at once.
+- [ ] **Update the apps** (part G): the new desktop apps have **Contracts**, **Maintenance** and **Deadlines**, and the new phone builds show coverage, deadlines and planned maintenance on each job. An older app keeps working without them.
+
+> [!WARNING]
+> **Rolling back with contracts, plans and deadlines.** Fix forward once a plan has made a job or a deadline has been missed: an older version does not know those history entries, so the job would not open in it. If you must roll back (part I), leave migration 0053 applied; its `.down.sql` deletes every contract, plan and deadline and is for development databases only.
 
 > [!NOTE]
 > **The test box (Stage 11)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout and `pull` its `:staging` images. Updating it first, the day before, is the cheapest rehearsal there is.

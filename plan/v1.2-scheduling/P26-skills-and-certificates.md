@@ -75,5 +75,6 @@ To confirm once the integration suites (`qualifications` in db and api) pass in 
     availability). P25 already accepts work outside office hours.
   - Map view, travel time estimates and travel-time conflicts go to idea 4 (daily route
     planning).
-  - Reminders to the engineer and customer before a job go to P27.
+  - Reminders to the engineer and customer before a job go to P27, which moved them again to a
+    later phase.
   - Double-booking is already refused by the database (P25).
