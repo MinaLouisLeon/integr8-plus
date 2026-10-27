@@ -72,6 +72,7 @@ export const apiErrorsEn = {
   asset_not_on_work_order: 'This asset is not one of the job’s assets. Link it to the job first.',
   asset_retired: 'This asset is retired. It takes no new work, condition or form.',
   asset_unavailable: 'This asset no longer exists, or is no longer at one of your sites.',
+  asset_unknown: 'This asset does not exist.',
   assignee_not_member: 'Assign it to an active member of your company.',
   attachment_id_taken:
     'This file clashed with another one. Discard the change and add the file again.',
@@ -116,6 +117,14 @@ export const apiErrorsEn = {
   contact_not_customers: 'Choose one of the customer’s contacts.',
   contact_not_found: 'This contact is not one of the customer’s. Choose another.',
   contains_itself: 'An item cannot be built from itself, or from anything built from it.',
+  contract_already_renewed: 'This contract has already been renewed. Open the new one instead.',
+  contract_asset_not_customers: 'Choose assets that belong to the contract’s customer.',
+  contract_cancelled: 'This contract was cancelled, so it can no longer change.',
+  contract_changed:
+    'This contract was changed elsewhere since you loaded it. Reload and try again.',
+  contract_dates_reversed: 'The end date must be on or after the start date.',
+  contract_not_customers: 'Choose one of the customer’s current contracts.',
+  contract_site_not_customers: 'Choose sites that belong to the contract’s customer.',
   cost_unknown: 'Some of this stock has no cost recorded: write the lines out with the amounts.',
   count_not_draft: 'This stock count has already been posted or cancelled.',
   credit_note_empty: 'Add at least one line before issuing.',
@@ -132,6 +141,7 @@ export const apiErrorsEn = {
   customer_stock_stays:
     'Stock held as the customer’s is a record of what they have, and is not moved from there. Choose one of our locations.',
   date_taken: 'Pay terms already start that day. Change those instead.',
+  deadline_range_invalid: 'Choose a period of at most a year, ending after it starts.',
   default_pipeline: 'This is the default pipeline. Make another pipeline the default first.',
   deletion_scheduled: 'This company is already scheduled for deletion.',
   deliberate_probe: 'A deliberate error, raised to test reporting.',
@@ -273,6 +283,11 @@ export const apiErrorsEn = {
   lots_quantity_mismatch: 'The serial numbers or batches do not add up to the quantity.',
   lots_required: 'Give the serial numbers or batch for this item.',
   main_not_image: 'Only an image can be the item’s main image. Choose a photo.',
+  maintenance_plan_changed:
+    'This plan was changed elsewhere since you loaded it. Reload and try again.',
+  maintenance_plan_dates_reversed: 'The end date must be on or after the start date.',
+  maintenance_plan_ended: 'This plan has ended, so it can no longer change. Add a new one instead.',
+  maintenance_range_invalid: 'Choose a period of at most 400 days, ending after it starts.',
   media_id_taken: 'This upload clashed with another file. Upload it again.',
   media_in_use:
     'A submission uses this file, so it cannot be deleted. Remove it from the submission first.',

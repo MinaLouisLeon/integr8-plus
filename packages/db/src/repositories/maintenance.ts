@@ -50,21 +50,23 @@ export interface MaintenancePlan {
 export interface MaintenancePlanInput {
   assetId: string;
   jobTypeId: string;
-  contractId?: string | null;
+  contractId?: string | null | undefined;
   title: string;
-  instructions?: string | null;
+  instructions?: string | null | undefined;
   intervalCount: number;
   intervalUnit: IntervalUnit;
   counting: PlanCounting;
   startsOn: string;
-  endsOn?: string | null;
-  windowBeforeDays?: number;
-  windowAfterDays?: number;
-  leadDays?: number;
-  canShare?: boolean;
+  endsOn?: string | null | undefined;
+  windowBeforeDays?: number | undefined;
+  windowAfterDays?: number | undefined;
+  leadDays?: number | undefined;
+  canShare?: boolean | undefined;
 }
 
-export type MaintenancePlanChanges = Partial<Omit<MaintenancePlanInput, 'assetId'>>;
+export type MaintenancePlanChanges = {
+  [K in keyof Omit<MaintenancePlanInput, 'assetId'>]?: MaintenancePlanInput[K] | undefined;
+};
 
 export type MaintenancePlanWrite =
   | { outcome: 'written'; plan: MaintenancePlan }

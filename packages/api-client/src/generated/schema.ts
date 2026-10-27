@@ -6989,6 +6989,242 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Service contracts
+         * @description Latest end first. `customerId` for one customer’s; cancelled ones only with `includeCancelled`. `q` matches the title or the reference (`CT-000012`).
+         */
+        get: operations["listContracts"];
+        put?: never;
+        /**
+         * Add a service contract
+         * @description Leave `siteIds`, `assetIds` or `jobTypeIds` out (or null) to cover all of that kind. Jobs created from now on are marked covered or chargeable against it; existing jobs keep their coverage.
+         */
+        post: operations["createContract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contracts/{contractId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A contract, its maintenance plans and the jobs it covered
+         * @description The jobs are the latest 200 whose coverage names this contract, covered or not.
+         */
+        get: operations["getContract"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a contract’s term or coverage
+         * @description Jobs already created keep their coverage. Changing the end date re-arms the renewal reminder.
+         */
+        patch: operations["updateContract"];
+        trace?: never;
+    };
+    "/v1/contracts/{contractId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a contract
+         * @description Coverage ends the day before `cancelledOn`. Final: a cancelled contract cannot be changed or renewed. Its maintenance plans stop making jobs after it ends.
+         */
+        post: operations["cancelContract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contracts/{contractId}/renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Renew a contract
+         * @description Creates the next contract with the same coverage, by default from the day after this one ends for as long again, and moves this one’s maintenance plans to it. A contract is renewed once.
+         */
+        post: operations["renewContract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work-orders/{workOrderId}/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Decide whether a contract covers a job
+         * @description Overrides what was worked out when the job was created. The reason goes into the job’s history. `contractId` must be one of the customer’s contracts.
+         */
+        put: operations["overrideWorkOrderCoverage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/maintenance-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Maintenance plans
+         * @description Soonest next due date first. For one asset, customer, site or contract; ended ones only with `includeEnded`.
+         */
+        get: operations["listMaintenancePlans"];
+        put?: never;
+        /**
+         * Add a maintenance plan to an asset
+         * @description Due dates before today are not made. The first job is made `leadDays` before the first due date, by the worker’s next daily run.
+         */
+        post: operations["createMaintenancePlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/maintenance-plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a maintenance plan
+         * @description Only what has not been made yet moves: jobs already made or completed keep their dates.
+         */
+        patch: operations["updateMaintenancePlan"];
+        trace?: never;
+    };
+    "/v1/maintenance-plans/{planId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause, resume or end a maintenance plan
+         * @description A paused plan makes no jobs; resuming carries on from today, without making the dates missed while paused. Ending is final.
+         */
+        post: operations["setMaintenancePlanStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/maintenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Upcoming, made, completed and overdue maintenance
+         * @description Every due date between `from` and `to` (at most 400 days apart): those already made or passed over, and — from today on — those the active plans will make. Defaults to the last 30 days and the next 90.
+         */
+        get: operations["listMaintenance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/deadline-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The company’s response and completion deadlines
+         * @description A priority with no rule has no deadlines.
+         */
+        get: operations["getDeadlineRules"];
+        /**
+         * Set the company’s deadlines
+         * @description Replaces every rule. A priority left out has no deadlines. Jobs already created keep the deadlines they were given; new jobs, and jobs whose priority changes, get the new ones.
+         */
+        put: operations["replaceDeadlineRules"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/deadline-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How the company did against its deadlines
+         * @description Jobs with deadlines created between `from` and `to` (company days, inclusive; at most 366 days; the last 30 days by default): the totals, the totals per customer, and every recorded miss.
+         */
+        get: operations["getDeadlineReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/imports": {
         parameters: {
             query?: never;
@@ -12550,7 +12786,7 @@ export interface operations {
                             id: string;
                             name: string;
                         } | null;
-                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         /** @description Present only while a super admin is acting as this user. */
                         impersonatedBy?: {
                             /** Format: uuid */
@@ -23378,6 +23614,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         can: {
                             edit: boolean;
@@ -24228,6 +24484,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         can: {
                             edit: boolean;
@@ -28449,9 +28725,9 @@ export interface operations {
                         bases: {
                             /** @enum {string} */
                             role: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                            permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                            permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         }[];
-                        addable: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        addable: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     };
                 };
             };
@@ -28536,9 +28812,9 @@ export interface operations {
                             description: string | null;
                             /** @enum {string} */
                             baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                            added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                            removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                            permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                            added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                            removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                            permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                             holders: number;
                             version: number;
                             /** Format: date-time */
@@ -28625,9 +28901,9 @@ export interface operations {
                     /** @default null */
                     description?: string | null;
                     /** @default [] */
-                    added?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                    added?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     /** @default [] */
-                    removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                    removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     /** @enum {string} */
                     baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
                 };
@@ -28647,9 +28923,9 @@ export interface operations {
                         description: string | null;
                         /** @enum {string} */
                         baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         holders: number;
                         version: number;
                         /** Format: date-time */
@@ -28736,9 +29012,9 @@ export interface operations {
                     /** @default null */
                     description?: string | null;
                     /** @default [] */
-                    added?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                    added?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     /** @default [] */
-                    removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                    removed?: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                     expectedVersion: number;
                 };
             };
@@ -28757,9 +29033,9 @@ export interface operations {
                         description: string | null;
                         /** @enum {string} */
                         baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         holders: number;
                         version: number;
                         /** Format: date-time */
@@ -28867,9 +29143,9 @@ export interface operations {
                         description: string | null;
                         /** @enum {string} */
                         baseRole: "admin" | "hr_manager" | "inventory_manager" | "dispatcher" | "engineer" | "viewer";
-                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
-                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        added: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        removed: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
+                        permissions: ("tenant.read" | "tenant.update" | "website.access.manage" | "branding.manage" | "member.read" | "member.invite" | "member.update_role" | "member.suspend" | "member.remove" | "invitation.read" | "invitation.revoke" | "session.read" | "session.revoke" | "audit.read" | "form.read" | "form.manage" | "submission.fill" | "submission.read_all" | "submission.amend" | "storage.read" | "customer.read" | "customer.manage" | "job_type.manage" | "work_order.read_all" | "work_order.manage" | "work_order.progress" | "work_order.review" | "import.run" | "billing.read" | "billing.manage" | "role.manage" | "crm.read" | "crm.lead.manage" | "crm.lead.convert" | "crm.opportunity.manage" | "crm.activity.manage" | "crm.pipeline.manage" | "inventory.read" | "inventory.manage" | "inventory.move" | "inventory.consume" | "purchasing.read" | "purchasing.manage" | "purchasing.approve" | "sales.read" | "sales.manage" | "sales.issue" | "finance.read" | "finance.manage" | "finance.issue" | "asset.read" | "asset.record" | "asset.manage" | "ledger.read" | "ledger.post" | "ledger.manage" | "ledger.unlock" | "hr.read" | "hr.sensitive" | "hr.manage" | "expense.submit" | "expense.approve" | "payroll.run" | "payroll.approve" | "qualification.read" | "qualification.manage" | "contract.read" | "contract.manage" | "manufacturing.read" | "manufacturing.manage" | "document.read" | "document.create" | "document.manage" | "document.design" | "eta.read" | "eta.prepare" | "eta.configure" | "eta.sign" | "eta.submit" | "eta.switch")[];
                         holders: number;
                         version: number;
                         /** Format: date-time */
@@ -30417,6 +30693,26 @@ export interface operations {
                                 stateChangedAt: string;
                                 createdAt: string;
                                 updatedAt: string;
+                                coverage: {
+                                    /** @enum {string} */
+                                    status: "covered" | "chargeable";
+                                    /** @enum {string} */
+                                    reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                    contract: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        reference: string;
+                                        title: string;
+                                    } | null;
+                                } | null;
+                                deadline: {
+                                    /** @enum {string} */
+                                    kind: "response" | "completion";
+                                    dueAt: string;
+                                    /** @enum {string} */
+                                    state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                } | null;
+                                maintenance: boolean;
                             }[];
                             can: {
                                 edit: boolean;
@@ -38215,6 +38511,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -38331,6 +38647,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -38371,7 +38733,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -38479,6 +38841,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -38558,6 +38940,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -38721,6 +39104,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -38837,6 +39240,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -38877,7 +39326,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -38985,6 +39434,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -39064,6 +39533,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -39213,6 +39683,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -39329,6 +39819,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -39369,7 +39905,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -39477,6 +40013,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -39556,6 +40112,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -41806,6 +42363,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         can: {
                             edit: boolean;
@@ -42061,6 +42638,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         can: {
                             edit: boolean;
@@ -42310,6 +42907,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         can: {
                             edit: boolean;
@@ -42578,6 +43195,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         can: {
                             edit: boolean;
@@ -42833,6 +43470,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         can: {
                             edit: boolean;
@@ -43088,6 +43745,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         can: {
                             edit: boolean;
@@ -43342,6 +44019,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         can: {
                             edit: boolean;
@@ -43622,6 +44319,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         can: {
                             edit: boolean;
@@ -43868,6 +44585,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         can: {
                             edit: boolean;
@@ -49318,6 +50055,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             /** Format: date-time */
                             linkedAt: string;
                         }[];
@@ -49525,6 +50282,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             /** Format: date-time */
                             linkedAt: string;
                         }[];
@@ -49743,6 +50520,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             /** Format: date-time */
                             linkedAt: string;
                         }[];
@@ -49924,6 +50721,26 @@ export interface operations {
                                 stateChangedAt: string;
                                 createdAt: string;
                                 updatedAt: string;
+                                coverage: {
+                                    /** @enum {string} */
+                                    status: "covered" | "chargeable";
+                                    /** @enum {string} */
+                                    reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                    contract: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        reference: string;
+                                        title: string;
+                                    } | null;
+                                } | null;
+                                deadline: {
+                                    /** @enum {string} */
+                                    kind: "response" | "completion";
+                                    dueAt: string;
+                                    /** @enum {string} */
+                                    state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                } | null;
+                                maintenance: boolean;
                             };
                         } | {
                             /** @enum {string} */
@@ -50226,6 +51043,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             /** Format: date-time */
                             linkedAt: string;
                         }[];
@@ -50440,6 +51277,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             /** Format: date-time */
                             linkedAt: string;
                         }[];
@@ -50655,6 +51512,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             /** Format: date-time */
                             linkedAt: string;
                         }[];
@@ -50868,6 +51745,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             /** Format: date-time */
                             linkedAt: string;
                         }[];
@@ -63208,6 +64105,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         nextCursor: string | null;
                         counts: {
@@ -63357,6 +64274,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -63473,6 +64410,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -63513,7 +64496,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -63621,6 +64604,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -63700,6 +64703,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -63946,6 +64950,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -64062,6 +65086,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -64102,7 +65172,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -64210,6 +65280,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -64289,6 +65379,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -64431,6 +65522,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -64547,6 +65658,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -64587,7 +65744,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -64695,6 +65852,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -64774,6 +65951,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -64914,6 +66092,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -65030,6 +66228,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -65070,7 +66314,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -65178,6 +66422,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -65257,6 +66521,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -65395,6 +66660,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -65511,6 +66796,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -65551,7 +66882,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -65659,6 +66990,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -65738,6 +67089,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -65878,6 +67230,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -65994,6 +67366,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -66034,7 +67452,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -66142,6 +67560,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -66221,6 +67659,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -66358,6 +67797,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -66474,6 +67933,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -66514,7 +68019,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -66622,6 +68127,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -66701,6 +68226,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -66832,6 +68358,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -66948,6 +68494,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -66988,7 +68580,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -67096,6 +68688,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -67175,6 +68787,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -67305,6 +68918,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -67421,6 +69054,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -67461,7 +69140,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -67569,6 +69248,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -67648,6 +69347,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -67771,6 +69471,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -67887,6 +69607,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -67927,7 +69693,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -68035,6 +69801,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -68114,6 +69900,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -68256,6 +70043,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                             description: string | null;
                             instructions: string | null;
                             lastReason: string | null;
@@ -68372,6 +70179,52 @@ export interface operations {
                             qualificationTypeId: string;
                             name: string;
                         }[];
+                        coverage: {
+                            /** @enum {string} */
+                            status: "covered" | "chargeable";
+                            /** @enum {string} */
+                            reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            overrideReason: string | null;
+                            overriddenAt: string | null;
+                        } | null;
+                        deadlines: {
+                            priority: string;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            response: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                            completion: {
+                                dueAt: string;
+                                metAt: string | null;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                missedAt: string | null;
+                            } | null;
+                        } | null;
+                        maintenancePlans: {
+                            /** Format: uuid */
+                            planId: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            dueOn: string;
+                        }[];
                         forms: {
                             /** Format: uuid */
                             formId: string;
@@ -68412,7 +70265,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -68520,6 +70373,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         materials: {
                             /** Format: uuid */
@@ -68599,6 +70472,7 @@ export interface operations {
                                 requiresReason: boolean;
                             }[];
                             recordParts: boolean;
+                            overrideCoverage: boolean;
                         };
                     };
                 };
@@ -69094,6 +70968,26 @@ export interface operations {
                             stateChangedAt: string;
                             createdAt: string;
                             updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
                         }[];
                         people: {
                             /** Format: uuid */
@@ -69216,6 +71110,26 @@ export interface operations {
                                 stateChangedAt: string;
                                 createdAt: string;
                                 updatedAt: string;
+                                coverage: {
+                                    /** @enum {string} */
+                                    status: "covered" | "chargeable";
+                                    /** @enum {string} */
+                                    reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                    contract: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        reference: string;
+                                        title: string;
+                                    } | null;
+                                } | null;
+                                deadline: {
+                                    /** @enum {string} */
+                                    kind: "response" | "completion";
+                                    dueAt: string;
+                                    /** @enum {string} */
+                                    state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                } | null;
+                                maintenance: boolean;
                             };
                             expectedDurationMinutes: number | null;
                         }[];
@@ -71351,6 +73265,2160 @@ export interface operations {
             };
         };
     };
+    listContracts: {
+        parameters: {
+            query?: {
+                customerId?: string;
+                includeCancelled?: "true" | "false";
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The contracts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            startsOn: string;
+                            endsOn: string;
+                            value: string | null;
+                            notes: string | null;
+                            renewalNoticeDays: number;
+                            sites: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[] | null;
+                            assets: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[] | null;
+                            jobTypes: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[] | null;
+                            includedCallouts: number | null;
+                            calloutsUsed: number;
+                            /** @enum {string} */
+                            standing: "upcoming" | "active" | "ending" | "ended" | "cancelled";
+                            renewedFrom: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            renewedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            cancelledOn: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        defaults: {
+                            renewalNoticeDays: number;
+                        };
+                        can: {
+                            manage: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createContract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    /** Format: date */
+                    startsOn: string;
+                    /** Format: date */
+                    endsOn: string;
+                    value?: string | null;
+                    notes?: string | null;
+                    renewalNoticeDays?: number;
+                    siteIds?: string[] | null;
+                    assetIds?: string[] | null;
+                    jobTypeIds?: string[] | null;
+                    includedCallouts?: number | null;
+                    /** Format: uuid */
+                    customerId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The contract. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        title: string;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        startsOn: string;
+                        endsOn: string;
+                        value: string | null;
+                        notes: string | null;
+                        renewalNoticeDays: number;
+                        sites: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
+                        assets: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
+                        jobTypes: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
+                        includedCallouts: number | null;
+                        calloutsUsed: number;
+                        /** @enum {string} */
+                        standing: "upcoming" | "active" | "ending" | "ended" | "cancelled";
+                        renewedFrom: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        renewedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        cancelledOn: string | null;
+                        cancelReason: string | null;
+                        version: number;
+                        createdAt: string;
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A site or asset is not the customer’s (`contract_site_not_customers`, `contract_asset_not_customers`), or the dates are reversed (`contract_dates_reversed`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getContract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The contract. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        contract: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            startsOn: string;
+                            endsOn: string;
+                            value: string | null;
+                            notes: string | null;
+                            renewalNoticeDays: number;
+                            sites: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[] | null;
+                            assets: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[] | null;
+                            jobTypes: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[] | null;
+                            includedCallouts: number | null;
+                            calloutsUsed: number;
+                            /** @enum {string} */
+                            standing: "upcoming" | "active" | "ending" | "ended" | "cancelled";
+                            renewedFrom: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            renewedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            cancelledOn: string | null;
+                            cancelReason: string | null;
+                            version: number;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                        contractYear: {
+                            from: string;
+                            to: string;
+                        } | null;
+                        plans: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            status: string;
+                            nextDueOn: string | null;
+                        }[];
+                        jobs: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: number;
+                            referenceLabel: string;
+                            title: string;
+                            /** @enum {string} */
+                            state: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueFrom: string | null;
+                            dueBy: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                city: string | null;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string;
+                            };
+                            crew: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                lead: boolean;
+                            }[];
+                            revision: number;
+                            stateChangedAt: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                            } | null;
+                            deadline: {
+                                /** @enum {string} */
+                                kind: "response" | "completion";
+                                dueAt: string;
+                                /** @enum {string} */
+                                state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                            } | null;
+                            maintenance: boolean;
+                        }[];
+                        can: {
+                            manage: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such contract. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateContract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    /** Format: date */
+                    startsOn?: string;
+                    /** Format: date */
+                    endsOn?: string;
+                    value?: string | null;
+                    notes?: string | null;
+                    renewalNoticeDays?: number;
+                    siteIds?: string[] | null;
+                    assetIds?: string[] | null;
+                    jobTypeIds?: string[] | null;
+                    includedCallouts?: number | null;
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The contract. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        title: string;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        startsOn: string;
+                        endsOn: string;
+                        value: string | null;
+                        notes: string | null;
+                        renewalNoticeDays: number;
+                        sites: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
+                        assets: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
+                        jobTypes: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
+                        includedCallouts: number | null;
+                        calloutsUsed: number;
+                        /** @enum {string} */
+                        standing: "upcoming" | "active" | "ending" | "ended" | "cancelled";
+                        renewedFrom: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        renewedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        cancelledOn: string | null;
+                        cancelReason: string | null;
+                        version: number;
+                        createdAt: string;
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such contract. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere (`contract_changed`) or cancelled (`contract_cancelled`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description As for adding one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelContract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** Format: date */
+                    cancelledOn: string;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The contract. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        title: string;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        startsOn: string;
+                        endsOn: string;
+                        value: string | null;
+                        notes: string | null;
+                        renewalNoticeDays: number;
+                        sites: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
+                        assets: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
+                        jobTypes: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
+                        includedCallouts: number | null;
+                        calloutsUsed: number;
+                        /** @enum {string} */
+                        standing: "upcoming" | "active" | "ending" | "ended" | "cancelled";
+                        renewedFrom: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        renewedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        cancelledOn: string | null;
+                        cancelReason: string | null;
+                        version: number;
+                        createdAt: string;
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such contract. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere, or already cancelled. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    renewContract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** Format: date */
+                    startsOn?: string;
+                    /** Format: date */
+                    endsOn?: string;
+                    value?: string | null;
+                    title?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The new contract. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        reference: string;
+                        title: string;
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        startsOn: string;
+                        endsOn: string;
+                        value: string | null;
+                        notes: string | null;
+                        renewalNoticeDays: number;
+                        sites: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
+                        assets: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
+                        jobTypes: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[] | null;
+                        includedCallouts: number | null;
+                        calloutsUsed: number;
+                        /** @enum {string} */
+                        standing: "upcoming" | "active" | "ending" | "ended" | "cancelled";
+                        renewedFrom: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        renewedBy: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                        } | null;
+                        cancelledOn: string | null;
+                        cancelReason: string | null;
+                        version: number;
+                        createdAt: string;
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such contract. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere, cancelled, or already renewed (`contract_already_renewed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    overrideWorkOrderCoverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "covered" | "chargeable";
+                    /** Format: uuid */
+                    contractId: string | null;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The coverage. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "covered" | "chargeable";
+                        /** @enum {string} */
+                        reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                        contract: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                        } | null;
+                        overrideReason: string | null;
+                        overriddenAt: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such work order. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The job is cancelled (`work_order_closed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The contract is not the customer’s (`contract_not_customers`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listMaintenancePlans: {
+        parameters: {
+            query?: {
+                assetId?: string;
+                customerId?: string;
+                siteId?: string;
+                contractId?: string;
+                includeEnded?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The plans. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                            instructions: string | null;
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                                status: string;
+                            };
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            contract: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                            } | null;
+                            intervalCount: number;
+                            /** @enum {string} */
+                            intervalUnit: "day" | "week" | "month" | "year";
+                            /** @enum {string} */
+                            counting: "calendar" | "completion";
+                            startsOn: string;
+                            endsOn: string | null;
+                            windowBeforeDays: number;
+                            windowAfterDays: number;
+                            leadDays: number;
+                            canShare: boolean;
+                            /** @enum {string} */
+                            status: "active" | "paused" | "ended";
+                            nextDueOn: string | null;
+                            upcoming: string[];
+                            last: {
+                                dueOn: string;
+                                workOrder: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    state: string;
+                                } | null;
+                            } | null;
+                            version: number;
+                            createdAt: string;
+                            endedAt: string | null;
+                        }[];
+                        defaults: {
+                            leadDays: number;
+                            windowDays: number;
+                        };
+                        can: {
+                            manage: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createMaintenancePlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    jobTypeId: string;
+                    /** Format: uuid */
+                    contractId?: string | null;
+                    title: string;
+                    instructions?: string | null;
+                    intervalCount: number;
+                    /** @enum {string} */
+                    intervalUnit: "day" | "week" | "month" | "year";
+                    /** @enum {string} */
+                    counting: "calendar" | "completion";
+                    /** Format: date */
+                    startsOn: string;
+                    /** Format: date */
+                    endsOn?: string | null;
+                    windowBeforeDays?: number;
+                    windowAfterDays?: number;
+                    leadDays?: number;
+                    canShare?: boolean;
+                    /** Format: uuid */
+                    assetId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The plan. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        instructions: string | null;
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            reference: string;
+                            status: string;
+                        };
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        site: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        jobType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        contract: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                        } | null;
+                        intervalCount: number;
+                        /** @enum {string} */
+                        intervalUnit: "day" | "week" | "month" | "year";
+                        /** @enum {string} */
+                        counting: "calendar" | "completion";
+                        startsOn: string;
+                        endsOn: string | null;
+                        windowBeforeDays: number;
+                        windowAfterDays: number;
+                        leadDays: number;
+                        canShare: boolean;
+                        /** @enum {string} */
+                        status: "active" | "paused" | "ended";
+                        nextDueOn: string | null;
+                        upcoming: string[];
+                        last: {
+                            dueOn: string;
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                state: string;
+                            } | null;
+                        } | null;
+                        version: number;
+                        createdAt: string;
+                        endedAt: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The asset is retired (`asset_retired`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unknown job type, a contract that is not the asset’s customer’s, or reversed dates. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateMaintenancePlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    jobTypeId?: string;
+                    /** Format: uuid */
+                    contractId?: string | null;
+                    title?: string;
+                    instructions?: string | null;
+                    intervalCount?: number;
+                    /** @enum {string} */
+                    intervalUnit?: "day" | "week" | "month" | "year";
+                    /** @enum {string} */
+                    counting?: "calendar" | "completion";
+                    /** Format: date */
+                    startsOn?: string;
+                    /** Format: date */
+                    endsOn?: string | null;
+                    windowBeforeDays?: number;
+                    windowAfterDays?: number;
+                    leadDays?: number;
+                    canShare?: boolean;
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The plan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        instructions: string | null;
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            reference: string;
+                            status: string;
+                        };
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        site: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        jobType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        contract: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                        } | null;
+                        intervalCount: number;
+                        /** @enum {string} */
+                        intervalUnit: "day" | "week" | "month" | "year";
+                        /** @enum {string} */
+                        counting: "calendar" | "completion";
+                        startsOn: string;
+                        endsOn: string | null;
+                        windowBeforeDays: number;
+                        windowAfterDays: number;
+                        leadDays: number;
+                        canShare: boolean;
+                        /** @enum {string} */
+                        status: "active" | "paused" | "ended";
+                        nextDueOn: string | null;
+                        upcoming: string[];
+                        last: {
+                            dueOn: string;
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                state: string;
+                            } | null;
+                        } | null;
+                        version: number;
+                        createdAt: string;
+                        endedAt: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such plan. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere, or ended. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description As for adding one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setMaintenancePlanStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    /** @enum {string} */
+                    status: "active" | "paused" | "ended";
+                };
+            };
+        };
+        responses: {
+            /** @description The plan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        instructions: string | null;
+                        asset: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            reference: string;
+                            status: string;
+                        };
+                        customer: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        site: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        jobType: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        contract: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            title: string;
+                        } | null;
+                        intervalCount: number;
+                        /** @enum {string} */
+                        intervalUnit: "day" | "week" | "month" | "year";
+                        /** @enum {string} */
+                        counting: "calendar" | "completion";
+                        startsOn: string;
+                        endsOn: string | null;
+                        windowBeforeDays: number;
+                        windowAfterDays: number;
+                        leadDays: number;
+                        canShare: boolean;
+                        /** @enum {string} */
+                        status: "active" | "paused" | "ended";
+                        nextDueOn: string | null;
+                        upcoming: string[];
+                        last: {
+                            dueOn: string;
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                state: string;
+                            } | null;
+                        } | null;
+                        version: number;
+                        createdAt: string;
+                        endedAt: string | null;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such plan. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed elsewhere, or ended. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listMaintenance: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                customerId?: string;
+                siteId?: string;
+                jobTypeId?: string;
+                assetId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The maintenance. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            key: string;
+                            plan: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                            };
+                            asset: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                reference: string;
+                            };
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            site: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            jobType: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            dueOn: string;
+                            /** @enum {string} */
+                            standing: "upcoming" | "created" | "completed" | "overdue" | "cancelled" | "skipped";
+                            skipReason: string | null;
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                state: string;
+                                completedAt: string | null;
+                            } | null;
+                        }[];
+                        from: string;
+                        to: string;
+                        today: string;
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `assets` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The range is reversed or too long (`maintenance_range_invalid`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getDeadlineRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rules. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rules: {
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            responseMinutes: number | null;
+                            completionMinutes: number | null;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            updatedAt: string;
+                        }[];
+                        workingHours: {
+                            timeZone: string;
+                            startsMinute: number;
+                            endsMinute: number;
+                            days: number[];
+                        };
+                        defaults: {
+                            warnMinutes: number;
+                        };
+                        can: {
+                            manage: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    replaceDeadlineRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    rules: {
+                        /** @enum {string} */
+                        priority: "low" | "normal" | "high" | "urgent";
+                        responseMinutes: number | null;
+                        completionMinutes: number | null;
+                        /** @enum {string} */
+                        clock: "always" | "working_hours";
+                        warnMinutes: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The rules. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rules: {
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            responseMinutes: number | null;
+                            completionMinutes: number | null;
+                            /** @enum {string} */
+                            clock: "always" | "working_hours";
+                            warnMinutes: number;
+                            updatedAt: string;
+                        }[];
+                        workingHours: {
+                            timeZone: string;
+                            startsMinute: number;
+                            endsMinute: number;
+                            days: number[];
+                        };
+                        defaults: {
+                            warnMinutes: number;
+                        };
+                        can: {
+                            manage: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getDeadlineReport: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                customerId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        from: string;
+                        to: string;
+                        totals: {
+                            jobs: number;
+                            responseDue: number;
+                            respondedOnTime: number;
+                            completionDue: number;
+                            completedOnTime: number;
+                            missed: number;
+                            averageResponseMinutes: number | null;
+                        };
+                        customers: {
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            summary: {
+                                jobs: number;
+                                responseDue: number;
+                                respondedOnTime: number;
+                                completionDue: number;
+                                completedOnTime: number;
+                                missed: number;
+                                averageResponseMinutes: number | null;
+                            };
+                        }[];
+                        misses: {
+                            workOrder: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                title: string;
+                                state: string;
+                            };
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            kind: "response" | "completion";
+                            /** @enum {string} */
+                            priority: "low" | "normal" | "high" | "urgent";
+                            dueAt: string;
+                            metAt: string | null;
+                            recordedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The range is reversed or too long (`deadline_range_invalid`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listImports: {
         parameters: {
             query?: never;
@@ -71891,6 +75959,26 @@ export interface operations {
                                 stateChangedAt: string;
                                 createdAt: string;
                                 updatedAt: string;
+                                coverage: {
+                                    /** @enum {string} */
+                                    status: "covered" | "chargeable";
+                                    /** @enum {string} */
+                                    reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                    contract: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        reference: string;
+                                        title: string;
+                                    } | null;
+                                } | null;
+                                deadline: {
+                                    /** @enum {string} */
+                                    kind: "response" | "completion";
+                                    dueAt: string;
+                                    /** @enum {string} */
+                                    state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                } | null;
+                                maintenance: boolean;
                                 description: string | null;
                                 instructions: string | null;
                                 lastReason: string | null;
@@ -72007,6 +76095,52 @@ export interface operations {
                                 qualificationTypeId: string;
                                 name: string;
                             }[];
+                            coverage: {
+                                /** @enum {string} */
+                                status: "covered" | "chargeable";
+                                /** @enum {string} */
+                                reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                contract: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    reference: string;
+                                    title: string;
+                                } | null;
+                                overrideReason: string | null;
+                                overriddenAt: string | null;
+                            } | null;
+                            deadlines: {
+                                priority: string;
+                                /** @enum {string} */
+                                clock: "always" | "working_hours";
+                                warnMinutes: number;
+                                response: {
+                                    dueAt: string;
+                                    metAt: string | null;
+                                    /** @enum {string} */
+                                    state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                    missedAt: string | null;
+                                } | null;
+                                completion: {
+                                    dueAt: string;
+                                    metAt: string | null;
+                                    /** @enum {string} */
+                                    state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                    missedAt: string | null;
+                                } | null;
+                            } | null;
+                            maintenancePlans: {
+                                /** Format: uuid */
+                                planId: string;
+                                title: string;
+                                asset: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    reference: string;
+                                };
+                                dueOn: string;
+                            }[];
                             forms: {
                                 /** Format: uuid */
                                 formId: string;
@@ -72047,7 +76181,7 @@ export interface operations {
                             }[];
                             events: {
                                 /** @enum {string} */
-                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override";
+                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
                                 /** @enum {string|null} */
                                 fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                                 /** @enum {string|null} */
@@ -72155,6 +76289,26 @@ export interface operations {
                                 stateChangedAt: string;
                                 createdAt: string;
                                 updatedAt: string;
+                                coverage: {
+                                    /** @enum {string} */
+                                    status: "covered" | "chargeable";
+                                    /** @enum {string} */
+                                    reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                    contract: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        reference: string;
+                                        title: string;
+                                    } | null;
+                                } | null;
+                                deadline: {
+                                    /** @enum {string} */
+                                    kind: "response" | "completion";
+                                    dueAt: string;
+                                    /** @enum {string} */
+                                    state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                } | null;
+                                maintenance: boolean;
                             }[];
                             materials: {
                                 /** Format: uuid */
@@ -72234,6 +76388,7 @@ export interface operations {
                                     requiresReason: boolean;
                                 }[];
                                 recordParts: boolean;
+                                overrideCoverage: boolean;
                             };
                         }[];
                         removedWorkOrderIds: string[];
@@ -72369,6 +76524,26 @@ export interface operations {
                                 stateChangedAt: string;
                                 createdAt: string;
                                 updatedAt: string;
+                                coverage: {
+                                    /** @enum {string} */
+                                    status: "covered" | "chargeable";
+                                    /** @enum {string} */
+                                    reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                    contract: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        reference: string;
+                                        title: string;
+                                    } | null;
+                                } | null;
+                                deadline: {
+                                    /** @enum {string} */
+                                    kind: "response" | "completion";
+                                    dueAt: string;
+                                    /** @enum {string} */
+                                    state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                } | null;
+                                maintenance: boolean;
                             }[];
                             can: {
                                 edit: boolean;
@@ -72635,6 +76810,26 @@ export interface operations {
                                 stateChangedAt: string;
                                 createdAt: string;
                                 updatedAt: string;
+                                coverage: {
+                                    /** @enum {string} */
+                                    status: "covered" | "chargeable";
+                                    /** @enum {string} */
+                                    reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                    contract: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        reference: string;
+                                        title: string;
+                                    } | null;
+                                } | null;
+                                deadline: {
+                                    /** @enum {string} */
+                                    kind: "response" | "completion";
+                                    dueAt: string;
+                                    /** @enum {string} */
+                                    state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                } | null;
+                                maintenance: boolean;
                                 /** Format: date-time */
                                 linkedAt: string;
                             }[];
@@ -72727,6 +76922,26 @@ export interface operations {
                                     stateChangedAt: string;
                                     createdAt: string;
                                     updatedAt: string;
+                                    coverage: {
+                                        /** @enum {string} */
+                                        status: "covered" | "chargeable";
+                                        /** @enum {string} */
+                                        reason: "contract" | "maintenance_plan" | "no_contract" | "contract_ended" | "site_not_covered" | "asset_not_covered" | "job_type_not_covered" | "callouts_used" | "override";
+                                        contract: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            reference: string;
+                                            title: string;
+                                        } | null;
+                                    } | null;
+                                    deadline: {
+                                        /** @enum {string} */
+                                        kind: "response" | "completion";
+                                        dueAt: string;
+                                        /** @enum {string} */
+                                        state: "met" | "met_late" | "missed" | "warning" | "running" | "closed";
+                                    } | null;
+                                    maintenance: boolean;
                                 };
                             } | {
                                 /** @enum {string} */

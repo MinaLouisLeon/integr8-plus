@@ -15,6 +15,13 @@ import type {
   WorkOrder,
 } from '@integr8/db';
 import { z } from 'zod';
+import {
+  coverageBody,
+  coverageSchema,
+  deadlineSummaryBody,
+  deadlineSummarySchema,
+  jobTermsOf,
+} from './job-terms.js';
 import { forbidden, notFound } from '../../http/errors.js';
 import { iso, isoOrNull } from './schemas.js';
 
@@ -230,6 +237,12 @@ export const workOrderSummarySchema = z.object({
   stateChangedAt: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /** Whether the customer's contract covers it (P27); null when the customer never had one. */
+  coverage: coverageSchema.nullable(),
+  /** The deadline that matters now (P27): the next one open, or the last one missed. */
+  deadline: deadlineSummarySchema.nullable(),
+  /** Made by a maintenance plan (P27). */
+  maintenance: z.boolean(),
 });
 
 // ---------------------------------------------------------------------------
@@ -337,13 +350,18 @@ export async function workOrderSummaries(
   workOrders: WorkOrder[],
   people?: People,
 ) {
-  const [customers, sites, jobTypes, crews, known] = await Promise.all([
+  const [customers, sites, jobTypes, crews, known, terms] = await Promise.all([
     tx.customers.findMany(workOrders.map((job) => job.customerId)),
     tx.sites.findMany(workOrders.map((job) => job.siteId)),
     tx.jobTypes.list({ includeArchived: true }),
     tx.workOrders.listCrews(workOrders.map((job) => job.id)),
     people === undefined ? peopleOf(tx) : Promise.resolve(people),
+    jobTermsOf(
+      tx,
+      workOrders.map((job) => job.id),
+    ),
   ]);
+  const now = new Date();
   const customerById = new Map(customers.map((customer) => [customer.id, customer]));
   const siteById = new Map(sites.map((site) => [site.id, site]));
   const typeById = new Map(jobTypes.map((type) => [type.id, type]));
@@ -371,6 +389,9 @@ export async function workOrderSummaries(
       stateChangedAt: iso(job.stateChangedAt),
       createdAt: iso(job.createdAt),
       updatedAt: iso(job.updatedAt),
+      coverage: coverageBody(terms, job.id),
+      deadline: deadlineSummaryBody(terms, job.id, now),
+      maintenance: terms.plans.has(job.id),
     };
   });
 }

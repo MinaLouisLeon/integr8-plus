@@ -739,6 +739,19 @@ create trigger work_order_deadlines_record
   for each row execute function record_deadline_miss();
 
 -- ---------------------------------------------------------------------------
+-- The worker's turns
+-- ---------------------------------------------------------------------------
+
+-- Daily: make maintenance jobs and send contract renewal reminders. Every few
+-- minutes: deadline warnings and misses. `qualifications.expiry` (P26) is
+-- added here too: 0052 never added its row, so its daily run never won a turn.
+insert into scheduled_task_runs (task) values
+  ('maintenance.plans'),
+  ('deadlines.alerts'),
+  ('qualifications.expiry')
+on conflict (task) do nothing;
+
+-- ---------------------------------------------------------------------------
 -- Grants and row-level security
 -- ---------------------------------------------------------------------------
 

@@ -1,6 +1,9 @@
 -- Reverses 0053. Deletes every plan, contract and deadline record: for
 -- development databases only.
 
+-- qualifications.expiry stays: it belongs to 0052, which stays applied.
+delete from scheduled_task_runs where task in ('maintenance.plans', 'deadlines.alerts');
+
 drop trigger if exists work_orders_track_deadlines on work_orders;
 drop function if exists track_work_order_deadlines();
 

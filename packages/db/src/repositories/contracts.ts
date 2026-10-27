@@ -1,4 +1,7 @@
 import {
+  calendarDay,
+  CLOSED_WORK_ORDER_STATES,
+  coverageFor,
   type ContractTerms,
   type Coverage,
   type CoverageReason,
@@ -47,19 +50,21 @@ export interface ServiceContractInput {
   title: string;
   startsOn: string;
   endsOn: string;
-  value?: string | null;
-  notes?: string | null;
-  renewalNoticeDays?: number;
+  value?: string | null | undefined;
+  notes?: string | null | undefined;
+  renewalNoticeDays?: number | undefined;
   /** Null: every site of the customer. */
-  siteIds?: readonly string[] | null;
+  siteIds?: readonly string[] | null | undefined;
   /** Null: every asset at the covered sites. */
-  assetIds?: readonly string[] | null;
+  assetIds?: readonly string[] | null | undefined;
   /** Null: every job type. */
-  jobTypeIds?: readonly string[] | null;
-  includedCallouts?: number | null;
+  jobTypeIds?: readonly string[] | null | undefined;
+  includedCallouts?: number | null | undefined;
 }
 
-export type ServiceContractChanges = Partial<Omit<ServiceContractInput, 'customerId'>>;
+export type ServiceContractChanges = {
+  [K in keyof Omit<ServiceContractInput, 'customerId'>]?: ServiceContractInput[K] | undefined;
+};
 
 export type ServiceContractWrite =
   | { outcome: 'written'; contract: ServiceContract }
@@ -583,7 +588,12 @@ export class ContractsRepository extends TenantScopedRepository {
    * Every contract a customer has had, as coverage needs it, with the call-outs
    * each has covered in the contract year `day` falls in.
    */
-  async termsForCustomer(customerId: string, day: string): Promise<ContractTerms[]> {
+  async termsForCustomer(
+    customerId: string,
+    day: string,
+    /** A job being worked out again, which must not count against itself. */
+    excludingWorkOrderId?: string,
+  ): Promise<ContractTerms[]> {
     const contracts = await this.list({ customerId, includeCancelled: true });
     const terms: ContractTerms[] = [];
     for (const contract of contracts) {
@@ -601,6 +611,9 @@ export class ContractsRepository extends TenantScopedRepository {
           .where('v.status', '=', 'covered')
           .where('v.reason', '=', 'contract')
           .where('w.state', '<>', 'cancelled')
+          .$if(excludingWorkOrderId !== undefined, (qb) =>
+            qb.where('v.work_order_id', '<>', excludingWorkOrderId!),
+          )
           .where(
             sql<boolean>`(v.created_at at time zone coalesce(
             (select s.timezone from tenant_settings s where s.tenant_id = v.tenant_id), 'UTC'))::date
@@ -645,6 +658,57 @@ export class ContractsRepository extends TenantScopedRepository {
         }),
       )
       .execute();
+  }
+
+  /**
+   * Works a job's coverage out again after its assets changed, as of the day it
+   * was created. Left alone: a job office staff decided by hand, one a
+   * maintenance plan made, and a closed one.
+   */
+  async recalculate(workOrderId: string): Promise<void> {
+    const job = await this.db
+      .selectFrom('work_orders')
+      .select(['customer_id', 'site_id', 'job_type_id', 'created_at', 'state'])
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', workOrderId)
+      .executeTakeFirst();
+    if (job === undefined || CLOSED_WORK_ORDER_STATES.includes(job.state)) {
+      return;
+    }
+    const existing = (await this.coverageOf([workOrderId])).get(workOrderId);
+    if (existing?.reason === 'override' || existing?.reason === 'maintenance_plan') {
+      return;
+    }
+    const [assets, settings] = await Promise.all([
+      this.db
+        .selectFrom('erp_work_order_assets')
+        .select('asset_id')
+        .where('tenant_id', '=', this.tenantId)
+        .where('work_order_id', '=', workOrderId)
+        .execute(),
+      this.db
+        .selectFrom('tenant_settings')
+        .select('timezone')
+        .where('tenant_id', '=', this.tenantId)
+        .executeTakeFirst(),
+    ]);
+    const day = calendarDay(job.created_at, settings?.timezone ?? 'UTC');
+    const coverage = coverageFor({
+      day,
+      siteId: job.site_id,
+      assetIds: assets.map((row) => row.asset_id),
+      jobTypeId: job.job_type_id,
+      contracts: await this.termsForCustomer(job.customer_id, day, workOrderId),
+    });
+    if (
+      coverage === undefined ||
+      (existing?.status === coverage.status &&
+        existing.reason === coverage.reason &&
+        existing.contractId === coverage.contractId)
+    ) {
+      return;
+    }
+    await this.setCoverage(workOrderId, coverage);
   }
 
   async coverageOf(workOrderIds: readonly string[]): Promise<Map<string, JobCoverage>> {
