@@ -116,6 +116,17 @@ export const EXPORTED_TABLES = [
   'erp_assets',
   'erp_asset_events',
   'erp_work_order_assets',
+  // Contracts, maintenance plans and deadlines (0053). The contract counter is
+  // working state and is left out.
+  'service_contracts',
+  'service_contract_sites',
+  'service_contract_assets',
+  'service_contract_job_types',
+  'maintenance_plans',
+  'maintenance_occurrences',
+  'work_order_coverage',
+  'deadline_rules',
+  'work_order_deadlines',
   'erp_ledger_accounts',
   'erp_ledger_settings',
   'erp_ledger_periods',

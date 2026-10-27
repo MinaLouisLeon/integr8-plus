@@ -82,6 +82,10 @@ import {
   OperationsContext,
   QualificationsScreen,
   ScheduleScreen,
+  ContractScreen,
+  ContractsScreen,
+  DeadlinesScreen,
+  MaintenanceScreen,
   SiteScreen,
   TimesheetsScreen,
   WorkOrderFormScreen,
@@ -126,6 +130,10 @@ function OperationsScreens({ children }: { children: ReactNode }) {
         workOrder: (id) => `/work-orders/${id}`,
         schedule: '/schedule',
         qualifications: '/qualifications',
+        maintenance: '/maintenance',
+        contracts: '/contracts',
+        contract: (id) => `/contracts/${id}`,
+        deadlines: '/deadlines',
         customers: '/customers',
         customer: (id) => `/customers/${id}`,
         site: (id) => `/sites/${id}`,
@@ -532,6 +540,39 @@ export function QualificationsRoute() {
   return (
     <OperationsScreens>
       <QualificationsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function MaintenanceRoute() {
+  return (
+    <OperationsScreens>
+      <MaintenanceScreen />
+    </OperationsScreens>
+  );
+}
+
+export function DeadlinesRoute() {
+  return (
+    <OperationsScreens>
+      <DeadlinesScreen />
+    </OperationsScreens>
+  );
+}
+
+export function ContractsRoute() {
+  return (
+    <OperationsScreens>
+      <ContractsScreen />
+    </OperationsScreens>
+  );
+}
+
+export function ContractRoute() {
+  const { contractId = '' } = useParams();
+  return (
+    <OperationsScreens>
+      <ContractScreen key={contractId} contractId={contractId} />
     </OperationsScreens>
   );
 }

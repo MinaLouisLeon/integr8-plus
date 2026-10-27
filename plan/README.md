@@ -106,7 +106,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 
 - [ ] **P25** — Calendar and dispatch board
 - [ ] **P26** — Skills and certificates
-- [ ] **P27** — Preventive maintenance and reminders
+- [ ] **P27** — Maintenance plans, contracts and response deadlines
 
 ### v1.3 — Reporting, Comms and AI
 

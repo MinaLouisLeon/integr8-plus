@@ -258,3 +258,97 @@ export function qualificationExpiryEmail(input: {
       : { action: { label: 'Open qualifications', url: input.url } }),
   });
 }
+
+/** One contract a renewal reminder is about (P27). */
+export interface RenewalItem {
+  reference: string;
+  title: string;
+  customer: string;
+  endsOn: string;
+  stage: 'notice' | 'ended';
+}
+
+/**
+ * Contracts nearing their end, or ended without being renewed (P27). One
+ * message per manager per day, listing every one.
+ */
+export function contractRenewalEmail(input: {
+  to: string;
+  companyName: string;
+  items: readonly RenewalItem[];
+  url: string | null;
+}): EmailMessage {
+  const ended = input.items.filter((item) => item.stage === 'ended');
+  const line = (item: RenewalItem) =>
+    `${item.reference} ${item.title} for ${item.customer} ${
+      item.stage === 'ended'
+        ? `ended on ${calendarDayWords(item.endsOn)} without being renewed`
+        : `ends on ${calendarDayWords(item.endsOn)}`
+    }.`;
+  return compose({
+    to: input.to,
+    subject:
+      ended.length > 0
+        ? `Contracts ended without renewal — ${input.companyName}`
+        : `Contracts ending soon — ${input.companyName}`,
+    title: ended.length > 0 ? 'Contracts have ended' : 'Contracts ending soon',
+    paragraphs: [
+      `Service contracts at ${input.companyName} are ending or have ended.`,
+      ...input.items.map(line),
+      'Renew a contract to keep its maintenance plans making jobs and its customer’s jobs covered.',
+    ],
+    ...(input.url === null ? {} : { action: { label: 'Open contracts', url: input.url } }),
+  });
+}
+
+/** One deadline an alert is about (P27). */
+export interface DeadlineItem {
+  job: string;
+  customer: string;
+  kind: 'response' | 'completion';
+  /** Already written in the company's time zone. */
+  dueAt: string;
+  stage: 'warning' | 'missed';
+  url: string | null;
+}
+
+/**
+ * Deadlines about to pass, or passed (P27). One message per person per run,
+ * listing every job they should hear about.
+ */
+export function deadlineAlertEmail(input: {
+  to: string;
+  companyName: string;
+  items: readonly DeadlineItem[];
+  url: string | null;
+}): EmailMessage {
+  const missed = input.items.filter((item) => item.stage === 'missed');
+  const line = (item: DeadlineItem) => {
+    const what = item.kind === 'response' ? 'response' : 'completion';
+    const when =
+      item.stage === 'missed'
+        ? `was due at ${item.dueAt} and was missed`
+        : `is due at ${item.dueAt}`;
+    return `${item.job} (${item.customer}): the ${what} deadline ${when}.${
+      item.url === null ? '' : ` ${item.url}`
+    }`;
+  };
+  return compose({
+    to: input.to,
+    subject:
+      missed.length > 0
+        ? `Deadlines missed — ${input.companyName}`
+        : `Deadlines due soon — ${input.companyName}`,
+    title: missed.length > 0 ? 'Deadlines missed' : 'Deadlines due soon',
+    paragraphs: [
+      missed.length > 0
+        ? `Jobs at ${input.companyName} have missed their deadlines, or are about to.`
+        : `Jobs at ${input.companyName} are about to reach their deadlines.`,
+      ...input.items.map(line),
+      'A response deadline is met when the job is dispatched; a completion deadline when it is completed.',
+    ],
+    ...(input.url === null
+      ? {}
+      : { action: { label: 'Open the deadlines report', url: input.url } }),
+  });
+}

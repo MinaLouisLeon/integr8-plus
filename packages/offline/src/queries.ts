@@ -20,9 +20,16 @@ export interface JobListItem {
   closedAt: string | null;
   /** Whether the site has hazards on arrival, so the list can warn before the job is opened. */
   hazards: boolean;
+  /** The job's deadlines as last downloaded (P27); null when its priority has none. */
+  deadlines: WorkOrderDetail['deadlines'];
+  /** Whether a contract covers it (P27); null when the customer never had a contract. */
+  coverage: 'covered' | 'chargeable' | null;
+  /** Made by a maintenance plan (P27). */
+  maintenance: boolean;
 }
 
-interface JobRow {
+/** A job list row as SQLite returns it; shared with search. */
+export interface JobRow {
   id: string;
   reference_label: string;
   title: string;
@@ -35,15 +42,21 @@ interface JobRow {
   due_by: string | null;
   closed_at: string | null;
   hazards: string | null;
+  deadlines: string | null;
+  coverage_status: 'covered' | 'chargeable' | null;
+  maintenance: number | null;
 }
 
-const JOB_COLUMNS = `work_orders.id, work_orders.reference_label, work_orders.title, work_orders.state,
+export const JOB_COLUMNS = `work_orders.id, work_orders.reference_label, work_orders.title, work_orders.state,
   work_orders.priority, work_orders.customer_name, work_orders.site_name, work_orders.site_address,
-  work_orders.due_from, work_orders.due_by, work_orders.closed_at, sites.hazards`;
+  work_orders.due_from, work_orders.due_by, work_orders.closed_at, sites.hazards,
+  json_extract(work_orders.data, '$.deadlines') as deadlines,
+  json_extract(work_orders.data, '$.coverage.status') as coverage_status,
+  json_extract(work_orders.data, '$.workOrder.maintenance') as maintenance`;
 
 const JOBS_FROM = `work_orders left join sites on sites.id = work_orders.site_id`;
 
-function toJob(row: JobRow): JobListItem {
+export function toJob(row: JobRow): JobListItem {
   return {
     id: row.id,
     referenceLabel: row.reference_label,
@@ -57,6 +70,13 @@ function toJob(row: JobRow): JobListItem {
     dueBy: row.due_by,
     closedAt: row.closed_at,
     hazards: row.hazards !== null && row.hazards.trim() !== '',
+    // Jobs downloaded before P27 have none of these.
+    deadlines:
+      row.deadlines === null || row.deadlines === undefined
+        ? null
+        : (JSON.parse(row.deadlines) as WorkOrderDetail['deadlines']),
+    coverage: row.coverage_status ?? null,
+    maintenance: row.maintenance === 1,
   };
 }
 

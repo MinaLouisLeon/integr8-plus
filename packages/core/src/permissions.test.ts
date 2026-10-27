@@ -398,3 +398,18 @@ describe('custom roles (ADR-0013)', () => {
     expect(holds({ ...base, grants: ['inventory_manager'] }, 'inventory.manage')).toBe(true);
   });
 });
+
+describe('service contracts (P27)', () => {
+  const holders = (permission: Parameters<typeof can>[1]) =>
+    ROLES.filter((role) => can(role, permission));
+
+  it('lets owners, admins and dispatchers manage them, and viewers read them', () => {
+    expect(holders('contract.manage')).toEqual(['owner', 'admin', 'dispatcher']);
+    expect(holders('contract.read')).toEqual(['owner', 'admin', 'dispatcher', 'viewer']);
+  });
+
+  it('lets owners and admins set the deadlines, which no staff-only rule holds back', () => {
+    expect(holders('deadline.manage')).toEqual(['owner', 'admin']);
+    expect(holds({ role: 'admin', grants: [] }, 'deadline.manage')).toBe(true);
+  });
+});

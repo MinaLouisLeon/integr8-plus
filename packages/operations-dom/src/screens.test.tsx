@@ -41,6 +41,9 @@ function detail(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
       stateChangedAt: '2026-10-01T09:00:00.000Z',
       createdAt: '2026-09-30T09:00:00.000Z',
       updatedAt: '2026-10-01T09:00:00.000Z',
+      coverage: null,
+      deadline: null,
+      maintenance: false,
       description: 'Annual service, flat 4',
       instructions: 'Check the flue terminal.',
       lastReason: null,
@@ -88,6 +91,9 @@ function detail(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
     crew: [{ ...ENGINEER, lead: true, assignedAt: '2026-09-30T09:00:00.000Z' }],
     visits: [],
     requiredQualifications: [],
+    coverage: null,
+    deadlines: null,
+    maintenancePlans: [],
     forms: [{ formId: FORM, title: 'Gas safety record', required: true, submission: null }],
     checklist: [
       {
@@ -140,6 +146,7 @@ function detail(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
         { to: 'complete', requiresReason: false },
       ],
       recordParts: false,
+      overrideCoverage: false,
     },
   };
   return { ...base, ...overrides };
@@ -240,6 +247,7 @@ describe('the job screen', { timeout: 20_000 }, () => {
         comment: true,
         transitions: [],
         recordParts: false,
+        overrideCoverage: false,
       },
     });
     const { client, calls } = fakeApi({
@@ -256,6 +264,7 @@ describe('the job screen', { timeout: 20_000 }, () => {
               { to: 'cancelled', requiresReason: true },
             ],
             recordParts: false,
+            overrideCoverage: false,
           },
         }),
       }),
@@ -290,6 +299,7 @@ describe('the job screen', { timeout: 20_000 }, () => {
             comment: false,
             transitions: [],
             recordParts: false,
+            overrideCoverage: false,
           },
         }),
       }),
@@ -365,6 +375,7 @@ describe('the job screen', { timeout: 20_000 }, () => {
         comment: true,
         transitions: [],
         recordParts: false,
+        overrideCoverage: false,
       },
       execution: {
         beforePhotos: 1,
@@ -962,6 +973,7 @@ describe('a job’s forms', () => {
         comment: true,
         transitions: [],
         recordParts: false,
+        overrideCoverage: false,
       },
     });
   const formList = {
@@ -1619,5 +1631,253 @@ describe('qualifications a job needs', { timeout: 20_000 }, () => {
         qualificationTypeIds: [GAS, HEIGHTS],
       }),
     );
+  });
+});
+
+describe('contracts, deadlines and planned maintenance on a job (P27)', { timeout: 20_000 }, () => {
+  const CONTRACT = '00000000-0000-4000-8000-000000000c01';
+  const PLAN = '00000000-0000-4000-8000-000000000c02';
+  const ASSET = '00000000-0000-4000-8000-000000000c03';
+  const ANNUAL = { id: CONTRACT, reference: 'CT-000012', title: 'Annual servicing' };
+  const later = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+
+  function withTerms(can: Partial<WorkOrderDetail['can']> = {}): WorkOrderDetail {
+    return detail({
+      coverage: {
+        status: 'chargeable',
+        reason: 'site_not_covered',
+        contract: ANNUAL,
+        overrideReason: null,
+        overriddenAt: null,
+      },
+      deadlines: {
+        priority: 'urgent',
+        clock: 'always',
+        warnMinutes: 30,
+        response: {
+          dueAt: '2026-09-30T13:00:00.000Z',
+          metAt: '2026-09-30T14:00:00.000Z',
+          state: 'met_late',
+          missedAt: '2026-09-30T13:00:00.000Z',
+        },
+        completion: { dueAt: later, metAt: null, state: 'running', missedAt: null },
+      },
+      maintenancePlans: [
+        {
+          planId: PLAN,
+          title: 'Quarterly service',
+          asset: { id: ASSET, name: 'Boiler 1', reference: 'AS-000007' },
+          dueOn: '2026-10-01',
+        },
+      ],
+      events: [
+        {
+          kind: 'maintenance_planned',
+          fromState: null,
+          toState: null,
+          person: null,
+          actor: ENGINEER,
+          reason: null,
+          details: {
+            planId: PLAN,
+            title: 'Quarterly service',
+            assetId: ASSET,
+            dueOn: '2026-10-01',
+          },
+          occurredAt: '2026-09-30T09:00:00.000Z',
+          recordedAt: '2026-09-30T09:00:00.000Z',
+        },
+        {
+          kind: 'deadline_missed',
+          fromState: null,
+          toState: null,
+          person: null,
+          actor: ENGINEER,
+          reason: null,
+          details: { deadline: 'response', dueAt: '2026-09-30T13:00:00.000Z', priority: 'urgent' },
+          occurredAt: '2026-09-30T13:00:00.000Z',
+          recordedAt: '2026-09-30T13:00:00.000Z',
+        },
+        {
+          kind: 'coverage_changed',
+          fromState: null,
+          toState: null,
+          person: null,
+          actor: ENGINEER,
+          reason: 'Goodwill visit',
+          details: {
+            from: { status: 'covered', reason: 'contract', contractId: CONTRACT },
+            to: { status: 'chargeable', reason: 'override', contractId: CONTRACT },
+          },
+          occurredAt: '2026-09-30T15:00:00.000Z',
+          recordedAt: '2026-09-30T15:00:00.000Z',
+        },
+      ],
+      can: { ...detail().can, ...can },
+    });
+  }
+
+  it('says whether the contract covers the job, its deadlines, and the plan that made it', async () => {
+    const { client } = fakeApi({ 'GET /v1/work-orders/:id': () => ({ body: withTerms() }) });
+    const { container } = renderScreen(<WorkOrderScreen workOrderId={JOB} />, client);
+
+    const coverage = await screen.findByRole('region', { name: 'Contract coverage' });
+    expect(within(coverage).getByText('Chargeable')).toBeInTheDocument();
+    expect(within(coverage).getByRole('link', { name: 'CT-000012' })).toHaveAttribute(
+      'href',
+      `/contracts/${CONTRACT}`,
+    );
+    expect(
+      within(coverage).getByText('The contract does not cover this site.'),
+    ).toBeInTheDocument();
+    // Only office staff who keep contracts may change it.
+    expect(
+      within(coverage).queryByRole('button', { name: 'Change coverage' }),
+    ).not.toBeInTheDocument();
+
+    const deadlines = screen.getByRole('region', { name: 'Deadlines' });
+    expect(within(deadlines).getByText('Met late')).toBeInTheDocument();
+    expect(within(deadlines).getByText('Running')).toBeInTheDocument();
+    expect(within(deadlines).getByText(/^Counted around the clock./u)).toBeInTheDocument();
+
+    expect(screen.getByText('Planned maintenance')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'AS-000007 Boiler 1' })).toHaveAttribute(
+      'href',
+      `/assets/${ASSET}`,
+    );
+
+    const history = screen.getByRole('region', { name: 'History' });
+    expect(
+      within(history).getByText(
+        'Created by maintenance plan Quarterly service, due October 1, 2026',
+      ),
+    ).toBeInTheDocument();
+    expect(within(history).getByText(/^Response deadline of .+ missed$/u)).toBeInTheDocument();
+    expect(within(history).getByText('Sam Carter marked it chargeable')).toBeInTheDocument();
+    expect(within(history).getByText(/Goodwill visit/u)).toBeInTheDocument();
+    expect(await accessibilityViolations(container)).toEqual([]);
+  });
+
+  it('shows no coverage or deadlines for a job that has neither', async () => {
+    const { client } = fakeApi({ 'GET /v1/work-orders/:id': () => ({ body: detail() }) });
+    renderScreen(<WorkOrderScreen workOrderId={JOB} />, client);
+
+    await screen.findByRole('heading', { level: 1, name: 'Boiler service' });
+    expect(screen.queryByRole('region', { name: 'Contract coverage' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Deadlines' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Planned maintenance')).not.toBeInTheDocument();
+  });
+
+  it('lets a contract manager override coverage, with a contract and a reason', async () => {
+    const user = userEvent.setup();
+    const { client, calls } = fakeApi({
+      'GET /v1/work-orders/:id': () => ({ body: withTerms({ overrideCoverage: true }) }),
+      'GET /v1/contracts': () => ({
+        body: {
+          items: [
+            {
+              ...ANNUAL,
+              customer: { id: CUSTOMER, name: 'Riverside Housing' },
+              startsOn: '2026-01-01',
+              endsOn: '2026-12-31',
+              value: null,
+              notes: null,
+              renewalNoticeDays: 60,
+              sites: null,
+              assets: null,
+              jobTypes: null,
+              includedCallouts: null,
+              calloutsUsed: 0,
+              standing: 'active',
+              renewedFrom: null,
+              renewedBy: null,
+              cancelledOn: null,
+              cancelReason: null,
+              version: 1,
+              createdAt: '2026-01-01T09:00:00.000Z',
+              updatedAt: '2026-01-01T09:00:00.000Z',
+            },
+          ],
+          defaults: { renewalNoticeDays: 60 },
+          can: { manage: true },
+        },
+      }),
+      'PUT /v1/work-orders/:id/coverage': () => ({
+        body: {
+          status: 'covered',
+          reason: 'override',
+          contract: ANNUAL,
+          overrideReason: 'Goodwill visit',
+          overriddenAt: '2026-10-02T09:00:00.000Z',
+        },
+      }),
+    });
+    renderScreen(<WorkOrderScreen workOrderId={JOB} />, client);
+
+    const coverage = await screen.findByRole('region', { name: 'Contract coverage' });
+    await user.click(within(coverage).getByRole('button', { name: 'Change coverage' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Change coverage of WO-000123' });
+    expect(within(dialog).getByRole('radio', { name: 'Covered' })).toBeChecked();
+    expect(within(dialog).getByLabelText('Contract')).toHaveValue(CONTRACT);
+    const save = within(dialog).getByRole('button', { name: 'Save coverage' });
+    expect(save).toBeDisabled();
+
+    await user.type(within(dialog).getByLabelText('Reason'), 'Goodwill visit');
+    await user.click(save);
+    await waitFor(() =>
+      expect(calls.find((call) => call.method === 'PUT')?.body).toEqual({
+        status: 'covered',
+        contractId: CONTRACT,
+        reason: 'Goodwill visit',
+      }),
+    );
+  });
+
+  it('marks coverage and the deadline that matters on each job in the list', async () => {
+    const first = '00000000-0000-4000-8000-000000000121';
+    const second = '00000000-0000-4000-8000-000000000122';
+    const third = '00000000-0000-4000-8000-000000000123';
+    const base = detail().workOrder;
+    const { client } = fakeApi({
+      'GET /v1/job-types': () => ({ body: { items: [] } }),
+      'GET /v1/saved-views': () => ({ body: { items: [] } }),
+      'GET /v1/work-orders': () => ({
+        body: {
+          items: [
+            {
+              ...base,
+              id: first,
+              referenceLabel: 'WO-000001',
+              coverage: { status: 'covered', reason: 'contract', contract: ANNUAL },
+              deadline: { kind: 'response', dueAt: later, state: 'warning' },
+              maintenance: true,
+            },
+            {
+              ...base,
+              id: second,
+              referenceLabel: 'WO-000002',
+              coverage: { status: 'chargeable', reason: 'callouts_used', contract: ANNUAL },
+              deadline: { kind: 'completion', dueAt: '2026-09-01T09:00:00.000Z', state: 'missed' },
+            },
+            { ...base, id: third, referenceLabel: 'WO-000003' },
+          ],
+          nextCursor: null,
+          counts: {},
+        },
+      }),
+    });
+    renderScreen(<WorkOrderListScreen />, client, { permissions: ['work_order.read_all'] });
+
+    const rows = (await screen.findAllByRole('row')).filter((row) =>
+      /WO-00000\d/u.test(row.textContent ?? ''),
+    );
+    expect(rows).toHaveLength(3);
+    expect(within(rows[0]!).getByText('Covered · CT-000012')).toBeInTheDocument();
+    expect(within(rows[0]!).getByText(/^Respond in \d+ hours?$/u)).toBeInTheDocument();
+    expect(within(rows[0]!).getByText('Planned maintenance')).toBeInTheDocument();
+    expect(within(rows[1]!).getByText('Chargeable')).toBeInTheDocument();
+    expect(within(rows[1]!).getByText('Completion missed')).toBeInTheDocument();
+    // A customer without a contract, and a job without a deadline: nothing at all.
+    expect(within(rows[2]!).queryByText(/Covered|Chargeable|Respond|Complete /u)).toBeNull();
   });
 });

@@ -45,6 +45,15 @@ import { deliverOnCompletion } from './sales-fulfilment.js';
 import { iso, isoOrNull } from './schemas.js';
 import { gapsForVisits } from './qualification-check.js';
 import { visitBody, visitSchema } from './visits-shared.js';
+import {
+  coverageDetailBody,
+  coverageDetailSchema,
+  deadlinesDetailBody,
+  deadlinesDetailSchema,
+  jobPlanBodies,
+  jobPlanSchema,
+  jobTermsOf,
+} from './job-terms.js';
 
 /**
  * Work orders (P10): the job, who is on it, what must be done and filled in, and
@@ -88,6 +97,9 @@ const eventSchema = z.object({
     'visit_assigned',
     'visit_unassigned',
     'qualification_override',
+    'maintenance_planned',
+    'coverage_changed',
+    'deadline_missed',
   ]),
   fromState: workOrderStateSchema.nullable(),
   toState: workOrderStateSchema.nullable(),
@@ -160,6 +172,12 @@ export const detailSchema = z.object({
    * these, valid on the visit's days. Copied from the job type, then the job's own.
    */
   requiredQualifications: z.array(z.object({ qualificationTypeId: z.uuid(), name: z.string() })),
+  /** Whether a contract covers the job (P27), and any override; null when the customer never had a contract. */
+  coverage: coverageDetailSchema.nullable(),
+  /** The job's response and completion deadlines (P27); null when its priority has none. */
+  deadlines: deadlinesDetailSchema.nullable(),
+  /** The maintenance plans that made this job (P27), with their assets. */
+  maintenancePlans: z.array(jobPlanSchema),
   forms: z.array(
     z.object({
       formId: z.uuid(),
@@ -222,6 +240,8 @@ export const detailSchema = z.object({
     transitions: z.array(z.object({ to: workOrderStateSchema, requiresReason: z.boolean() })),
     /** Record parts used: the inventory module is on, this seat consumes stock and works the job. */
     recordParts: z.boolean(),
+    /** Decide the job's coverage by hand, with a reason (P27). */
+    overrideCoverage: z.boolean(),
   }),
 });
 
@@ -255,9 +275,10 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     tx.visits.listForWorkOrders([job.id]),
   ]);
   const jobVisits = visits.get(job.id) ?? [];
-  const [requirements, gaps] = await Promise.all([
+  const [requirements, gaps, terms] = await Promise.all([
     tx.qualifications.workOrderRequirements([job.id]),
     gapsForVisits(tx, jobVisits),
+    jobTermsOf(tx, [job.id]),
   ]);
   const missing = await tx.workOrders.completionMissing(job);
   const contacts = site?.contactId == null ? [] : await tx.customers.findContacts([site.contactId]);
@@ -321,6 +342,9 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
     })),
     visits: jobVisits.map((visit) => visitBody(visit, job, people, gaps.get(visit.id) ?? [])),
     requiredQualifications: requirements.get(job.id) ?? [],
+    coverage: coverageDetailBody(terms, job.id),
+    deadlines: deadlinesDetailBody(terms, job.id),
+    maintenancePlans: await jobPlanBodies(tx, terms, job.id),
     forms: forms.map((form) => ({
       formId: form.formId,
       title: form.title,
@@ -392,6 +416,7 @@ export async function detailBody(tx: TenantTransaction, principal: Principal, jo
       comment: working,
       transitions: await allowedTransitions(tx, principal, job),
       recordParts: inventory && holds(principal, 'inventory.consume') && working && !closed,
+      overrideCoverage: holds(principal, 'contract.manage') && job.state !== 'cancelled',
     },
   };
 }

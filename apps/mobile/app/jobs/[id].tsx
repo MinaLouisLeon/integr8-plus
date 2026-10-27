@@ -10,6 +10,7 @@ import { JobAssets } from '~/components/job-assets';
 import { JobParts } from '~/components/job-parts';
 import { JobPurchases } from '~/components/job-purchases';
 import { JobQualifications } from '~/components/job-qualifications';
+import { JobCoverageBadges, JobDeadlines } from '~/components/job-terms';
 import { JobSyncBadge, JobSyncCard } from '~/components/job-sync';
 import {
   JobActions,
@@ -96,6 +97,7 @@ function Job() {
           />
         </View>
         <Body>{address}</Body>
+        <JobCoverageBadges detail={detail} />
       </View>
 
       {closed ? null : <JobActions detail={detail} />}
@@ -105,6 +107,8 @@ function Job() {
           <Body>{workOrder.instructions}</Body>
         </Section>
       )}
+
+      <JobDeadlines detail={detail} />
 
       <JobQualifications detail={detail} />
 

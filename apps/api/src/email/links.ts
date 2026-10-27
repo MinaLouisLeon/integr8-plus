@@ -38,3 +38,21 @@ export function qualificationsUrl(webAppUrl: string | undefined): string | null 
   const root = base(webAppUrl);
   return root === null ? null : `${root}/qualifications`;
 }
+
+/** The company's contracts screen (P27), for a renewal reminder to point at. */
+export function contractsUrl(webAppUrl: string | undefined): string | null {
+  const root = base(webAppUrl);
+  return root === null ? null : `${root}/contracts`;
+}
+
+/** A job's screen (P27), for a deadline alert to point at. */
+export function workOrderUrl(webAppUrl: string | undefined, workOrderId: string): string | null {
+  const root = base(webAppUrl);
+  return root === null ? null : `${root}/work-orders/${encodeURIComponent(workOrderId)}`;
+}
+
+/** The response deadlines report (P27). */
+export function deadlinesUrl(webAppUrl: string | undefined): string | null {
+  const root = base(webAppUrl);
+  return root === null ? null : `${root}/deadlines`;
+}

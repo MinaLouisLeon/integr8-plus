@@ -14,6 +14,7 @@ import { type Attachment, toAttachment } from './attachments.js';
 import { toDayString, trimDecimal } from './crm-leads.js';
 import { prefixQuery } from './customers.js';
 import { blankToNull } from './sales-quotes.js';
+import { ContractsRepository } from './contracts.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
 /**
@@ -738,6 +739,10 @@ export class AssetsRepository extends TenantScopedRepository {
       )
       .returning('asset_id')
       .executeTakeFirst();
+    if (row !== undefined) {
+      // What a contract covers can depend on the job's assets (P27).
+      await new ContractsRepository(this.scope).recalculate(workOrderId);
+    }
     return row !== undefined;
   }
 
@@ -749,6 +754,9 @@ export class AssetsRepository extends TenantScopedRepository {
       .where('work_order_id', '=', workOrderId)
       .where('asset_id', '=', assetId)
       .executeTakeFirst();
+    if (result.numDeletedRows > 0n) {
+      await new ContractsRepository(this.scope).recalculate(workOrderId);
+    }
     return result.numDeletedRows > 0n;
   }
 

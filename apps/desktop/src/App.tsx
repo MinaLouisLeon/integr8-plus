@@ -101,6 +101,10 @@ import {
   NewWorkOrderRoute,
   QualificationsRoute,
   ScheduleRoute,
+  MaintenanceRoute,
+  DeadlinesRoute,
+  ContractsRoute,
+  ContractRoute,
   SiteRoute,
   TimesheetsRoute,
   WorkOrderRoute,
@@ -243,6 +247,10 @@ const SIGNED_IN_ROUTES: readonly { path: string; element: ReactNode }[] = [
   { path: '/timesheets', element: <TimesheetsRoute /> },
   { path: '/schedule', element: <ScheduleRoute /> },
   { path: '/qualifications', element: <QualificationsRoute /> },
+  { path: '/maintenance', element: <MaintenanceRoute /> },
+  { path: '/deadlines', element: <DeadlinesRoute /> },
+  { path: '/contracts', element: <ContractsRoute /> },
+  { path: '/contracts/:contractId', element: <ContractRoute /> },
 ];
 
 export function App() {

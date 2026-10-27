@@ -126,6 +126,9 @@ live versions and the person's submissions, plus jobs they were taken off.
   stock, the expense categories they may claim, and their skills and certificates (P26,
   `myQualifications`), which the phone keeps in `meta` for **My qualifications**. A server that
   says nothing about one leaves the phone's copy as it was.
+- **A job's coverage, deadlines and plans** (P27) come inside the job, like the rest of it. A
+  change to any of them touches the job, so it comes down with the next pull; the job list reads
+  them from the stored job (`json_extract`), so a job downloaded before P27 simply has none.
 
 ## Files
 

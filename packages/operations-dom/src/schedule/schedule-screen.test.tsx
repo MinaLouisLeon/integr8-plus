@@ -46,6 +46,9 @@ function job(id: string, reference: number, title: string, crew: string[] = []):
     stateChangedAt: '2026-10-01T09:00:00.000Z',
     createdAt: '2026-10-01T09:00:00.000Z',
     updatedAt: '2026-10-01T09:00:00.000Z',
+    coverage: null,
+    deadline: null,
+    maintenance: false,
   };
 }
 

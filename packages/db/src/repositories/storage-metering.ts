@@ -310,12 +310,22 @@ export class StorageMeteringRepository {
    * finish, so a task that dies holding its turn is retried on the next tick
    * after the interval rather than never.
    */
-  async claimTask(task: string, every: { hours: number }, workerId: string): Promise<boolean> {
+  async claimTask(
+    task: string,
+    every: { hours: number; minutes?: number } | { hours?: number; minutes: number },
+    workerId: string,
+  ): Promise<boolean> {
+    const hours = every.hours ?? 0;
+    const minutes = every.minutes ?? 0;
     const result = await this.db
       .updateTable('scheduled_task_runs')
       .set({ last_run_at: sql<Date>`now()`, claimed_by: workerId, last_finished_at: null })
       .where('task', '=', task)
-      .where('last_run_at', '<=', sql<Date>`now() - make_interval(hours => ${every.hours})`)
+      .where(
+        'last_run_at',
+        '<=',
+        sql<Date>`now() - make_interval(hours => ${hours}, mins => ${minutes})`,
+      )
       .executeTakeFirst();
 
     return (result.numUpdatedRows ?? 0n) > 0n;

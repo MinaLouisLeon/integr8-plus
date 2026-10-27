@@ -33,6 +33,7 @@ import {
 } from './asset-parts.js';
 import { LotList } from '../inventory/lots.js';
 import { AssetTagSheet } from './asset-tag.js';
+import { AssetPlansSection } from '../maintenance/asset-plans.js';
 
 /**
  * One asset (CRM/ERP plan, phase E3; ADR-0008): what it is and where, its
@@ -262,6 +263,8 @@ export function AssetScreen({ assetId }: { assetId: string }) {
             </ul>
           )}
         </section>
+
+        <AssetPlansSection asset={asset} />
 
         {can.attach ? <AssetPhoto assetId={asset.id} onDone={() => void settle()} /> : null}
 

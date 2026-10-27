@@ -14,6 +14,7 @@ apps/mobile
   src/lib/today.ts             which job is next; which steps are the engineer's       ← unit tested
   src/lib/navigation.ts        directions links for each maps app                      ← unit tested
   src/lib/qualifications.ts    whether the engineer holds what a job needs              ← unit tested
+  src/lib/job-terms.ts         a job's deadlines against the phone's own clock           ← unit tested
   src/local/job-actions.ts     clock, steps, photos, sign-off, opening files — all local
   src/local/push.ts            registering for notifications, and opening their job
   src/local/resume.ts          the screen to return to after a force close              ← unit tested
@@ -47,20 +48,26 @@ How to get in comes first, then what to do:
 
 1. access notes, hazards first;
 2. whether it is safe to leave (P12);
-3. the title, state and address;
+3. the title, state and address, and (P27) whether the job is planned maintenance and whether
+   the customer's contract covers it — **Covered by CT-000012**, or **Chargeable** and why — so
+   the engineer knows before starting work;
 4. **the steps**: the one step forward as the main button (**Start travel**, **Arrived**,
    **Start work**, **Complete job**), then **Directions** and the other steps the engineer may
    take (**Stop travelling**, **Waiting for parts**);
 5. instructions;
-6. what the job needs (P26): each required qualification beside whether the engineer holds it,
+6. its deadlines (P27): respond by, complete by, each running, due soon, met, met late or
+   missed. The phone works a running deadline out again against its own clock, so one that
+   passed since the last sync shows as missed; then the plans and assets a planned
+   maintenance job is for;
+7. what the job needs (P26): each required qualification beside whether the engineer holds it,
    as the phone last heard: held, expiring, expired or not held. It is for raising a lapsed
    certificate before setting off; the office decides who goes;
-7. forms;
-8. photos;
-9. checklist, ticked on the phone;
-10. files;
-11. time on this job;
-12. then the customer, site, contact, due window, description, sign-off, crew, notes and earlier
+8. forms;
+9. photos;
+10. checklist, ticked on the phone;
+11. files;
+12. time on this job;
+13. then the customer, site, contact, due window, description, sign-off, crew, notes and earlier
     jobs.
 
 **Only the engineer's own transitions are offered.** `jobSteps` filters the core state machine
@@ -180,6 +187,9 @@ out, or the session being revoked, stops notifications to it. So does
   hears about the visit only.
 - Certificates (P26): the holder hears once when a certificate is about to expire, within the
   company's warning period, and once when it has expired. The office hears by email.
+- Deadlines (P27): the job's crew hears once when a response or completion deadline is about to
+  pass, on `jobs`, and once when it is missed, on `urgent`. The office hears by email. The job
+  list shows the deadline that matters now, and tags a job due soon or missed.
 - Expo's receipts are checked 15 minutes later (`push.receipts`). A token Expo reports as no
   longer registered is disabled, so an uninstalled app is not tried again.
 

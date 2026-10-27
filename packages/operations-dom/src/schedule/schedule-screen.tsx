@@ -72,6 +72,8 @@ import {
   type ViewMode,
 } from './model.js';
 import { VisitDialog, type VisitDialogTarget } from './visit-dialog.js';
+import { CoverageBadge } from '../contracts/contract-parts.js';
+import { DeadlineChip } from '../deadlines/deadline-parts.js';
 
 /**
  * The scheduling board (P25): a calendar of engineers' visits.
@@ -912,6 +914,12 @@ function JobCard({ entry, overlay = false }: { entry: UnscheduledJob; overlay?: 
       <span dir="auto" className="truncate text-content-muted">
         {job.site.name}
       </span>
+      {job.deadline === null && job.coverage === null ? null : (
+        <span className="flex flex-wrap gap-1">
+          <DeadlineChip deadline={job.deadline} />
+          <CoverageBadge coverage={job.coverage} />
+        </span>
+      )}
       {entry.expectedDurationMinutes === null ? null : (
         <span className="text-content-muted">
           {t('operations.schedule.expected', {

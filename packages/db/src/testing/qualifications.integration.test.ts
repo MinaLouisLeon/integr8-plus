@@ -384,9 +384,18 @@ describe('what jobs need', () => {
     expect(event).toMatchObject({ reason: 'Renewal booked; supervised by Sara', actorId: MANAGER });
     expect(event?.details).toMatchObject({ visitId: visit.id, assigneeIds: [AHMED] });
 
+    // The runtime role has no right to change it at all; even the owner, who
+    // has, is refused by the append-only trigger.
     await expect(
       asTenant(app, northwind.id, () =>
         app.query(`update work_order_qualification_overrides set reason = 'x' where id = $1`, [
+          override.id,
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      asTenant(owner, northwind.id, () =>
+        owner.query(`update work_order_qualification_overrides set reason = 'x' where id = $1`, [
           override.id,
         ]),
       ),
