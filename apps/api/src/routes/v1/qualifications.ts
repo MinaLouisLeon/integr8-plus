@@ -554,11 +554,10 @@ export const listQualificationsRoute = defineRoute({
   handler: async ({ query }, context) => {
     const body = await withTenant(context.principal.tenantId, async (tx) => {
       const [records, members, types, settings, clock, people] = await Promise.all([
+        // `many` turns a missing filter into an empty list, which means "all" here.
         tx.qualifications.listRecords({
-          ...(query.userId === undefined ? {} : { userIds: query.userId }),
-          ...(query.qualificationTypeId === undefined
-            ? {}
-            : { typeIds: query.qualificationTypeId }),
+          ...(query.userId.length === 0 ? {} : { userIds: query.userId }),
+          ...(query.qualificationTypeId.length === 0 ? {} : { typeIds: query.qualificationTypeId }),
           includeRemoved: query.includeRemoved === 'true',
         }),
         tx.tenantUsers.list(),

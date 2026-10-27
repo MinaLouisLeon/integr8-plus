@@ -27,7 +27,7 @@ import { iso, isoOrNull } from './schemas.js';
  *
  * The company sets, per priority, how long it has to respond to a job (to
  * dispatch it) and to complete it, counted around the clock or in working
- * hours only. Owners and admins set the rules (`job_type.manage`); anyone who
+ * hours only. Owners and admins set the rules (`deadline.manage`); anyone who
  * sees every job sees the report (`work_order.read_all`).
  */
 
@@ -91,7 +91,7 @@ export const getDeadlineRulesRoute = defineRoute({
         rules: rules.map(ruleBody),
         workingHours: { ...hours, days: [...hours.days] },
         defaults: { warnMinutes: DEFAULT_DEADLINE_WARN_MINUTES },
-        can: { manage: holds(context.principal, 'job_type.manage') },
+        can: { manage: holds(context.principal, 'deadline.manage') },
       };
     });
     return { status: 200, body };
@@ -107,7 +107,7 @@ export const replaceDeadlineRulesRoute = defineRoute({
     'Replaces every rule. A priority left out has no deadlines. Jobs already created keep the deadlines they were given; new jobs, and jobs whose priority changes, get the new ones.',
   tags: TAGS,
   security: 'authenticated',
-  permission: 'job_type.manage',
+  permission: 'deadline.manage',
   params: noSchema,
   query: noSchema,
   body: z.object({

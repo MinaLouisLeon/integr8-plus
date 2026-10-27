@@ -708,6 +708,7 @@ export const en = {
       eta: 'E-invoicing (ETA)',
       qualification: 'Skills and certificates',
       contract: 'Service contracts',
+      deadline: 'Deadlines',
     },
     // One per permission in `PERMISSIONS` (@integr8/core), nested as named.
     permission: {
@@ -807,6 +808,7 @@ export const en = {
         read: 'See service contracts',
         manage: 'Keep service contracts and job coverage',
       },
+      deadline: { manage: 'Set response and completion deadlines' },
     },
     // Giving somebody a role on the People screen.
     picker: {

@@ -407,4 +407,9 @@ describe('service contracts (P27)', () => {
     expect(holders('contract.manage')).toEqual(['owner', 'admin', 'dispatcher']);
     expect(holders('contract.read')).toEqual(['owner', 'admin', 'dispatcher', 'viewer']);
   });
+
+  it('lets owners and admins set the deadlines, which no staff-only rule holds back', () => {
+    expect(holders('deadline.manage')).toEqual(['owner', 'admin']);
+    expect(holds({ role: 'admin', grants: [] }, 'deadline.manage')).toBe(true);
+  });
 });

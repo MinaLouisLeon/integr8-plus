@@ -328,7 +328,7 @@ to holders of `work_order.manage`, and by push to the crew.
 | `POST /v1/maintenance-plans/:id/status`     | `asset.manage`        | Pause, resume or end one; ending is final                 |
 | `GET /v1/maintenance`                       | `asset.read`          | Upcoming, made, completed, overdue and skipped due dates  |
 | `GET /v1/deadline-rules`                    | `work_order.read_all` | The rules and the company's working week                  |
-| `PUT /v1/deadline-rules`                    | `job_type.manage`     | Replace the rules                                         |
+| `PUT /v1/deadline-rules`                    | `deadline.manage`     | Replace the rules                                         |
 | `GET /v1/deadline-report`                   | `work_order.read_all` | Totals, totals per customer, and every miss, for a period |
 
 Every job summary carries `coverage`, the `deadline` that matters now and whether a plan made

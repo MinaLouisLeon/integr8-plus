@@ -198,7 +198,8 @@ export const getScheduleRoute = defineRoute({
         tx.visits.listInRange({
           from,
           to,
-          ...(query.userId === undefined ? {} : { userIds: query.userId }),
+          // `many` turns a missing filter into an empty list, which means everyone here.
+          ...(query.userId.length === 0 ? {} : { userIds: query.userId }),
           includeCancelled: query.includeCancelled === 'true',
         }),
         peopleOf(tx),

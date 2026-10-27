@@ -677,6 +677,7 @@ export const ar: Catalogue<Messages> = {
       eta: 'الفاتورة الإلكترونية',
       qualification: 'المهارات والشهادات',
       contract: 'عقود الخدمة',
+      deadline: 'المواعيد النهائية',
     },
     permission: {
       tenant: { read: 'عرض بيانات الشركة', update: 'تغيير إعدادات الشركة' },
@@ -775,6 +776,7 @@ export const ar: Catalogue<Messages> = {
         read: 'عرض عقود الخدمة',
         manage: 'إدارة عقود الخدمة وتغطية المهام',
       },
+      deadline: { manage: 'تحديد مواعيد الاستجابة والإنجاز' },
     },
     picker: {
       builtIn: 'الأدوار الأساسية',

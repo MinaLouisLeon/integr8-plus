@@ -283,14 +283,14 @@ describe('maintenance plans', () => {
     });
     expect(response.statusCode, response.body).toBe(200);
     assetId = (
-      await call<{ id: string }>(
+      await call<{ asset: { id: string } }>(
         dispatcher,
         'POST',
         '/v1/assets',
         { name: 'Rooftop AC', siteId },
         201,
       )
-    ).id;
+    ).asset.id;
   });
 
   it('makes a plan’s job once, ahead of its due date, unplanned and linked to the asset', async () => {

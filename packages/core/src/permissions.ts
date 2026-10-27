@@ -294,6 +294,13 @@ export const PERMISSIONS = [
    */
   'contract.manage',
 
+  /**
+   * Set the company's response and completion deadlines (P27). Owners and
+   * admins (product decision, 2026-10-27). Seeing the report needs only
+   * `work_order.read_all`.
+   */
+  'deadline.manage',
+
   // Bills of materials, assembly and planning (seventh round; ADR-0011). Each
   // also needs the company's `manufacturing` module.
 
@@ -435,6 +442,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'qualification.manage',
     'contract.read',
     'contract.manage',
+    'deadline.manage',
     'manufacturing.read',
     'manufacturing.manage',
     'document.read',
@@ -514,6 +522,7 @@ const MATRIX: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
     'qualification.manage',
     'contract.read',
     'contract.manage',
+    'deadline.manage',
     'manufacturing.read',
     'manufacturing.manage',
     'document.read',
