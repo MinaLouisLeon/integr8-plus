@@ -223,24 +223,27 @@ export class QualificationsRepository extends TenantScopedRepository {
   // -------------------------------------------------------------------------
 
   #records() {
-    return this.db
-      .selectFrom('member_qualifications')
-      .select([
-        'id',
-        'user_id',
-        'qualification_type_id',
-        'reference',
-        sql<string | null>`issued_on::text`.as('issued_on'),
-        sql<string | null>`expires_on::text`.as('expires_on'),
-        'notes',
-        'version',
-        'created_by',
-        'created_at',
-        'updated_at',
-        'removed_at',
-        'removed_by',
-      ])
-      .where('member_qualifications.tenant_id', '=', this.tenantId);
+    return (
+      this.db
+        .selectFrom('member_qualifications')
+        // Qualified, because callers join other tables that have the same columns.
+        .select([
+          'member_qualifications.id',
+          'member_qualifications.user_id',
+          'member_qualifications.qualification_type_id',
+          'member_qualifications.reference',
+          sql<string | null>`member_qualifications.issued_on::text`.as('issued_on'),
+          sql<string | null>`member_qualifications.expires_on::text`.as('expires_on'),
+          'member_qualifications.notes',
+          'member_qualifications.version',
+          'member_qualifications.created_by',
+          'member_qualifications.created_at',
+          'member_qualifications.updated_at',
+          'member_qualifications.removed_at',
+          'member_qualifications.removed_by',
+        ])
+        .where('member_qualifications.tenant_id', '=', this.tenantId)
+    );
   }
 
   /** Records, newest expiry last. Removed ones only when asked. */

@@ -1,3 +1,4 @@
+import { newTagCode } from '@integr8/core';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { withTenant } from '../connection.js';
@@ -83,7 +84,7 @@ beforeAll(async () => {
     ).id;
     jobTypeId = (await tx.jobTypes.create({ name: 'AC service', code: 'acs' }, MANAGER)).id;
     const registered = await tx.assets.register(
-      { name: 'Rooftop AC unit', customerId, siteId, tagCode: 'TAG-P27-0001' },
+      { name: 'Rooftop AC unit', customerId, siteId, tagCode: newTagCode() },
       MANAGER,
     );
     if (registered === 'serial_taken') {

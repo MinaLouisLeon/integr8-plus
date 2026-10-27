@@ -766,7 +766,9 @@ grant select, insert, update on maintenance_plans to integr8_app;
 grant select, insert on maintenance_occurrences to integr8_app;
 grant select, insert, update on work_order_coverage to integr8_app;
 grant select, insert, update, delete on deadline_rules to integr8_app;
-grant select, insert, update on work_order_deadlines to integr8_app;
+-- Delete: a priority changed to one without a rule takes the deadlines away,
+-- unless a miss was recorded (the repository checks).
+grant select, insert, update, delete on work_order_deadlines to integr8_app;
 
 alter table service_contract_counters enable row level security;
 create policy service_contract_counters_isolation on service_contract_counters

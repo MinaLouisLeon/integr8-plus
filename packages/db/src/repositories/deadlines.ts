@@ -155,6 +155,10 @@ export class DeadlinesRepository extends TenantScopedRepository {
         ? undefined
         : deadlinesFor(createdAt, rule, context?.hours ?? (await this.workingHours()));
     if (rule === undefined || due === undefined) {
+      const existing = (await this.ofJobs([workOrderId])).get(workOrderId);
+      if (existing === undefined) {
+        return undefined;
+      }
       await this.db
         .deleteFrom('work_order_deadlines')
         .where('tenant_id', '=', this.tenantId)
