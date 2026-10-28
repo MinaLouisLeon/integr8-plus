@@ -5,7 +5,7 @@ and what is still open. Newest first inside each section. Update it at the end
 of any piece of work that changes one of these facts; `CLAUDE.md` is the how-to,
 this is the state.
 
-_Last updated: 27 October 2026._
+_Last updated: 28 October 2026._
 
 ## Current state
 
@@ -22,8 +22,13 @@ _Last updated: 27 October 2026._
   certified), company website data API.
 - **Branches**: the documented flow is feature → `dev` → `staging` → `main`
   (`.github/workflows/branch-policy.yml`), but on GitHub only `main` exists
-  today and recent pull requests (#125–#127) were merged straight into `main`.
-  The branch-policy check flags that; it does not block it.
+  today and recent pull requests (#125–#128) were merged straight into `main`.
+  The branch-policy check ("PR source is allowed") goes red on those; it does
+  not block the merge.
+- **Releases**: merging into `main` runs "Version release", which refuses a
+  version it has already released (it failed that way after #128, harmlessly:
+  1.2.1 was out). "Publish images" still rebuilds the server images on every
+  merge. New desktop/phone installers need the root version bumped.
 
 ## The deployment
 
@@ -32,8 +37,9 @@ _Last updated: 27 October 2026._
 - Domain `integr8-media.com`: web `app.integr8-media.com`, API
   `api.integr8-media.com`. R2 for files, Resend for mail, Stripe test mode.
 - **Sign-in**: the owner has only used the staff login so far and has no
-  Supabase project. Plan: `IDENTITY_PROVIDER=local` (Stage 12 part Q of the
-  repo guide).
+  Supabase project. Next step on the machine: `git pull`, rebuild,
+  `IDENTITY_PROVIDER=local` in `deploy/.env` (Stage 12 part Q of the repo
+  guide), then run the demo seeder (Stage 15). Not confirmed done yet.
 - The owner's own published copy of the setup guide (a claude.ai artifact,
   older 1.1.0 edition with its own part letters):
   https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29. It has Stage 15 (demo
@@ -58,7 +64,7 @@ _Last updated: 27 October 2026._
   ledger postings and audit, and produce data the screens cannot show. It
   refuses staging/production without `--confirm-production`.
 
-## Recent work (branch `ccr-a47a4d02-8y2u6x`, not yet merged)
+## Recent work (merged into `main` in #128, 27 October 2026)
 
 1. `feat(api): demo company seeder`: `apps/api/src/demo/` and
    `pnpm --filter @integr8/api demo-company`. One company, nine people (one per
@@ -72,6 +78,11 @@ _Last updated: 27 October 2026._
    `apps/api/src/config.ts`, `admin-cli user-password`. Tested locally end to
    end: seeded logins, invitation acceptance, wrong-password refusal, moving an
    existing member. Guide: Stage 3 step and Stage 12 part Q.
+3. `CLAUDE.md` and this file.
+
+CI on #128: everything green except "PR source is allowed" (branch policy,
+above) and one run of the API integration step, which passed on the merged
+`main` in the next CI run (#157, a Dependabot PR) with no change: a one-off.
 
 ## Open items
 
