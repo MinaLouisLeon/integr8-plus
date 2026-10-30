@@ -138,6 +138,25 @@ export const companySettingsSchema = z.object({
   aiMobileEnabled: z.boolean(),
 });
 
+/**
+ * What came of asking GitHub to build one company's apps. `not_configured`:
+ * this deployment cannot start builds (APP_BUILDS=off), so it is done by hand
+ * from GitHub Actions. `failed`: GitHub refused or could not be reached, with
+ * why in `message`.
+ */
+export const appBuildSchema = z.object({
+  status: z.enum(['started', 'not_configured', 'failed']),
+  /** Where the run can be watched, when one was started. */
+  runsUrl: z.string().nullable(),
+  message: z.string().nullable(),
+});
+
+/** The settings after a change, and the build the change started, if it started one. */
+export const companySettingsChangeSchema = companySettingsSchema.extend({
+  /** Set when this change switched "build apps" on; otherwise null. */
+  appBuild: appBuildSchema.nullable(),
+});
+
 /** An invitation nobody has accepted or withdrawn, as the company page shows it. */
 export const companyInvitationSchema = z.object({
   id: z.uuid(),

@@ -238,6 +238,29 @@ export const apiConfigSchema = z.object({
    * repository secret.
    */
   BUILD_TOKEN: blankIsUnset(z.string().min(32).optional()),
+  /**
+   * Who starts a company's app build when the dashboard asks for one.
+   *
+   * `off`, the default: ticking "Build apps" only puts the company in the
+   * release list, and a build is started by hand from GitHub Actions. `github`
+   * starts the `build-company-apps.yml` workflow for that company straight
+   * away, through GitHub's API, with the token and repository below.
+   */
+  APP_BUILDS: blankIsUnset(z.enum(['off', 'github']).default('off')),
+  /**
+   * A fine-grained GitHub token for that repository only, with "Actions: read
+   * and write". A secret: it can start any workflow there.
+   */
+  GITHUB_BUILD_TOKEN: blankIsUnset(z.string().optional()),
+  /** `owner/name` of the repository that holds the workflow. */
+  GITHUB_BUILD_REPOSITORY: blankIsUnset(
+    z
+      .string()
+      .regex(/^[\w.-]+\/[\w.-]+$/u)
+      .optional(),
+  ),
+  /** The branch whose copy of the workflow runs. */
+  GITHUB_BUILD_REF: blankIsUnset(z.string().min(1).default('main')),
 
   // -------------------------------------------------------------------------
   // The AI assistant (docs/ai; ADR-0001)
@@ -566,7 +589,11 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     );
   }
   if (result.success) {
-    const billing = [...billingProblems(result.data), ...emailProblems(result.data)];
+    const billing = [
+      ...billingProblems(result.data),
+      ...emailProblems(result.data),
+      ...appBuildProblems(result.data),
+    ];
     if (billing.length > 0) {
       throw new Error(
         [
@@ -626,6 +653,25 @@ export function emailProblems(config: ApiConfig): string[] {
   return missing.length === 0
     ? []
     : [`EMAIL_SENDER is resend but ${missing.join(' and ')} not set.`];
+}
+
+/**
+ * What is missing for starting company app builds from the dashboard, if
+ * anything. Checked at load, like email: a switch that quietly starts nothing
+ * is the problem this setting exists to fix.
+ */
+export function appBuildProblems(config: ApiConfig): string[] {
+  if (config.APP_BUILDS !== 'github') {
+    return [];
+  }
+  const missing: string[] = [];
+  if (config.GITHUB_BUILD_TOKEN === undefined) {
+    missing.push('GITHUB_BUILD_TOKEN');
+  }
+  if (config.GITHUB_BUILD_REPOSITORY === undefined) {
+    missing.push('GITHUB_BUILD_REPOSITORY');
+  }
+  return missing.length === 0 ? [] : [`APP_BUILDS is github but ${missing.join(' and ')} not set.`];
 }
 
 /**
