@@ -6,7 +6,7 @@ with its own forms, job types, look and apps. The company's office plans and
 dispatches work; its engineers do the work on a phone that keeps working with no
 signal; the office sees the result the moment the phone reconnects.
 
-Current version: **1.1.2**. The build plan lives in [`plan/`](./plan/README.md);
+Current version: **1.2.1**. The build plan lives in [`plan/`](./plan/README.md);
 start with [`plan/ROADMAP.md`](./plan/ROADMAP.md).
 
 ---
@@ -55,6 +55,14 @@ with a state machine (scheduled → dispatched → travelling → on site → in
 checklist, comments, attachments, before and after photos, the customer's
 sign-off, and a full history. Bulk reassign, reschedule and cancel; saved views;
 CSV import of customers, sites and jobs. See [`docs/operations/`](./docs/operations/README.md).
+
+**Scheduling, skills and service contracts.** A job can take several visits, planned
+on a day or week schedule by engineer; the database refuses to book anyone on two jobs
+at once. Companies record the skills and certificates their people hold, say what each
+job type needs, and get expiry alerts. Service contracts set what a customer is
+covered for, maintenance plans create an asset's servicing jobs ahead of time, and
+response deadlines count down from when a job is created, with warnings before they
+are missed. See [`docs/operations/`](./docs/operations/README.md).
 
 **Job types and their forms.** A job type sets the checklist, instructions,
 expected duration and the forms a job of that type needs. A job's attached forms
@@ -455,6 +463,10 @@ each with a down file, applied by `pnpm --filter @integr8/db db up` (or
 | 0044–0047 | AI assistant policies, conversations, actions, metering and retention                                 |
 | 0048      | Business documents and templates                                                                      |
 | 0049      | Egyptian ETA e-invoicing integration                                                                  |
+| 0050      | Company website data access: website keys and capability switches                                     |
+| 0051      | Work order visits and the schedule                                                                    |
+| 0052      | Skills and certificates (qualifications) and expiry warnings                                          |
+| 0053      | Service contracts, maintenance plans and response deadlines                                           |
 
 See [`docs/database/migrations.md`](./docs/database/migrations.md) and the
 [backup and restore runbook](./docs/database/runbook-backup-and-restore.md).

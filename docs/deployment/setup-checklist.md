@@ -1,6 +1,6 @@
 # Integr8 Plus Setup Checklist
 
-_Integr8 Plus 1.1.2 · everything you do, in order · Oracle Cloud edition_
+_Integr8 Plus 1.2.1 · everything you do, in order · Oracle Cloud edition_
 
 **From zero to a running deployment, in order**
 
@@ -184,7 +184,7 @@ The phone app is built by Expo's build service, told to start by GitHub. Nothing
 
 GitHub builds the server images, the desktop installers and (through Expo) the phone app. Three things to do, all on the website. The repository is public, so the build minutes are free, including macOS.
 
-- [ ] **Nothing to merge.** All changes this guide previously asked for are in `main`, now at version **1.2.0**. Its release builds include the CRM/ERP suite, AI assistant, PDF documents and ETA e-invoicing, plus the API image/config fixes from v1.1.1 and the staff-app refresh button from v1.1.2. These updates need no extra server setting or deployment step beyond the feature setup below. Use `main` as it is; a new install continues at Stage 3, and an older server is updated through Stage 12.
+- [ ] **Nothing to merge.** All changes this guide previously asked for are in `main`, now at version **1.2.1**. Its release builds include the CRM/ERP suite, AI assistant, PDF documents, ETA e-invoicing, the company website data API, the schedule, skills and certificates, and contracts, maintenance and deadlines, plus the API image/config fixes from v1.1.1 and the staff-app refresh button from v1.1.2. These updates need no extra server setting or deployment step beyond the feature setup below. Use `main` as it is; a new install continues at Stage 3, and an older server is updated through Stage 12.
 - [ ] **Put the Expo Project ID into the repository.** Open `apps/mobile/app.config.ts` on GitHub, click the pencil, replace the placeholder id in **both** places shown below (the file is TypeScript now, the two values look the same), choose "Create a new branch and start a pull request", and merge it to `main`.
 
 ```text
@@ -436,11 +436,11 @@ SUPABASE_URL=https://abcdefghij.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJ…   (or sb_secret_…)
 ```
 
-- [ ] **Errors and version.** The block headed `# Release identity and error reporting` comes next. `APP_VERSION` and `API_RELEASE` already say `1.1.2`, matching the root `package.json`; at every release they change to the new number (Stage 12). The three Sentry lines are empty: paste the Node.js project's DSN after `SENTRY_DSN=` and the Next.js project's DSN after **both** `WEB_SENTRY_DSN=` and `WEB_PUBLIC_SENTRY_DSN=`. Afterwards:
+- [ ] **Errors and version.** The block headed `# Release identity and error reporting` comes next. `APP_VERSION` and `API_RELEASE` already say `1.2.1`, matching the root `package.json`; at every release they change to the new number (Stage 12). The three Sentry lines are empty: paste the Node.js project's DSN after `SENTRY_DSN=` and the Next.js project's DSN after **both** `WEB_SENTRY_DSN=` and `WEB_PUBLIC_SENTRY_DSN=`. Afterwards:
 
 ```text
-APP_VERSION=1.2.0
-API_RELEASE=1.2.0
+APP_VERSION=1.2.1
+API_RELEASE=1.2.1
 SENTRY_DSN=https://a1b2c3@o123456.ingest.us.sentry.io/4501111
 WEB_SENTRY_DSN=https://d4e5f6@o123456.ingest.us.sentry.io/4502222
 WEB_PUBLIC_SENTRY_DSN=https://d4e5f6@o123456.ingest.us.sentry.io/4502222
@@ -692,8 +692,8 @@ _about an hour, mostly waiting_
 
 Nothing is built on your laptop or on the server. Every merge into `main` runs the release workflow: the **staff** desktop app, the one you and your colleagues install, is built on GitHub's own Windows, macOS and Linux machines and the installers attached to a GitHub release. It is called **Integr8 Plus Staff** and its sign-in screen has only the staff door: a company's people never install it. Each company gets apps of its own, desktop and phone, in Stage 8, once the company exists. Stage 0, Part K set everything the workflow needs; this stage triggers it and installs the result.
 
-- [ ] **Make the current release.** The latest release is `v1.2.0`; if Releases shows it with green jobs, skip to the next step. If a later version is already current when you set up, use its newest green release. Otherwise bump the root `package.json` version through a pull request and merge it into `main`; the **Actions** tab shows the release workflow. The Windows installer takes about 15 minutes and macOS about 25. No generic phone app is built here; company phone apps are built in Stage 8. If a job is red, open it and fix the named missing variable or secret before continuing.
-- [ ] **Desktop: install the staff app from the Releases page.** Repository → **Releases** → `v1.2.0` (or the newest green `v…`) → Assets: an `.msi` and an `.exe` for Windows, a `.dmg` for macOS, a `.deb` and an `.AppImage` for Linux, all named `Integr8 Plus Staff`. Download the Windows one and run it. If an older `Integr8 Plus` from before this change is installed, it stays as a separate app; uninstall it from Windows Settings → Apps. SmartScreen warns that the publisher is unknown because the installer is not yet code-signed (packaging phase): More info → Run anyway.
+- [ ] **Make the current release.** The latest release is `v1.2.1`; if Releases shows it with green jobs, skip to the next step. If a later version is already current when you set up, use its newest green release. Otherwise bump the root `package.json` version through a pull request and merge it into `main`; the **Actions** tab shows the release workflow. The Windows installer takes about 15 minutes and macOS about 25. No generic phone app is built here; company phone apps are built in Stage 8. If a job is red, open it and fix the named missing variable or secret before continuing.
+- [ ] **Desktop: install the staff app from the Releases page.** Repository → **Releases** → `v1.2.1` (or the newest green `v…`) → Assets: an `.msi` and an `.exe` for Windows, a `.dmg` for macOS, a `.deb` and an `.AppImage` for Linux, all named `Integr8 Plus Staff`. Download the Windows one and run it. If an older `Integr8 Plus` from before this change is installed, it stays as a separate app; uninstall it from Windows Settings → Apps. SmartScreen warns that the publisher is unknown because the installer is not yet code-signed (packaging phase): More info → Run anyway.
 - [ ] **Sign in as staff.** The staff app has one door: super admin email, password and authenticator code, then a company to open and a reason. This is the only way into the form builder, the job-type editor and the **Company branding** screen, because all three are Integr8's to run for each company; the company's own people get a desktop app whose sign-in has only their door (Stage 8). The signed-in screens are a dashboard with a side menu grouped by Work, CRM, Sales, Finance, Accounting, HR, Inventory, Operations, Set-up and Company (each business group appears only for a company with that module switched on, Stage 7); the menu shrinks to icons with the button at its foot and remembers the choice, and the language switch lives in its footer. With no companies yet, stop here and come back in Stage 7. If sign-in says "You appear to be offline" while the web app works, the installer was built before `claude/desktop-csp` was merged, or without `PUBLIC_API_URL`; check `docker compose … logs api | grep platform/auth` on the machine: no line means the request never left the app.
 - [ ] **Phone: nothing to install yet.** There is no generic phone app any more and no staff login on the phone: a phone app is built for one company, carries its name, icon and colours, opens on its website, and signs in only its people. The first one is built in Stage 8, for the test company Stage 7 creates.
 
@@ -715,7 +715,7 @@ Everything exists now: the stack, the dashboard, both apps, real email. This sta
 - [ ] **Invite the owner, now the company is ready.** Dashboard → Companies → the company → **Invitations**: the owner's address, "Waiting, until …" (or "Expired on …" if setting up took more than seven days; it does not matter). **Send invitation** emails a fresh link through Resend, from Integr8, valid for seven days; the panel says "Emailed to …", or why it could not. **Copy a new link** makes the same fresh link without sending anything, for WhatsApp or your own email. Either one stops any earlier link working. Then open the link in a private browser window, choose a name and a password of twelve characters or more, and you are the company's owner, on its dashboard in the web app, in its colours. The invitation disappears from the panel once accepted.
 - [ ] **Invite an engineer** as the owner, Settings → People, to a second address you can read. Accept it in another private window.
 - [ ] **Create a customer, a site and a job** from the office screens (web app or desktop app, as the owner), load the sample data if you want the screens populated, and assign the engineer. Watch the site get a map pin within a minute: that is Mapbox.
-- [ ] **Build the company's own apps.** Dashboard → the company's page → **Website and apps** → tick **Build apps for this company** → Save. Then repository → **Actions** → **Build company apps** → **Run workflow** → type the company's short name, leave the other boxes empty, run. About 25 minutes later the Releases page has `company-<short name>-v1.2.0` with the company's desktop installers and its Android app. Stage 8 explains everything this run did and how it repeats at every release.
+- [ ] **Build the company's own apps.** Dashboard → the company's page → **Website and apps** → tick **Build apps for this company** → Save. Then repository → **Actions** → **Build company apps** → **Run workflow** → type the company's short name, leave the other boxes empty, run. About 25 minutes later the Releases page has `company-<short name>-v1.2.1` with the company's desktop installers and its Android app. Stage 8 explains everything this run did and how it repeats at every release.
 - [ ] **Install the company's apps.** From that release: the Windows installer (named after the company) on your laptop, beside the staff app, and the `.apk` on the phone (open the release page on the phone, download, allow installing from this source when Android asks). The phone opens on the company's website with a **Login** button in the header; the desktop app opens on a sign-in screen in the company's colours with only the company door.
 - [ ] **Complete the job on the phone, offline.** Press Login in the company's phone app and sign in as the engineer, pull the jobs down, turn on aeroplane mode, complete the job with a photo and a signature, turn aeroplane mode off, and watch it arrive in the office. The photo lands in the company's R2 bucket. `docs/mobile/device-checklist.md` in the repository is the full list of what to try.
 - [ ] **Try in-app payment once**, in test mode: on the company's dashboard page → Plan and billing → Billing: Pays in the app → Save. As the owner, Billing → choose a plan → Stripe's checkout → card `4242 4242 4242 4242`, any future date. The plan shows as active within seconds; dashboard → Health → Billing deliveries lists the webhook events as applied. Then switch the company back to Invoiced.
@@ -976,7 +976,7 @@ Everything on the machine, in the order that keeps it safe: make the release, ba
 
 ### A. Make the release
 
-- [ ] **Bump the version and merge into `main`.** The root `package.json` version goes up (for example `1.1.2` → `1.1.3`); the change reaches `main` through `dev` and `staging` as usual. That merge is the release.
+- [ ] **Bump the version and merge into `main`.** The root `package.json` version goes up (for example `1.2.1` → `1.2.2`); the change reaches `main` through `dev` and `staging` as usual. That merge is the release.
 - [ ] **Wait for it to finish green.** Repository → **Actions**: "Version release" builds the installers and every company's apps (about 30 minutes), and "Publish images" builds the server images. Do not touch the machine until both are green; a red release changes nothing anywhere.
 - [ ] **Read what changed.** Repository → **Releases** → the new `v…`. Look for three things: a **new setting** (part C), a **database migration** (it runs by itself, but it is why part B exists), and a change to `deploy/vps/setup.sh` or the Caddyfile (part F).
 
@@ -1122,7 +1122,7 @@ The AI assistant, help-library answers, provider integrations and voice are incl
 
 - [ ] **Machine configuration:** on upgrade, use the Stage 12 env-template comparison to add any missing `AI_` settings. They are optional; leave AI disabled until configured. Migrations run as part of the standard update and preserve existing data.
 - [ ] **Nothing changes for any company yet**: every plan's AI level is Off, every company's app switches are off, and nobody has a share. Switching it on is Stage 5 (the AI provider panel and each plan) and then Stage 7's AI part for each company. For AI answers, tell each company's owner before you switch their plan on that they will be asked to hand out shares under Settings → People, or set the shares for them from the dashboard; for help-library answers there is nothing for them to do.
-- [ ] **Update the apps** (part G): install the v1.1.2 staff release and distribute each company's current desktop and phone builds. Older phone builds may need reinstalling to include native voice support (Stage 8, step 7).
+- [ ] **Update the apps** (part G): install the current staff release (v1.1.2 or later) and distribute each company's current desktop and phone builds. Older phone builds may need reinstalling to include native voice support (Stage 8, step 7).
 
 > [!WARNING]
 > **Rolling back with the assistant.** To switch the assistant off without touching the code: `AI_ENABLED=false` in `deploy/.env` and `up -d`; every company loses it at once and nothing else changes. To change provider: set `AI_PROVIDER` to the other one (`openai`, `groq`, `gemini`, `anthropic`) with its own key, model and price lines (Stage 3), then `up -d`. To drop AI but keep a working assistant: `AI_PROVIDER=none` and `up -d`; every company gets help-library answers. To go back to the previous code (part I): leave migrations 0044 to 0047 applied, because the older version ignores their tables, and undoing 0046 would lose every person's share and the token counts. Its `.down.sql` file is for development databases only.
@@ -1159,9 +1159,9 @@ The website data API is included in v1.2.0 and adds migration 0050. It needs no 
 - [ ] **Confirm key lifecycle and rollback.** Any Integr8 staff can create, enable, disable or revoke keys. Revocation stops the service and retains the audit record; only the terminal-created staff admin can permanently delete a key. Before rolling back to code that predates this feature, revoke website keys or turn off website access; older code does not enforce the new disabled state or the two switch layers. Keep migration 0050 applied.
 - [ ] **Update the website integrations** using `apps/api/openapi.json`; keep the key server-side and verify each enabled endpoint from the company's Vercel deployment.
 
-### N. The schedule (next release)
+### N. The schedule (included in v1.2.1)
 
-The schedule adds migration 0051 and needs no new server setting. It ships in the release that follows v1.2.0.
+The schedule adds migration 0051 and needs no new server setting. It ships in v1.2.1.
 
 - [ ] **Migration 0051 applied** during the normal update. It adds the job visits tables and installs the `btree_gist` Postgres extension, which is what stops anyone being booked on two jobs at once. The migration installs it by itself on the Oracle machine's Postgres and on Supabase; if the update stops with a permission error naming `btree_gist`, enable it under Supabase → Database → Extensions and run the update again. Do not run its down migration on a production database: it deletes every visit.
 - [ ] **Existing jobs are unchanged.** They have no visits yet, so they wait under **Needs a visit** until someone plans one, and the phones show them as before.
@@ -1170,9 +1170,9 @@ The schedule adds migration 0051 and needs no new server setting. It ships in th
 > [!WARNING]
 > **Rolling back with the schedule.** Fix forward rather than going back to the previous code once visits have been planned: an older version does not know the new history entries, so a job with visit history would not open in it. If you must roll back (part I), leave migration 0051 applied; its `.down.sql` deletes every visit and is for development databases only.
 
-### O. Skills and certificates (next release)
+### O. Skills and certificates (included in v1.2.1)
 
-Skills and certificates add migration 0052 and need no new server setting. They ship in the release that follows v1.2.0.
+Skills and certificates add migration 0052 and need no new server setting. They ship in v1.2.1.
 
 - [ ] **Migration 0052 applied** during the normal update. It adds the qualifications tables and a warning period for each company (30 days). Nothing changes for planning until a company records qualifications and says what its job types need.
 - [ ] **Expiry alerts.** The worker sends them once a day, once per certificate: to the holder by email and on their phone, and one email to the owners, admins and HR managers. They use the email sender from part F and link to `WEB_APP_URL`; without a sender they are only logged. After the first certificate falls within its warning period, the worker log says **Qualification expiry finished**.
@@ -1181,9 +1181,9 @@ Skills and certificates add migration 0052 and need no new server setting. They 
 > [!WARNING]
 > **Rolling back with skills and certificates.** Fix forward once a visit has gone ahead with a reason: an older version does not know that history entry, so the job would not open in it. If you must roll back (part I), leave migration 0052 applied; its `.down.sql` deletes every qualification record and is for development databases only.
 
-### P. Contracts, maintenance and deadlines (next release)
+### P. Contracts, maintenance and deadlines (included in v1.2.1)
 
-Contracts, maintenance plans and deadlines add migration 0053 and need no new server setting. They ship in the release that follows v1.2.0.
+Contracts, maintenance plans and deadlines add migration 0053 and need no new server setting. They ship in v1.2.1.
 
 - [ ] **Migration 0053 applied** during the normal update. It adds service contracts, maintenance plans and response deadlines. Nothing changes for a company until it sets deadlines, adds a contract or adds a maintenance plan; existing jobs keep no deadlines and no coverage.
 - [ ] **The worker's new runs.** Once a day it makes the jobs maintenance plans are due to make and emails contract managers before a contract ends; every ten minutes it records missed deadlines and sends deadline warnings by email and to engineers' phones. They use the email sender from part F and link to `WEB_APP_URL`; without a sender they are only logged. The worker log says **Maintenance plans finished** and **Deadline alerts finished** when they had something to do.
@@ -1341,7 +1341,7 @@ comm -23 <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' deploy/.env.example | tr -d '# ' | s
 
 _about 3 hours, mostly Stages 1 to 4_
 
-Stage 13 empties the machine and keeps it. This stage deletes the machine itself, its disk included, and makes a new one: a new operating system, a new shape, or simply a clean start on version 1.1.2. Everything from Stage 0 lives outside the machine and carries over unchanged: the domain and Cloudflare, Supabase, R2, Resend, Stripe, Mapbox, Sentry, Expo and every GitHub variable and secret. What dies with the machine is what was only on its disk: `deploy/.env`, the database, the backups in `/var/backups/integr8`, and the Caddy file. Part A saves the first two if you want them.
+Stage 13 empties the machine and keeps it. This stage deletes the machine itself, its disk included, and makes a new one: a new operating system, a new shape, or simply a clean start on the current release (v1.2.1). Everything from Stage 0 lives outside the machine and carries over unchanged: the domain and Cloudflare, Supabase, R2, Resend, Stripe, Mapbox, Sentry, Expo and every GitHub variable and secret. What dies with the machine is what was only on its disk: `deploy/.env`, the database, the backups in `/var/backups/integr8`, and the Caddy file. Part A saves the first two if you want them.
 
 > [!NOTE]
 > **Two ways to start over.** Parts B to E delete the Oracle machine itself and make a new one. [Part F](#f-keep-the-machine-but-remove-everything-on-it-data-docker-and-the-repository) keeps the machine, its address, its firewall and your login, and removes only what Integr8 put on it: the data, Docker and the repository. Do part A first either way; then choose.
@@ -1399,7 +1399,7 @@ ssh LOGIN-USER@SERVER-IP          # yes to the new fingerprint
 
 ### D. Settings, data and the stack
 
-- [ ] **Put the env file back** from the laptop, then look for settings version 1.1.2 knows about that the kept file lacks, and set the version.
+- [ ] **Put the env file back** from the laptop, then look for settings version 1.2.1 knows about that the kept file lacks, and set the version.
 
 ```powershell
 # laptop (PowerShell)
@@ -1412,11 +1412,11 @@ cd /opt/integr8
 chmod 600 deploy/.env
 comm -23 <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' deploy/.env.example | tr -d '# ' | sort -u) \
          <(grep -oE '^#? ?[A-Z][A-Z0-9_]+=' deploy/.env | tr -d '# ' | sort -u)
-sed -i 's/^APP_VERSION=.*/APP_VERSION=1.2.0/; s/^API_RELEASE=.*/API_RELEASE=1.2.0/' deploy/.env
+sed -i 's/^APP_VERSION=.*/APP_VERSION=1.2.1/; s/^API_RELEASE=.*/API_RELEASE=1.2.1/' deploy/.env
 grep -E '^(APP_VERSION|API_RELEASE|HR_DATA_KEY)=' deploy/.env
 ```
 
-- [ ] **Every name the `comm` command printed is added** with `nano deploy/.env`, its value from the key sheet (the template's comment beside each line says what it is). `HR_DATA_KEY` is the one most likely to be missing. The last command shows the version as `1.1.2` and the HR key filled in.
+- [ ] **Every name the `comm` command printed is added** with `nano deploy/.env`, its value from the key sheet (the template's comment beside each line says what it is). `HR_DATA_KEY` is the one most likely to be missing. The last command shows the version as `1.2.1` and the HR key filled in.
 - [ ] **Starting empty?** Run Stage 4 exactly as written and go on to part E. **Keeping the data?** Do the next step instead of Stage 4's first command.
 - [ ] **Restore the dump into the new database**, before the migrations run: start only Postgres and the step that creates the two database roles, load the dump, then start everything. The migrations then apply any schema additions the restored database does not yet have.
 
@@ -1574,6 +1574,6 @@ df -h /                                   # most of the disk is free again
 
 ## About this page
 
-Prepared for release v1.2.0 (25 October 2026) from the repository's `main` branch: `deploy/compose.yml`, `deploy/.env.example`, `deploy/vps/`, `.github/workflows/`, `docs/deployment/README.md`, `docs/database/runbook-supabase-setup.md`, `docs/ai/RUNBOOK.md`, `docs/documents/RUNBOOK.md` and `docs/e-invoicing/RUNBOOK.md`. Since the previous edition, v1.1.2 includes the AI assistant, PDF documents and ETA e-invoicing, the v1.1.1 API image/config fixes, and the staff app refresh button from pull request 115. The e-invoicing feature remains test-only until validated. Example model ids and prices come from the providers' pages and third-party price lists in October 2026 and were not checked on every provider's own site: confirm them there. Service dashboards move things around; when a menu is not where this says, search the service's own docs for the setting name.
+Prepared for release v1.2.1 (27 October 2026) from the repository's `main` branch: `deploy/compose.yml`, `deploy/.env.example`, `deploy/vps/`, `.github/workflows/`, `docs/deployment/README.md`, `docs/database/runbook-supabase-setup.md`, `docs/ai/RUNBOOK.md`, `docs/documents/RUNBOOK.md` and `docs/e-invoicing/RUNBOOK.md`. Since the previous edition, v1.2.0 added the company website data API and v1.2.1 adds the schedule, skills and certificates, and contracts, maintenance and deadlines (Stage 12, parts M to P); v1.1.2 included the AI assistant, PDF documents and ETA e-invoicing, the v1.1.1 API image/config fixes, and the staff app refresh button from pull request 115. The e-invoicing feature remains test-only until validated. Example model ids and prices come from the providers' pages and third-party price lists in October 2026 and were not checked on every provider's own site: confirm them there. Service dashboards move things around; when a menu is not where this says, search the service's own docs for the setting name.
 
 This Markdown checklist is maintained alongside the interactive HTML version in `setup-checklist.html`. To use the HTML version, download it with `setup-checklist.css` and `setup-checklist.js` into one folder and open the `.html` in a browser; progress ticks are saved in that browser. Keep the Markdown and HTML content in sync; `pnpm guide:check` verifies their stages, parts, tick boxes and wording.
