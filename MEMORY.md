@@ -21,6 +21,15 @@ change; date each section. Rules and commands are in `AGENTS.md`.
   `APP_BUILDS` (`off` | `github`), `GITHUB_BUILD_TOKEN`, `GITHUB_BUILD_REPOSITORY`,
   `GITHUB_BUILD_REF` (default `main`), validated by `appBuildProblems()` in `config.ts`.
   Still to check: OpenAPI/client regeneration, `.env.example`, setup checklist, docs.
+- **Planned, not yet approved (branch `feat/self-hosted-auth`):** P36 self-hosted sign-in,
+  `plan/v1.0-launch/P36-self-hosted-sign-in.md`. Decided 2026-10-30: self-host everything
+  (no Supabase cloud), only the Supabase Auth container, emailed 6-digit sign-in codes,
+  Change password (with a password-changed email), purge deletes orphaned accounts, Stage 10
+  and Railway removed, Supabase setup runbook deleted, backup runbook rewritten for the
+  self-hosted database. No code until the user approves the plan.
+- **Hosting:** Integr8 Plus will share one Oracle VPS (Ampere A1, 4 cores, 24 GB) with the
+  MyRooms project, which runs its own full self-hosted Supabase, PowerSync and GlitchTip.
+  The home test box is Ubuntu 24.04 with Docker, Arcane, Webmin and Samba (no longer ZimaOS).
 
 ## Places that state the version or migration count
 

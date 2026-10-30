@@ -95,6 +95,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` completed · `[!]` block
 - [~] **P19** — Production hardening
 - [ ] **P20** — Packaging, signing and release
 - [ ] **P21** — First customer onboarding
+- [ ] **P36** — Self-hosted sign-in (planned 2026-10-30, not yet approved)
 
 ### v1.1 — Inventory and Assets
 
