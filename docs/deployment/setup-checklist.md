@@ -156,6 +156,7 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
 - [ ] **Enable R2** (Cloudflare's file storage; the product makes one bucket per company): dashboard → **R2 Object Storage** → Get started. Cloudflare asks for a payment method even for the free 10 GB; nothing is charged below it.
 - [ ] **Copy your Account ID** from the R2 overview page (right-hand side; also in the dashboard URL after `dash.cloudflare.com/`). Key sheet: `CLOUDFLARE_ACCOUNT_ID`.
 - [ ] **Create an R2 API token**: R2 → **Manage R2 API Tokens** → Create API token, name `integr8`, permission **Admin Read & Write** (it creates and deletes buckets), all buckets, no TTL. Copy the **Access Key ID** (`R2_ACCESS_KEY_ID`) and the **Secret Access Key** (`R2_SECRET_ACCESS_KEY`); the secret is shown once. Do not create buckets by hand: the worker creates `integr8-production-<company id>` for each company with the right rules.
+- [ ] **Create an analytics token**, separate from the R2 one: Cloudflare → your profile (top right) → **API Tokens** → Create Token → **Create Custom Token**, name `integr8-analytics`, one permission: **Account** · **Account Analytics** · **Read**; Account Resources: Include your account; no other permission, no IP filter, no TTL. Copy it (shown once). Key sheet: `CLOUDFLARE_API_TOKEN`. Every night the worker checks each company's stored bytes against what Cloudflare bills with it, and counts its R2 operations; without it each check says "unavailable", and in production the API and worker log a warning at start-up.
 
 ### E. Sign-in, on your own machine
 
@@ -292,7 +293,7 @@ Every value, where it came from, and where it goes. `deploy/.env` is the one fil
 | `ETA_CREDENTIALS_KEY`                                                                                                                          | Part B, generated                     | `deploy/.env`; also with the database backups. Never regenerated for an existing database             |
 | `BUILD_TOKEN`                                                                                                                                  | Part B; optional until company builds | `deploy/.env` and GitHub secret (Part K), the same value when used                                    |
 | SSH public key                                                                                                                                 | Part A                                | Oracle's instance form (Stage 1)                                                                      |
-| `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`                                                                            | Part D                                | `deploy/.env`                                                                                         |
+| `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `CLOUDFLARE_API_TOKEN`                                                    | Part D                                | `deploy/.env`                                                                                         |
 | `RESEND_API_KEY`, `EMAIL_FROM`                                                                                                                 | Part F                                | `deploy/.env`                                                                                         |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                                                                                                   | Part G, only with Stripe              | `deploy/.env`                                                                                         |
 | Stripe price IDs                                                                                                                               | Part G, only with Stripe              | Dashboard → Plans (Stage 5)                                                                           |
@@ -475,7 +476,7 @@ WEB_PUBLIC_SENTRY_DSN=https://d4e5f6@o123456.ingest.us.sentry.io/4502222
 
 Then the last block, headed `# External services`. Every service in it is written the same way: a line that chooses the real service or the fake, followed by its keys **commented out** with a `#` and a space at the start. For each service you change the chooser and remove the `# ` from the start of each key line so it takes effect. A line that still starts with `#` is ignored, which is the usual reason a service "is not configured" after you are sure you pasted the key.
 
-- [ ] **Files.** `MEDIA_STORAGE=local` becomes `r2`. Uncomment the four lines under it and fill them from Stage 0, Part D; the prefix becomes `integr8-production` (the template says `integr8-staging`). Before and after:
+- [ ] **Files.** `MEDIA_STORAGE=local` becomes `r2`. Uncomment the five lines under it and fill them from Stage 0, Part D; the prefix becomes `integr8-production` (the template says `integr8-staging`), and `CLOUDFLARE_API_TOKEN` is the analytics token, not the R2 one. Before and after:
 
 ```text
 # before
@@ -484,6 +485,8 @@ MEDIA_STORAGE=local
 # R2_ACCESS_KEY_ID=
 # R2_SECRET_ACCESS_KEY=
 # R2_BUCKET_PREFIX=integr8-staging
+# … three comment lines …
+# CLOUDFLARE_API_TOKEN=
 
 # after
 MEDIA_STORAGE=r2
@@ -491,6 +494,8 @@ CLOUDFLARE_ACCOUNT_ID=8f3c2b1a9d8e7f6a5b4c3d2e1f0a9b8c
 R2_ACCESS_KEY_ID=4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d
 R2_SECRET_ACCESS_KEY=…64 characters…
 R2_BUCKET_PREFIX=integr8-production
+# … three comment lines …
+CLOUDFLARE_API_TOKEN=…40 characters…
 ```
 
 - [ ] **Maps.** `GEOCODER=fake` becomes `mapbox`; uncomment the token line and paste the token from Part H.
@@ -982,6 +987,14 @@ sudo /opt/integr8/deploy/vps/restore-drill.sh --remote
 sudo /opt/integr8/deploy/vps/heartbeat.sh; echo "exit $?"
 ```
 
+- [ ] **The storage check matched**, the morning after the first night in production: the command below lists last night's checks against Cloudflare. Each company with files says `matched` (or `drifted`, which Sentry and the audit log report), not `unavailable`. `unavailable` with "CLOUDFLARE_API_TOKEN is not set" means the token line is missing or still commented; a brand-new company whose bucket is empty can say "Cloudflare has no sample for this bucket yet" until it holds a file.
+
+```bash
+# machine (SSH session), from /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env exec -T postgres psql -U postgres -d integr8 \
+  -c "select status, note, count(*) from storage_reconciliations where ran_at > now() - interval '1 day' group by 1, 2;"
+```
+
 - [ ] **Reboot test**: `sudo reboot`, and the stack is back by itself within two minutes. Every container restarts unless stopped, Caddy and Docker start at boot, and container logs are capped at 50 MB each.
 
 ### D. GitHub, for the long run
@@ -1371,6 +1384,13 @@ Caddy now tells browsers to use HTTPS only for a year on both names (no `include
 
 - [ ] **Choose**, during part C with `nano deploy/.env`. Invoicing every company: set `BILLING_PROVIDER=none` and leave the Stripe lines commented. Taking cards in the app: keep `stripe` with the live keys (Stage 9, part A); test keys stop a production start with "STRIPE_SECRET_KEY is a test-mode key".
 - [ ] **Check one company** after part D: its Billing page says "Invoiced by Integr8" with no plan buttons, and the dashboard's company page shows Billing: Invoiced by Integr8 for a company you onboard from now on.
+
+### X. The storage check against Cloudflare (included in v1.2.2)
+
+The nightly metering has always needed `CLOUDFLARE_API_TOKEN` to compare each company's stored bytes with Cloudflare's bill and to count its operations, but the guide never asked for it, so on a running machine every check says `unavailable`. In production the API and the worker now warn about it at start-up.
+
+- [ ] **Make the token** (Stage 0, part D, "Create an analytics token") and add `CLOUDFLARE_API_TOKEN=` with it to `deploy/.env` during part C, under the R2 lines.
+- [ ] **No warning after part D**: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api worker | grep CLOUDFLARE_API_TOKEN` prints nothing. The morning after, Stage 9, part C's "storage check matched" passes.
 
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.

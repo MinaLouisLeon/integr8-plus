@@ -46,7 +46,13 @@ the API and the worker in `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` with
 `CLOUDFLARE_ACCOUNT_ID`. A client never receives it: it gets a presigned link for one
 object, one method and fifteen minutes (uploads) or five (downloads). No bucket is public.
 
-`CLOUDFLARE_API_TOKEN` (Account Analytics: Read) is only for `storage verify`.
+`CLOUDFLARE_API_TOKEN` is a second, separate Cloudflare API token with **Account Analytics:
+Read** only. The worker's nightly metering uses it to count each company's R2 operations
+(class A and B) on its daily sample and to check the ledger against the byte count Cloudflare
+bills from (below, "Checking against Cloudflare"); `storage verify` uses it as well. It is
+optional — without it every night's check is recorded as `unavailable` and no operations are
+counted — and with R2 in production the API and the worker log a warning at start-up rather
+than refuse to start.
 
 ## The upload
 

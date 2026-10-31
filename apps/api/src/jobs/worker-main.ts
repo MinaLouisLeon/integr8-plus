@@ -1,6 +1,6 @@
 import { assertPlatformRoleIsLimited, closeDatabase } from '@integr8/db';
 import { buildServices } from '../composition.js';
-import { assertProductionReady, loadApiConfig } from '../config.js';
+import { assertProductionReady, loadApiConfig, startupWarnings } from '../config.js';
 import { createLogger } from '../http/logger.js';
 import { flushSentry, initialiseSentry } from '../observability/sentry.js';
 import { runMediaMaintenance } from '../media/maintenance.js';
@@ -63,6 +63,10 @@ async function main(): Promise<void> {
   // E-invoicing's settings never stop the worker either; what is wrong is said once.
   for (const problem of services.eta.problems ?? []) {
     logger.warn(`E-invoicing: ${problem}`);
+  }
+  // Metering runs here, so this is where a missing analytics token matters.
+  for (const warning of startupWarnings(config)) {
+    logger.warn(warning);
   }
 
   // Media housekeeping on a timer, alongside the queue. Several workers running

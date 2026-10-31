@@ -6,6 +6,7 @@ import {
   assertProductionReady,
   corsOrigins,
   loadApiConfig,
+  startupWarnings,
   webOriginMissingFromCors,
 } from './config.js';
 import { createLogger } from './http/logger.js';
@@ -70,6 +71,10 @@ async function main(): Promise<void> {
   // Nor do e-invoicing's: it stays off until Integr8 switches it on.
   for (const problem of services.eta.problems ?? []) {
     logger.warn(`E-invoicing: ${problem}`);
+  }
+
+  for (const warning of startupWarnings(config)) {
+    logger.warn(warning);
   }
 
   /**

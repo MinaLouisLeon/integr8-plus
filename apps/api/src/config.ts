@@ -137,10 +137,15 @@ export const apiConfigSchema = z.object({
   /** Overrides the account endpoint, for a jurisdiction-restricted account. */
   R2_ENDPOINT: z.url().optional(),
   /**
-   * Reads R2 storage analytics (Account Analytics: Read), to check the ledger
-   * against what Cloudflare bills. Only the verification command needs it.
+   * Reads R2 storage analytics (Account Analytics: Read only). The worker's
+   * nightly metering uses it to record each company's operations and to check
+   * the storage ledger against what Cloudflare bills (`storage_reconciliations`);
+   * `storage verify` uses it too. Without it every night's check says
+   * `unavailable`. Optional, so a missing one never stops the server; with R2
+   * in production the API and the worker warn at start-up
+   * ({@link startupWarnings}).
    */
-  CLOUDFLARE_API_TOKEN: z.string().optional(),
+  CLOUDFLARE_API_TOKEN: blankIsUnset(z.string().optional()),
 
   // -------------------------------------------------------------------------
   // Geocoding
@@ -625,6 +630,24 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     );
   }
   return result.data;
+}
+
+/**
+ * What a deployment should fix but can run without, said once at start-up by
+ * the API and the worker. Never a reason to stop.
+ */
+export function startupWarnings(config: ApiConfig): string[] {
+  const warnings: string[] = [];
+  if (
+    config.APP_ENV === 'production' &&
+    config.MEDIA_STORAGE === 'r2' &&
+    config.CLOUDFLARE_API_TOKEN === undefined
+  ) {
+    warnings.push(
+      "CLOUDFLARE_API_TOKEN is not set: the nightly storage check against Cloudflare's bill will say 'unavailable' for every company, and no operations are counted. Create an Account Analytics: Read token (setup guide, Stage 0 part D).",
+    );
+  }
+  return warnings;
 }
 
 /**

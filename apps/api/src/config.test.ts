@@ -3,6 +3,7 @@ import {
   assertProductionReady,
   databaseProblems,
   loadApiConfig,
+  startupWarnings,
   supabaseAuthSettings,
   webOriginMissingFromCors,
 } from './config.js';
@@ -252,5 +253,35 @@ describe('the billing provider in production', () => {
         loadApiConfig({ ...PRODUCTION_BASE, APP_ENV: 'staging', STRIPE_SECRET_KEY: 'sk_test_abc' }),
       ),
     ).not.toThrow();
+  });
+});
+
+describe('the Cloudflare analytics token', () => {
+  // Nightly metering compares the ledger with Cloudflare's bill through it.
+  // Missing, every night's check says "unavailable": worth a warning, never a
+  // refusal to start.
+  it('is warned about in production with R2, without stopping the start', () => {
+    const config = loadApiConfig({
+      ...PRODUCTION_BASE,
+      API_CORS_ORIGINS: 'https://app.example.com',
+    });
+    expect(startupWarnings(config).join(' ')).toMatch(/CLOUDFLARE_API_TOKEN is not set/u);
+    expect(() => {
+      assertProductionReady(config, PRODUCTION_DATABASE);
+    }).not.toThrow();
+  });
+
+  it('is not warned about once set, or outside production, or a blank line', () => {
+    expect(
+      startupWarnings(
+        loadApiConfig({
+          ...PRODUCTION_BASE,
+          API_CORS_ORIGINS: 'https://app.example.com',
+          CLOUDFLARE_API_TOKEN: 'cf-token',
+        }),
+      ),
+    ).toEqual([]);
+    expect(startupWarnings(loadApiConfig({ ...PRODUCTION_BASE, APP_ENV: 'staging' }))).toEqual([]);
+    expect(loadApiConfig({ CLOUDFLARE_API_TOKEN: '' }).CLOUDFLARE_API_TOKEN).toBeUndefined();
   });
 });
