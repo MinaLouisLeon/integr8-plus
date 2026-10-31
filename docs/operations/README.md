@@ -60,11 +60,16 @@ changed is discarded.
 | `GEOCODER`            | `mapbox` in production; `fake` (stable coordinates from the address text) in development and tests. Production refuses `fake`. |
 | `MAPBOX_ACCESS_TOKEN` | A secret token with geocoding scope. Requests use `permanent=true`, which Mapbox requires for results that are stored.         |
 
-**Maps.** The site screen shows a Leaflet map for dropping a pin when the app is given tiles:
-`NEXT_PUBLIC_MAP_TILES_URL` / `VITE_MAP_TILES_URL` with `…_ATTRIBUTION`, such as a Mapbox
-raster style URL with a public token. In development, OpenStreetMap's tiles stand in; their
-usage policy does not allow a product to rely on them. Without tiles, a site is placed by
-coordinates or device location.
+**No map on screen.** The site screen shows the saved coordinates with an **Open in Google
+Maps** link (`https://www.google.com/maps/search/?api=1&query=<lat>,<lng>`, built by
+`googleMapsUrl` in `site-location.tsx`), so the office can check the position in Google's own
+tab; the work order and submission screens link the same way. A wrong position is corrected by
+typing coordinates (in Google Maps, right-click the spot and click the numbers to copy them) or
+with the device's location. The web and desktop apps drew a Leaflet map until 2026-10-31, but
+its tiles needed a tile service of their own in production (`NEXT_PUBLIC_MAP_TILES_URL` /
+`VITE_MAP_TILES_URL`), none was set up, and the map area stayed empty; the map, its
+OpenStreetMap development stand-in, those settings and the Leaflet dependency are gone.
+Geocoding is unchanged.
 
 ## Job types
 

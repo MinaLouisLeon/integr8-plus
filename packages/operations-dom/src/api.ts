@@ -156,11 +156,6 @@ export interface OperationsConfig {
   };
   /** Saves a file the person asked for, such as an import template. */
   download: (blob: Blob, filename: string) => void;
-  /**
-   * Map tiles for placing a site. `undefined` shows coordinates and the
-   * device's location only — where the app's content policy allows no tile host.
-   */
-  mapTiles?: { url: string; attribution: string; maxZoom?: number };
   /** The browser's IANA time zone, for reading dates in imports. Defaults to the runtime's. */
   timeZone?: string;
   /**

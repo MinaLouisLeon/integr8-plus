@@ -83,8 +83,10 @@ happened. The design is in [docs/operations](../../docs/operations/README.md).
 - **Imports write each row in its own transaction and run once.** A failure part-way is
   recorded with the count reached; running it again would write the saved rows twice.
 - **Geocoding behind an interface; Mapbox with `permanent=true` in production,** a
-  deterministic fake in development and tests. Maps use Leaflet with configured tiles;
-  OpenStreetMap's tiles only in development.
+  deterministic fake in development and tests. Maps used Leaflet with configured tiles;
+  OpenStreetMap's tiles only in development. **Superseded 2026-10-31:** production never had
+  a tile service, so the map area was empty; the map was removed from web and desktop, and
+  the site screen shows the coordinates with an "Open in Google Maps" link instead.
 - **Screens in a shared package,** `@integr8/operations-dom`, hosted by both web and desktop,
   as the form renderer is.
 

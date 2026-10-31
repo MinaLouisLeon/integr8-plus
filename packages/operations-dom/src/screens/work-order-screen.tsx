@@ -40,6 +40,7 @@ import { RequirementList, RequirementsDialog } from '../qualifications/requireme
 import { CoverageCard } from '../contracts/job-coverage.js';
 import { DeadlinesCard } from '../deadlines/deadline-parts.js';
 import { PlannedMaintenance } from '../maintenance/maintenance-parts.js';
+import { googleMapsUrl } from '../site-location.js';
 
 /**
  * One job.
@@ -164,7 +165,7 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
               {site.location === null ? null : (
                 <a
                   className="text-xs text-accent underline-offset-4 hover:underline"
-                  href={`https://www.openstreetmap.org/?mlat=${String(site.location.latitude)}&mlon=${String(site.location.longitude)}#map=18/${String(site.location.latitude)}/${String(site.location.longitude)}`}
+                  href={googleMapsUrl(site.location)}
                   target="_blank"
                   rel="noreferrer"
                 >

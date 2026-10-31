@@ -113,8 +113,9 @@ cookies beyond the ones the site needs to work.
    `missingOperatorDetails()` must return nothing; its test in `legal.test.ts` pins today's list,
    so update the test with it.
 3. **Check the provider list against the deployment**: the AI provider actually configured
-   (`AI_PROVIDER`), whether the map pictures come from Mapbox (`NEXT_PUBLIC_MAP_TILES_URL`,
-   `VITE_MAP_TILES_URL`), and how long Oracle keeps copies of the server's disk under the backup
+   (`AI_PROVIDER`), Mapbox for geocoding only (the apps draw no maps since 2026-10-31; the
+   site screens link to Google Maps, opened by the person), and how long Oracle keeps copies of
+   the server's disk under the backup
    policy chosen, then sign each provider's own data processing agreement.
 4. **Companies Integr8 sets up never see the sign-up page**, so they accept the terms and the
    data processing terms in their signed order; the order should link to both.
