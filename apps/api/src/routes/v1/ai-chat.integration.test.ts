@@ -409,7 +409,10 @@ describe('asking', () => {
       expect(refused.statusCode).toBe(429);
       expect(code(refused)).toBe('ai_daily_token_quota_exceeded');
       expect(refused.headers['retry-after']).toBeDefined();
-      expect(refused.body).not.toMatch(/500|tokens? left/u);
+      // The message, not the whole body: the body's random request id can
+      // contain "500".
+      const message = (JSON.parse(refused.body) as { error: { message: string } }).error.message;
+      expect(message).not.toMatch(/500|tokens? left/u);
       // No model was asked, no message charged, nothing left held.
       expect(provider.calls).toHaveLength(0);
       const after = await companyUsage();
