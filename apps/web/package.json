@@ -21,7 +21,7 @@
     "@integr8/i18n": "workspace:*",
     "@integr8/operations-dom": "workspace:*",
     "@integr8/tokens": "workspace:*",
-    "@sentry/nextjs": "11.7.0",
+    "@sentry/nextjs": "11.9.0",
     "@tanstack/react-query": "5.102.8",
     "next": "16.3.4",
     "react": "19.3.0",
