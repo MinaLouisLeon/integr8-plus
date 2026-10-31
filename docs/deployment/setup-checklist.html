@@ -329,7 +329,7 @@ cd /opt/integr8</code></pre>
         <p><b>DNS</b> is the phone book that turns a name into an IP address; Cloudflare keeps yours (Stage 0, Part D). An <b>A record</b> says "this name points at this IPv4 address". <b>HTTPS</b> means the connection is encrypted and the browser has checked the server really is <code>app.integr8-media.com</code>, using a <b>certificate</b> that Let's Encrypt issues free to anyone who can prove they control the name. Browsers and phones refuse to send sign-in cookies without it. <b>Caddy</b> is a small web server in front of the application: inside Docker the web app listens on port 3001 and the API on 3000, both plain HTTP and only on the machine itself; Caddy listens on the public ports 80 and 443 and forwards each name inward to its port (a <b>reverse proxy</b>). Its reason for being here is that it talks to Let's Encrypt by itself: the moment a name points at the machine and appears in its config file, Caddy obtains the certificate, renews it, and redirects HTTP to HTTPS. You never touch a certificate file.</p>
         <ul class="check" data-stage="s2">
           <li><input type="checkbox" id="s2-1"><label for="s2-1"><b>Add two DNS records</b> in Cloudflare → your domain → <b>DNS</b> → Records → Add record. First: Type <code>A</code>, Name <code>app</code>, IPv4 = SERVER-IP, Proxy status <b>DNS only</b> (click the orange cloud so it turns grey), TTL Auto. Second: the same with Name <code>api</code>. "DNS only" matters: with the orange cloud on, Caddy could not prove it owns the name. It can be turned on later, after setting Cloudflare's SSL mode to Full (strict); not now.</label></li>
-          <li><input type="checkbox" id="s2-2"><label for="s2-2"><b>Tell Caddy the names.</b> Caddy reads one file, <code>/etc/caddy/Caddyfile</code>. The repository has a ready one with the placeholder <code>YOUR-DOMAIN.com</code> in it; the second command below swaps that placeholder for <code>integr8-media.com</code>. After the four commands, <code>cat</code> must show <code>app.integr8-media.com</code> and <code>api.integr8-media.com</code>, each forwarding to its port. If it still shows <code>YOUR-DOMAIN.com</code>, the <code>sed</code> line did not run.</label></li>
+          <li><input type="checkbox" id="s2-2"><label for="s2-2"><b>Tell Caddy the names.</b> Caddy reads one file, <code>/etc/caddy/Caddyfile</code>. The repository has a ready one with the placeholder <code>YOUR-DOMAIN.com</code> in it; the second command below swaps that placeholder for <code>integr8-media.com</code>. After the four commands, <code>cat</code> must show <code>app.integr8-media.com</code> and <code>api.integr8-media.com</code>, each forwarding to its port (with comments above and a few <code>header</code> lines, as below). If it still shows <code>YOUR-DOMAIN.com</code>, the <code>sed</code> line did not run.</label></li>
         </ul>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session)
 sudo cp /opt/integr8/deploy/vps/Caddyfile.example /etc/caddy/Caddyfile
@@ -338,10 +338,17 @@ sudo systemctl reload caddy
 cat /etc/caddy/Caddyfile
 sudo systemctl status caddy     # active (running) in green; q to leave</code></pre>
         <pre><code>app.integr8-media.com {
+    header Strict-Transport-Security "max-age=31536000"
+
     reverse_proxy localhost:3001
 }
 
 api.integr8-media.com {
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        …
+    }
+    …
     reverse_proxy localhost:3000
 }</code></pre>
         <ul class="check" data-stage="s2b">
@@ -524,6 +531,12 @@ docker compose -f deploy/compose.yml --env-file deploy/.env logs -f bootstrap mi
           <li><input type="checkbox" id="s4-4"><label for="s4-4"><b>The assistant's settings were read</b>, if you turned it on in Stage 3: <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs api | grep Assistant:</code> prints nothing when the AI settings are complete (and always nothing with <code>AI_PROVIDER=none</code>). Each line it prints is one thing to fix (for example <code>Assistant: AI_PROVIDER is openai but AI_MODEL_HELP is not set.</code>); the rest of the stack runs either way. Stage 5 shows the same list on the dashboard.</label></li>
           <li><input type="checkbox" id="s4-5"><label for="s4-5"><b>PDF documents can be printed</b>: <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs worker | grep "PDF documents"</code> prints <code>PDF documents can be printed</code>. If it says <code>cannot be printed</code>, the line names the reason; every other job still runs, and documents asked for are marked failed until it is fixed.</label></li>
           <li><input type="checkbox" id="s4-6"><label for="s4-6"><b>The sign-in server is healthy</b>: <code>docker compose -f deploy/compose.yml --env-file deploy/.env ps</code> lists <code>auth</code> as <i>Up (healthy)</i>. It publishes no port: only the API reaches it, over Docker's own network. If it keeps restarting, <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs auth</code> names the cause; the usual one is a <code>SUPABASE_AUTH_DB_PASSWORD</code> line that was changed or cut short. Fix the line and run the same <code>up -d</code> again: <code>bootstrap</code> sets the role's password from the file each time.</label></li>
+          <li><input type="checkbox" id="s4-hdr"><label for="s4-hdr"><b>The browser security headers arrive</b>: the two commands below print <code>strict-transport-security: max-age=31536000</code> for both names (and nothing about <code>includeSubDomains</code>), <code>x-content-type-options</code>, <code>x-frame-options</code> and <code>referrer-policy</code> for the API, and for the web app <code>content-security-policy: frame-ancestors 'none'</code> and a long <code>content-security-policy-report-only</code> line naming the API's address. The full policy only reports for now: what it would block shows up in Sentry's web project as CSP reports, and blocks nothing until a later release switches it on.</label></li>
+        </ul>
+        <pre><button class="copy" type="button">Copy</button><code># machine (SSH session)
+curl -sI https://api.integr8-media.com/health | grep -iE 'strict-transport|x-content-type|x-frame|referrer-policy'
+curl -sI https://app.integr8-media.com | grep -iE 'strict-transport|content-security'</code></pre>
+        <ul class="check" data-stage="s4b">
           <li><input type="checkbox" id="s4-7"><label for="s4-7"><b>Only Caddy faces the internet</b>: <code>sudo ss -tlnp | grep -E ':(3000|3001)\b'</code> shows both ports on <code>127.0.0.1</code> and nowhere else. Docker-published ports go round the machine's firewall, so the compose file binds them to the machine itself; Caddy reaches them there.</label></li>
         </ul>
         <div class="note"><p>If the API refuses to start, its log says exactly which variable is wrong or missing: <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs api</code>. Fix the env file and run the same <code>up -d</code> command again. Throughout this guide, "restart" means exactly that command; it recreates only the containers whose settings changed.</p></div>
@@ -1104,6 +1117,14 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec worker printenv
         <ul class="check" data-stage="s12u">
           <li><input type="checkbox" id="s12-u1"><label for="s12-u1"><b>Caddy's new block</b>, during part F's comparison: <code>diff deploy/vps/Caddyfile.example /etc/caddy/Caddyfile</code> shows the <code>@health</code> lines; add them inside your <code>api.</code> block, above <code>reverse_proxy</code>, then <code>sudo systemctl reload caddy</code>. From the laptop, <code>https://api.integr8-media.com/health/ready</code> now shows a 404, and the web app still signs in.</label></li>
           <li><input type="checkbox" id="s12-u2"><label for="s12-u2"><b>Swap the uptime check for the heartbeat</b>: Stage 9, part C, "A heartbeat for the API". Then delete the old monitor that called <code>https://api.integr8-media.com/health/ready</code>, which now only ever sees 404.</label></li>
+        </ul>
+
+        <h3 id="headers-update">V. Browser security headers (included in v1.2.2)</h3>
+        <p>Caddy now tells browsers to use HTTPS only for a year on both names (no <code>includeSubDomains</code>, no preload, so the test box and other names under the domain are unaffected), and adds the usual browser headers to the API's answers. The web app sends a full content-security policy, in report-only mode first, and the desktop app's own policy no longer allows anything the app does not load.</p>
+        <ul class="check" data-stage="s12v">
+          <li><input type="checkbox" id="s12-v1"><label for="s12-v1"><b>Caddy's header lines</b>, during part F's comparison: copy the <code>header</code> lines of both blocks from <code>deploy/vps/Caddyfile.example</code> into <code>/etc/caddy/Caddyfile</code>, then <code>sudo systemctl reload caddy</code>. Stage 4's "browser security headers" check passes.</label></li>
+          <li><input type="checkbox" id="s12-v2"><label for="s12-v2"><b>Watch the reports</b> for two weeks: Sentry's web project lists anything the policy would have blocked as CSP reports. Nothing listed means it can be enforced; send what is listed to the developers instead of loosening Caddy.</label></li>
+          <li><input type="checkbox" id="s12-v3"><label for="s12-v3"><b>Update the desktop apps</b> (part G): the new policy is part of each installer.</label></li>
         </ul>
 
         <div class="note"><p><b>The test box (Stage 10)</b> updates the same way, from <code>staging</code> instead of <code>main</code>: <code>git pull</code> on its <code>staging</code> checkout, then <b>Pull</b> and <b>Redeploy</b> the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.</p></div>

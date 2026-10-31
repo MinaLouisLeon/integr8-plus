@@ -13,11 +13,27 @@
 # a CDN is ever put in front (Cloudflare's orange cloud), add its address ranges
 # with `trusted_proxies`, or every visitor will share the CDN's addresses.
 
+# Strict-Transport-Security tells a browser that has seen this site once to use
+# HTTPS only, for a year. Deliberately without includeSubDomains or preload:
+# other names under the domain (the test box, mail, MyRooms) are not this
+# file's to promise, and preload cannot be undone quickly. The web app sends its
+# own content-security policy and frame headers (apps/web/next.config.ts); the
+# API, which serves JSON and files, gets its browser headers here.
+
 app.YOUR-DOMAIN.com {
+    header Strict-Transport-Security "max-age=31536000"
+
     reverse_proxy localhost:3001
 }
 
 api.YOUR-DOMAIN.com {
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+        X-Frame-Options "DENY"
+    }
+
     # The health checks are for this machine, not the internet: they name the
     # release and what is failing. Docker's health check and the heartbeat
     # (deploy/vps/heartbeat.sh) call them on 127.0.0.1:3000.

@@ -368,7 +368,7 @@ The machine is reachable only by its IP, unencrypted, and nothing is listening. 
 **DNS** is the phone book that turns a name into an IP address; Cloudflare keeps yours (Stage 0, Part D). An **A record** says "this name points at this IPv4 address". **HTTPS** means the connection is encrypted and the browser has checked the server really is `app.integr8-media.com`, using a **certificate** that Let's Encrypt issues free to anyone who can prove they control the name. Browsers and phones refuse to send sign-in cookies without it. **Caddy** is a small web server in front of the application: inside Docker the web app listens on port 3001 and the API on 3000, both plain HTTP and only on the machine itself; Caddy listens on the public ports 80 and 443 and forwards each name inward to its port (a **reverse proxy**). Its reason for being here is that it talks to Let's Encrypt by itself: the moment a name points at the machine and appears in its config file, Caddy obtains the certificate, renews it, and redirects HTTP to HTTPS. You never touch a certificate file.
 
 - [ ] **Add two DNS records** in Cloudflare → your domain → **DNS** → Records → Add record. First: Type `A`, Name `app`, IPv4 = SERVER-IP, Proxy status **DNS only** (click the orange cloud so it turns grey), TTL Auto. Second: the same with Name `api`. "DNS only" matters: with the orange cloud on, Caddy could not prove it owns the name. It can be turned on later, after setting Cloudflare's SSL mode to Full (strict); not now.
-- [ ] **Tell Caddy the names.** Caddy reads one file, `/etc/caddy/Caddyfile`. The repository has a ready one with the placeholder `YOUR-DOMAIN.com` in it; the second command below swaps that placeholder for `integr8-media.com`. After the four commands, `cat` must show `app.integr8-media.com` and `api.integr8-media.com`, each forwarding to its port. If it still shows `YOUR-DOMAIN.com`, the `sed` line did not run.
+- [ ] **Tell Caddy the names.** Caddy reads one file, `/etc/caddy/Caddyfile`. The repository has a ready one with the placeholder `YOUR-DOMAIN.com` in it; the second command below swaps that placeholder for `integr8-media.com`. After the four commands, `cat` must show `app.integr8-media.com` and `api.integr8-media.com`, each forwarding to its port (with comments above and a few `header` lines, as below). If it still shows `YOUR-DOMAIN.com`, the `sed` line did not run.
 
 ```bash
 # machine (SSH session)
@@ -381,10 +381,17 @@ sudo systemctl status caddy     # active (running) in green; q to leave
 
 ```text
 app.integr8-media.com {
+    header Strict-Transport-Security "max-age=31536000"
+
     reverse_proxy localhost:3001
 }
 
 api.integr8-media.com {
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        …
+    }
+    …
     reverse_proxy localhost:3000
 }
 ```
@@ -623,6 +630,14 @@ The first run builds two images on the machine, ten to fifteen minutes on the AR
 - [ ] **The assistant's settings were read**, if you turned it on in Stage 3: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api | grep Assistant:` prints nothing when the AI settings are complete (and always nothing with `AI_PROVIDER=none`). Each line it prints is one thing to fix (for example `Assistant: AI_PROVIDER is openai but AI_MODEL_HELP is not set.`); the rest of the stack runs either way. Stage 5 shows the same list on the dashboard.
 - [ ] **PDF documents can be printed**: `docker compose -f deploy/compose.yml --env-file deploy/.env logs worker | grep "PDF documents"` prints `PDF documents can be printed`. If it says `cannot be printed`, the line names the reason; every other job still runs, and documents asked for are marked failed until it is fixed.
 - [ ] **The sign-in server is healthy**: `docker compose -f deploy/compose.yml --env-file deploy/.env ps` lists `auth` as _Up (healthy)_. It publishes no port: only the API reaches it, over Docker's own network. If it keeps restarting, `docker compose -f deploy/compose.yml --env-file deploy/.env logs auth` names the cause; the usual one is a `SUPABASE_AUTH_DB_PASSWORD` line that was changed or cut short. Fix the line and run the same `up -d` again: `bootstrap` sets the role's password from the file each time.
+- [ ] **The browser security headers arrive**: the two commands below print `strict-transport-security: max-age=31536000` for both names (and nothing about `includeSubDomains`), `x-content-type-options`, `x-frame-options` and `referrer-policy` for the API, and for the web app `content-security-policy: frame-ancestors 'none'` and a long `content-security-policy-report-only` line naming the API's address. The full policy only reports for now: what it would block shows up in Sentry's web project as CSP reports, and blocks nothing until a later release switches it on.
+
+```bash
+# machine (SSH session)
+curl -sI https://api.integr8-media.com/health | grep -iE 'strict-transport|x-content-type|x-frame|referrer-policy'
+curl -sI https://app.integr8-media.com | grep -iE 'strict-transport|content-security'
+```
+
 - [ ] **Only Caddy faces the internet**: `sudo ss -tlnp | grep -E ':(3000|3001)\b'` shows both ports on `127.0.0.1` and nowhere else. Docker-published ports go round the machine's firewall, so the compose file binds them to the machine itself; Caddy reaches them there.
 
 > [!NOTE]
@@ -1324,6 +1339,14 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec worker printenv
 
 - [ ] **Caddy's new block**, during part F's comparison: `diff deploy/vps/Caddyfile.example /etc/caddy/Caddyfile` shows the `@health` lines; add them inside your `api.` block, above `reverse_proxy`, then `sudo systemctl reload caddy`. From the laptop, `https://api.integr8-media.com/health/ready` now shows a 404, and the web app still signs in.
 - [ ] **Swap the uptime check for the heartbeat**: Stage 9, part C, "A heartbeat for the API". Then delete the old monitor that called `https://api.integr8-media.com/health/ready`, which now only ever sees 404.
+
+### V. Browser security headers (included in v1.2.2)
+
+Caddy now tells browsers to use HTTPS only for a year on both names (no `includeSubDomains`, no preload, so the test box and other names under the domain are unaffected), and adds the usual browser headers to the API's answers. The web app sends a full content-security policy, in report-only mode first, and the desktop app's own policy no longer allows anything the app does not load.
+
+- [ ] **Caddy's header lines**, during part F's comparison: copy the `header` lines of both blocks from `deploy/vps/Caddyfile.example` into `/etc/caddy/Caddyfile`, then `sudo systemctl reload caddy`. Stage 4's "browser security headers" check passes.
+- [ ] **Watch the reports** for two weeks: Sentry's web project lists anything the policy would have blocked as CSP reports. Nothing listed means it can be enforced; send what is listed to the developers instead of loosening Caddy.
+- [ ] **Update the desktop apps** (part G): the new policy is part of each installer.
 
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.

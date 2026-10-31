@@ -95,6 +95,14 @@ Hardening from the pre-production audit's Medium items (2026-10-31):
   it asks `127.0.0.1:3000/health/ready` and pings `HEALTH_PING_URL`, or `<url>/fail` when
   not ready. Tested with stand-in servers; the monitor itself is the owner's to create
   (setup guide, Stage 9 part C).
+- **Browser security headers.** Caddy sends HSTS (`max-age=31536000`, no subdomains, no
+  preload) for both names, and `nosniff`, `no-referrer` and `DENY` for the API. The web
+  app ships a full content-security policy as `Content-Security-Policy-Report-Only`, with
+  reports to Sentry's CSP endpoint when a DSN is set, beside the enforced
+  `frame-ancestors 'none'`; enforcing the full policy waits for two quiet weeks of
+  reports. The desktop app's Tauri policy lists only what it loads (no map tiles). Caddy
+  could not be run here, so the Caddyfile is checked by reading only; the web build's
+  headers were checked in its routes manifest.
 
 ## Exit criteria
 

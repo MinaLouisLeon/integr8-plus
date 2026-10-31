@@ -180,6 +180,41 @@ monthly; the runbook also has the six-monthly full rehearsal on the test box.
 Container logs are capped at 50 MB per container by the `x-logging` block in
 `deploy/compose.yml`, so a chatty week cannot fill the disk.
 
+## Security headers
+
+`deploy/vps/Caddyfile.example` sends `Strict-Transport-Security: max-age=31536000`
+for both names, deliberately without `includeSubDomains` or `preload`: other
+names under the domain (the test box behind its tunnel, mail, the MyRooms
+project) are not this file's to commit to HTTPS, and a preload entry takes
+months to undo. The API's name also gets `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: no-referrer` and `X-Frame-Options: DENY`.
+
+The web app sets its own (`apps/web/src/lib/content-security-policy.ts`, read by
+`next.config.ts` at build time): the enforced `Content-Security-Policy:
+frame-ancestors 'none'`, `X-Frame-Options`, `nosniff` and a referrer policy,
+plus a full policy sent as `Content-Security-Policy-Report-Only`. It allows
+scripts and styles from the site itself (inline too: the App Router streams
+page data in inline scripts, and nonces would make every page dynamic),
+`connect-src` to the API (`NEXT_PUBLIC_API_BASE_URL`), R2
+(`*.r2.cloudflarestorage.com`, for presigned uploads and downloads) and the
+Sentry ingest host, images from the site, `data:`, `blob:`, the API and R2,
+and no plugins, foreign `<base>` or form targets. With a DSN
+(`NEXT_PUBLIC_SENTRY_DSN`), violations are reported to Sentry's CSP endpoint
+(`report-uri` and `Reporting-Endpoints`). Once the reports have been quiet for
+a couple of weeks, the policy moves to the enforced header in one change in
+that file.
+
+The desktop app's policy is in `apps/desktop/src-tauri/tauri.conf.json`, and
+Tauri enforces it: scripts from the app only, the API (stamped in per build by
+`apps/desktop/scripts/stamp.mjs`), R2 and Sentry, nothing else.
+
+Checked on the machine (setup guide, Stage 4):
+
+```bash
+curl -sI https://api.your-domain.example/health | grep -iE 'strict-transport|x-content-type|x-frame|referrer-policy'
+curl -sI https://app.your-domain.example | grep -iE 'strict-transport|content-security'
+```
+
 ## Health checks and the heartbeat
 
 `/health` (the process is running) and `/health/ready` (the database answers
