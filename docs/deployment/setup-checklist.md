@@ -127,7 +127,7 @@ git log --all --oneline -- keys.txt '*-keys.txt' '*.keys'
 > [!WARNING]
 > `PLATFORM_SECRET_KEY` encrypts every super admin's authenticator secret. If it is ever changed, every super admin sets up their authenticator again. Keep it.
 
-- [ ] **The HR data key (optional until you use sensitive HR fields).** The HR module encrypts employees' national ID, social insurance and bank account numbers with this key: 32 random bytes written as base64 (44 characters ending in `=`). Key sheet: `HR_DATA_KEY`. Without it the API starts normally, but those three values cannot be stored, shown or exported ("HR key missing").
+- [ ] **The HR data key (required in production).** The HR module encrypts employees' national ID, social insurance and bank account numbers with this key: 32 random bytes written as base64 (44 characters ending in `=`). Key sheet: `HR_DATA_KEY`. In staging the API starts without it, but those three values cannot be stored, shown or exported ("HR key missing"); in production it refuses to start without it.
 
 ```powershell
 # laptop (PowerShell)
@@ -135,7 +135,7 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
 ```
 
 > [!WARNING]
-> `HR_DATA_KEY` belongs with the database backups: a backup restored without the key it was written with has those employee numbers unreadable for ever. Never generate a new one for an existing database; carry the same value to every new machine.
+> Keep `HR_DATA_KEY` in the password manager, **separately from the database backups**: a backup restored without the key it was written with has those employee numbers unreadable for ever, and a key stored beside the backups would hand them to whoever took the backups. Never generate a new one for an existing database except through Stage 11's "Change the HR key"; carry the same value to every new machine.
 
 - [ ] **The e-invoicing key.** The e-invoicing module locks each company's Egyptian Tax Authority (ETA) client ID and secret with this key: 32 random bytes written as base64, made with the same command as the HR data key (run it again; never reuse that value). Key sheet: `ETA_CREDENTIALS_KEY`. Without it companies cannot save their ETA credentials ("ETA key missing"); nothing else is affected, and the server starts without it. Optional while e-invoicing is off for every company: make it before you switch it on for the first one.
 
@@ -289,7 +289,7 @@ Every value, where it came from, and where it goes. `deploy/.env` is the one fil
 | `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`, `INTEGR8_PLATFORM_PASSWORD`                                              | Part B, generated                     | `deploy/.env`, each twice (Stage 3)                                                                   |
 | `AUTH_SIGNING_KEY_ID`, `AUTH_SIGNING_KEY`, `AUTH_VERIFICATION_KEYS`, `PLATFORM_SECRET_KEY`                                                     | Part B, generated                     | `deploy/.env`; `AUTH_VERIFICATION_KEYS` also Expo, as `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` (Stage 8)  |
 | `SUPABASE_AUTH_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_AUTH_DB_PASSWORD`                                                           | Part B, generated                     | `deploy/.env`, the three together                                                                     |
-| `HR_DATA_KEY`                                                                                                                                  | Part B; optional for HR secrets       | `deploy/.env` when used; back up with the database; never regenerate                                  |
+| `HR_DATA_KEY`                                                                                                                                  | Part B; required in production        | `deploy/.env`; the password manager, apart from the backups; changed only by Stage 11 part Z          |
 | `ETA_CREDENTIALS_KEY`                                                                                                                          | Part B, generated                     | `deploy/.env`; also with the database backups. Never regenerated for an existing database             |
 | `BUILD_TOKEN`                                                                                                                                  | Part B; optional until company builds | `deploy/.env` and GitHub secret (Part K), the same value when used                                    |
 | SSH public key                                                                                                                                 | Part A                                | Oracle's instance form (Stage 1)                                                                      |
@@ -506,7 +506,7 @@ MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoiaW50ZWdyOCIsImEiOiJjbG…
 ```
 
 - [ ] **Push.** `PUSH_SENDER=recording` becomes `expo`. Leave `# EXPO_ACCESS_TOKEN=` commented out: it is only needed if you turn on Expo's "enhanced push security", and you have not. (This is a different token from the `EXPO_TOKEN` GitHub uses.)
-- [ ] **HR data key.** If you use sensitive HR fields, find `HR_DATA_KEY=` (below the signing keys) and paste the key-sheet value; otherwise it may stay blank. On a rebuilt machine it must be the **same** value the old machine had, or restored employee numbers cannot be read.
+- [ ] **HR data key.** Find `HR_DATA_KEY=` (below the signing keys) and paste the key-sheet value: production refuses to start without it. Leave `HR_DATA_KEYS_PREVIOUS=` under it blank; it is only for changing the key (Stage 11, part Z). On a rebuilt machine it must be the **same** value the old machine had, or restored employee numbers cannot be read.
 - [ ] **E-invoicing key.** Find `ETA_CREDENTIALS_KEY=` (just after `HR_DATA_KEY`) and paste the value from the key sheet after the `=`, or leave it blank if you have not made one yet: a blank line is the same as no key, and the server starts. Leave `ETA_ALLOW_PRODUCTION=false` as it is. On a rebuilt machine it must be the **same** value the old machine had.
 - [ ] **Build token.** Find `BUILD_TOKEN=` (near `CONTACT_EMAIL`). If you build company apps, paste the key-sheet value here and into the GitHub secret of the same name. Otherwise leave it blank; the API starts without it, but GitHub cannot ask the API for a company list.
 
@@ -970,7 +970,7 @@ sudo rclone lsf r2crypt:
 sudo /opt/integr8/deploy/vps/restore-drill.sh --remote
 ```
 
-- [ ] **Keep `HR_DATA_KEY` with the backups**, in the password manager beside them. The dumps hold employees' identity and bank numbers encrypted with it; without the same key a restored database cannot show them.
+- [ ] **Keep `HR_DATA_KEY` apart from the backups**, in the password manager and nowhere near the dumps or the bucket. The dumps hold employees' identity and bank numbers encrypted with it; without the same key a restored database cannot show them, and with the key beside them anyone holding a dump could read them. After a change of key, keep the retired one too, labelled with its date, as long as backups from before that date exist.
 - [ ] **Keep `ETA_CREDENTIALS_KEY` with the backups** too. The dumps hold each company's ETA credentials locked with it; without the same key every company enters them again.
 
 ### C. The machine
@@ -1399,6 +1399,24 @@ The template library lives in the code and used to reach the database only when 
 
 - [ ] **After part D**, the `migrate` log ends with `form templates synchronised:` and a number, and dashboard → **Templates** lists the library (Stage 5's check). Companies' own forms are unchanged.
 
+### Z. Change the HR key
+
+From v1.2.2 production refuses to start without `HR_DATA_KEY`, and the key can be changed: the server seals with `HR_DATA_KEY` and still opens what older keys sealed while they are listed in `HR_DATA_KEYS_PREVIOUS`, and one command re-seals every company's numbers under the new key. Change it if the key may have been seen by someone who should not have it, or on a schedule you choose. A machine already in production without the key: make one (Stage 0, Part B), put it in `deploy/.env` during part C, and skip the rest.
+
+- [ ] **A new key**, made on the laptop with Stage 0, Part B's line. In the password manager, save it as the current `HR_DATA_KEY` with today's date, and relabel the old one "retired" with today's date. Do not delete the old one: backups made before today need it.
+- [ ] **A backup first**: part B's command.
+- [ ] **Both keys in the env file**, with `nano deploy/.env`: the old value moves to `HR_DATA_KEYS_PREVIOUS=` (if that line already has keys, put it first, then a comma), and the new value goes after `HR_DATA_KEY=`. Restart with part D's `up -d`; the API and the worker now seal with the new key and open with either.
+- [ ] **Re-seal**, with the first command below. It goes company by company and prints how many numbers it moved and from which key (by fingerprint, never the key), and writes one line in each company's audit log. It ends with "HR_DATA_KEYS_PREVIOUS can be emptied" when no number is left under an older key. A count under "No key opens" lists company, employee and field: those were sealed with a key that is in neither line; find it in the password manager, add it to `HR_DATA_KEYS_PREVIOUS` and run it again. Running it twice does no harm.
+- [ ] **Check one employee**: in the web app, open an employee with an ID number and choose **Show**; the full number appears.
+- [ ] **Retire the old key**: empty `HR_DATA_KEYS_PREVIOUS=` and restart. Keep the retired key in the password manager for as long as backups made before today are kept (`BACKUP_REMOTE_KEEP` nights); restoring one of them needs it back in `HR_DATA_KEYS_PREVIOUS`, then this re-seal again.
+
+```bash
+# machine (SSH session), from /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/platform/admin-cli.js hr-reseal
+# one company only, to try it first:
+docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/platform/admin-cli.js hr-reseal COMPANY-ID
+```
+
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.
 
@@ -1581,7 +1599,7 @@ ls -lt /var/backups/integr8 | head -3     # the newest file is the one just made
 scp "LOGIN-USER@SERVER-IP:/var/backups/integr8/*.sql.gz" $env:USERPROFILE\Downloads\
 ```
 
-- [ ] **The dump is on the laptop**, a few megabytes or more, with today's date in its name. Keep it with `HR_DATA_KEY`: one is not readable in full without the other.
+- [ ] **The dump is on the laptop**, a few megabytes or more, with today's date in its name. It needs `HR_DATA_KEY` (in your password manager, not beside the dump): one is not readable in full without the other.
 - [ ] **Check the address is reserved.** Oracle → Networking → IP Management → **Reserved public IPs**: the machine's address should be listed (Stage 1 reserved it). A reserved address survives the machine, so the two DNS records stay right. If it is not listed, the new machine gets a new address and part D changes the two DNS records.
 
 ### B. Destroy the machine

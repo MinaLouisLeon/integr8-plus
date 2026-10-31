@@ -103,6 +103,12 @@ Hardening from the pre-production audit's Medium items (2026-10-31):
   reports. The desktop app's Tauri policy lists only what it loads (no map tiles). Caddy
   could not be run here, so the Caddyfile is checked by reading only; the web build's
   headers were checked in its routes manifest.
+- **The HR data key is required in production and can be changed.** `HR_DATA_KEY` seals,
+  older keys in `HR_DATA_KEYS_PREVIOUS` still open, and `admin-cli hr-reseal` moves every
+  company's sealed fields under the current key (tenant transaction per company, counts and
+  key fingerprints printed, unreadable fields listed and kept). The backup runbook says to keep
+  the key, and every retired key, in the password manager apart from the backups. Unit and
+  integration tests (`reseal.integration.test.ts`); setup guide Stage 11 part Z.
 
 ## Exit criteria
 

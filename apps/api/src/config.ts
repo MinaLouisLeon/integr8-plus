@@ -371,7 +371,8 @@ export const apiConfigSchema = z.object({
    * Encrypts employees' national ID, social insurance and bank account
    * numbers at rest (ADR-0010): 32 bytes, base64. Unset or blank means those
    * fields cannot be written or revealed (503 `hr_key_missing`); everything
-   * else in HR works. Losing it loses those fields: keep it with the backups.
+   * else in HR works. Required in production. Losing it loses those fields:
+   * keep it in the password manager, apart from the backups.
    */
   HR_DATA_KEY: blankIsUnset(
     z
@@ -379,6 +380,27 @@ export const apiConfigSchema = z.object({
       .refine(
         (value) => Buffer.from(value, 'base64').length === 32,
         'HR_DATA_KEY must be 32 bytes, base64',
+      )
+      .optional(),
+  ),
+  /**
+   * Older HR keys, comma-separated, newest first: they open what they sealed
+   * and seal nothing. Set while rotating — the old `HR_DATA_KEY` moves here,
+   * a new one takes its place, `admin-cli hr-reseal` re-seals every company's
+   * fields under it — and removed once the re-seal reports nothing left.
+   */
+  HR_DATA_KEYS_PREVIOUS: blankIsUnset(
+    z
+      .string()
+      .transform((value) =>
+        value
+          .split(',')
+          .map((key) => key.trim())
+          .filter((key) => key !== ''),
+      )
+      .refine(
+        (keys) => keys.every((key) => Buffer.from(key, 'base64').length === 32),
+        'HR_DATA_KEYS_PREVIOUS must be 32-byte base64 keys, separated by commas',
       )
       .optional(),
   ),
@@ -501,6 +523,19 @@ export const apiConfigSchema = z.object({
 
 export type ApiConfig = z.infer<typeof apiConfigSchema>;
 
+/**
+ * The HR keys as configured: the one that seals and the older ones that only
+ * open, or undefined when there is no `HR_DATA_KEY`.
+ */
+export function hrKeySettings(
+  config: ApiConfig,
+): { current: string; previous: string[] } | undefined {
+  if (config.HR_DATA_KEY === undefined) {
+    return undefined;
+  }
+  return { current: config.HR_DATA_KEY, previous: config.HR_DATA_KEYS_PREVIOUS ?? [] };
+}
+
 /** The R2 settings, or the names of the ones missing. */
 export function r2Settings(config: ApiConfig):
   | { missing: string[] }
@@ -612,6 +647,15 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
         ].join('\n'),
       );
     }
+  }
+  if (
+    result.success &&
+    result.data.HR_DATA_KEY === undefined &&
+    (result.data.HR_DATA_KEYS_PREVIOUS ?? []).length > 0
+  ) {
+    throw new Error(
+      'Invalid API configuration:\n  HR_DATA_KEYS_PREVIOUS is set but HR_DATA_KEY is not: the older keys open, the current one seals, and there must be one.\n\nSee apps/api/.env.example for the full list.',
+    );
   }
   if (result.success && result.data.MEDIA_STORAGE === 'r2') {
     const { missing } = r2Settings(result.data);
@@ -893,6 +937,11 @@ export function assertProductionReady(
     if (missing !== undefined) {
       problems.push(missing);
     }
+  }
+  if (config.HR_DATA_KEY === undefined) {
+    problems.push(
+      "HR_DATA_KEY is not set: employees' ID, insurance and bank numbers could not be stored or shown, and payroll's bank and insurance files could not be made.",
+    );
   }
   if (config.PDF_RENDERER === 'recording') {
     problems.push(

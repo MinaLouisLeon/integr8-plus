@@ -105,11 +105,11 @@ Get-ChildItem -Force -Path keys.txt,*-keys.txt,*.keys -ErrorAction SilentlyConti
 git log --all --oneline -- keys.txt '*-keys.txt' '*.keys'</code></pre>
         <div class="note warn"><p><code>PLATFORM_SECRET_KEY</code> encrypts every super admin's authenticator secret. If it is ever changed, every super admin sets up their authenticator again. Keep it.</p></div>
         <ul class="check" data-stage="a1c">
-          <li><input type="checkbox" id="a1-3"><label for="a1-3"><b>The HR data key (optional until you use sensitive HR fields).</b> The HR module encrypts employees' national ID, social insurance and bank account numbers with this key: 32 random bytes written as base64 (44 characters ending in <code>=</code>). Key sheet: <code>HR_DATA_KEY</code>. Without it the API starts normally, but those three values cannot be stored, shown or exported ("HR key missing").</label></li>
+          <li><input type="checkbox" id="a1-3"><label for="a1-3"><b>The HR data key (required in production).</b> The HR module encrypts employees' national ID, social insurance and bank account numbers with this key: 32 random bytes written as base64 (44 characters ending in <code>=</code>). Key sheet: <code>HR_DATA_KEY</code>. In staging the API starts without it, but those three values cannot be stored, shown or exported ("HR key missing"); in production it refuses to start without it.</label></li>
         </ul>
         <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell)
 $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($k); [Convert]::ToBase64String($k)</code></pre>
-        <div class="note warn"><p><code>HR_DATA_KEY</code> belongs with the database backups: a backup restored without the key it was written with has those employee numbers unreadable for ever. Never generate a new one for an existing database; carry the same value to every new machine.</p></div>
+        <div class="note warn"><p>Keep <code>HR_DATA_KEY</code> in the password manager, <b>separately from the database backups</b>: a backup restored without the key it was written with has those employee numbers unreadable for ever, and a key stored beside the backups would hand them to whoever took the backups. Never generate a new one for an existing database except through Stage 11's "Change the HR key"; carry the same value to every new machine.</p></div>
         <ul class="check" data-stage="a1d">
           <li id="eta-key"><input type="checkbox" id="a1-3b"><label for="a1-3b"><b>The e-invoicing key.</b> The e-invoicing module locks each company's Egyptian Tax Authority (ETA) client ID and secret with this key: 32 random bytes written as base64, made with the same command as the HR data key (run it again; never reuse that value). Key sheet: <code>ETA_CREDENTIALS_KEY</code>. Without it companies cannot save their ETA credentials ("ETA key missing"); nothing else is affected, and the server starts without it. Optional while e-invoicing is off for every company: make it before you switch it on for the first one.</label></li>
         </ul>
@@ -267,7 +267,7 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
             <tr><td><code>POSTGRES_PASSWORD</code>, <code>INTEGR8_APP_PASSWORD</code>, <code>INTEGR8_AUTH_PASSWORD</code>, <code>INTEGR8_PLATFORM_PASSWORD</code></td><td>Part B, generated</td><td><code>deploy/.env</code>, each twice (Stage 3)</td></tr>
             <tr><td><code>AUTH_SIGNING_KEY_ID</code>, <code>AUTH_SIGNING_KEY</code>, <code>AUTH_VERIFICATION_KEYS</code>, <code>PLATFORM_SECRET_KEY</code></td><td>Part B, generated</td><td><code>deploy/.env</code>; <code>AUTH_VERIFICATION_KEYS</code> also Expo, as <code>EXPO_PUBLIC_AUTH_VERIFICATION_KEYS</code> (Stage 8)</td></tr>
             <tr><td><code>SUPABASE_AUTH_JWT_SECRET</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code>, <code>SUPABASE_AUTH_DB_PASSWORD</code></td><td>Part B, generated</td><td><code>deploy/.env</code>, the three together</td></tr>
-            <tr><td><code>HR_DATA_KEY</code></td><td>Part B; optional for HR secrets</td><td><code>deploy/.env</code> when used; back up with the database; never regenerate</td></tr>
+            <tr><td><code>HR_DATA_KEY</code></td><td>Part B; required in production</td><td><code>deploy/.env</code>; the password manager, apart from the backups; changed only by Stage 11 part Z</td></tr>
             <tr><td><code>ETA_CREDENTIALS_KEY</code></td><td>Part B, generated</td><td><code>deploy/.env</code>; also with the database backups. Never regenerated for an existing database</td></tr>
             <tr><td><code>BUILD_TOKEN</code></td><td>Part B; optional until company builds</td><td><code>deploy/.env</code> and GitHub secret (Part K), same value when used</td></tr>
             <tr><td>SSH public key</td><td>Part A</td><td>Oracle's instance form (Stage 1)</td></tr>
@@ -441,7 +441,7 @@ CLOUDFLARE_API_TOKEN=…40 characters…</code></pre>
 MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoiaW50ZWdyOCIsImEiOiJjbG…</code></pre>
         <ul class="check" data-stage="s3f">
           <li><input type="checkbox" id="s3-8"><label for="s3-8"><b>Push.</b> <code>PUSH_SENDER=recording</code> becomes <code>expo</code>. Leave <code># EXPO_ACCESS_TOKEN=</code> commented out: it is only needed if you turn on Expo's "enhanced push security", and you have not. (This is a different token from the <code>EXPO_TOKEN</code> GitHub uses.)</label></li>
-          <li><input type="checkbox" id="s3-8c"><label for="s3-8c"><b>HR data key.</b> If you use sensitive HR fields, find <code>HR_DATA_KEY=</code> (below the signing keys) and paste the key-sheet value; otherwise it may stay blank. On a rebuilt machine it must be the <b>same</b> value the old machine had, or restored employee numbers cannot be read.</label></li>
+          <li><input type="checkbox" id="s3-8c"><label for="s3-8c"><b>HR data key.</b> Find <code>HR_DATA_KEY=</code> (below the signing keys) and paste the key-sheet value: production refuses to start without it. Leave <code>HR_DATA_KEYS_PREVIOUS=</code> under it blank; it is only for changing the key (Stage 11, part Z). On a rebuilt machine it must be the <b>same</b> value the old machine had, or restored employee numbers cannot be read.</label></li>
           <li id="eta-env"><input type="checkbox" id="s3-8d"><label for="s3-8d"><b>E-invoicing key.</b> Find <code>ETA_CREDENTIALS_KEY=</code> (just after <code>HR_DATA_KEY</code>) and paste the value from the key sheet after the <code>=</code>, or leave it blank if you have not made one yet: a blank line is the same as no key, and the server starts. Leave <code>ETA_ALLOW_PRODUCTION=false</code> as it is. On a rebuilt machine it must be the <b>same</b> value the old machine had.</label></li>
           <li><input type="checkbox" id="s3-8b"><label for="s3-8b"><b>Build token.</b> Find <code>BUILD_TOKEN=</code> (near <code>CONTACT_EMAIL</code>). If you build company apps, paste the key-sheet value here and into the GitHub secret of the same name. Otherwise leave it blank; the API starts without it, but GitHub cannot ask the API for a company list.</label></li>
         </ul>
@@ -810,7 +810,7 @@ sudo rclone lsf r2crypt:</code></pre>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session)
 sudo /opt/integr8/deploy/vps/restore-drill.sh --remote</code></pre>
         <ul class="check" data-stage="s8b4">
-          <li><input type="checkbox" id="s8-7b"><label for="s8-7b"><b>Keep <code>HR_DATA_KEY</code> with the backups</b>, in the password manager beside them. The dumps hold employees' identity and bank numbers encrypted with it; without the same key a restored database cannot show them.</label></li>
+          <li><input type="checkbox" id="s8-7b"><label for="s8-7b"><b>Keep <code>HR_DATA_KEY</code> apart from the backups</b>, in the password manager and nowhere near the dumps or the bucket. The dumps hold employees' identity and bank numbers encrypted with it; without the same key a restored database cannot show them, and with the key beside them anyone holding a dump could read them. After a change of key, keep the retired one too, labelled with its date, as long as backups from before that date exist.</label></li>
           <li><input type="checkbox" id="s8-7c"><label for="s8-7c"><b>Keep <code>ETA_CREDENTIALS_KEY</code> with the backups</b> too. The dumps hold each company's ETA credentials locked with it; without the same key every company enters them again.</label></li>
         </ul>
 
@@ -1171,6 +1171,21 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec worker printenv
           <li><input type="checkbox" id="s12-y1"><label for="s12-y1"><b>After part D</b>, the <code>migrate</code> log ends with <code>form templates synchronised:</code> and a number, and dashboard → <b>Templates</b> lists the library (Stage 5's check). Companies' own forms are unchanged.</label></li>
         </ul>
 
+        <h3 id="hr-key-change">Z. Change the HR key</h3>
+        <p>From v1.2.2 production refuses to start without <code>HR_DATA_KEY</code>, and the key can be changed: the server seals with <code>HR_DATA_KEY</code> and still opens what older keys sealed while they are listed in <code>HR_DATA_KEYS_PREVIOUS</code>, and one command re-seals every company's numbers under the new key. Change it if the key may have been seen by someone who should not have it, or on a schedule you choose. A machine already in production without the key: make one (Stage 0, Part B), put it in <code>deploy/.env</code> during part C, and skip the rest.</p>
+        <ul class="check" data-stage="s12z">
+          <li><input type="checkbox" id="s12-z1"><label for="s12-z1"><b>A new key</b>, made on the laptop with Stage 0, Part B's line. In the password manager, save it as the current <code>HR_DATA_KEY</code> with today's date, and relabel the old one "retired" with today's date. Do not delete the old one: backups made before today need it.</label></li>
+          <li><input type="checkbox" id="s12-z2"><label for="s12-z2"><b>A backup first</b>: part B's command.</label></li>
+          <li><input type="checkbox" id="s12-z3"><label for="s12-z3"><b>Both keys in the env file</b>, with <code>nano deploy/.env</code>: the old value moves to <code>HR_DATA_KEYS_PREVIOUS=</code> (if that line already has keys, put it first, then a comma), and the new value goes after <code>HR_DATA_KEY=</code>. Restart with part D's <code>up -d</code>; the API and the worker now seal with the new key and open with either.</label></li>
+          <li><input type="checkbox" id="s12-z4"><label for="s12-z4"><b>Re-seal</b>, with the first command below. It goes company by company and prints how many numbers it moved and from which key (by fingerprint, never the key), and writes one line in each company's audit log. It ends with "HR_DATA_KEYS_PREVIOUS can be emptied" when no number is left under an older key. A count under "No key opens" lists company, employee and field: those were sealed with a key that is in neither line; find it in the password manager, add it to <code>HR_DATA_KEYS_PREVIOUS</code> and run it again. Running it twice does no harm.</label></li>
+          <li><input type="checkbox" id="s12-z5"><label for="s12-z5"><b>Check one employee</b>: in the web app, open an employee with an ID number and choose <b>Show</b>; the full number appears.</label></li>
+          <li><input type="checkbox" id="s12-z6"><label for="s12-z6"><b>Retire the old key</b>: empty <code>HR_DATA_KEYS_PREVIOUS=</code> and restart. Keep the retired key in the password manager for as long as backups made before today are kept (<code>BACKUP_REMOTE_KEEP</code> nights); restoring one of them needs it back in <code>HR_DATA_KEYS_PREVIOUS</code>, then this re-seal again.</label></li>
+        </ul>
+        <pre><button class="copy" type="button">Copy</button><code># machine (SSH session), from /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/platform/admin-cli.js hr-reseal
+# one company only, to try it first:
+docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/platform/admin-cli.js hr-reseal COMPANY-ID</code></pre>
+
         <div class="note"><p><b>The test box (Stage 10)</b> updates the same way, from <code>staging</code> instead of <code>main</code>: <code>git pull</code> on its <code>staging</code> checkout, then <b>Pull</b> and <b>Redeploy</b> the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.</p></div>
       </section>
 
@@ -1304,7 +1319,7 @@ ls -lt /var/backups/integr8 | head -3     # the newest file is the one just made
         <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell): every dump into your Downloads folder
 scp "LOGIN-USER@SERVER-IP:/var/backups/integr8/*.sql.gz" $env:USERPROFILE\Downloads\</code></pre>
         <ul class="check" data-stage="s14a3">
-          <li><input type="checkbox" id="s14-4"><label for="s14-4"><b>The dump is on the laptop</b>, a few megabytes or more, with today's date in its name. Keep it with <code>HR_DATA_KEY</code>: one is not readable in full without the other.</label></li>
+          <li><input type="checkbox" id="s14-4"><label for="s14-4"><b>The dump is on the laptop</b>, a few megabytes or more, with today's date in its name. It needs <code>HR_DATA_KEY</code> (in your password manager, not beside the dump): one is not readable in full without the other.</label></li>
           <li><input type="checkbox" id="s14-5"><label for="s14-5"><b>Check the address is reserved.</b> Oracle → Networking → IP Management → <b>Reserved public IPs</b>: the machine's address should be listed (Stage 1 reserved it). A reserved address survives the machine, so the two DNS records stay right. If it is not listed, the new machine gets a new address and part D changes the two DNS records.</label></li>
         </ul>
 

@@ -94,6 +94,7 @@ x-api-env: &api-env
     PLATFORM_LOCKOUT_THRESHOLD:
     PLATFORM_LOCKOUT_DURATION_SECONDS:
     HR_DATA_KEY:
+    HR_DATA_KEYS_PREVIOUS:
     ETA_CREDENTIALS_KEY:
     # Addresses, clients and limits.
     API_MIN_SUPPORTED_CLIENT:

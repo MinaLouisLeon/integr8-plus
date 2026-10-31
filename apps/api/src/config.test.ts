@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assertProductionReady,
   databaseProblems,
+  hrKeySettings,
   loadApiConfig,
   startupWarnings,
   supabaseAuthSettings,
@@ -33,6 +34,7 @@ const PRODUCTION_BASE = {
   RESEND_API_KEY: 're_x',
   EMAIL_FROM: 'Integr8 <hello@example.com>',
   WEB_APP_URL: 'https://app.example.com',
+  HR_DATA_KEY: Buffer.alloc(32, 1).toString('base64'),
 } as const;
 
 /** The database settings a production API or worker is given (0058). */
@@ -283,5 +285,38 @@ describe('the Cloudflare analytics token', () => {
     ).toEqual([]);
     expect(startupWarnings(loadApiConfig({ ...PRODUCTION_BASE, APP_ENV: 'staging' }))).toEqual([]);
     expect(loadApiConfig({ CLOUDFLARE_API_TOKEN: '' }).CLOUDFLARE_API_TOKEN).toBeUndefined();
+  });
+});
+
+describe('the HR data key', () => {
+  const key = (fill: number) => Buffer.alloc(32, fill).toString('base64');
+
+  it('is required in production', () => {
+    expect(() => {
+      assertProductionReady(
+        loadApiConfig({
+          ...PRODUCTION_BASE,
+          API_CORS_ORIGINS: 'https://app.example.com',
+          HR_DATA_KEY: '',
+        }),
+        PRODUCTION_DATABASE,
+      );
+    }).toThrow(/HR_DATA_KEY is not set/u);
+  });
+
+  it('reads older keys, comma-separated, and refuses them without a current one', () => {
+    const config = loadApiConfig({
+      HR_DATA_KEY: key(2),
+      HR_DATA_KEYS_PREVIOUS: ` ${key(1)}, ${key(3)} ,`,
+    });
+    expect(hrKeySettings(config)).toEqual({ current: key(2), previous: [key(1), key(3)] });
+    expect(hrKeySettings(loadApiConfig({}))).toBeUndefined();
+    expect(loadApiConfig({ HR_DATA_KEYS_PREVIOUS: '' }).HR_DATA_KEYS_PREVIOUS).toBeUndefined();
+    expect(() => loadApiConfig({ HR_DATA_KEYS_PREVIOUS: key(1) })).toThrow(
+      /HR_DATA_KEYS_PREVIOUS is set but HR_DATA_KEY is not/u,
+    );
+    expect(() => loadApiConfig({ HR_DATA_KEY: key(2), HR_DATA_KEYS_PREVIOUS: 'short' })).toThrow(
+      /HR_DATA_KEYS_PREVIOUS/u,
+    );
   });
 });

@@ -613,6 +613,7 @@ export {
   type EmployeeQuery,
   type EmployeeRefusal,
   type SealedField,
+  type SealedValues,
 } from './repositories/hr-employees.js';
 export {
   HrExpensesRepository,

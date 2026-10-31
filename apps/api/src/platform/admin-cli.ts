@@ -16,7 +16,9 @@ import {
   loadDatabaseConfig,
 } from '@integr8/db';
 import { randomBytes } from 'node:crypto';
-import { loadApiConfig, supabaseAuthSettings } from '../config.js';
+import { hrKeySettings, loadApiConfig, supabaseAuthSettings } from '../config.js';
+import { resealHrFields } from '../hr/reseal.js';
+import { hrKeyring } from '../hr/sealed-fields.js';
 
 /**
  * The first super admin, and any later one, from a terminal.
@@ -54,6 +56,14 @@ import { loadApiConfig, supabaseAuthSettings } from '../config.js';
  * long as it is not already a member somewhere (a member always has one). The
  * person still needs a membership to get into a company (an invitation, or
  * onboarding); this only sets what they type.
+ *
+ *   node dist/platform/admin-cli.js hr-reseal [<company id>]
+ *
+ * After a change of HR key (HR_DATA_KEY new, the old one moved to
+ * HR_DATA_KEYS_PREVIOUS): re-seals every company's employee ID, insurance and
+ * bank numbers under the current key, company by company in its own tenant
+ * transaction, and prints the counts. Fields it cannot open are listed by
+ * company, employee and field, never by value. Safe to run again.
  */
 
 const USAGE = `
@@ -69,6 +79,10 @@ Usage:
                                                password in the Auth container,
                                                print it once, and sign out their
                                                devices.
+  admin-cli hr-reseal [<company id>]            Re-seal every company's (or one
+                                               company's) HR ID, insurance and bank
+                                               numbers under the current
+                                               HR_DATA_KEY, and print the counts.
 `.trim();
 
 async function main(argv: string[]): Promise<number> {
@@ -256,6 +270,52 @@ async function main(argv: string[]): Promise<number> {
           ].join('\n'),
         );
         return 0;
+      }
+
+      case 'hr-reseal': {
+        const keys = hrKeySettings(config);
+        if (keys === undefined) {
+          console.error('HR_DATA_KEY is not set: there is no key to re-seal under.');
+          return 1;
+        }
+        const keyring = hrKeyring(keys.current, keys.previous);
+        const [tenantId] = rest;
+        console.log(
+          `Re-sealing under ${keyring.current.id}; older keys: ${
+            keyring.previous.map((key) => key.id).join(', ') || 'none'
+          }.`,
+        );
+        const report = await resealHrFields({
+          keyring,
+          ...(tenantId === undefined ? {} : { tenantIds: [tenantId] }),
+          onCompany: (id, resealed) => {
+            if (resealed > 0) {
+              console.log(`  ${id}: ${String(resealed)} field(s) re-sealed`);
+            }
+          },
+        });
+        console.log(
+          [
+            '',
+            `Companies:               ${String(report.companies)}`,
+            `Already current:         ${String(report.current)}`,
+            `Re-sealed:               ${String(report.resealed)}`,
+            `Changed while running:   ${String(report.changedMeanwhile)}`,
+            `No key opens:            ${String(report.unreadable.length)}`,
+            ...Object.entries(report.byOldKey).map(
+              ([key, count]) => `  were under ${key}:  ${String(count)}`,
+            ),
+            ...report.unreadable.map(
+              (entry) =>
+                `  unreadable: company ${entry.tenantId}, employee ${entry.employeeId}, ${entry.field}`,
+            ),
+            '',
+            report.unreadable.length === 0
+              ? 'Nothing is left under an older key: HR_DATA_KEYS_PREVIOUS can be emptied.'
+              : 'Some fields open with no configured key. Keep every older key until they are found or re-entered.',
+          ].join('\n'),
+        );
+        return report.unreadable.length === 0 ? 0 : 1;
       }
 
       default:
