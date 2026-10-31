@@ -87,6 +87,14 @@ Hardening from the pre-production audit's Medium items (2026-10-31):
   the owner's connection or without the platform one, and checks the role at start-up. CI
   runs every suite with the platform role; the schema-invariant suite pins its grants and
   `platform-role.integration.test.ts` tries what it must not do.
+- **Health checks are off the internet, and the machine reports in.** Caddy answers 404
+  for `/health` and `/health/ready` on the API's public name; they named the release and
+  what was failing. Readiness reuses the API's platform pool instead of opening an owner
+  connection per call, and keeps its answer for ten seconds (unit test). The public uptime
+  check is replaced by `deploy/vps/heartbeat.sh`, run from root's cron every five minutes:
+  it asks `127.0.0.1:3000/health/ready` and pings `HEALTH_PING_URL`, or `<url>/fail` when
+  not ready. Tested with stand-in servers; the monitor itself is the owner's to create
+  (setup guide, Stage 9 part C).
 
 ## Exit criteria
 

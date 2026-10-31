@@ -81,8 +81,9 @@ with tick boxes that remember your progress: download
    ```
    On an ARM machine the same command builds ARM images; nothing changes.
    `bootstrap` creates the roles and Auth's schema, `migrate` applies ours and
-   `auth` migrates its own, then the API answers `GET /health/ready` with
-   `status: ready` and the web app starts. `docker compose ps` shows `auth`
+   `auth` migrates its own, then the API answers `GET /health/ready` (on the
+   machine: `curl -s http://127.0.0.1:3000/health/ready`) with `status: ready`
+   and the web app starts. `docker compose ps` shows `auth`
    healthy. The API and web ports are bound to `127.0.0.1`: only the proxy on
    the same machine reaches them.
 4. **Create the first super admin.** The dashboard has no self-service signup,
@@ -178,6 +179,29 @@ monthly; the runbook also has the six-monthly full rehearsal on the test box.
 
 Container logs are capped at 50 MB per container by the `x-logging` block in
 `deploy/compose.yml`, so a chatty week cannot fill the disk.
+
+## Health checks and the heartbeat
+
+`/health` (the process is running) and `/health/ready` (the database answers
+and its schema fits this build) are for the machine, not the internet: they
+name the release and what is failing. `deploy/vps/Caddyfile.example` answers
+404 for both on the API's public name. Docker's health check calls
+`/health/ready` inside the container, and readiness reuses the API's platform
+pool and keeps its answer for ten seconds, so frequent calls cost one query.
+
+An outside uptime check therefore cannot use them. Instead
+`deploy/vps/heartbeat.sh` runs from root's cron every five minutes, asks
+`http://127.0.0.1:3000/health/ready` itself, and calls `HEALTH_PING_URL` (a
+heartbeat in Better Stack, healthchecks.io or UptimeRobot) when the API is
+ready, or that URL with `/fail` added when it is not (`HEALTH_PING_FAIL=off`
+for a monitor with no `/fail` address). The monitor alerts on a failure and on
+silence, which also covers the machine or cron being down. It reads
+`deploy/.env` line by line, never with `source`. Setup guide, Stage 9 part C.
+
+```bash
+# sudo crontab -e
+*/5 * * * * /opt/integr8/deploy/vps/heartbeat.sh >> /var/log/integr8-heartbeat.log 2>&1
+```
 
 ## Releasing a new version
 

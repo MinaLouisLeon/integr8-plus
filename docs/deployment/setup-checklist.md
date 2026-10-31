@@ -617,7 +617,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env logs -f bootstrap mi
 
 The first run builds two images on the machine, ten to fifteen minutes on the ARM cores. Then in order: Postgres starts, `bootstrap` creates the three database roles the API and worker use and the sign-in server's own role and schema, `migrate` applies all 54 migrations and exits while `auth` (the Supabase Auth container) sets up its own tables, the API starts once both are done, then the worker and the web app. Ctrl-C leaves the logs; the containers keep running and restart themselves after a reboot.
 
-- [ ] **The API is ready**: `curl -s https://api.integr8-media.com/health/ready` answers `"status":"ready"`. If `degraded`, the body names the failing check.
+- [ ] **The API is ready**: on the machine, `curl -s http://127.0.0.1:3000/health/ready; echo` answers `"status":"ready"`. If `degraded`, the body names the failing check. The health checks are for the machine only: from outside, `curl -s -o /dev/null -w '%{http_code}\n' https://api.integr8-media.com/health/ready` prints `404`, because Caddy keeps them off the internet.
 - [ ] **The web app answers**: `https://app.integr8-media.com` shows the landing page with a padlock. Its buttons say "Talk to us" and lead to `/contact` with `info@integr8-media.com`; `/sign-up` shows a notice rather than a form.
 - [ ] **Storage buckets exist**: new companies get theirs automatically; this makes sure the worker can reach R2 at all. It should print nothing alarming and finish: `docker compose -f deploy/compose.yml --env-file deploy/.env run --rm api node dist/media/storage-cli.js provision --all`
 - [ ] **The assistant's settings were read**, if you turned it on in Stage 3: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api | grep Assistant:` prints nothing when the AI settings are complete (and always nothing with `AI_PROVIDER=none`). Each line it prints is one thing to fix (for example `Assistant: AI_PROVIDER is openai but AI_MODEL_HELP is not set.`); the rest of the stack runs either way. Stage 5 shows the same list on the dashboard.
@@ -892,7 +892,7 @@ Everything above works with Stripe in test mode and the API in staging mode. Thi
 cd /opt/integr8
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d
 docker compose -f deploy/compose.yml --env-file deploy/.env logs api | head -40
-curl -s https://api.integr8-media.com/health/ready
+curl -s http://127.0.0.1:3000/health/ready; echo
 ```
 
 - [ ] **Check**: the log does not say "Refusing to start in production". If it does, it lists exactly which service is still a fake or which variable is missing; fix and `up -d` again. The health check says `ready`.
@@ -938,7 +938,18 @@ sudo /opt/integr8/deploy/vps/restore-drill.sh --remote
 ### C. The machine
 
 - [ ] **Pay As You Go** on the Oracle account if not already (Stage 1 note), so the machine is never reclaimed for being idle.
-- [ ] **An uptime check**: UptimeRobot or Better Stack (free tiers) monitoring `https://api.integr8-media.com/health/ready` every 5 minutes, alerting by email and phone. Sentry covers errors inside the app; this covers the app not being there.
+- [ ] **A heartbeat for the API**: the health checks are not on the internet, so the machine reports in instead. In Better Stack or healthchecks.io (free plans), a new heartbeat expected every 5 minutes with 5 minutes' grace, alerting by email and phone; a separate one from the backup's. Put its URL in `deploy/.env` as `HEALTH_PING_URL=` (UptimeRobot's heartbeat works too: add `HEALTH_PING_FAIL=off`, since it has no `/fail` address). Add the cron line below with `sudo crontab -e`. Every five minutes `deploy/vps/heartbeat.sh` asks the API on `127.0.0.1:3000` whether it is ready and calls the URL when it is, and the URL with `/fail` added when it is not; when the machine or cron stops, the silence alerts. Run it once by hand: it prints nothing and the monitor shows a first call. Sentry covers errors inside the app; this covers the app not being there.
+
+```bash
+# machine (SSH session), one line inside the crontab editor
+*/5 * * * * /opt/integr8/deploy/vps/heartbeat.sh >> /var/log/integr8-heartbeat.log 2>&1
+```
+
+```bash
+# machine (SSH session), once by hand
+sudo /opt/integr8/deploy/vps/heartbeat.sh; echo "exit $?"
+```
+
 - [ ] **Reboot test**: `sudo reboot`, and the stack is back by itself within two minutes. Every container restarts unless stopped, Caddy and Docker start at boot, and container logs are capped at 50 MB each.
 
 ### D. GitHub, for the long run
@@ -1002,7 +1013,7 @@ cd /opt/integr8
 docker compose -f deploy/compose.yml --env-file deploy/.env pull
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d
 docker compose -f deploy/compose.yml --env-file deploy/.env ps     # auth: Up (healthy)
-curl -s https://api-test.integr8-media.com/health/ready
+curl -s http://127.0.0.1:3000/health/ready; echo
 ```
 
 - [ ] **Its own super admin** (Stage 5 command, from `/opt/integr8`), then Stage 7 on it with a test company. Sign in once with **Email me a sign-in code**, reading the code from the API log, and change the password under **Change password**.
@@ -1096,7 +1107,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env logs -f migrate api
 # machine (SSH session)
 cd /opt/integr8
 docker compose -f deploy/compose.yml --env-file deploy/.env ps
-curl -s https://api.integr8-media.com/health/ready; echo
+curl -s http://127.0.0.1:3000/health/ready; echo
 ```
 
 - [ ] **Every service is up.** `postgres`, `auth`, `api`, `worker` and `web` say _Up_ (the API, `auth` and Postgres also _healthy_); `bootstrap` and `migrate` say _Exited (0)_, which is correct for one-off jobs. Anything _Restarting_: `docker compose … logs <name>` says why.
@@ -1123,7 +1134,7 @@ sudo needs-restarting -r || echo "Reboot needed"
 ```
 
 - [ ] **Packages upgraded.** When Docker itself is upgraded, every container stops for a few seconds and starts again by itself (they are all `restart: unless-stopped`); check part E again afterwards.
-- [ ] **Caddy restarted** and both sites still show the padlock: `https://app.integr8-media.com` and `https://api.integr8-media.com/health`. If `caddy upgrade` says it cannot, Caddy came from a package manager instead; the `apt` or `dnf` line already updated it.
+- [ ] **Caddy restarted** and both sites still show the padlock: `https://app.integr8-media.com` and `https://api.integr8-media.com/health` (which answers 404 by design: the padlock is what counts). If `caddy upgrade` says it cannot, Caddy came from a package manager instead; the `apt` or `dnf` line already updated it.
 - [ ] **Rebooted if asked**: `sudo reboot`, wait a minute, SSH in again and repeat part E. Everything starts by itself after a reboot.
 - [ ] **If the release changed `deploy/vps/setup.sh`**, run it again: `bash /opt/integr8/deploy/vps/setup.sh`. It only changes what is missing or outdated and leaves the rest alone. If it changed `deploy/vps/Caddyfile.example`, compare it with `/etc/caddy/Caddyfile` (`diff deploy/vps/Caddyfile.example /etc/caddy/Caddyfile`), copy over what is new by hand (your file has your real names in it), then `sudo systemctl reload caddy`.
 
@@ -1267,7 +1278,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 ```
 
 > [!WARNING]
-> **Rolling back with self-hosted sign-in.** A version before this one signs in through a Supabase cloud project, which does not have the accounts made since. Fix forward instead. If you must roll back (part I), put `SUPABASE_URL` and the cloud project's service role key back in `deploy/.env` first, and leave migrations 0054 to 0057 applied: the older version ignores their columns and table. v1.2.1 is older than part I's ahead-of-build check, so its `migrate` step stops at 0054 ("its file is gone") and its API and worker would never start. After part I's `git checkout v1.2.1` and `sed`, start them without that step: `docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build --no-deps api worker web` (v1.2.1 has no GitHub images, so it is always built: if `deploy/.env` names `API_IMAGE` and `WEB_IMAGE`, put `#` in front of both lines first). Until you go forward again, its `/health/ready` says `degraded` and names 0054 to 0057, so the uptime check alerts; the API answers requests all the same.
+> **Rolling back with self-hosted sign-in.** A version before this one signs in through a Supabase cloud project, which does not have the accounts made since. Fix forward instead. If you must roll back (part I), put `SUPABASE_URL` and the cloud project's service role key back in `deploy/.env` first, and leave migrations 0054 to 0057 applied: the older version ignores their columns and table. v1.2.1 is older than part I's ahead-of-build check, so its `migrate` step stops at 0054 ("its file is gone") and its API and worker would never start. After part I's `git checkout v1.2.1` and `sed`, start them without that step: `docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build --no-deps api worker web` (v1.2.1 has no GitHub images, so it is always built: if `deploy/.env` names `API_IMAGE` and `WEB_IMAGE`, put `#` in front of both lines first). Until you go forward again, its `/health/ready` says `degraded` and names 0054 to 0057, so the heartbeat alerts; the API answers requests all the same.
 
 ### R. Backups off the machine, and the restore drill (included in v1.2.2)
 
@@ -1306,6 +1317,13 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec worker printenv
 
 > [!NOTE]
 > **In production mode** (Stage 9) the API and the worker refuse to start if `DATABASE_URL_PLATFORM` is missing, or if the role it names is a superuser.
+
+### U. Health checks off the internet, and a heartbeat (included in v1.2.2)
+
+`/health` and `/health/ready` named the release and what was failing to anyone who asked. Caddy now answers 404 for them on the API's address; Docker's own check and a new heartbeat script call them on the machine itself. Readiness also stopped opening a database connection of its own on every call: it reuses the API's and keeps its answer for ten seconds.
+
+- [ ] **Caddy's new block**, during part F's comparison: `diff deploy/vps/Caddyfile.example /etc/caddy/Caddyfile` shows the `@health` lines; add them inside your `api.` block, above `reverse_proxy`, then `sudo systemctl reload caddy`. From the laptop, `https://api.integr8-media.com/health/ready` now shows a 404, and the web app still signs in.
+- [ ] **Swap the uptime check for the heartbeat**: Stage 9, part C, "A heartbeat for the API". Then delete the old monitor that called `https://api.integr8-media.com/health/ready`, which now only ever sees 404.
 
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.
@@ -1558,7 +1576,7 @@ rm ~/integr8-20261013-0300.sql.gz
 - [ ] **With the data kept**: sign in to the dashboard with your usual super admin and authenticator (they came back with the database, and `PLATFORM_SECRET_KEY` is unchanged); Health is empty; open a company, one of its jobs and, in HR, one employee's profile (the national ID shows, so `HR_DATA_KEY` is right). Every installed app, staff and company, keeps working: the address they call has not changed. On a phone, pull to sync; anything queued while the machine was down arrives now.
 - [ ] **Starting empty**: Stage 5 (a new super admin, the plans' Stripe prices, your colleagues), then Stage 7 for each company (onboard, switch on its modules, forms, look, invite), then Stage 8 for its apps. The staff desktop app already installed simply signs in to the new installation. A company onboarded again with the **same short name** keeps its installed apps; with a new short name, build and install them again.
 - [ ] **Install the current staff app** if your laptop still has an older one: Stage 6, second step.
-- [ ] **The safety net again**, because it was on the old disk: the nightly backup line in `sudo crontab -e`, rclone and its two remotes with the same backup passphrase, and a boot-volume backup policy on the new boot volume (Stage 9, part B); a reboot test (Stage 9, part C). The uptime monitor needs nothing: it watches the same address.
+- [ ] **The safety net again**, because it was on the old disk: the nightly backup line in `sudo crontab -e`, rclone and its two remotes with the same backup passphrase, and a boot-volume backup policy on the new boot volume (Stage 9, part B); the heartbeat's cron line (Stage 9, part C; the monitor and its URL stay the same); a reboot test (Stage 9, part C).
 - [ ] **Clean up the copies** once everything is checked: delete `integr8.env` from Documents (the password manager has it) and keep the dump only as long as your backup policy says.
 
 ### F. Keep the machine, but remove everything on it: data, Docker and the repository

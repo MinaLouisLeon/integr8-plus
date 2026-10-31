@@ -165,6 +165,10 @@ curl -s localhost:3000/health
 curl -s localhost:3000/health/ready
 ```
 
+Both are for the machine the API runs on: in a deployment Caddy answers 404 for
+them on the public name, and the heartbeat (`deploy/vps/heartbeat.sh`) reports
+readiness to a monitor instead. Readiness keeps its answer for ten seconds.
+
 ```bash
 pnpm --filter @integr8/api openapi           # regenerate openapi.json
 pnpm --filter @integr8/api-client generate   # regenerate the typed client
