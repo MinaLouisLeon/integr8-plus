@@ -7471,6 +7471,8 @@ export const en = {
       revokeConfirm: 'Revoke this key? The website using it stops finding documents at once.',
       limit: 'Two keys are live. Revoke one before making another.',
       managerOnly: 'Only the terminal-created staff admin can permanently delete a website key.',
+      managersOnly:
+        'Only a staff manager, an account made with the terminal command, can make, enable, disable, revoke or delete website keys.',
       secretTitle: 'Copy this key now',
       secretBody:
         'It is shown only this once. Put it in the website server’s environment as INTEGR8_WEBSITE_KEY.',

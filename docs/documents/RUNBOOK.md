@@ -119,8 +119,16 @@ submission.
 
 ## Website keys
 
-Only the account made with `platform-admin create` in the terminal (a staff
-manager) can make or revoke one: dashboard → the company → **Website keys**.
+Only an account made with `platform-admin create` in the terminal (a staff
+manager) can make, enable, disable, revoke or delete one: dashboard → the
+company → **Website keys**. Other staff see the keys, their last characters and
+their use, and are refused with `staff_manager_only` if they try to change one.
+
+A key answers only while both switches for what it asks are on: Integr8's grant
+on the company's **Features** panel (`website_files`, `website_jobs`,
+`website_quotes`, `website_invoices`) and the company's own switch in
+**Settings → Website access**. Files and the document lookup also need the
+documents module, quotes the sales module and invoices the finance module.
 
 - The key is shown once. Copy it into the website server's environment as
   `INTEGR8_WEBSITE_KEY`; it never goes in the website's pages.
@@ -128,7 +136,8 @@ manager) can make or revoke one: dashboard → the company → **Website keys**.
   website, then revoke the old one.
 - The panel shows each key's last four characters, when it was last used, and
   how many lookups found something.
-- Making and revoking are in the platform audit log.
+- Making, enabling, disabling, revoking and deleting are in the platform audit
+  log.
 - Each key may make 60 lookups a minute by default; more answer 429.
 
 Give the company's website developer

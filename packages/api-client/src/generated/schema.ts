@@ -8362,13 +8362,13 @@ export interface paths {
         };
         /**
          * A company’s website keys, newest first
-         * @description Every key, revoked ones included, with its last characters and use. Never the key itself. `canManage` says whether this account may create, enable, disable or revoke keys; `canDelete` is reserved for the terminal-created staff admin.
+         * @description Every key, revoked ones included, with its last characters and use. Never the key itself. Any staff member may list them. `canManage` (create, enable, disable, revoke) and `canDelete` are both true only for a staff manager, an account the terminal command made.
          */
         get: operations["listWebsiteKeys"];
         put?: never;
         /**
          * Make a website key for a company
-         * @description Any signed-in Integr8 staff member may create a key. The key is in this answer and nowhere else: put it in the website’s server environment, never in its pages. Refused with 409 `website_key_limit` while the company already has two non-revoked keys.
+         * @description Only a staff manager (an account the terminal command made) may create a key; anybody else gets 403 `staff_manager_only`. The key is in this answer and nowhere else: put it in the website’s server environment, never in its pages. Refused with 409 `website_key_limit` while the company already has two non-revoked keys.
          */
         post: operations["createWebsiteKey"];
         delete?: never;
@@ -8396,7 +8396,7 @@ export interface paths {
         head?: never;
         /**
          * Enable or disable a company website key
-         * @description Any active Integr8 staff member can change key state. Disabling stops requests while retaining the key; enabling resumes it unless revoked.
+         * @description Only a staff manager (an account the terminal command made) may change a key’s state; anybody else gets 403 `staff_manager_only`. Disabling stops requests while retaining the key; enabling resumes it unless revoked.
          */
         patch: operations["updateWebsiteKey"];
         trace?: never;
@@ -8412,7 +8412,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke a website key
-         * @description Any signed-in Integr8 staff member may revoke a key. The website using it stops serving immediately. The key stays listed, revoked, for the record.
+         * @description Only a staff manager (an account the terminal command made) may revoke a key; anybody else gets 403 `staff_manager_only`. The website using it stops serving immediately. The key stays listed, revoked, for the record.
          */
         post: operations["revokeWebsiteKey"];
         delete?: never;
@@ -83841,6 +83841,13 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description Not a staff manager (`staff_manager_only`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description No such company. */
             404: {
                 headers: {
@@ -84041,6 +84048,13 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description Not a staff manager (`staff_manager_only`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description No such active key for this company. */
             404: {
                 headers: {
@@ -84130,6 +84144,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+            /** @description Not a staff manager (`staff_manager_only`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description No such live key for this company. */
             404: {

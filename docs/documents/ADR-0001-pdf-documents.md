@@ -154,3 +154,22 @@ startup log and on the document, and every other feature runs as before.
   document's fields with it, and gives five-minute links to view and download
   the PDF besides the stable `/d/<code>` page. Keys look like `i8wk_…` and are
   limited to 60 lookups a minute each by default.
+
+## Addendum: website keys and the website data API (31 October 2026)
+
+- **D10 widened.** The same key now also reads one job, one issued quote, one
+  issued invoice or one document's links by id (`/v1/website/jobs|quotes|invoices|files/:id`),
+  never a list. Each capability needs Integr8's grant (`website_files`,
+  `website_jobs`, `website_quotes`, `website_invoices`) and the company's own
+  switch, and quotes, invoices and files their module; the document lookup needs
+  the `website_files` grant and switch too. Drafts are never shown, another
+  company's id is not found, and every route shares the key's rate limit.
+- **D11 restored.** For a while any active staff member could create, enable,
+  disable or revoke a key, and only deleting was kept for the staff manager.
+  That is undone: creating, enabling, disabling, revoking and deleting are all
+  for a staff manager (`requireStaffManager`), as this decision said. Any staff
+  member may still list keys and see their use.
+- Proven by `website-data.integration.test.ts` (every route: missing, malformed,
+  invented, disabled and revoked keys; each switch on its own; drafts; another
+  company's key; the rate limit; who may manage keys) and the website section
+  of `documents.integration.test.ts` (the file route and the lookup's switches).

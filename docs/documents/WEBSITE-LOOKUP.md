@@ -23,10 +23,11 @@ the key identifies the company website, not an individual customer.
   independent grants (`website_files`, `website_jobs`, `website_quotes`, and
   `website_invoices`) on the company's **Features** panel. Both sides must be
   on for that capability to work.
-- **Key controls.** Any signed-in Integr8 staff member can create, enable,
-  disable or revoke a key. Disabling is reversible; revoking stops service and
-  leaves a record. Only the terminal-created Integr8 staff admin can
-  permanently delete a key. A deleted key's secret is never recoverable.
+- **Key controls.** Only an Integr8 staff manager (an account made with the
+  terminal command) can create, enable, disable, revoke or delete a key; other
+  Integr8 staff can see that it exists and how it is used. Disabling is
+  reversible; revoking stops service and leaves a record; deleting removes the
+  record. A key's secret is never recoverable.
 
 ## Set the environment
 
@@ -89,18 +90,18 @@ Always `200` when the key is good, with one document or none:
 - `link` is the document's own page, the one its QR code opens. It is stable:
   safe to show and to link to.
 - `viewUrl` opens the PDF in the browser and `downloadUrl` saves it. Both stop
-  working five minutes after `expiresAt`, so use them at once and never store
-  them.
-- A document the company stopped or deleted is not found.
+  working at `expiresAt`, five minutes after they were made, so use them at once
+  and never store them.
+- A document the company stopped, expired or deleted is not found.
 
 Other answers:
 
-| Status | `error.code`          | Meaning                                                 |
-| ------ | --------------------- | ------------------------------------------------------- |
-| 422    | `validation_failed`   | The body is not as above.                               |
-| 401    | `website_key_invalid` | No key, a mistyped key, or a revoked one.               |
-| 403    | `feature_disabled`    | Documents are switched off for the company.             |
-| 429    | `rate_limited`        | More than 60 lookups a minute with this key; slow down. |
+| Status | `error.code`          | Meaning                                                                                                                          |
+| ------ | --------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 422    | `validation_failed`   | The body is not as above.                                                                                                        |
+| 401    | `website_key_invalid` | No key, a mistyped key, or a revoked one.                                                                                        |
+| 403    | `feature_disabled`    | Documents are switched off for the company, or Integr8's `website_files` grant or the company's own website-files switch is off. |
+| 429    | `rate_limited`        | More than 60 lookups a minute with this key; slow down.                                                                          |
 
 ## A Next.js example
 

@@ -50,7 +50,10 @@ const staffCredentialsSchema = z.object({
 const staffParams = z.object({ platformUserId: z.uuid() });
 
 /** Refuses anybody the terminal command did not make. */
-export async function requireStaffManager(context: PlatformRequestContext): Promise<PlatformUser> {
+export async function requireStaffManager(
+  context: PlatformRequestContext,
+  refusal = 'Only an account made with the terminal command can add or remove staff.',
+): Promise<PlatformUser> {
   const account = await getPlatformDataSource().platformUsers.findById(
     context.platform.platformUserId,
   );
@@ -58,11 +61,7 @@ export async function requireStaffManager(context: PlatformRequestContext): Prom
     throw unauthorised();
   }
   if (!account.canManageStaff) {
-    throw new ApiError(
-      403,
-      'staff_manager_only',
-      'Only an account made with the terminal command can add or remove staff.',
-    );
+    throw new ApiError(403, 'staff_manager_only', refusal);
   }
   return account;
 }
