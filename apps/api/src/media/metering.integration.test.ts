@@ -346,4 +346,34 @@ describe('retention', () => {
     });
     expect(restored.statusCode).toBe(200);
   });
+
+  it('never takes the company logo or app icon', async () => {
+    const member = await api.member('engineer', 'branding-retention');
+    const token = await api.signIn(member);
+    await planWith('enterprise', { storageBytes: null });
+    const logo = await storeFile(token, 12);
+    const icon = await storeFile(token, 13);
+    const photo = await storeFile(token, 14);
+    await withTenant(api.tenantId, (tx) =>
+      tx.settings.update({ logoMediaId: logo, appIconMediaId: icon }),
+    );
+
+    // Every file is past a window that ends a minute from now.
+    await withTenant(api.tenantId, (tx) =>
+      tx.files.retireOlderThan(new Date(Date.now() + 60_000), {
+        purgeAfter: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      }),
+    );
+
+    const [keptLogo, keptIcon, retired] = await withTenant(api.tenantId, (tx) =>
+      Promise.all([tx.files.find(logo), tx.files.find(icon), tx.files.find(photo)]),
+    );
+    expect(keptLogo?.deletedAt).toBeNull();
+    expect(keptIcon?.deletedAt).toBeNull();
+    expect(retired?.deletedAt).not.toBeNull();
+
+    await withTenant(api.tenantId, (tx) =>
+      tx.settings.update({ logoMediaId: null, appIconMediaId: null }),
+    );
+  });
 });

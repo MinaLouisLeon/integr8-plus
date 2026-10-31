@@ -397,6 +397,24 @@ export class FilesRepository extends TenantScopedRepository {
               eb('linked_entity_type', '!=', TEMPLATE_ASSET_ENTITY),
             ]),
           )
+          // The company's logo and app icon are its identity, not a record that
+          // ages out: every screen, document and phone build draws them.
+          .where((eb) =>
+            eb.not(
+              eb.exists(
+                eb
+                  .selectFrom('tenant_settings')
+                  .select(sql`1`.as('one'))
+                  .where('tenant_settings.tenant_id', '=', this.tenantId)
+                  .where((settings) =>
+                    settings.or([
+                      settings('tenant_settings.logo_media_id', '=', settings.ref('files.id')),
+                      settings('tenant_settings.app_icon_media_id', '=', settings.ref('files.id')),
+                    ]),
+                  ),
+              ),
+            ),
+          )
           .orderBy('created_at')
           .limit(options.limit ?? 500),
       )
