@@ -126,7 +126,7 @@ describe('signing in with an emailed code', () => {
 
 describe('changing a password', () => {
   it('needs no current password straight after a code sign-in, and emails the address', async () => {
-    const dana = await api.member('engineer', 'pw-code');
+    const dana = await api.member('admin', 'pw-code');
     // Another device, signed in with the old password.
     await api.signIn(dana);
 
@@ -147,6 +147,7 @@ describe('changing a password', () => {
 
     // The other device's session is gone; only this one is left.
     const sessions = await api.call(token, { method: 'GET', url: '/v1/sessions' });
+    expect(sessions.statusCode).toBe(200);
     const live = (JSON.parse(sessions.body) as { items: { isCurrent: boolean }[] }).items;
     expect(live).toHaveLength(1);
     expect(live[0]?.isCurrent).toBe(true);

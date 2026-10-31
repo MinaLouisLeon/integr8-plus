@@ -1002,7 +1002,7 @@ comm -13 <(grep -oE '^[A-Z_0-9]+=' deploy/.env | sort -u) \
          <(grep -oE '^[A-Z_0-9]+=' deploy/.env.example | sort -u)
 
 # Tell the server its new version number (use the real one)
-sed -i 's/^APP_VERSION=.*/APP_VERSION=1.1.3/; s/^API_RELEASE=.*/API_RELEASE=1.1.3/' deploy/.env
+sed -i 's/^APP_VERSION=.*/APP_VERSION=1.2.2/; s/^API_RELEASE=.*/API_RELEASE=1.2.2/' deploy/.env
 grep -E '^(APP_VERSION|API_RELEASE)=' deploy/.env
 ```
 
@@ -1012,7 +1012,7 @@ grep -E '^(APP_VERSION|API_RELEASE)=' deploy/.env
 
 ### D. Restart on the new version
 
-One command does it all, in order: the new images are built (or pulled), `migrate` applies any new migrations and exits, then the API, worker and web app are recreated. If a migration fails, the API is never started on the new code and the old database is untouched.
+One command does it all, in order: the new images are built (or pulled), `migrate` applies any new migrations and exits, then the sign-in server, the API, the worker and the web app are recreated. If a migration fails, the API is never started on the new code and the old database is untouched.
 
 ```bash
 # machine (SSH session) — if the machine builds its own images (this guide's default)
@@ -1096,8 +1096,8 @@ ls -lh /var/backups/integr8      # the backup script keeps the newest ones and d
 # machine (SSH session) — back to the previous release (use its real tag)
 cd /opt/integr8
 git fetch --tags
-git checkout v1.1.1
-sed -i 's/^APP_VERSION=.*/APP_VERSION=1.1.1/; s/^API_RELEASE=.*/API_RELEASE=1.1.1/' deploy/.env
+git checkout v1.2.1
+sed -i 's/^APP_VERSION=.*/APP_VERSION=1.2.1/; s/^API_RELEASE=.*/API_RELEASE=1.2.1/' deploy/.env
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 
 # Later, to go forward again
@@ -1194,7 +1194,14 @@ Sign-in moves from Supabase's cloud to a Supabase Auth container on this machine
 - [ ] **Migration 0054 applied** during part D. It records how each session was signed in, which Change password needs, and adds the list of sign-in accounts still to delete after a company is purged. Do not run its down migration on a production database.
 - [ ] **The `auth` container comes up** in part D: `bootstrap` creates its database role and schema, `auth` sets up its own tables and turns healthy, and only then do the API and worker start. In part E, `auth` is _Up (healthy)_, and `sudo ss -tlnp | grep -E ':(3000|3001)\b'` shows the API and web ports on `127.0.0.1` only; Caddy still reaches them.
 - [ ] **Try it.** In the web app, sign out, type an invited address and choose **Email me a sign-in code**; the code arrives by email within a minute. Sign in with it, open **Change password** from the menu (it asks for no current password for fifteen minutes after a code), and set a new one. Another browser or phone signed in as the same person is signed out, and the address gets "Your password was changed".
+- [ ] **A password reset from the server**, for somebody who cannot receive the emailed code: `admin-cli user-password` gives their address a new password in the sign-in server, prints it once, and signs out their devices. Send it privately; they sign in with it and choose **Change password**. Staff accounts are unchanged: `admin-cli create` as in Stage 5.
 - [ ] **Update the apps** (part G): the two new screens are in the new staff app and in each company's new desktop installer and phone build. An older app keeps signing in with a password; it just has neither screen.
+
+```bash
+# machine (SSH session), from /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env \
+  run --rm api node dist/platform/admin-cli.js user-password someone@example.com
+```
 
 > [!WARNING]
 > **Rolling back with self-hosted sign-in.** A version before this one signs in through a Supabase cloud project, which does not have the accounts made since. Fix forward instead. If you must roll back (part I), put `SUPABASE_URL` and the cloud project's service role key back in `deploy/.env` first, and leave migration 0054 applied: the older version ignores its columns and table.
@@ -1371,7 +1378,7 @@ Get-Content $env:USERPROFILE\Documents\integr8.env | Select-String 'HR_DATA_KEY|
 ```bash
 # machine (SSH session) — only if you keep the data
 cd /opt/integr8
-docker compose -f deploy/compose.yml --env-file deploy/.env stop api worker web   # nothing changes after the dump
+docker compose -f deploy/compose.yml --env-file deploy/.env stop auth api worker web   # nothing changes after the dump
 sudo /opt/integr8/deploy/vps/backup-postgres.sh
 ls -lt /var/backups/integr8 | head -3     # the newest file is the one just made
 ```
@@ -1424,7 +1431,7 @@ grep -E '^(APP_VERSION|API_RELEASE|HR_DATA_KEY)=' deploy/.env
 
 - [ ] **Every name the `comm` command printed is added** with `nano deploy/.env`, its value from the key sheet (the template's comment beside each line says what it is). `HR_DATA_KEY` is the one most likely to be missing. The last command shows the version as `1.2.1` and the HR key filled in.
 - [ ] **Starting empty?** Run Stage 4 exactly as written and go on to part E. **Keeping the data?** Do the next step instead of Stage 4's first command.
-- [ ] **Restore the dump into the new database**, before the migrations run: start only Postgres and the step that creates the two database roles, load the dump, then start everything. The migrations then apply any schema additions the restored database does not yet have.
+- [ ] **Restore the dump into the new database**, before the migrations run: start only Postgres and the step that creates the database roles, load the dump, then start everything. The migrations then apply any schema additions the restored database does not yet have.
 
 ```powershell
 # laptop (PowerShell): the dump goes to the machine (use the real file name)
@@ -1434,11 +1441,11 @@ scp $env:USERPROFILE\Downloads\integr8-20261013-0300.sql.gz LOGIN-USER@SERVER-IP
 ```bash
 # machine (SSH session)
 cd /opt/integr8
-docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build bootstrap   # Postgres and the two roles only
+docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build bootstrap   # Postgres and the roles only
 docker compose -f deploy/compose.yml --env-file deploy/.env ps                         # bootstrap: Exited (0)
 gunzip -c ~/integr8-20261013-0300.sql.gz \
   | docker compose -f deploy/compose.yml --env-file deploy/.env exec -T postgres psql -U postgres -d integr8 -v ON_ERROR_STOP=1
-docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build              # migrate, api, worker, web
+docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build              # migrate, auth, api, worker, web
 docker compose -f deploy/compose.yml --env-file deploy/.env logs -f migrate api
 rm ~/integr8-20261013-0300.sql.gz
 ```

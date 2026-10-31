@@ -8,7 +8,6 @@ import { ErrorState, LoadingState, Shell } from '~/components/ui';
 import { assistantShown, useAiCapabilities, useMe } from '~/features/forms/api';
 import { WarrantyAlerts } from '~/features/operations/screens';
 import { desktopNavigation } from '~/lib/navigation';
-import { isTauri } from '~/lib/platform';
 
 /**
  * The dashboard: the home screen, an overview.
@@ -16,8 +15,7 @@ import { isTauri } from '~/lib/platform';
  * Shows who is signed in and which company they are in, which is P05's first
  * exit criterion, and a card for every section this seat may open — the same
  * list the side menu shows, drawn from the same model, with each section's
- * hint. It also reports whether it is running as a Tauri window or a browser
- * tab, which is how P05's second criterion is checked by eye.
+ * hint.
  */
 export function DashboardRoute() {
   const { t } = useTranslation();
@@ -105,25 +103,12 @@ export function DashboardRoute() {
         ))}
 
         <section className="rounded-lg border border-border-subtle bg-surface p-6 text-start">
-          <dl className="grid gap-4 sm:grid-cols-2">
+          <dl className="grid gap-4">
             <div className="flex flex-col gap-1">
               <dt className="text-xs uppercase tracking-wide text-content-muted">
                 {t('auth.email')}
               </dt>
               <dd className="text-sm text-content">{me.data.email}</dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="text-xs uppercase tracking-wide text-content-muted">
-                {t('common.runtime')}
-              </dt>
-              {/*
-                A developer-facing diagnostic: it exists so P05's "identical in
-                both" criterion can be checked by eye, and it goes once that has
-                been signed off.
-              */}
-              <dd className="text-sm text-content">
-                {isTauri() ? t('common.runtimeTauri') : t('common.runtimeBrowser')}
-              </dd>
             </div>
           </dl>
         </section>
