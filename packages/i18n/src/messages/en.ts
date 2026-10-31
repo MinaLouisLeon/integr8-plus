@@ -643,6 +643,18 @@ export const en = {
     },
 
     impersonationBanner: 'You are viewing this account as {{name}}. Everything you do is recorded.',
+    // The desktop app's strip when a newer version is ready (P20). Windows closes
+    // the app to install it and the installer opens the new version.
+    appUpdate: {
+      available: 'Version {{version}} of this app is ready.',
+      windowsRestart: 'Installing closes the app and opens it again on the new version.',
+      install: 'Install now',
+      installing: 'Installing…',
+      later: 'Later',
+      installed: 'Version {{version}} is installed. Close the app and open it again to use it.',
+      failed:
+        'Version {{version}} could not be installed. Try again, or install it from the download link.',
+    },
 
     // Banners Integr8 posts from the platform dashboard, payment reminders
     // included (P15). The severity is a word as well as a colour.

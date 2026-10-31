@@ -615,6 +615,15 @@ export const ar: Catalogue<Messages> = {
     },
 
     impersonationBanner: 'أنت تعرض هذا الحساب بصفة {{name}}. كل ما تفعله يُسجَّل.',
+    appUpdate: {
+      available: 'الإصدار {{version}} من هذا التطبيق جاهز.',
+      windowsRestart: 'التثبيت يغلق التطبيق ثم يفتحه من جديد على الإصدار الجديد.',
+      install: 'التثبيت الآن',
+      installing: 'جارٍ التثبيت…',
+      later: 'لاحقًا',
+      installed: 'تم تثبيت الإصدار {{version}}. أغلق التطبيق وافتحه من جديد لاستخدامه.',
+      failed: 'تعذّر تثبيت الإصدار {{version}}. حاول مرة أخرى، أو ثبّته من رابط التنزيل.',
+    },
 
     announcement: {
       region: 'إعلانات من Integr8',

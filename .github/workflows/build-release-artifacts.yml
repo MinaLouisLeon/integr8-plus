@@ -131,6 +131,17 @@ jobs:
       fail-fast: false
       matrix:
         platform: ${{ fromJSON(inputs.desktop-platforms) }}
+    # Which signing this deployment has, as 'true' or 'false': a step cannot test
+    # a secret directly. Every one is optional; without it the build is what it
+    # always was (setup guide, Stage 6, "Code signing"). TAURI_SIGNING_PRIVATE_KEY signs
+    # updates, which the app checks against the public key it carries; the
+    # others are the operating systems' own code signing, which only changes
+    # what Windows and macOS say when the installer is first opened.
+    env:
+      SIGN_UPDATES: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+      SIGN_WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE != '' && secrets.WINDOWS_CERTIFICATE_PASSWORD != '' }}
+      SIGN_WINDOWS_AZURE: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' && secrets.AZURE_TENANT_ID != '' && vars.AZURE_SIGNING_ENDPOINT != '' && vars.AZURE_SIGNING_ACCOUNT != '' && vars.AZURE_SIGNING_PROFILE != '' }}
+      SIGN_MACOS: ${{ secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_SIGNING_IDENTITY != '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -188,6 +199,69 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Windows code signing with a certificate file (a code-signing
+      # certificate exported as .pfx, base64 in WINDOWS_CERTIFICATE), imported
+      # into this runner's own store so Tauri can sign with it by thumbprint.
+      - name: Import the Windows code-signing certificate
+        id: windows-certificate
+        if: runner.os == 'Windows' && env.SIGN_WINDOWS_CERTIFICATE == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $path = Join-Path $env:RUNNER_TEMP 'certificate.pfx'
+          [IO.File]::WriteAllBytes($path, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+          $password = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
+          $certificate = Import-PfxCertificate -FilePath $path -CertStoreLocation Cert:\CurrentUser\My -Password $password
+          Remove-Item $path
+          "thumbprint=$($certificate.Thumbprint)" >> $env:GITHUB_OUTPUT
+
+      # Or Azure Artifact Signing (formerly Trusted Signing): no certificate
+      # file at all; Tauri runs this command on each file it signs.
+      - name: Install the Azure Artifact Signing client
+        if: runner.os == 'Windows' && env.SIGN_WINDOWS_CERTIFICATE != 'true' && env.SIGN_WINDOWS_AZURE == 'true'
+        shell: bash
+        run: cargo install artifact-signing-cli --version 0.11.0 --locked
+
+      # macOS signing and notarisation with a Developer ID Application
+      # certificate. Written to the environment only when present: Tauri
+      # treats an empty APPLE_SIGNING_IDENTITY as an identity to sign with.
+      # Notarisation uses the App Store Connect API key the phone apps already
+      # submit with, or else an Apple ID with an app-specific password.
+      - name: Prepare macOS signing and notarisation
+        if: runner.os == 'macOS' && env.SIGN_MACOS == 'true'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          ASC_API_KEY: ${{ secrets.ASC_API_KEY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          put() { local end="END_$RANDOM$RANDOM"; { echo "$1<<$end"; printf '%s\n' "$2"; echo "$end"; } >> "$GITHUB_ENV"; }
+          put APPLE_CERTIFICATE "$APPLE_CERTIFICATE"
+          put APPLE_CERTIFICATE_PASSWORD "$APPLE_CERTIFICATE_PASSWORD"
+          put APPLE_SIGNING_IDENTITY "$APPLE_SIGNING_IDENTITY"
+          if [ -n "$ASC_API_KEY" ] && [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ]; then
+            key="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+            printf '%s' "$ASC_API_KEY" > "$key"
+            put APPLE_API_ISSUER "$ASC_ISSUER_ID"
+            put APPLE_API_KEY "$ASC_KEY_ID"
+            put APPLE_API_KEY_PATH "$key"
+          elif [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            put APPLE_ID "$APPLE_ID"
+            put APPLE_PASSWORD "$APPLE_PASSWORD"
+            put APPLE_TEAM_ID "$APPLE_TEAM_ID"
+          else
+            echo "::warning::The macOS app is signed but not notarised: set ASC_API_KEY, ASC_KEY_ID and ASC_ISSUER_ID (or APPLE_ID, APPLE_PASSWORD and APPLE_TEAM_ID). macOS still warns on first open."
+          fi
+
       # The root package.json version is the product version. Writing it into
       # tauri.conf.json here rather than keeping two numbers in step by hand is
       # the difference between a release and a release that claims to be an
@@ -209,15 +283,42 @@ jobs:
       # also writes the version (plain X.Y.Z: Windows MSI rejects a prerelease
       # suffix) and points the window's content-security policy at the API,
       # without which every sign-in would fail inside the window.
+      #
+      # A versioned release also gets its updater feed, the web app's
+      # /desktop-updates/staff/…, which offers the newest `v*` release's
+      # latest.json, and the signed update bundles the feed points at. A
+      # nightly keeps the placeholder feed: it talks to the staging API and
+      # must never update itself into a production release.
       - name: Stamp the staff flavour, the version and the API origin into the bundle
         shell: bash
         env:
           BASE_VERSION: ${{ inputs.base-version }}
           API_URL: ${{ inputs.api-url }}
+          CHANNEL: ${{ inputs.channel }}
+          UPDATER_BASE: ${{ vars.DESKTOP_UPDATES_URL || 'https://app.integr8-media.com/desktop-updates' }}
+          THUMBPRINT: ${{ steps.windows-certificate.outputs.thumbprint }}
+          AZURE_SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          AZURE_SIGNING_PROFILE: ${{ vars.AZURE_SIGNING_PROFILE }}
         run: |
           set -euo pipefail
-          node apps/desktop/scripts/stamp.mjs \
-            --version "$BASE_VERSION" --api-url "$API_URL" --flavor staff
+          flags=(--version "$BASE_VERSION" --api-url "$API_URL" --flavor staff)
+          if [ "$CHANNEL" = release ]; then
+            flags+=(--updater-base "$UPDATER_BASE")
+            if [ "$SIGN_UPDATES" = true ]; then
+              flags+=(--updater-artifacts)
+            else
+              echo "::warning::No TAURI_SIGNING_PRIVATE_KEY secret: this release cannot be offered to installed apps as an update."
+            fi
+          fi
+          if [ -n "$THUMBPRINT" ]; then
+            flags+=(--windows-certificate-thumbprint "$THUMBPRINT")
+          elif [ "$RUNNER_OS" = Windows ] && [ "$SIGN_WINDOWS_AZURE" = true ]; then
+            flags+=(--windows-sign-command "artifact-signing-cli -e $AZURE_SIGNING_ENDPOINT -a $AZURE_SIGNING_ACCOUNT -c $AZURE_SIGNING_PROFILE %1")
+          elif [ "$RUNNER_OS" = Windows ]; then
+            echo "::notice::No Windows code-signing secrets: the installer is unsigned and SmartScreen warns when it is first opened."
+          fi
+          node apps/desktop/scripts/stamp.mjs "${flags[@]}"
 
       - name: Build the workspace packages the app imports
         run: pnpm build
@@ -234,35 +335,31 @@ jobs:
           VITE_APP_FLAVOR: staff
           VITE_SENTRY_DSN: ${{ inputs.desktop-sentry-dsn }}
           # Absent on a fork or before the key is stored: the build still runs
-          # and produces an installer, it just carries no update signature.
+          # and produces an installer, it just carries no update signature (the
+          # stamp step asks for update bundles only when the key exists).
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Read by artifact-signing-cli, which runs only when the stamp step gave
+          # Tauri its sign command; empty otherwise, and then unused.
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         with:
           projectPath: apps/desktop
 
-      # Tauri lists everything it bundled. On macOS that includes the bare
-      # `.app` folder beside the `.dmg` that contains it; the dmg is the
-      # installer, and a folder cannot be attached to a release, so only
-      # regular files are kept.
+      # Tauri lists everything it bundled. The script keeps the regular files
+      # (on macOS the bare `.app` folder sits beside the `.dmg`), names them so
+      # GitHub stores them as they are, and writes this platform's part of the
+      # updater manifest, which the release job merges into latest.json.
       - name: Collect the installers
         shell: bash
         env:
           PATHS: ${{ steps.tauri.outputs.artifactPaths }}
+          BASE_VERSION: ${{ inputs.base-version }}
         run: |
           set -euo pipefail
-          mkdir -p collected
-          node -e '
-            const fs = require("node:fs");
-            const path = require("node:path");
-            for (const from of JSON.parse(process.env.PATHS)) {
-              if (!fs.statSync(from).isFile()) {
-                console.log("skipped (not a file)", path.basename(from));
-                continue;
-              }
-              fs.copyFileSync(from, path.join("collected", path.basename(from)));
-              console.log("collected", path.basename(from));
-            }
-          '
+          node apps/desktop/scripts/collect-bundles.mjs \
+            --paths "$PATHS" --out collected --prefix integr8-plus-staff --version "$BASE_VERSION"
 
       - uses: actions/upload-artifact@v7
         with:

@@ -224,6 +224,7 @@ Container logs are capped at 50 MB per container by the `x-logging` block in
 
 A restore rehearsed on the real machine (the drill script and the steps are in
 `docs/database/runbook-backup-and-restore.md`; nobody has run them there yet),
-uptime monitoring and alerting, signed desktop and mobile builds (P20), and
-the rest of P19. The compose stack is a first production for testing, not the
+uptime monitoring and alerting, code-signed desktop builds (P20: the
+workflows sign when the certificates' secrets exist; none have been bought
+yet), store-signed mobile builds, and the rest of P19. The compose stack is a first production for testing, not the
 final shape.

@@ -153,6 +153,12 @@ jobs:
 
           PREAMBLE
 
+          # The update manifest installed staff apps read through the web
+          # app's /desktop-updates/staff/ feed: every platform's signed bundle,
+          # by its address in this release.
+          node apps/desktop/scripts/updater-manifest.mjs --dir dist --version "$VERSION" \
+            --download-base "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+
           gh release create "$TAG" dist/* \
             --title "$VERSION" \
             --notes-file notes.md \

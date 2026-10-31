@@ -6,7 +6,8 @@ export default defineConfig({
     alias: { '~': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   test: {
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    // The release scripts' own tests run here too: they decide what the updater is offered.
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.mjs'],
     environment: 'node',
   },
 });

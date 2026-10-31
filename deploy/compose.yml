@@ -198,6 +198,12 @@ services:
       API_BASE_URL: http://api:3000
       APP_ENV: ${APP_ENV:-staging}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
+      # The desktop apps' update feed (/desktop-updates): the repository whose
+      # releases hold them, a token only if that repository is private, and
+      # the public address the feed's download links use then.
+      GITHUB_RELEASES_REPOSITORY: ${GITHUB_RELEASES_REPOSITORY:-}
+      GITHUB_RELEASES_TOKEN: ${GITHUB_RELEASES_TOKEN:-}
+      WEB_APP_URL: ${WEB_APP_URL:-}
     depends_on:
       api:
         condition: service_healthy
