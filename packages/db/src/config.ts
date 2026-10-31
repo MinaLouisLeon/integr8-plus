@@ -3,14 +3,20 @@ import { z } from 'zod';
 /**
  * Database configuration, read once at startup.
  *
- * Two connection strings, two roles, two very different privilege levels:
+ * Four connection strings, four roles, very different privilege levels:
  *
  * - `DATABASE_URL` connects as `integr8_app`. Every tenant request uses it.
  *   RLS applies to this role, and {@link assertRlsEnforced} refuses to open a
  *   pool if it turns out not to.
- * - `DATABASE_URL_ADMIN` connects as the schema owner. Migrations, seeds,
- *   company provisioning and super-admin reads use it. RLS does *not* apply, so
- *   nothing that handles a tenant request may touch it.
+ * - `DATABASE_URL_ADMIN` connects as the schema owner, a superuser. Migrations,
+ *   the template library sync, seeds and the test suites use it. The API and
+ *   the worker do not have it in a deployment.
+ * - `DATABASE_URL_PLATFORM` connects as `integr8_platform`, which is what the
+ *   API and the worker use for everything outside one company: staff work,
+ *   company provisioning, the job queue, metering, the first step of sign-in.
+ *   It reads and writes every table past RLS (BYPASSRLS) but is not a
+ *   superuser and owns nothing, so it cannot change the schema, lift a guard
+ *   trigger or read another database. See migration 0058.
  * - `DATABASE_URL_AUTH` connects as `integr8_auth`, which exists only for the
  *   part of sign-in that happens before a company is known. It reaches two
  *   tables and one view and nothing else, so the tenant runtime role never
@@ -32,10 +38,18 @@ export const databaseConfigSchema = z.object({
   DATABASE_URL: connectionString,
 
   /**
-   * Owner connection. Optional at runtime: an API container that never
-   * provisions a company does not need it, and not having it is safer.
+   * Owner connection, for migrations and the template library sync. Optional
+   * at runtime: the API and the worker use `DATABASE_URL_PLATFORM` instead, and
+   * production refuses to start them with this set.
    */
   DATABASE_URL_ADMIN: connectionString.optional(),
+
+  /**
+   * Platform connection, role `integr8_platform`: cross-company work without
+   * the owner's powers. Unset means the owner connection is used for it, which
+   * is what a laptop and the migrator do; production requires it.
+   */
+  DATABASE_URL_PLATFORM: connectionString.optional(),
 
   /**
    * Pre-authentication connection, role `integr8_auth`.
@@ -132,4 +146,23 @@ export function requireAdminConnectionString(config: DatabaseConfig): string {
     );
   }
   return config.DATABASE_URL_ADMIN;
+}
+
+/**
+ * The connection string for cross-company work: the platform role's when it is
+ * set, otherwise the owner's.
+ *
+ * The fallback keeps a laptop, the test suites and the one-off CLIs that run in
+ * the `migrate` container working with the owner's string alone. A deployment
+ * gives the API and the worker only the platform role's, and production checks
+ * that what it connected as is not a superuser ({@link assertPlatformRoleIsLimited}).
+ */
+export function requirePlatformConnectionString(config: DatabaseConfig): string {
+  const url = config.DATABASE_URL_PLATFORM ?? config.DATABASE_URL_ADMIN;
+  if (url === undefined) {
+    throw new Error(
+      'DATABASE_URL_PLATFORM is not set. Staff work, company provisioning and the job queue need the integr8_platform role.',
+    );
+  }
+  return url;
 }

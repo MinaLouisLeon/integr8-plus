@@ -19,12 +19,14 @@
  */
 
 export {
+  assertPlatformRoleIsLimited,
   AuthRoleTooBroadError,
   closeDatabase,
   configureDatabase,
   getAuthDataSource,
   getPlatformDataSource,
   getTenantDataSource,
+  PlatformRoleTooBroadError,
   RlsNotEnforcedError,
   withTenant,
   type AuthDataSource,
@@ -39,6 +41,7 @@ export {
   loadDatabaseConfig,
   requireAdminConnectionString,
   requireAuthConnectionString,
+  requirePlatformConnectionString,
   type DatabaseConfig,
 } from './config.js';
 

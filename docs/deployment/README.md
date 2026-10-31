@@ -66,7 +66,7 @@ with tick boxes that remember your progress: download
    Cloud** below for the free machine this was written against.
 2. **Configuration.** `cp deploy/.env.example deploy/.env`, then:
    - set the three addresses and `API_CORS_ORIGINS`;
-   - set three database passwords (the compose Postgres is created from them);
+   - set four database passwords (the compose Postgres is created from them);
    - run `pnpm --filter @integr8/auth keygen` once and paste what it prints:
      the four signing-key lines, and the three for the Auth container
      (`SUPABASE_AUTH_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`,

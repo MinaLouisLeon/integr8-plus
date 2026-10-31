@@ -81,8 +81,8 @@ pnpm install</code></pre>
 
         <h3>B. Secrets you generate yourself</h3>
         <ul class="check" data-stage="a1">
-          <li><input type="checkbox" id="a1-1"><label for="a1-1"><b>Three database passwords.</b> Run the line below three times; each gives 48 letters and digits, no symbols (each password also has to sit inside a web-style address). Write them in the key sheet as <code>POSTGRES_PASSWORD</code>, <code>INTEGR8_APP_PASSWORD</code>, <code>INTEGR8_AUTH_PASSWORD</code>.</label></li>
-          <li><input type="checkbox" id="a1-1b"><label for="a1-1b"><b>The build token (optional until you build company apps).</b> Run the same line a fourth time. Key sheet: <code>BUILD_TOKEN</code>. When you use it, put the same value in the machine's env file (Stage 3) and a GitHub secret (Part K). It lets GitHub ask the API which companies to build apps for (Stage 8); without it, the API starts normally but that company-list lookup is unavailable.</label></li>
+          <li><input type="checkbox" id="a1-1"><label for="a1-1"><b>Four database passwords.</b> Run the line below four times; each gives 48 letters and digits, no symbols (each password also has to sit inside a web-style address). Write them in the key sheet as <code>POSTGRES_PASSWORD</code>, <code>INTEGR8_APP_PASSWORD</code>, <code>INTEGR8_AUTH_PASSWORD</code>, <code>INTEGR8_PLATFORM_PASSWORD</code>. The first belongs to the database's owner, which only the migration step uses; the API and the worker connect with the other three and never see it.</label></li>
+          <li><input type="checkbox" id="a1-1b"><label for="a1-1b"><b>The build token (optional until you build company apps).</b> Run the same line a fifth time. Key sheet: <code>BUILD_TOKEN</code>. When you use it, put the same value in the machine's env file (Stage 3) and a GitHub secret (Part K). It lets GitHub ask the API which companies to build apps for (Stage 8); without it, the API starts normally but that company-list lookup is unavailable.</label></li>
         </ul>
         <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell)
 $b = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | ForEach-Object { $_.ToString('x2') })</code></pre>
@@ -188,7 +188,7 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
 
         <h3>L. Only if you will build the test box (Stage 10)</h3>
         <ul class="check" data-stage="a11">
-          <li><input type="checkbox" id="a11-2"><label for="a11-2"><b>A second set of generated secrets</b> (Part B again): three passwords, four signing keys and three sign-in secrets. A token minted by the test box must not be valid on production, which is what sharing the signing keys would allow, and the box's sign-in server keeps its own test accounts.</label></li>
+          <li><input type="checkbox" id="a11-2"><label for="a11-2"><b>A second set of generated secrets</b> (Part B again): four passwords, four signing keys and three sign-in secrets. A token minted by the test box must not be valid on production, which is what sharing the signing keys would allow, and the box's sign-in server keeps its own test accounts.</label></li>
           <li><input type="checkbox" id="a11-3"><label for="a11-3"><b>A Cloudflare Tunnel</b>: Cloudflare → <b>Zero Trust</b> (free) → Networks → <b>Tunnels</b> → Create a tunnel → Cloudflared → name <code>integr8-test</code> → on the install step choose <b>Docker</b> and copy the token from the command shown. Add two public hostnames: <code>test.integr8-media.com</code> → HTTP <code>localhost:3001</code>, <code>api-test.integr8-media.com</code> → HTTP <code>localhost:3000</code>. Cloudflare creates the DNS records. Key sheet: tunnel token.</label></li>
         </ul>
 
@@ -255,7 +255,7 @@ $k = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
         <table>
           <thead><tr><th>Value</th><th>From</th><th>Goes to</th></tr></thead>
           <tbody>
-            <tr><td><code>POSTGRES_PASSWORD</code>, <code>INTEGR8_APP_PASSWORD</code>, <code>INTEGR8_AUTH_PASSWORD</code></td><td>Part B, generated</td><td><code>deploy/.env</code>, each twice (Stage 3)</td></tr>
+            <tr><td><code>POSTGRES_PASSWORD</code>, <code>INTEGR8_APP_PASSWORD</code>, <code>INTEGR8_AUTH_PASSWORD</code>, <code>INTEGR8_PLATFORM_PASSWORD</code></td><td>Part B, generated</td><td><code>deploy/.env</code>, each twice (Stage 3)</td></tr>
             <tr><td><code>AUTH_SIGNING_KEY_ID</code>, <code>AUTH_SIGNING_KEY</code>, <code>AUTH_VERIFICATION_KEYS</code>, <code>PLATFORM_SECRET_KEY</code></td><td>Part B, generated</td><td><code>deploy/.env</code>; <code>AUTH_VERIFICATION_KEYS</code> also Expo, as <code>EXPO_PUBLIC_AUTH_VERIFICATION_KEYS</code> (Stage 8)</td></tr>
             <tr><td><code>SUPABASE_AUTH_JWT_SECRET</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code>, <code>SUPABASE_AUTH_DB_PASSWORD</code></td><td>Part B, generated</td><td><code>deploy/.env</code>, the three together</td></tr>
             <tr><td><code>HR_DATA_KEY</code></td><td>Part B; optional for HR secrets</td><td><code>deploy/.env</code> when used; back up with the database; never regenerate</td></tr>
@@ -363,7 +363,7 @@ nano deploy/.env</code></pre>
         <ul class="check" data-stage="s3">
           <li><input type="checkbox" id="s3-1"><label for="s3-1"><b>Mode.</b> <code>APP_ENV=staging</code> for now. Stage 9 flips it to <code>production</code>, which makes the API refuse to start if any service below is missing; staging mode starts anyway and only warns, which is kinder while you check each piece.</label></li>
           <li><input type="checkbox" id="s3-2"><label for="s3-2"><b>Addresses.</b> Replace <code>your-domain.example</code> everywhere: <code>PUBLIC_API_URL</code>, <code>API_PUBLIC_URL</code>, <code>AUTH_ISSUER</code> = <code>https://api.integr8-media.com</code>; <code>WEB_APP_URL</code>, <code>API_UPDATE_URL</code> = <code>https://app.integr8-media.com</code>; <code>API_CORS_ORIGINS=https://app.integr8-media.com,tauri://localhost,http://tauri.localhost</code>. Then <code>PUBLIC_SIGNUP=off</code> and <code>CONTACT_EMAIL=info@integr8-media.com</code>: there is no public sign-up form (you create every company from the dashboard) and the contact page shows that address.</label></li>
-          <li><input type="checkbox" id="s3-3"><label for="s3-3"><b>Database passwords, six lines that must agree.</b> The three passwords from the key sheet go into <code>POSTGRES_PASSWORD</code>, <code>INTEGR8_APP_PASSWORD</code>, <code>INTEGR8_AUTH_PASSWORD</code>, and again into the three connection addresses below them. An address has the shape <code>postgres://USER:PASSWORD@HOST:PORT/DATABASE</code>; replace only the <code>change-me-…</code> part of each:</label></li>
+          <li><input type="checkbox" id="s3-3"><label for="s3-3"><b>Database passwords, eight lines that must agree.</b> The four passwords from the key sheet go into <code>POSTGRES_PASSWORD</code>, <code>INTEGR8_APP_PASSWORD</code>, <code>INTEGR8_AUTH_PASSWORD</code>, <code>INTEGR8_PLATFORM_PASSWORD</code>, and again into the four connection addresses below them. An address has the shape <code>postgres://USER:PASSWORD@HOST:PORT/DATABASE</code>; replace only the <code>change-me-…</code> part of each:</label></li>
         </ul>
         <pre><code>POSTGRES_PASSWORD=aaaa…                 ┐ same value
 DATABASE_URL_ADMIN=postgres://postgres:aaaa…@postgres:5432/integr8        ┘
@@ -372,7 +372,10 @@ INTEGR8_APP_PASSWORD=bbbb…              ┐ same value
 DATABASE_URL=postgres://integr8_app:bbbb…@postgres:5432/integr8           ┘
 
 INTEGR8_AUTH_PASSWORD=cccc…             ┐ same value
-DATABASE_URL_AUTH=postgres://integr8_auth:cccc…@postgres:5432/integr8     ┘</code></pre>
+DATABASE_URL_AUTH=postgres://integr8_auth:cccc…@postgres:5432/integr8     ┘
+
+INTEGR8_PLATFORM_PASSWORD=dddd…         ┐ same value
+DATABASE_URL_PLATFORM=postgres://integr8_platform:dddd…@postgres:5432/integr8  ┘</code></pre>
         <ul class="check" data-stage="s3b">
           <li><input type="checkbox" id="s3-4"><label for="s3-4"><b>Signing keys.</b> Below the database lines is a block headed <code># Tokens and secrets</code>. It has four variables with nothing after the <code>=</code>: <code>AUTH_SIGNING_KEY_ID=</code>, <code>AUTH_SIGNING_KEY=</code>, <code>AUTH_VERIFICATION_KEYS=</code>, <code>PLATFORM_SECRET_KEY=</code>. The key generator in Stage 0, Part B produced exactly these four lines, each already in the form <code>NAME=value</code>. For each one, delete the empty line in the file and paste the whole line from your password manager in its place; the names must match and nothing else on the line changes. The values are long (the second is a few hundred characters) and must stay on one line each. The <code>AUTH_ISSUER</code> line just above them was already set in step 2.</label></li>
           <li><input type="checkbox" id="s3-4b"><label for="s3-4b"><b>Sign-in secrets.</b> The next block, headed <code># Sign-in: the self-hosted Supabase Auth container</code>, has three variables with nothing after the <code>=</code>: <code>SUPABASE_AUTH_JWT_SECRET=</code>, <code>SUPABASE_SERVICE_ROLE_KEY=</code>, <code>SUPABASE_AUTH_DB_PASSWORD=</code>. Paste the last three lines from <code>keys.txt</code> in their place, the same way. Leave the commented <code># SUPABASE_AUTH_URL=</code> line as it is: the compose file already points the API at the Auth container. There is no <code>SUPABASE_URL</code> line any more, and the API refuses to start if one is added. Afterwards the two blocks read like this, with your own values:</label></li>
@@ -513,7 +516,7 @@ grep -n '^AI_' deploy/.env                      # the assistant's lines, as you 
 cd /opt/integr8
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 docker compose -f deploy/compose.yml --env-file deploy/.env logs -f bootstrap migrate auth api</code></pre>
-        <p>The first run builds two images on the machine, ten to fifteen minutes on the ARM cores. Then in order: Postgres starts, <code>bootstrap</code> creates the two database roles and the sign-in server's own role and schema, <code>migrate</code> applies all 54 migrations and exits while <code>auth</code> (the Supabase Auth container) sets up its own tables, the API starts once both are done, then the worker and the web app. Ctrl-C leaves the logs; the containers keep running and restart themselves after a reboot.</p>
+        <p>The first run builds two images on the machine, ten to fifteen minutes on the ARM cores. Then in order: Postgres starts, <code>bootstrap</code> creates the three database roles the API and worker use and the sign-in server's own role and schema, <code>migrate</code> applies all 54 migrations and exits while <code>auth</code> (the Supabase Auth container) sets up its own tables, the API starts once both are done, then the worker and the web app. Ctrl-C leaves the logs; the containers keep running and restart themselves after a reboot.</p>
         <ul class="check" data-stage="s4">
           <li><input type="checkbox" id="s4-1"><label for="s4-1"><b>The API is ready</b>: <code>curl -s https://api.integr8-media.com/health/ready</code> answers <code>"status":"ready"</code>. If <code>degraded</code>, the body names the failing check.</label></li>
           <li><input type="checkbox" id="s4-2"><label for="s4-2"><b>The web app answers</b>: <code>https://app.integr8-media.com</code> shows the landing page with a padlock. Its buttons say "Talk to us" and lead to <code>/contact</code> with <code>info@integr8-media.com</code>; <code>/sign-up</code> shows a notice rather than a form.</label></li>
@@ -1074,6 +1077,21 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
           <li><input type="checkbox" id="s12-r2"><label for="s12-r2"><b>Rebuild every company's phone app</b> (Stage 8, <b>Build company apps</b> with company <code>all</code>, or the version release) and send each company the new <code>.apk</code>. The Firebase file is part of the build, so notifications on Android need it. Until a phone has the new app it keeps working as before, opening with no signal on its sign-in for up to thirty days.</label></li>
           <li><input type="checkbox" id="s12-r3"><label for="s12-r3"><b>Check one phone.</b> Sign in, then put it in aeroplane mode: it opens on its jobs. Add a note and correct a gate code; both show at once, and reach the web when signal returns. A notification arrives for a new job. Sentry's React Native project lists the phone's release, and shows no <code>offline-grant</code> warning from it.</label></li>
         </ul>
+
+        <h3 id="platform-role-update">T. A limited database role for the API and the worker (included in v1.2.2)</h3>
+        <p>The API and the worker used to reach the database as its owner, a superuser, for everything outside one company, and every container got every line of <code>deploy/.env</code>. Now they use a new role, <code>integr8_platform</code>, which reads and writes rows and can do nothing else, and each container gets only the settings it needs: the API and the worker no longer hold the owner's password or the sign-in server's secret. The update adds migration 0058 and two settings.</p>
+        <ul class="check" data-stage="s12t">
+          <li><input type="checkbox" id="s12-t1"><label for="s12-t1"><b>A fourth database password</b>, made on the laptop with Stage 0, Part B's line, into the key sheet and the password manager as <code>INTEGR8_PLATFORM_PASSWORD</code>.</label></li>
+          <li><input type="checkbox" id="s12-t2"><label for="s12-t2"><b>The env file</b>, during part C with <code>nano deploy/.env</code>: add the two lines below under the other database lines, with that password in both places. Part C's <code>comm</code> check prints both until they are there. Keep <code>DATABASE_URL_ADMIN</code>: the migration step still uses it; the compose file no longer passes it to the API or the worker.</label></li>
+          <li><input type="checkbox" id="s12-t3"><label for="s12-t3"><b>The role and migration 0058</b> during part D: <code>bootstrap</code>'s log says <code>Role integr8_platform is ready</code>, then <code>migrate</code> applies 0058. Without the password <code>bootstrap</code> stops with "Missing role password(s)" and nothing else starts.</label></li>
+          <li><input type="checkbox" id="s12-t4"><label for="s12-t4"><b>The API and the worker have no owner password.</b> In part E, the first command below prints nothing; the second prints the platform role's address.</label></li>
+        </ul>
+        <pre><code>INTEGR8_PLATFORM_PASSWORD=dddd…
+DATABASE_URL_PLATFORM=postgres://integr8_platform:dddd…@postgres:5432/integr8</code></pre>
+        <pre><button class="copy" type="button">Copy</button><code># machine (SSH session), from /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env exec api printenv DATABASE_URL_ADMIN POSTGRES_PASSWORD SUPABASE_AUTH_JWT_SECRET
+docker compose -f deploy/compose.yml --env-file deploy/.env exec worker printenv DATABASE_URL_PLATFORM</code></pre>
+        <div class="note"><p><b>In production mode</b> (Stage 9) the API and the worker refuse to start if <code>DATABASE_URL_PLATFORM</code> is missing, or if the role it names is a superuser.</p></div>
 
         <div class="note"><p><b>The test box (Stage 10)</b> updates the same way, from <code>staging</code> instead of <code>main</code>: <code>git pull</code> on its <code>staging</code> checkout, then <b>Pull</b> and <b>Redeploy</b> the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.</p></div>
       </section>

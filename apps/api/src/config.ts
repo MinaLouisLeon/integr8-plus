@@ -773,12 +773,39 @@ export function billingProblems(config: ApiConfig): string[] {
     : [`BILLING_PROVIDER is stripe but ${missing.join(' and ')} not set.`];
 }
 
-export function assertProductionReady(config: ApiConfig): void {
+/**
+ * What is wrong with the database connections a production API or worker was
+ * given, if anything.
+ *
+ * Read from the environment, like the Auth settings, because `@integr8/db`
+ * owns these variables. The owner's connection is a superuser's: with it, a
+ * compromised process could rewrite the schema and reach every database on the
+ * server. The platform role does everything these processes need (0058).
+ */
+export function databaseProblems(env: NodeJS.ProcessEnv): string[] {
+  const problems: string[] = [];
+  if ((env.DATABASE_URL_ADMIN ?? '').trim() !== '') {
+    problems.push(
+      "DATABASE_URL_ADMIN is set: the API and the worker must not hold the schema owner's password. Give them DATABASE_URL_PLATFORM (integr8_platform) instead; only the migrate service uses the owner.",
+    );
+  }
+  if ((env.DATABASE_URL_PLATFORM ?? '').trim() === '') {
+    problems.push(
+      'DATABASE_URL_PLATFORM is not set: staff work, company set-up and the job queue need the integr8_platform role.',
+    );
+  }
+  return problems;
+}
+
+export function assertProductionReady(
+  config: ApiConfig,
+  env: NodeJS.ProcessEnv = process.env,
+): void {
   if (config.APP_ENV !== 'production') {
     return;
   }
 
-  const problems: string[] = [];
+  const problems: string[] = [...databaseProblems(env)];
 
   if (config.SENTRY_DSN === undefined || config.SENTRY_DSN === '') {
     problems.push('SENTRY_DSN is not set: nothing would report an unhandled error.');

@@ -75,6 +75,19 @@ Five marks need explaining, and one open box:
   v1.2.1 predate it; part Q has the workaround for going back to v1.2.1. Nobody other than
   the author has followed the procedure yet, so the exit criterion stays open.
 
+Hardening from the pre-production audit's Medium items (2026-10-31):
+
+- **The API and the worker no longer run as a superuser.** Their connection outside one
+  company is `integr8_platform` (migration 0058, created by the migrator's bootstrap with
+  BYPASSRLS): rows in every table and `purge_tenant()`, and nothing else; it owns nothing
+  and cannot alter, truncate, lift a trigger or create a role. `deploy/compose.yml` names
+  the settings each service gets, so the API and the worker hold neither
+  `POSTGRES_PASSWORD`, `DATABASE_URL_ADMIN` nor `SUPABASE_AUTH_JWT_SECRET`; a unit test keeps
+  the list and the settings the code reads in step. Production refuses to start them with
+  the owner's connection or without the platform one, and checks the role at start-up. CI
+  runs every suite with the platform role; the schema-invariant suite pins its grants and
+  `platform-role.integration.test.ts` tries what it must not do.
+
 ## Exit criteria
 
 - [ ] A restore from backup has been performed end to end, and the time it took is written down

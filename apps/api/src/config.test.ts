@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertProductionReady,
+  databaseProblems,
   loadApiConfig,
   supabaseAuthSettings,
   webOriginMissingFromCors,
@@ -33,6 +34,11 @@ const PRODUCTION_BASE = {
   WEB_APP_URL: 'https://app.example.com',
 } as const;
 
+/** The database settings a production API or worker is given (0058). */
+const PRODUCTION_DATABASE = {
+  DATABASE_URL_PLATFORM: 'postgres://integr8_platform:x@postgres:5432/integr8',
+};
+
 describe("the web app's origin and API_CORS_ORIGINS", () => {
   it('is fine when the origin is listed, however the URL is written', () => {
     const config = loadApiConfig({
@@ -60,6 +66,7 @@ describe("the web app's origin and API_CORS_ORIGINS", () => {
     expect(() =>
       assertProductionReady(
         loadApiConfig({ ...PRODUCTION_BASE, API_CORS_ORIGINS: 'https://app.your-domain.example' }),
+        PRODUCTION_DATABASE,
       ),
     ).toThrow(/API_CORS_ORIGINS does not include https:\/\/app\.example\.com/u);
 
@@ -69,6 +76,7 @@ describe("the web app's origin and API_CORS_ORIGINS", () => {
           ...PRODUCTION_BASE,
           API_CORS_ORIGINS: 'https://app.example.com,tauri://localhost',
         }),
+        PRODUCTION_DATABASE,
       ),
     ).not.toThrow();
   });
@@ -174,5 +182,34 @@ describe('the self-hosted Auth settings (P36)', () => {
       SUPABASE_SERVICE_ROLE_KEY: 'k',
     });
     expect(JSON.stringify(malformed)).toContain('not an address');
+  });
+});
+
+describe('the database connections production is given', () => {
+  // The API and the worker run as integr8_platform; the owner's password stays
+  // with the migrate service.
+  it('accepts the platform role alone', () => {
+    expect(databaseProblems(PRODUCTION_DATABASE)).toEqual([]);
+  });
+
+  it("refuses the owner's connection, and a missing platform one", () => {
+    const problems = databaseProblems({
+      DATABASE_URL_ADMIN: 'postgres://postgres:x@postgres:5432/integr8',
+    }).join(' ');
+    expect(problems).toMatch(/DATABASE_URL_ADMIN is set/u);
+    expect(problems).toMatch(/DATABASE_URL_PLATFORM is not set/u);
+  });
+
+  it('stops a production start over it', () => {
+    const config = loadApiConfig({
+      ...PRODUCTION_BASE,
+      API_CORS_ORIGINS: 'https://app.example.com',
+    });
+    expect(() =>
+      assertProductionReady(config, {
+        ...PRODUCTION_DATABASE,
+        DATABASE_URL_ADMIN: 'postgres://postgres:x@postgres:5432/integr8',
+      }),
+    ).toThrow(/DATABASE_URL_ADMIN is set/u);
   });
 });

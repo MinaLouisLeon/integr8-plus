@@ -2,6 +2,7 @@ import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   connectAsOwner,
+  connectAsPlatform,
   createTenant,
   releaseTestDatabase,
   type TenantFixture,
@@ -161,6 +162,28 @@ describe('purging a company', () => {
 
     expect(await rowsPerTable(neighbour.id)).toEqual(neighbourBefore);
     expect(neighbourBefore.form_versions).toBe(1);
+  });
+
+  it('runs when the platform role calls it, which cannot suspend triggers itself', async () => {
+    // The worker purges as integr8_platform, which is not a superuser. The
+    // function runs as its owner, and that is what lets it set
+    // session_replication_role.
+    const doomed = await createTenant('purge-platform');
+    await seed(doomed);
+    await scheduleDeletion(doomed);
+
+    const platform = await connectAsPlatform();
+    try {
+      await expect(platform.query('set session_replication_role = replica')).rejects.toThrow(
+        /permission denied/u,
+      );
+      await platform.query('select purge_tenant($1)', [doomed.id]);
+    } finally {
+      await platform.end();
+    }
+
+    const left = Object.entries(await rowsPerTable(doomed.id)).filter(([, n]) => n > 0);
+    expect(left).toEqual([]);
   });
 
   it('puts triggers back on for the rest of the connection', async () => {

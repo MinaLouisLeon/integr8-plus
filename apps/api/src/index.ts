@@ -1,4 +1,4 @@
-import { closeDatabase } from '@integr8/db';
+import { assertPlatformRoleIsLimited, closeDatabase } from '@integr8/db';
 import { aiConfiguration } from './ai/configuration.js';
 import { buildAppInfo } from './app-info.js';
 import { buildServices } from './composition.js';
@@ -26,6 +26,11 @@ async function main(): Promise<void> {
   const config = loadApiConfig();
   assertProductionReady(config);
   initialiseSentry(config);
+  // The platform connection must be integr8_platform, not the owner: an env
+  // file that still names postgres would give this process a superuser.
+  if (config.APP_ENV === 'production') {
+    await assertPlatformRoleIsLimited();
+  }
 
   const info = buildAppInfo();
   const logger = createLogger({

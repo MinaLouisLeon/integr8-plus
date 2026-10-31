@@ -95,8 +95,8 @@ pnpm install
 
 ### B. Secrets you generate yourself
 
-- [ ] **Three database passwords.** Run the line below three times; each gives 48 letters and digits, no symbols (each password also has to sit inside a web-style address). Write them in the key sheet as `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`.
-- [ ] **The build token (optional until you build company apps).** Run the same line a fourth time. Key sheet: `BUILD_TOKEN`. When you use it, put the same value in the machine's env file (Stage 3) and a GitHub secret (Part K). It lets GitHub ask the API which companies to build apps for (Stage 8); without it, the API starts normally but that company-list lookup is unavailable.
+- [ ] **Four database passwords.** Run the line below four times; each gives 48 letters and digits, no symbols (each password also has to sit inside a web-style address). Write them in the key sheet as `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`, `INTEGR8_PLATFORM_PASSWORD`. The first belongs to the database's owner, which only the migration step uses; the API and the worker connect with the other three and never see it.
+- [ ] **The build token (optional until you build company apps).** Run the same line a fifth time. Key sheet: `BUILD_TOKEN`. When you use it, put the same value in the machine's env file (Stage 3) and a GitHub secret (Part K). It lets GitHub ask the API which companies to build apps for (Stage 8); without it, the API starts normally but that company-list lookup is unavailable.
 
 ```powershell
 # laptop (PowerShell)
@@ -213,7 +213,7 @@ GitHub builds the server images, the desktop installers and (through Expo) the p
 
 ### L. Only if you will build the test box (Stage 10)
 
-- [ ] **A second set of generated secrets** (Part B again): three passwords, four signing keys and three sign-in secrets. A token minted by the test box must not be valid on production, which is what sharing the signing keys would allow, and the box's sign-in server keeps its own test accounts.
+- [ ] **A second set of generated secrets** (Part B again): four passwords, four signing keys and three sign-in secrets. A token minted by the test box must not be valid on production, which is what sharing the signing keys would allow, and the box's sign-in server keeps its own test accounts.
 - [ ] **A Cloudflare Tunnel**: Cloudflare → **Zero Trust** (free) → Networks → **Tunnels** → Create a tunnel → Cloudflared → name `integr8-test` → on the install step choose **Docker** and copy the token from the command shown. Add two public hostnames: `test.integr8-media.com` → HTTP `localhost:3001`, `api-test.integr8-media.com` → HTTP `localhost:3000`. Cloudflare creates the DNS records. Key sheet: tunnel token.
 
 ### M. The AI assistant: a provider, or none
@@ -275,7 +275,7 @@ Every value, where it came from, and where it goes. `deploy/.env` is the one fil
 
 | Value                                                                                                                                          | From                                  | Goes to                                                                                               |
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`                                                                           | Part B, generated                     | `deploy/.env`, each twice (Stage 3)                                                                   |
+| `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`, `INTEGR8_PLATFORM_PASSWORD`                                              | Part B, generated                     | `deploy/.env`, each twice (Stage 3)                                                                   |
 | `AUTH_SIGNING_KEY_ID`, `AUTH_SIGNING_KEY`, `AUTH_VERIFICATION_KEYS`, `PLATFORM_SECRET_KEY`                                                     | Part B, generated                     | `deploy/.env`; `AUTH_VERIFICATION_KEYS` also Expo, as `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` (Stage 8)  |
 | `SUPABASE_AUTH_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_AUTH_DB_PASSWORD`                                                           | Part B, generated                     | `deploy/.env`, the three together                                                                     |
 | `HR_DATA_KEY`                                                                                                                                  | Part B; optional for HR secrets       | `deploy/.env` when used; back up with the database; never regenerate                                  |
@@ -415,7 +415,7 @@ nano deploy/.env
 
 - [ ] **Mode.** `APP_ENV=staging` for now. Stage 9 flips it to `production`, which makes the API refuse to start if any service below is missing; staging mode starts anyway and only warns, which is kinder while you check each piece.
 - [ ] **Addresses.** Replace `your-domain.example` everywhere: `PUBLIC_API_URL`, `API_PUBLIC_URL`, `AUTH_ISSUER` = `https://api.integr8-media.com`; `WEB_APP_URL`, `API_UPDATE_URL` = `https://app.integr8-media.com`; `API_CORS_ORIGINS=https://app.integr8-media.com,tauri://localhost,http://tauri.localhost`. Then `PUBLIC_SIGNUP=off` and `CONTACT_EMAIL=info@integr8-media.com`: there is no public sign-up form (you create every company from the dashboard) and the contact page shows that address.
-- [ ] **Database passwords, six lines that must agree.** The three passwords from the key sheet go into `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`, and again into the three connection addresses below them. An address has the shape `postgres://USER:PASSWORD@HOST:PORT/DATABASE`; replace only the `change-me-…` part of each:
+- [ ] **Database passwords, eight lines that must agree.** The four passwords from the key sheet go into `POSTGRES_PASSWORD`, `INTEGR8_APP_PASSWORD`, `INTEGR8_AUTH_PASSWORD`, `INTEGR8_PLATFORM_PASSWORD`, and again into the four connection addresses below them. An address has the shape `postgres://USER:PASSWORD@HOST:PORT/DATABASE`; replace only the `change-me-…` part of each:
 
 ```text
 POSTGRES_PASSWORD=aaaa…                 ┐ same value
@@ -426,6 +426,9 @@ DATABASE_URL=postgres://integr8_app:bbbb…@postgres:5432/integr8           ┘
 
 INTEGR8_AUTH_PASSWORD=cccc…             ┐ same value
 DATABASE_URL_AUTH=postgres://integr8_auth:cccc…@postgres:5432/integr8     ┘
+
+INTEGR8_PLATFORM_PASSWORD=dddd…         ┐ same value
+DATABASE_URL_PLATFORM=postgres://integr8_platform:dddd…@postgres:5432/integr8  ┘
 ```
 
 - [ ] **Signing keys.** Below the database lines is a block headed `# Tokens and secrets`. It has four variables with nothing after the `=`: `AUTH_SIGNING_KEY_ID=`, `AUTH_SIGNING_KEY=`, `AUTH_VERIFICATION_KEYS=`, `PLATFORM_SECRET_KEY=`. The key generator in Stage 0, Part B produced exactly these four lines, each already in the form `NAME=value`. For each one, delete the empty line in the file and paste the whole line from your password manager in its place; the names must match and nothing else on the line changes. The values are long (the second is a few hundred characters) and must stay on one line each. The `AUTH_ISSUER` line just above them was already set in step 2.
@@ -612,7 +615,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 docker compose -f deploy/compose.yml --env-file deploy/.env logs -f bootstrap migrate auth api
 ```
 
-The first run builds two images on the machine, ten to fifteen minutes on the ARM cores. Then in order: Postgres starts, `bootstrap` creates the two database roles and the sign-in server's own role and schema, `migrate` applies all 54 migrations and exits while `auth` (the Supabase Auth container) sets up its own tables, the API starts once both are done, then the worker and the web app. Ctrl-C leaves the logs; the containers keep running and restart themselves after a reboot.
+The first run builds two images on the machine, ten to fifteen minutes on the ARM cores. Then in order: Postgres starts, `bootstrap` creates the three database roles the API and worker use and the sign-in server's own role and schema, `migrate` applies all 54 migrations and exits while `auth` (the Supabase Auth container) sets up its own tables, the API starts once both are done, then the worker and the web app. Ctrl-C leaves the logs; the containers keep running and restart themselves after a reboot.
 
 - [ ] **The API is ready**: `curl -s https://api.integr8-media.com/health/ready` answers `"status":"ready"`. If `degraded`, the body names the failing check.
 - [ ] **The web app answers**: `https://app.integr8-media.com` shows the landing page with a padlock. Its buttons say "Talk to us" and lead to `/contact` with `info@integr8-media.com`; `/sign-up` shows a notice rather than a form.
@@ -1280,6 +1283,29 @@ Phones now open with no signal only on a signed offline grant that ends seven da
 - [ ] **Expo's build settings and Firebase**, as in Stage 8, part A, with Stage 0's parts I and J first if the React Native Sentry project and the Firebase project do not exist yet: the three environment variables, every switched-on company added to Firebase with the new `google-services.json` uploaded, and the FCM key chosen for each company's application identifier.
 - [ ] **Rebuild every company's phone app** (Stage 8, **Build company apps** with company `all`, or the version release) and send each company the new `.apk`. The Firebase file is part of the build, so notifications on Android need it. Until a phone has the new app it keeps working as before, opening with no signal on its sign-in for up to thirty days.
 - [ ] **Check one phone.** Sign in, then put it in aeroplane mode: it opens on its jobs. Add a note and correct a gate code; both show at once, and reach the web when signal returns. A notification arrives for a new job. Sentry's React Native project lists the phone's release, and shows no `offline-grant` warning from it.
+
+### T. A limited database role for the API and the worker (included in v1.2.2)
+
+The API and the worker used to reach the database as its owner, a superuser, for everything outside one company, and every container got every line of `deploy/.env`. Now they use a new role, `integr8_platform`, which reads and writes rows and can do nothing else, and each container gets only the settings it needs: the API and the worker no longer hold the owner's password or the sign-in server's secret. The update adds migration 0058 and two settings.
+
+- [ ] **A fourth database password**, made on the laptop with Stage 0, Part B's line, into the key sheet and the password manager as `INTEGR8_PLATFORM_PASSWORD`.
+- [ ] **The env file**, during part C with `nano deploy/.env`: add the two lines below under the other database lines, with that password in both places. Part C's `comm` check prints both until they are there. Keep `DATABASE_URL_ADMIN`: the migration step still uses it; the compose file no longer passes it to the API or the worker.
+- [ ] **The role and migration 0058** during part D: `bootstrap`'s log says `Role integr8_platform is ready`, then `migrate` applies 0058. Without the password `bootstrap` stops with "Missing role password(s)" and nothing else starts.
+- [ ] **The API and the worker have no owner password.** In part E, the first command below prints nothing; the second prints the platform role's address.
+
+```text
+INTEGR8_PLATFORM_PASSWORD=dddd…
+DATABASE_URL_PLATFORM=postgres://integr8_platform:dddd…@postgres:5432/integr8
+```
+
+```bash
+# machine (SSH session), from /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env exec api printenv DATABASE_URL_ADMIN POSTGRES_PASSWORD SUPABASE_AUTH_JWT_SECRET
+docker compose -f deploy/compose.yml --env-file deploy/.env exec worker printenv DATABASE_URL_PLATFORM
+```
+
+> [!NOTE]
+> **In production mode** (Stage 9) the API and the worker refuse to start if `DATABASE_URL_PLATFORM` is missing, or if the role it names is a superuser.
 
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.

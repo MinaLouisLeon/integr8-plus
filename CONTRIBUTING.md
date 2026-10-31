@@ -160,10 +160,12 @@ in history.
 Read variables through `requireEnv` / `optionalEnv` from `@integr8/core` so a missing
 value fails loudly at startup instead of surfacing as `undefined` inside a request handler.
 
-`packages/db/.env.example` documents the database variables. Two connection strings, two
-roles: `DATABASE_URL` is the runtime role that RLS applies to, and `DATABASE_URL_ADMIN` is
-the schema owner, which bypasses it. An API container should not have the second one set
-at all.
+`packages/db/.env.example` documents the database variables. `DATABASE_URL` is the runtime
+role that RLS applies to; `DATABASE_URL_PLATFORM` is `integr8_platform`, which the API and
+the worker use outside one company and which bypasses RLS without owning anything;
+`DATABASE_URL_ADMIN` is the schema owner, for migrations and the suites. An API or worker
+container must not have the last one set at all, and production refuses to start with it
+(`docs/database/README.md`, "The roles").
 
 ## Changing the interface
 
