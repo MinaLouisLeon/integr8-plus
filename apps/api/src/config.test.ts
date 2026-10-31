@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { assertProductionReady, loadApiConfig, webOriginMissingFromCors } from './config.js';
+import {
+  assertProductionReady,
+  loadApiConfig,
+  supabaseAuthSettings,
+  webOriginMissingFromCors,
+} from './config.js';
 
 /**
  * The deployment mistake this guards against: WEB_APP_URL set to the real
@@ -135,5 +140,39 @@ describe('other optional keys left blank in the env file', () => {
   it('still refuses them when set and wrong', () => {
     expect(() => loadApiConfig({ HR_DATA_KEY: 'too-short' })).toThrow(/HR_DATA_KEY/u);
     expect(() => loadApiConfig({ BUILD_TOKEN: 'short' })).toThrow(/BUILD_TOKEN/u);
+  });
+});
+
+describe('the self-hosted Auth settings (P36)', () => {
+  it('takes the container address and the service role key as given', () => {
+    expect(
+      supabaseAuthSettings({
+        SUPABASE_AUTH_URL: 'http://auth:9999',
+        SUPABASE_SERVICE_ROLE_KEY: 'eyJ.key',
+      }),
+    ).toEqual({ settings: { url: 'http://auth:9999', serviceRoleKey: 'eyJ.key' } });
+  });
+
+  it('refuses the old SUPABASE_URL, naming the new variable', () => {
+    const result = supabaseAuthSettings({
+      SUPABASE_URL: 'https://project.supabase.co',
+      SUPABASE_AUTH_URL: 'http://auth:9999',
+      SUPABASE_SERVICE_ROLE_KEY: 'eyJ.key',
+    });
+    expect(result).toHaveProperty('problems');
+    expect(JSON.stringify(result)).toContain('SUPABASE_AUTH_URL');
+    expect(JSON.stringify(result)).toContain('SUPABASE_URL is no longer read');
+  });
+
+  it('names what is missing or malformed', () => {
+    const missing = supabaseAuthSettings({});
+    expect(JSON.stringify(missing)).toContain('SUPABASE_AUTH_URL is not set');
+    expect(JSON.stringify(missing)).toContain('SUPABASE_SERVICE_ROLE_KEY is not set');
+
+    const malformed = supabaseAuthSettings({
+      SUPABASE_AUTH_URL: 'auth 9999',
+      SUPABASE_SERVICE_ROLE_KEY: 'k',
+    });
+    expect(JSON.stringify(malformed)).toContain('not an address');
   });
 });

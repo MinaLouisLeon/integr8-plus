@@ -59,6 +59,9 @@ export {
   SECURITY_DEFINER_VIEWS,
   SESSION_REVOCATION_REASONS,
   sessionRevocationReasonSchema,
+  SIGN_IN_METHODS,
+  signInMethodSchema,
+  type SignInMethod,
   type ClientApp,
   type ImpersonationEndReason,
   type LoginOutcome,
@@ -166,6 +169,11 @@ export {
   type AiTenantUsageRow,
   type AiPlatformRepository,
 } from './repositories/ai-platform.js';
+
+export type {
+  IdentityDeletionsRepository,
+  PendingIdentityDeletion,
+} from './repositories/identity-deletions.js';
 
 export type {
   TenantDeletion,
@@ -289,12 +297,6 @@ export {
   type LoginAttemptInput,
   type LoginSecurityRepository,
 } from './repositories/login-security.js';
-export {
-  identityEmail,
-  type CreateIdentityInput,
-  type IdentitiesRepository,
-  type Identity,
-} from './repositories/identities.js';
 
 export {
   isUsableMembership,

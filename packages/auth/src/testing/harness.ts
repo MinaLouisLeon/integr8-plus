@@ -22,6 +22,7 @@ import { FakeIdentityProvider, type FakeIdentity } from '../identity-provider.js
 import { ImpersonationService } from '../services/impersonation-service.js';
 import { PlatformSessionService } from '../services/platform-session-service.js';
 import { InvitationService } from '../services/invitation-service.js';
+import { PasswordService } from '../services/password-service.js';
 import { SessionService } from '../services/session-service.js';
 import { SignInService } from '../services/sign-in-service.js';
 import { TokenService } from '../tokens.js';
@@ -56,7 +57,7 @@ export class TestDatabaseUnavailableError extends Error {
         '  AUTH_SIGNING_KEY, AUTH_SIGNING_KEY_ID, AUTH_VERIFICATION_KEYS',
         '  PLATFORM_SECRET_KEY',
         '',
-        'See docs/database/runbook-supabase-setup.md and docs/auth/README.md.',
+        'See docs/database/README.md and docs/auth/README.md.',
       ].join('\n'),
     );
     this.name = 'TestDatabaseUnavailableError';
@@ -81,6 +82,7 @@ export interface TestServices {
   invitations: InvitationService;
   impersonation: ImpersonationService;
   platform: PlatformSessionService;
+  passwords: PasswordService;
   identity: FakeIdentityProvider;
   setNow: (date: Date) => void;
 }
@@ -89,7 +91,7 @@ export interface TestServices {
  * Builds the service graph against the test database.
  *
  * The identity provider is faked: everything worth testing here happens after
- * a credential is accepted, and a real Supabase project in front of it would
+ * a credential is accepted, and a real Auth server in front of it would
  * make the suite slower and flakier without making it more truthful.
  */
 export async function buildServices(identities: FakeIdentity[] = []): Promise<TestServices> {
@@ -119,6 +121,14 @@ export async function buildServices(identities: FakeIdentity[] = []): Promise<Te
     invitations: new InvitationService({ identity, sessions, config, now: clock }),
     impersonation: new ImpersonationService({ sessions, config, now: clock }),
     platform: new PlatformSessionService({ tokens, config, now: clock }),
+    passwords: new PasswordService({
+      identity,
+      sessions,
+      config,
+      now: clock,
+      companiesWithSessions: (userId) =>
+        getPlatformDataSource().tenants.withLiveSessionsFor(userId, clock()),
+    }),
     setNow: (date: Date) => {
       now = date;
     },

@@ -41,11 +41,83 @@ export interface SignInResult {
   memberships: Membership[];
 }
 
-export async function signIn(email: string, password: string): Promise<SignInResult> {
+export function signIn(email: string, password: string): Promise<SignInResult> {
+  return signInThroughServer({ email, password });
+}
+
+/**
+ * When this tab last signed in with an emailed code (P36). Only a hint for the
+ * Change password screen, which leaves out the current password for fifteen
+ * minutes afterwards; the API decides, and a reload forgets it.
+ */
+let signedInWithCodeAt: number | undefined;
+
+const FRESH_CODE_SIGN_IN_MS = 15 * 60 * 1000;
+
+/** Signs in with the 6-digit code from the email. Same cookie as a password. */
+export async function signInWithCode(email: string, code: string): Promise<SignInResult> {
+  const result = await signInThroughServer({ email, code });
+  signedInWithCodeAt = Date.now();
+  return result;
+}
+
+export function mayChangePasswordWithoutCurrent(): boolean {
+  return (
+    signedInWithCodeAt !== undefined && Date.now() - signedInWithCodeAt < FRESH_CODE_SIGN_IN_MS
+  );
+}
+
+/**
+ * Asks for a sign-in code by email. Straight to the API: nothing comes back
+ * that needs a cookie. Answers the same whether or not the address has an
+ * account; a 429 means wait a minute.
+ */
+export async function requestSignInCode(email: string, locale: 'en' | 'ar'): Promise<void> {
+  const { error, response } = await apiClient().POST('/v1/auth/magic-link', {
+    body: { email, locale },
+  });
+  if (error !== undefined) {
+    throw toRequestError(response, error);
+  }
+}
+
+/** Changes the password. Every other device is signed out; this tab is not. */
+export async function changePassword(input: {
+  currentPassword: string;
+  newPassword: string;
+  locale: 'en' | 'ar';
+}): Promise<void> {
+  const { error, response } = await apiClient().POST('/v1/me/password', {
+    body: {
+      newPassword: input.newPassword,
+      locale: input.locale,
+      ...(input.currentPassword === '' ? {} : { currentPassword: input.currentPassword }),
+    },
+  });
+  if (error !== undefined) {
+    throw toRequestError(response, error);
+  }
+  signedInWithCodeAt = undefined;
+}
+
+function toRequestError(response: Response, error: unknown): ApiRequestError {
+  const failure = (error as { error?: { code?: string; message?: string; requestId?: string } })
+    .error;
+  return new ApiRequestError(
+    response.status,
+    failure?.code ?? 'unknown_error',
+    failure?.message ?? 'The request failed.',
+    failure?.requestId ?? response.headers.get('x-request-id') ?? '',
+  );
+}
+
+async function signInThroughServer(
+  credentials: { email: string; password: string } | { email: string; code: string },
+): Promise<SignInResult> {
   const response = await fetch('/api/auth/sign-in', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify(credentials),
   });
 
   const body = (await response.json()) as

@@ -10,7 +10,6 @@ import {
 import { AuditLogRepository } from './repositories/audit-log.js';
 import { AuthMembershipsRepository } from './repositories/auth-memberships.js';
 import { IdempotencyRepository } from './repositories/idempotency.js';
-import { IdentitiesRepository } from './repositories/identities.js';
 import { ImpersonationRepository } from './repositories/impersonation.js';
 import {
   type ClaimedJob,
@@ -108,6 +107,7 @@ import {
 } from './repositories/storage-metering.js';
 import { TenantDataExportRepository } from './repositories/tenant-data-export.js';
 import { TenantLifecycleRepository } from './repositories/tenant-lifecycle.js';
+import { IdentityDeletionsRepository } from './repositories/identity-deletions.js';
 import { TenantsRepository } from './repositories/tenants.js';
 import type { TenantScope } from './repositories/tenant-scope.js';
 import { TenantUsersRepository } from './repositories/tenant-users.js';
@@ -292,6 +292,8 @@ export interface PlatformDataSource {
   readonly settings: PlatformSettingsRepository;
   /** Exporting a company, and the scheduled purge of one (P15). */
   readonly lifecycle: TenantLifecycleRepository;
+  /** Sign-in accounts to delete from Auth after a purge, retried until done (P36). */
+  readonly identityDeletions: IdentityDeletionsRepository;
   /** Cross-company questions: which app versions are in the field, what is failing (P15). */
   readonly insights: PlatformInsightsRepository;
   /** Sync trouble and failing background work across every company (P19). */
@@ -328,8 +330,6 @@ export interface PlatformDataSource {
  * {@link assertAuthRoleIsNarrow} and again in the schema-invariant suite.
  */
 export interface AuthDataSource {
-  /** Company people's credentials, when the server keeps them (0054). */
-  readonly identities: IdentitiesRepository;
   readonly loginSecurity: LoginSecurityRepository;
   readonly memberships: AuthMembershipsRepository;
   readonly rateLimits: RateLimitRepository;
@@ -577,6 +577,7 @@ export function getPlatformDataSource(): PlatformDataSource {
     platformAudit: new PlatformAuditRepository(db),
     settings: new PlatformSettingsRepository(db),
     lifecycle: new TenantLifecycleRepository(db),
+    identityDeletions: new IdentityDeletionsRepository(db),
     insights: new PlatformInsightsRepository(db),
     health: new PlatformHealthRepository(db),
     metering: new StorageMeteringRepository(db),
@@ -624,7 +625,6 @@ export function getPlatformDb(): Kysely<Database> {
 export async function getAuthDataSource(): Promise<AuthDataSource> {
   const db = await getAuthDb();
   return {
-    identities: new IdentitiesRepository(db),
     loginSecurity: new LoginSecurityRepository(db),
     memberships: new AuthMembershipsRepository(db),
     rateLimits: new RateLimitRepository(db),
@@ -689,7 +689,7 @@ export class RlsNotEnforcedError extends Error {
         ...reasons.map((reason) => `  - ${reason}`),
         '',
         'DATABASE_URL must connect as integr8_app, which is neither the schema owner nor a',
-        'superuser. See docs/database/runbook-supabase-setup.md.',
+        'superuser. See docs/database/README.md.',
       ].join('\n'),
     );
     this.name = 'RlsNotEnforcedError';
@@ -797,7 +797,7 @@ export class AuthRoleTooBroadError extends Error {
         '',
         'DATABASE_URL_AUTH must connect as integr8_auth, which holds privileges on',
         'login_attempts, account_locks and the auth_memberships view and nothing else.',
-        'See docs/database/runbook-supabase-setup.md.',
+        'See docs/database/README.md.',
       ].join('\n'),
     );
     this.name = 'AuthRoleTooBroadError';

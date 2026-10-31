@@ -62,3 +62,16 @@ updates:
       interval: weekly
     commit-message:
       prefix: 'chore(ci)'
+
+  # The images in deploy/compose.yml (P36): Supabase Auth above all, which is
+  # pinned and must not be left to age. A Postgres major needs a dump and
+  # restore, so only its minors come through here.
+  - package-ecosystem: docker-compose
+    directory: /deploy
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'chore(deps)'
+    ignore:
+      - dependency-name: 'postgres'
+        update-types: ['version-update:semver-major']

@@ -167,9 +167,8 @@ jobs:
     # container, with no account anywhere. Until this job existed the isolation
     # suite — the most consequential code in the repository — had only ever run
     # on a laptop, because the previous version was gated on a Supabase project
-    # nobody had wired in. A real Supabase project still matters for what only
-    # it can show (Supavisor transaction pooling, the managed roles); that is
-    # docs/database/runbook-supabase-setup.md, not this job.
+    # nobody had wired in. Production is the same shape as this job: a plain
+    # Postgres and a self-hosted Supabase Auth container (P36).
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -191,6 +190,8 @@ jobs:
       # Throwaway credentials for a database that is deleted with the runner.
       INTEGR8_APP_PASSWORD: ci-app-password
       INTEGR8_AUTH_PASSWORD: ci-auth-password
+      # Supabase Auth's own role and schema, created by bootstrap (P36).
+      SUPABASE_AUTH_DB_PASSWORD: ci-supabase-auth-password
       DATABASE_URL_ADMIN: postgres://postgres:postgres@localhost:5432/integr8_test
       DATABASE_URL: postgres://integr8_app:ci-app-password@localhost:5432/integr8_test
       DATABASE_URL_AUTH: postgres://integr8_auth:ci-auth-password@localhost:5432/integr8_test
@@ -213,9 +214,9 @@ jobs:
       - name: Build workspace packages
         run: pnpm build
 
-      # The two login roles the runbook creates by hand on Supabase. Same
-      # command, same grants, so what the suites prove about them holds there.
-      - name: Create the runtime and auth roles
+      # The same command deploy/compose.yml runs, so what the suites prove
+      # about the roles holds on the server.
+      - name: Create the runtime, auth and Supabase Auth roles
         run: pnpm --filter @integr8/db db bootstrap
 
       # Rolls the schema all the way down and back up before the suites run, so
@@ -230,10 +231,51 @@ jobs:
       - name: Generate signing keys for this run
         # Only the KEY=VALUE lines: pnpm's own banner and keygen's explanatory
         # comments are not environment variables, and GITHUB_ENV refuses them.
-        run: pnpm --silent --filter @integr8/auth keygen | grep -E '^[A-Z_]+=' >> "$GITHUB_ENV"
+        # The Auth database password is left out: bootstrap has already set the
+        # role's password from the job's own value.
+        run: >-
+          pnpm --silent --filter @integr8/auth keygen | grep -E '^[A-Z_]+=' |
+          grep -v '^SUPABASE_AUTH_DB_PASSWORD=' >> "$GITHUB_ENV"
 
-      - name: Sessions, invitations and impersonation
+      - name: Sessions, invitations, impersonation, sign-in codes and passwords
         run: pnpm --filter @integr8/auth test:integration
+
+      # The real Auth container, configured as deploy/compose.yml configures
+      # it. Not a service container: it needs the role bootstrap creates, and a
+      # service starts before any step runs. It migrates its own `auth` schema
+      # in the test database at start-up.
+      - name: Start Supabase Auth
+        run: |
+          docker run -d --name supabase-auth --network host \
+            -e GOTRUE_API_HOST=127.0.0.1 -e GOTRUE_API_PORT=9999 -e PORT=9999 \
+            -e API_EXTERNAL_URL=http://localhost:9999 \
+            -e GOTRUE_DB_DRIVER=postgres \
+            -e GOTRUE_DB_DATABASE_URL="postgres://supabase_auth_admin:${SUPABASE_AUTH_DB_PASSWORD}@localhost:5432/integr8_test" \
+            -e DB_NAMESPACE=auth \
+            -e GOTRUE_SITE_URL=http://localhost:3001 \
+            -e GOTRUE_JWT_SECRET="${SUPABASE_AUTH_JWT_SECRET}" \
+            -e GOTRUE_JWT_ADMIN_ROLES=service_role \
+            -e GOTRUE_DISABLE_SIGNUP=true \
+            -e GOTRUE_EXTERNAL_EMAIL_ENABLED=true \
+            -e GOTRUE_EXTERNAL_PHONE_ENABLED=false \
+            -e GOTRUE_MAILER_OTP_EXP=900 \
+            -e GOTRUE_MAILER_OTP_LENGTH=6 \
+            supabase/auth:v2.197.0
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://localhost:9999/health > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          docker logs supabase-auth
+          exit 1
+
+      - name: The identity provider against the real Auth
+        env:
+          SUPABASE_AUTH_URL: http://localhost:9999
+        run: pnpm --filter @integr8/auth test:auth-server
+
+      - name: Auth container log
+        if: failure()
+        run: docker logs supabase-auth || true
 
       # Real HTTP through the assembled server: idempotent replay, the
       # outdated-client response, the request id on every log line, and the

@@ -19,7 +19,9 @@ Commands
   down --to NNNN         Roll back everything above NNNN
   new <slug>             Scaffold the next up/down pair
   bootstrap              Create the integr8_app and integr8_auth roles
-                         (needs INTEGR8_APP_PASSWORD and INTEGR8_AUTH_PASSWORD)
+                         (needs INTEGR8_APP_PASSWORD and INTEGR8_AUTH_PASSWORD),
+                         and Supabase Auth's role and schema when
+                         SUPABASE_AUTH_DB_PASSWORD is set
   deploy                 bootstrap, then up: the one command a hosting
                          platform's pre-deploy hook runs before a new build
                          takes traffic
@@ -140,12 +142,11 @@ function report(
 }
 
 /**
- * Creates the two login roles.
+ * Creates the two login roles, and the self-hosted Auth's when asked for.
  *
  * Roles are cluster-level, not schema-level, so they cannot live in a migration
  * — a migration is per-database and a password has no business in git. This
- * command is idempotent and is step 3 of
- * docs/database/runbook-supabase-setup.md.
+ * command is idempotent; `deploy/compose.yml` runs it on every start.
  *
  * Passwords reach Postgres through a GUC rather than string interpolation, so a
  * password containing a quote cannot become SQL.
@@ -218,10 +219,64 @@ async function bootstrap(
   await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_password', '']);
   await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_role', '']);
 
+  await bootstrapSupabaseAuth(client);
+
   if (!thenMigrating) {
     console.log('Run "up" next to apply migrations and grants.');
   }
   return 0;
+}
+
+/**
+ * The role and schema the self-hosted Supabase Auth container runs in (P36).
+ *
+ * Optional, so CI's database job and local setups without Auth keep working:
+ * nothing happens unless SUPABASE_AUTH_DB_PASSWORD is set. `deploy/compose.yml`
+ * requires it.
+ *
+ * Auth creates and migrates its own tables at start-up, all inside the `auth`
+ * schema. What it cannot do is create the role it logs in as, so that is done
+ * here: `supabase_auth_admin` (Supabase's own name for it) owns `auth` and
+ * searches it first. It needs `create` on the database because Auth's first
+ * migration runs `create schema if not exists`, which Postgres checks for the
+ * privilege before it checks whether the schema exists.
+ *
+ * Neither of our runtime roles gets anything on `auth`, and every isolation
+ * check in this package looks only at `public`.
+ */
+async function bootstrapSupabaseAuth(client: pg.Client): Promise<void> {
+  const password = (process.env.SUPABASE_AUTH_DB_PASSWORD ?? '').trim();
+  if (password === '') {
+    console.log('SUPABASE_AUTH_DB_PASSWORD is not set; skipping the Auth role and schema.');
+    return;
+  }
+
+  await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_password', password]);
+  try {
+    await client.query(`
+      do $$
+      declare
+        secret text := current_setting('integr8.bootstrap_password');
+      begin
+        if exists (select 1 from pg_roles where rolname = 'supabase_auth_admin') then
+          execute format('alter role supabase_auth_admin login password %L', secret);
+        else
+          execute format('create role supabase_auth_admin login password %L', secret);
+        end if;
+
+        alter role supabase_auth_admin set search_path = auth;
+        execute format(
+          'grant connect, create on database %I to supabase_auth_admin', current_database());
+
+        create schema if not exists auth authorization supabase_auth_admin;
+        alter schema auth owner to supabase_auth_admin;
+      end;
+      $$;
+    `);
+  } finally {
+    await client.query('select set_config($1, $2, false)', ['integr8.bootstrap_password', '']);
+  }
+  console.log('Role supabase_auth_admin and schema auth are ready.');
 }
 
 function scaffold(slug: string | undefined): number {

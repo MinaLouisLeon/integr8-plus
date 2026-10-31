@@ -14,6 +14,9 @@ if (existsSync('.env')) {
  *
  * `integration` exercises the services against real Postgres, where sessions,
  * rotation, invitations and impersonation actually live.
+ *
+ * `auth-server` runs the identity provider against a real Supabase Auth
+ * container (P36): CI starts one; see `.github/workflows/ci.yml`.
  */
 export default defineConfig({
   test: {
@@ -22,7 +25,7 @@ export default defineConfig({
         test: {
           name: 'unit',
           include: ['src/**/*.test.ts'],
-          exclude: ['src/**/*.integration.test.ts'],
+          exclude: ['src/**/*.integration.test.ts', 'src/**/*.auth-server.test.ts'],
           environment: 'node',
         },
       },
@@ -34,6 +37,15 @@ export default defineConfig({
           fileParallelism: false,
           testTimeout: 30_000,
           hookTimeout: 120_000,
+        },
+      },
+      {
+        test: {
+          name: 'auth-server',
+          include: ['src/**/*.auth-server.test.ts'],
+          environment: 'node',
+          fileParallelism: false,
+          testTimeout: 30_000,
         },
       },
     ],

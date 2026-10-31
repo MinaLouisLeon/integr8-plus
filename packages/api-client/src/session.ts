@@ -140,9 +140,94 @@ export class SessionManager {
     return { tenantId: body.tenantId, userId: body.userId, memberships: body.memberships };
   }
 
-  async requestMagicLink(email: string, redirectTo: string): Promise<void> {
-    const response = await this.#post('/v1/auth/magic-link', { email, redirectTo });
+  /**
+   * Asks for a 6-digit sign-in code by email (P36). Resolves the same way
+   * whether or not the address has an account; a 429 (`auth.rate_limited`)
+   * means "wait a minute", for any address.
+   */
+  async requestSignInCode(email: string, locale?: 'en' | 'ar'): Promise<void> {
+    const response = await this.#post('/v1/auth/magic-link', {
+      email,
+      ...(locale === undefined ? {} : { locale }),
+    });
     await this.#readOrThrow(response);
+  }
+
+  /**
+   * Signs in with an emailed code. For fifteen minutes afterwards Change
+   * password needs no current password; {@link signedInWithCodeAt} says when
+   * that began, so a screen can leave the field out.
+   */
+  async signInWithCode(
+    input: Omit<SignInInput, 'password'> & { code: string },
+  ): Promise<SignInResult> {
+    const response = await this.#post('/v1/auth/magic-link/complete', {
+      email: input.email,
+      token: input.code,
+      clientApp: this.#options.clientApp,
+      ...(input.tenantId === undefined ? {} : { tenantId: input.tenantId }),
+      ...(input.companySlug === undefined ? {} : { companySlug: input.companySlug }),
+      ...(input.deviceLabel === undefined ? {} : { deviceLabel: input.deviceLabel }),
+    });
+
+    const body = (await this.#readOrThrow(response)) as {
+      tokens: TokenPayload;
+      tenantId: string;
+      userId: string;
+      memberships: Membership[];
+    };
+
+    await this.#options.store.write(toStoredTokens(body.tokens));
+    this.signedInWithCodeAt = this.#now();
+
+    return { tenantId: body.tenantId, userId: body.userId, memberships: body.memberships };
+  }
+
+  /**
+   * When this app last signed in with an emailed code, in this run. Only a
+   * hint for the screen: the API decides, and answers 403
+   * `auth.current_password_required` if the window has passed.
+   */
+  signedInWithCodeAt: Date | undefined;
+
+  /** True while Change password may leave the current password out. */
+  mayChangePasswordWithoutCurrent(windowMs = 15 * 60 * 1000): boolean {
+    return (
+      this.signedInWithCodeAt !== undefined &&
+      this.#now().getTime() - this.signedInWithCodeAt.getTime() < windowMs
+    );
+  }
+
+  /**
+   * Changes the password (P36). Every other device is signed out by the API;
+   * this one keeps its session. Throws {@link ApiRequestError} with the API's
+   * code on a refusal.
+   */
+  async changePassword(input: {
+    currentPassword?: string;
+    newPassword: string;
+    locale?: 'en' | 'ar';
+  }): Promise<{ signedOutElsewhere: number; emailed: boolean }> {
+    const { data, error, response } = await this.client.POST('/v1/me/password', {
+      body: {
+        newPassword: input.newPassword,
+        ...(input.currentPassword === undefined || input.currentPassword === ''
+          ? {}
+          : { currentPassword: input.currentPassword }),
+        ...(input.locale === undefined ? {} : { locale: input.locale }),
+      },
+    });
+    if (error !== undefined || data === undefined) {
+      const refusal = (error as { error?: { code?: string; message?: string } } | undefined)?.error;
+      throw new ApiRequestError(
+        response.status,
+        refusal?.code ?? 'password_change_failed',
+        refusal?.message ?? 'The password was not changed.',
+        response.headers.get('x-request-id') ?? '',
+      );
+    }
+    this.signedInWithCodeAt = undefined;
+    return data;
   }
 
   /**

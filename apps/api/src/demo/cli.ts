@@ -39,7 +39,7 @@ Options:
   --platform-user <email>  The Integr8 staff account recorded as setting the company
                            up. Default: the first active one.
   --confirm-production     Required when APP_ENV is staging or production.
-  --without-sign-in        Do not create sign-in accounts (no Supabase needed). The
+  --without-sign-in        Do not create sign-in accounts (no Auth container needed). The
                            people exist in the company but nobody can sign in as
                            them. Refused in staging and production.
   --only <keys>            Only these sections (comma-separated), plus setup,

@@ -7,6 +7,7 @@ import {
   isUsableMembership,
   type LockPolicy,
   type LoginOutcome,
+  type SignInMethod,
   withTenant,
 } from '@integr8/db';
 import type { AuthConfig } from '../config.js';
@@ -54,6 +55,30 @@ export interface SignInResult {
    * flow with a token in between just to answer "which company?".
    */
   memberships: AuthMembership[];
+}
+
+export interface SignInCodeRequest {
+  email: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}
+
+/** A code to email, and to whom. Never returned to a client. */
+export interface IssuedSignInCode {
+  email: string;
+  userId: UserId;
+  code: string;
+}
+
+/** A code request, in the shape the attempt log and the per-IP limit read. */
+function codeAttempt(email: string, input: SignInCodeRequest): SignInInput {
+  return {
+    email,
+    password: '',
+    clientApp: 'web',
+    ipAddress: input.ipAddress ?? null,
+    userAgent: input.userAgent ?? null,
+  };
 }
 
 export interface SignInServiceDeps {
@@ -108,49 +133,122 @@ export class SignInService {
       throw error;
     }
 
-    return this.#completeSignIn(identity, input, email);
+    return this.#completeSignIn(identity, input, email, 'password');
   }
 
   /**
-   * Sends a magic link.
+   * Makes a 6-digit sign-in code for an address, for the caller to email.
    *
-   * Resolves the same way whether or not the address is known. An endpoint that
-   * answered "no such account" would be a free membership oracle: paste in a
-   * list of addresses, learn which ones are customers.
+   * Returns `undefined` — and the caller answers exactly as it would have —
+   * when there is nothing to send: no such address, no company to sign in to,
+   * or the address is locked. An endpoint that answered "no such account" would
+   * be a free membership oracle: paste in a list of addresses, learn which ones
+   * are customers.
+   *
+   * The limits are counted before anything is looked up, so they bite the same
+   * for an address that exists and one that does not, and a refusal says
+   * nothing about either. One code a minute stops a second click sending two;
+   * five an hour stops somebody filling a stranger's inbox.
    */
-  async sendMagicLink(email: string, redirectTo: string): Promise<void> {
-    await this.#identity.sendMagicLink(email.trim().toLowerCase(), redirectTo);
+  async requestSignInCode(input: SignInCodeRequest): Promise<IssuedSignInCode | undefined> {
+    await this.checkSignInCodeLimits(input);
+    return this.issueSignInCode(input);
   }
 
-  /** Completes a magic-link sign-in. Lockout applies here too. */
-  async completeMagicLink(
-    input: Omit<SignInInput, 'password'> & { token: string },
+  /**
+   * The first half of {@link requestSignInCode}: the limits, which may refuse.
+   * The route waits for this and answers; the second half runs after the
+   * answer has gone, so how long the answer took says nothing about whether
+   * the address has an account.
+   */
+  async checkSignInCodeLimits(input: SignInCodeRequest): Promise<void> {
+    const email = input.email.trim().toLowerCase();
+    const now = this.#clock();
+    const auth = await getAuthDataSource();
+
+    await this.#guardRate(email, codeAttempt(email, input), now);
+
+    const perInterval = await auth.rateLimits.consume({
+      bucketKey: 'sign-in-code:interval:' + email,
+      limit: 1,
+      windowMs: this.#config.AUTH_SIGN_IN_CODE_INTERVAL_SECONDS * 1000,
+      now,
+    });
+    const perHour = await auth.rateLimits.consume({
+      bucketKey: 'sign-in-code:hour:' + email,
+      limit: this.#config.AUTH_SIGN_IN_CODE_HOURLY_LIMIT,
+      windowMs: 60 * 60 * 1000,
+      now,
+    });
+    if (!perInterval.allowed || !perHour.allowed) {
+      throw new RateLimitedError('Too many sign-in codes requested for this address');
+    }
+  }
+
+  /** The second half of {@link requestSignInCode}: look up, and make a code if there is anyone to send it to. */
+  async issueSignInCode(input: SignInCodeRequest): Promise<IssuedSignInCode | undefined> {
+    const email = input.email.trim().toLowerCase();
+    const now = this.#clock();
+    const auth = await getAuthDataSource();
+    const attempt = codeAttempt(email, input);
+
+    const lock = await auth.loginSecurity.findLock(email);
+    if (isLocked(lock, now)) {
+      await this.#record(email, 'locked_out', attempt);
+      return undefined;
+    }
+
+    const identity = await this.#identity.findByEmail(email);
+    if (identity === undefined) {
+      await this.#record(email, 'unknown_identity', attempt);
+      return undefined;
+    }
+
+    const memberships = (await auth.memberships.listForUser(identity.userId)).filter(
+      isUsableMembership,
+    );
+    if (memberships.length === 0) {
+      await this.#record(email, 'no_membership', attempt);
+      return undefined;
+    }
+
+    const code = await this.#identity.createSignInCode(email);
+    return { email, userId: identity.userId, code };
+  }
+
+  /**
+   * Completes a sign-in with an emailed code. A wrong code counts towards the
+   * lockout exactly as a wrong password does: six digits are guessable, and
+   * the lockout is what makes them not.
+   */
+  async completeSignInCode(
+    input: Omit<SignInInput, 'password'> & { code: string },
   ): Promise<SignInResult> {
     const email = input.email.trim().toLowerCase();
     const now = this.#clock();
     const auth = await getAuthDataSource();
-    const withPassword = { ...input, password: '' };
+    const attempt = { ...input, password: '' };
 
-    await this.#guardRate(email, withPassword, now);
+    await this.#guardRate(email, attempt, now);
 
     const lock = await auth.loginSecurity.findLock(email);
     if (isLocked(lock, now) && lock?.lockedUntil != null) {
-      await this.#record(email, 'locked_out', withPassword);
+      await this.#record(email, 'locked_out', attempt);
       throw new AccountLockedError(lock.lockedUntil);
     }
 
     let identity: VerifiedIdentity;
     try {
-      identity = await this.#identity.verifyMagicLink(input.token, email);
+      identity = await this.#identity.verifySignInCode(email, input.code);
     } catch (error) {
       if (error instanceof InvalidCredentialsError) {
-        await this.#record(email, 'bad_credentials', withPassword);
+        await this.#record(email, 'bad_credentials', attempt);
         await auth.loginSecurity.registerFailure(email, this.#lockPolicy, now);
       }
       throw error;
     }
 
-    return this.#completeSignIn(identity, withPassword, email);
+    return this.#completeSignIn(identity, attempt, email, 'email_code');
   }
 
   /**
@@ -187,6 +285,13 @@ export class SignInService {
       throw new NotAMemberError(targetTenantId);
     }
 
+    // How and when the person proved who they are travels with them, so the
+    // fifteen minutes after a code sign-in in which Change password needs no
+    // current password do not restart by switching company.
+    const previous = await withTenant(principal.tenantId, (tx) =>
+      tx.sessions.findById(principal.sessionId),
+    );
+
     const tokens = await withTenant(targetTenantId, async (tx) => {
       const issued = await this.#sessions.issue(tx, {
         tenantId: targetTenantId,
@@ -196,6 +301,8 @@ export class SignInService {
         deviceLabel: input.deviceLabel ?? null,
         userAgent: input.userAgent ?? null,
         ipAddress: input.ipAddress ?? null,
+        signedInWith: previous?.signedInWith ?? 'password',
+        ...(previous === undefined ? {} : { authenticatedAt: previous.authenticatedAt }),
       });
 
       await tx.auditLog.append({
@@ -229,6 +336,7 @@ export class SignInService {
     identity: VerifiedIdentity,
     input: SignInInput,
     email: string,
+    method: SignInMethod,
   ): Promise<SignInResult> {
     const auth = await getAuthDataSource();
     const now = this.#clock();
@@ -271,6 +379,7 @@ export class SignInService {
         deviceLabel: input.deviceLabel ?? null,
         userAgent: input.userAgent ?? null,
         ipAddress: input.ipAddress ?? null,
+        signedInWith: method,
       });
 
       await tx.auditLog.append({
@@ -284,6 +393,7 @@ export class SignInService {
           clientApp: input.clientApp,
           deviceLabel: input.deviceLabel ?? null,
           companiesAvailable: memberships.length,
+          signedInWith: method,
         },
       });
 

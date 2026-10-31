@@ -35,7 +35,7 @@ export class TestDatabaseUnavailableError extends Error {
         '  DATABASE_URL=postgres://integr8_app....      (runtime role)',
         '  DATABASE_URL_ADMIN=postgres://postgres....   (owner role)',
         '',
-        'docs/database/runbook-supabase-setup.md walks through creating them.',
+        'docs/database/README.md ("Two roles") walks through creating them.',
       ].join('\n'),
     );
     this.name = 'TestDatabaseUnavailableError';

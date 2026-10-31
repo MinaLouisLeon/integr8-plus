@@ -58,6 +58,9 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   attachment_id_taken: 'تعارض هذا الملف مع ملف آخر. تجاهل التغيير وأضف الملف من جديد.',
   attachment_removed: 'سبقت إزالة هذا المرفق.',
   auth: {
+    current_password_required:
+      'أدخل كلمة المرور الحالية. إذا نسيتها، فسجّل الدخول أولًا برمز يصلك بالبريد الإلكتروني.',
+    current_password_wrong: 'هذه ليست كلمة المرور الحالية. تحقّق منها وحاول مرة أخرى.',
     identity_provider_unavailable: 'تسجيل الدخول غير متاح الآن. حاول مرة أخرى بعد بضع دقائق.',
     impersonation_denied: 'لا يمكنك فتح هذه الشركة بصفة ذلك الشخص.',
     invalid_token: 'انتهت جلستك. سجّل الدخول مرة أخرى.',

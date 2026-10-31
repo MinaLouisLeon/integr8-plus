@@ -1,67 +1,90 @@
 # Runbook — backup and restore
 
+The database is the compose stack's own Postgres (`deploy/compose.yml`), on the
+same machine as the API. There is no managed provider behind it, so there are
+no backups unless this runbook sets them up.
+
 A backup nobody has restored is a hypothesis. This runbook has two halves:
-configuring backups, which takes ten minutes, and rehearsing a restore, which
-takes an hour and is the half that matters.
+scheduling the nightly dump, which takes ten minutes, and rehearsing a
+restore, which takes an hour and is the half that matters.
 
 ---
 
-## Part 1 — configure backups
+## What is backed up
 
-### Supabase's own backups
+`deploy/vps/backup-postgres.sh` dumps the **whole `integr8` database** with
+`pg_dump`, as plain SQL compressed with gzip:
 
-**Project Settings → Database → Backups.**
+- every company's data, in the `public` schema;
+- the sign-in accounts of the self-hosted Supabase Auth (P36), in the `auth`
+  schema. Passwords are stored there as bcrypt hashes. No separate backup of
+  Auth is needed, and none exists.
 
-| Plan       | What you get                                         |
-| ---------- | ---------------------------------------------------- |
-| Free       | No automated backups. Not acceptable for production. |
-| Pro        | Daily backups, 7-day retention.                      |
-| Pro + PITR | Point-in-time recovery, 2-minute granularity.        |
+Roles are not in the dump (they are cluster-wide, not per database).
+`deploy/compose.yml`'s `bootstrap` service creates all three — `integr8_app`,
+`integr8_auth` and `supabase_auth_admin` — from the env file every time the
+stack starts.
 
-Production runs on Pro with PITR. Daily backups bound data loss at 24 hours;
-PITR bounds it at minutes, and the difference is the difference between "we lost
-yesterday afternoon's job sheets" and "we lost the last two minutes".
+| Setting   | Default                        | Meaning                               |
+| --------- | ------------------------------ | ------------------------------------- |
+| Files     | `/var/backups/integr8`         | `BACKUP_DIR`; the directory is `0700` |
+| Name      | `integr8-YYYYMMDD-HHMM.sql.gz` | UTC time of the dump                  |
+| Kept      | 14                             | `KEEP`; older files are deleted       |
+| Repo path | `/opt/integr8`                 | `INTEGR8_DIR`; where compose.yml is   |
 
-Confirm on the Backups page that the most recent backup is less than 24 hours
-old. Do this monthly, or wire it into whatever already pages you.
+> **A dump contains every customer's data and every password hash.** It is the
+> most sensitive file the company holds. Keep the directory readable by root
+> only, and never copy a dump to a laptop or a chat.
 
-### An independent copy
+## Part 1 — schedule it nightly
 
-Supabase's backups live inside the account they protect. If that account is
-suspended or a project is deleted, they go with it. Take one weekly logical dump
-somewhere else.
-
-```bash
-# Requires postgresql-client 15 or newer.
-# Runs from a machine with the direct (5432) connection string.
-pg_dump \
-  --format=custom \
-  --no-owner \
-  --no-privileges \
-  --file="integr8-$(date +%Y-%m-%d).dump" \
-  "$DATABASE_URL_ADMIN"
-```
-
-- `--format=custom` gives selective restore and parallelism.
-- `--no-owner` / `--no-privileges` because roles differ between the source and
-  wherever you restore. Roles are recreated by `db bootstrap`, which is why they
-  are not in migrations.
-
-Store it encrypted, somewhere not reachable with the credentials that reach the
-database. Retain thirteen months.
-
-> **This dump contains every customer's data.** It is the most sensitive
-> artefact the company holds. Encrypt at rest, restrict access to named people,
-> and log every retrieval.
-
-### Verify a dump is readable
-
-A dump that will not restore is worse than none, because you will not look for
-another. Weekly, in CI or by hand:
+On the server, as root (the script talks to Docker):
 
 ```bash
-pg_restore --list "integr8-2026-09-10.dump" > /dev/null && echo "readable"
+sudo crontab -e
 ```
+
+Add:
+
+```cron
+0 3 * * * /opt/integr8/deploy/vps/backup-postgres.sh >> /var/log/integr8-backup.log 2>&1
+```
+
+Run it once by hand so the first file exists and any error shows now:
+
+```bash
+sudo /opt/integr8/deploy/vps/backup-postgres.sh
+```
+
+### Check last night's file exists
+
+Weekly, or after any change to the server:
+
+```bash
+sudo ls -lh /var/backups/integr8 | tail -n 3
+sudo tail -n 5 /var/log/integr8-backup.log
+```
+
+The newest file is dated within the last 24 hours and is not a few hundred
+bytes (an empty database dumps to a few kilobytes; a real one to megabytes).
+Check it is readable:
+
+```bash
+gunzip -t /var/backups/integr8/integr8-<newest>.sql.gz && echo readable
+```
+
+## The limit, honestly
+
+**The files sit on the same disk as the database.** They protect against a bad
+migration, a deleted company or a mistaken bulk change. They do **not** protect
+against losing the machine, its disk or the account that holds it: all of it,
+backups included, goes at once.
+
+The next step, not yet done, is copying each night's file somewhere else: a
+cloud bucket with `rclone`, or the cloud provider's boot-volume backup policy.
+Both are described in [`docs/deployment/README.md`](../deployment/README.md).
+Until one of them is in place, the recovery targets below assume the machine
+survives.
 
 ---
 
@@ -72,10 +95,10 @@ result in the table at the bottom of this file. An untimed restore procedure
 means you cannot answer "how long until we are back?", which is the only
 question anyone will ask.
 
-### Rehearsal, into a scratch project
+Rehearse on the home test box (Ubuntu with Docker), never on production.
 
-1. **Create a scratch Supabase project.** Same region and plan as production, so
-   the timing is honest.
+1. **Copy one dump to the test box** over SSH (`scp`), into a root-only
+   directory. Delete it at the end.
 
 2. **Note the start time.**
 
@@ -83,67 +106,32 @@ question anyone will ask.
    date -u +%H:%M:%S
    ```
 
-3. **Restore the dump.**
+3. **Restore it** — see "Restoring one file into a running stack" below.
+
+4. **Check the schema is at the expected version.**
 
    ```bash
-   pg_restore \
-     --dbname="$SCRATCH_DATABASE_URL_ADMIN" \
-     --no-owner \
-     --no-privileges \
-     --jobs=4 \
-     integr8-2026-09-10.dump
+   docker compose -f deploy/compose.yml --env-file deploy/.env \
+     run --rm migrate node node_modules/@integr8/db/dist/migrator/cli.js status
    ```
 
-   `--jobs=4` restores tables in parallel. Expect complaints about extensions
-   and roles that already exist; those are harmless. Anything mentioning a
-   **table** is not.
+   Every line `applied`. A `pending` line means the dump predates the running
+   build: start the stack again and `migrate` applies it. Note it, because it
+   tells you the backup and the deployed code were out of step.
 
-4. **Recreate the runtime role.** The dump has no roles in it.
+5. **Check the data.** Row counts against what production reported:
 
    ```bash
-   export INTEGR8_APP_PASSWORD="$(openssl rand -base64 32)"
-   DATABASE_URL_ADMIN="$SCRATCH_DATABASE_URL_ADMIN" \
-     pnpm --filter @integr8/db db bootstrap
+   docker compose -f deploy/compose.yml --env-file deploy/.env exec postgres \
+     psql -U postgres -d integr8 -c "select
+       (select count(*) from tenants)      as tenants,
+       (select count(*) from tenant_users) as members,
+       (select count(*) from audit_log)    as audit_entries,
+       (select count(*) from auth.users)   as sign_in_accounts;"
    ```
 
-5. **Check the schema is at the expected version.**
-
-   ```bash
-   DATABASE_URL_ADMIN="$SCRATCH_DATABASE_URL_ADMIN" \
-     pnpm --filter @integr8/db db status
-   ```
-
-   Every line `applied`. A `pending` line means the dump predates a migration —
-   run `db up` and note it, because it tells you the backup and the deployed
-   code were out of step.
-
-6. **Check the data.** Row counts against what production reported at dump time:
-
-   ```sql
-   select
-     (select count(*) from tenants)      as tenants,
-     (select count(*) from tenant_users) as members,
-     (select count(*) from audit_log)    as audit_entries;
-   ```
-
-7. **Check isolation survived the restore.** Grants and policies are the parts
-   most likely to be lost by `--no-privileges`, and losing them silently is the
-   worst possible outcome of a restore.
-
-   ```bash
-   # In a scratch .env, pointed at the restored project
-   APP_ENV=test
-   INTEGR8_TEST_DATABASE=i-know-this-database-is-disposable
-
-   pnpm --filter @integr8/db test:integration
-   ```
-
-   > This truncates tables. Only ever run it against the scratch project, never
-   > against the restored copy if you intend to promote that copy to production.
-   > For a real restore, use the read-only checks in step 8 instead.
-
-8. **For a real restore, verify without destroying.** Connect as `integr8_app`
-   and confirm the backstop is intact:
+6. **Check isolation survived.** Connect as `integr8_app` and confirm the
+   backstop is intact:
 
    ```sql
    -- Should return only this tenant's rows.
@@ -159,32 +147,59 @@ question anyone will ask.
    One distinct `tenant_id`, and a permission error on the second. Anything else
    means the restore lost its grants or policies and must not serve traffic.
 
-9. **Note the finish time**, and record the result below.
+7. **Sign in** on the web app with a real account from the dump. That proves
+   the `auth` schema came back with the rest.
 
-10. **Delete the scratch project.** It holds a full copy of customer data.
+8. **Note the finish time**, record the result below, and delete the dump and
+   the test box's restored database (`docker compose down -v` on the test
+   stack): it holds a full copy of customer data.
+
+### Restoring one file into a running stack
+
+This **replaces the database's contents**. The dump was written with `--clean`,
+so it drops and recreates every object it contains.
+
+```bash
+cd /opt/integr8
+compose() { docker compose -f deploy/compose.yml --env-file deploy/.env "$@"; }
+
+# 1. Stop everything that writes, and Auth, which holds connections to its schema.
+compose stop web api worker auth
+
+# 2. Make sure the roles exist (the dump names them as owners).
+compose run --rm bootstrap
+
+# 3. Restore.
+gunzip -c /var/backups/integr8/integr8-20261004-0300.sql.gz \
+  | compose exec -T postgres psql -U postgres -d integr8 -v ON_ERROR_STOP=1
+
+# 4. Start again. migrate applies anything newer than the dump; Auth checks its
+#    own schema; the API waits for both.
+compose up -d
+```
 
 ### A real restore
 
 Same steps, plus:
 
-- **Stop the API first.** Writes landing during a restore are lost, and a
-  half-restored database serving traffic corrupts more than it recovers.
-- **Prefer PITR to a dump.** Supabase's dashboard restore to a timestamp loses
-  minutes; a nightly dump loses up to a day.
-- **Restore into a new project, then repoint**, rather than restoring over the
-  live one. If the restore is bad you still have the original.
+- **Take a dump of the current state first**, however broken, with
+  `backup-postgres.sh`. If the restore goes wrong you still have it.
+- **Choose the file deliberately.** The newest one may already contain the
+  problem; a bad migration at 14:00 means last night's 03:00 file.
+- **Everything after the dump is lost**, up to a day of work. Phones keep
+  unsent work and send it again when they reconnect; office work typed into
+  the web or desktop app since the dump is gone.
 - **Write the incident up the same day**, while you remember what was confusing.
 
 ---
 
 ## Recovery objectives
 
-| Measure                                   | Target    | Mechanism                    |
-| ----------------------------------------- | --------- | ---------------------------- |
-| RPO — how much data we can afford to lose | 5 minutes | Supabase PITR                |
-| RPO without PITR                          | 24 hours  | Daily automated backup       |
-| RPO if the Supabase account is lost       | 7 days    | Weekly independent `pg_dump` |
-| RTO — how long until we are serving again | 2 hours   | This runbook, rehearsed      |
+| Measure                                   | Target   | Mechanism                                 |
+| ----------------------------------------- | -------- | ----------------------------------------- |
+| RPO — how much data we can afford to lose | 24 hours | Nightly `backup-postgres.sh`              |
+| RPO if the machine is lost                | —        | Not covered until dumps are copied off it |
+| RTO — how long until we are serving again | 2 hours  | This runbook, rehearsed                   |
 
 The RTO is a claim until a rehearsal supports it. Fill in the table below.
 

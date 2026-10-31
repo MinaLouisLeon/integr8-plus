@@ -4,6 +4,7 @@ import {
   type OfflineGrant,
   type Session,
   type SessionRevocationReason,
+  type SignInMethod,
   type TenantTransaction,
   withTenant,
 } from '@integr8/db';
@@ -43,6 +44,10 @@ export interface IssueSessionInput {
   ipAddress?: string | null;
   /** Set only when a super admin is impersonating; see ImpersonationService. */
   impersonationGrantId?: string | null;
+  /** How the person proved who they are. Read by Change password. */
+  signedInWith: SignInMethod;
+  /** When they did. Defaults to now; a company switch passes the old session's. */
+  authenticatedAt?: Date;
 }
 
 export interface SessionServiceDeps {
@@ -81,6 +86,8 @@ export class SessionService {
       userAgent: input.userAgent ?? null,
       ipAddress: input.ipAddress ?? null,
       impersonationGrantId: input.impersonationGrantId ?? null,
+      signedInWith: input.signedInWith,
+      authenticatedAt: input.authenticatedAt ?? now,
       expiresAt: new Date(now.getTime() + this.#config.AUTH_SESSION_MAX_TTL_SECONDS * 1000),
     });
 

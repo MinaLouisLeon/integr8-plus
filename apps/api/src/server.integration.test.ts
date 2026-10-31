@@ -78,7 +78,7 @@ beforeAll(async () => {
         `  INTEGR8_TEST_DATABASE=${ACKNOWLEDGEMENT}`,
         '  DATABASE_URL, DATABASE_URL_ADMIN, DATABASE_URL_AUTH',
         '',
-        'See docs/database/runbook-supabase-setup.md.',
+        'See docs/database/README.md.',
       ].join('\n'),
     );
   }

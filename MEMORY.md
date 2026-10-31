@@ -1,89 +1,119 @@
-# MEMORY.md
+# MEMORY.md — project state and gotchas
 
-The project's working memory: where things stand, what was decided and why,
-and what is still open. Newest first inside each section. Update it at the end
-of any piece of work that changes one of these facts; `CLAUDE.md` is the how-to,
-this is the state.
+The project's working memory: where things stand, what was decided and why, and what is
+still open. Facts that are not obvious from the code and go stale. Update this file at
+the end of any piece of work that changes one of them, and date each section.
+`CLAUDE.md` and `AGENTS.md` are the how-to; this is the state.
 
-_Last updated: 27 October 2026._
+## Snapshot (2026-10-31)
 
-## Current state
-
-- **Version** 1.2.1 (root `package.json`, the only source of truth; a release
-  bumps it). `README.md` and `PROJECT_INDEX.md` still say 1.1.2 and "migrations
-  reach 0049": both are stale.
-- **Migrations** run to `0054_local_identities`.
-- **Modules shipped**: field work (customers, sites, work orders, visits and the
-  schedule, timesheets), forms and submissions, PDF documents, CRM, sales,
-  finance, general ledger, inventory, purchasing, assets, HR, expenses,
-  Egyptian payroll, manufacturing, company roles, serial/batch tracking,
-  qualifications (0052), contracts + maintenance plans + deadlines (0053), the
-  AI assistant (help library or a model), ETA e-invoicing (test-only, not
-  certified), company website data API.
-- **Branches**: the documented flow is feature → `dev` → `staging` → `main`
-  (`.github/workflows/branch-policy.yml`), but on GitHub only `main` exists
-  today and recent pull requests (#125–#127) were merged straight into `main`.
-  The branch-policy check flags that; it does not block it.
+- **Version:** root `package.json` is **1.2.1** (the only source of the version; a
+  release bumps it).
+- **Migrations:** `packages/db/migrations` reaches **0054** (`0053_maintenance_contracts_deadlines`,
+  `0054_self_hosted_sign_in`). The next one is 0055. Main briefly carried a different
+  0054, `0054_local_identities`, for a built-in sign-in; it was never applied anywhere
+  and was removed when PR #130 merged main (see Decisions).
+- **Modules shipped:** field work (customers, sites, work orders, visits and the
+  schedule, timesheets), forms and submissions, PDF documents, CRM, sales, finance,
+  general ledger, inventory, purchasing, assets, HR, expenses, Egyptian payroll,
+  manufacturing, company roles, serial/batch tracking, qualifications (0052), contracts +
+  maintenance plans + deadlines (0053), the AI assistant (help library or a model), ETA
+  e-invoicing (test-only, not certified), company website data API, the demo company
+  seeder.
+- **Plan:** v1.2 "scheduling" phases are `IN PROGRESS` — P25 calendar & dispatch board,
+  P26 skills & certificates, P27 maintenance plans, contracts & response deadlines.
+  v1.3 (P28–P31) and v2.0 (P32–P35) are `NOT STARTED`. Many v1.0 phases (P16–P19) are
+  still `[~]` in `plan/README.md` even though their features exist in code.
+- **P36 self-hosted sign-in** (`plan/v1.0-launch/P36-self-hosted-sign-in.md`, approved
+  2026-10-31): PR #130 on `feat/self-hosted-auth`, against `main`. Auth container in
+  `deploy/compose.yml` (`supabase/auth:v2.197.0`, private ports, memory caps), bootstrap's
+  `supabase_auth_admin` role, migration 0054, emailed 6-digit sign-in codes and Change
+  password (API + web/desktop/phone), purge deleting orphaned accounts,
+  `admin-cli user-password` through Auth, CI real-Auth suite, docs (setup guide
+  renumbered; Railway and the Supabase runbook deleted). `SUPABASE_URL` is replaced by `SUPABASE_AUTH_URL`;
+  the API refuses to start with the old name. Still to do: CI's database job and the
+  test-box run. The plan file's "Implementation notes" lists where the build differs.
+- **In flight on the same branch:** starting a company's app build from the platform
+  dashboard (`apps/api/src/platform/app-builds.ts`, `APP_BUILDS=off|github`,
+  `GITHUB_BUILD_TOKEN`, `GITHUB_BUILD_REPOSITORY`, `GITHUB_BUILD_REF`), committed as work
+  in progress. Still to check: OpenAPI/client regeneration, `.env.example`, setup
+  checklist, docs.
+- **Recently merged to `main`:** engineer qualifications (PR #125), maintenance
+  contracts/deadlines (PR #126), version bump to 1.2.1 (PR #127), the demo company seeder
+  and a built-in sign-in (PR #128; the sign-in part is replaced by P36).
 
 ## The deployment
 
-- One Oracle Cloud Always Free ARM machine, `/opt/integr8`, running
-  `deploy/compose.yml` behind Caddy, settings in `deploy/.env`.
-- Domain `integr8-media.com`: web `app.integr8-media.com`, API
-  `api.integr8-media.com`. R2 for files, Resend for mail, Stripe test mode.
-- **Sign-in**: the owner has only used the staff login so far and has no
-  Supabase project. Plan: `IDENTITY_PROVIDER=local` (Stage 12 part Q of the
-  repo guide).
-- The owner's own published copy of the setup guide (a claude.ai artifact,
-  older 1.1.0 edition with its own part letters):
-  https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29. It has Stage 15 (demo
-  company) and Stage 12 part **M** (sign-in without Supabase); the repo's
-  guide calls the same part **Q**. Keep both in step when the procedure
-  changes.
+- One Oracle Cloud Always Free ARM machine (Ampere A1, 4 cores, 24 GB), `/opt/integr8`,
+  running `deploy/compose.yml` behind Caddy, settings in `deploy/.env`. It will be shared
+  with the MyRooms project, which runs its own full self-hosted Supabase, PowerSync and
+  GlitchTip; the two keep separate Auth containers.
+- Domain `integr8-media.com`: web `app.integr8-media.com`, API `api.integr8-media.com`. R2
+  for files, Resend for mail, Stripe test mode.
+- **Sign-in:** the owner has only used the staff login so far and has no Supabase project.
+  After P36 the machine needs the three Auth secrets (setup guide, Stage 11 part Q).
+- The home test box is Ubuntu 24.04 with Docker, Arcane, Webmin and Samba (no longer
+  ZimaOS).
+- The owner keeps a published copy of the setup guide as a claude.ai artifact:
+  https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29 (an older edition with its own part
+  letters). Keep it in step with the repo guide when the procedure changes.
 
 ## Decisions
 
-- **Built-in sign-in (`IDENTITY_PROVIDER=local`)**, October 2026. The
-  `IdentityProvider` interface was already the only place sign-in touched a
-  credential store, so `LocalIdentityProvider` replaces Supabase there and
-  nothing after it changes. Passwords are scrypt hashes (the format super
-  admins already use), in `identities`, reachable only by `integr8_auth`;
-  unknown addresses cost the same work as wrong passwords. Default stays
-  `supabase` so existing deployments do not change. `admin-cli user-password`
-  reuses an existing member's user id, which is how a server moves off
-  Supabase without anyone losing their companies.
-- **The demo seeder goes through the API**, in-process with Fastify's
-  `inject`, as the company's own people (plus a staff impersonation for
-  staff-only setup). Direct inserts were rejected: they skip numbering, stock,
-  ledger postings and audit, and produce data the screens cannot show. It
-  refuses staging/production without `--confirm-production`.
+- **Self-hosted Supabase Auth, not a built-in sign-in** (2026-10-31, while merging main
+  into PR #130). Main had added `IDENTITY_PROVIDER=local` (scrypt hashes in an
+  `identities` table, emailed links). P36's design was kept instead: one way to sign in,
+  through the Auth container, with codes rather than links. The local provider, its
+  tables and `IDENTITY_PROVIDER` were removed; `admin-cli user-password` was rewritten to
+  set the password in Auth.
+- **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
+  company's own people (plus a staff impersonation for staff-only setup). Direct inserts
+  were rejected: they skip numbering, stock, ledger postings and audit, and produce data
+  the screens cannot show. It refuses staging/production without `--confirm-production`.
+  Setup guide Stage 14.
 
-## Recent work (branch `ccr-a47a4d02-8y2u6x`, not yet merged)
+## Places that state the version or migration count
 
-1. `feat(api): demo company seeder`: `apps/api/src/demo/` and
-   `pnpm --filter @integr8/api demo-company`. One company, nine people (one per
-   role, three engineers), every module on, 26 work orders in every state,
-   stock, purchasing, manufacturing, assets/contracts/maintenance, forms and
-   reports, CRM, sales, HR/payroll, invoices/payments, ETA setup, ledger
-   journals. Full run about 30 s on a local database. Setup guide Stage 15.
-2. `feat(auth): built-in sign-in without Supabase`: migration 0054,
-   `packages/auth/src/local-identity-provider.ts`,
-   `packages/db/src/repositories/identities.ts`, `IDENTITY_PROVIDER` in
-   `apps/api/src/config.ts`, `admin-cli user-password`. Tested locally end to
-   end: seeded logins, invitation acceptance, wrong-password refusal, moving an
-   existing member. Guide: Stage 3 step and Stage 12 part Q.
+Update them together at each release or new migration:
+
+- `README.md`: "Current version" line and the migration table.
+- `PROJECT_INDEX.md` ("Read carefully" line) and `PROJECT_INDEX.json` (`version`).
+- `docs/deployment/setup-checklist.md` **and** `.html`: header line, Stage 0 "Nothing to
+  merge", Stage 3 `APP_VERSION`/`API_RELEASE`, Stage 6 latest release, Stage 7 company
+  release name, Stage 11 example bump and feature parts, Stage 13, footer. References
+  like "included in v1.1.2" are history and stay as they are.
+- Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
 
-- **Magic-link sign-in** works in the API for both providers, but no web,
-  desktop or phone screen asks for a link yet; everybody signs in with a
-  password. There is also no "forgot password" screen: with
-  `IDENTITY_PROVIDER=local`, staff reset a person's password with
-  `admin-cli user-password`.
-- **The demo seeder with Supabase** was never run against a real Supabase
-  project (only the local provider and the test fake).
-- **Removing a demo company** is the normal close flow (suspend, export, close,
-  purged after seven days); there is no one-step delete.
-- `README.md` and `PROJECT_INDEX.md` version and migration counts are stale.
-- E-invoicing is test-only: nothing has been sent to the real ETA, and the
-  desktop app cannot sign until a token driver is added.
+- **The demo seeder against the real Auth container** has not been run (only the test
+  fake). **Removing a demo company** is the normal close flow (suspend, export, close,
+  purged after seven days); its people's sign-in accounts go with the purge.
+- E-invoicing is test-only: nothing has been sent to the real ETA, and the desktop app
+  cannot sign until a token driver is added.
+
+## Gotchas
+
+- GitHub branch protection is **not** in force (private repo on the Free plan). The only
+  guard against pushing to `main`/`staging`/`dev` is the local pre-push hook
+  (`scripts/git-hooks/pre-push-branch-guard.sh`); `INTEGR8_ALLOW_PROTECTED_PUSH=1`
+  bypasses it.
+- In practice feature PRs have been merged straight into `main`, despite the documented
+  `dev → staging → main` flow.
+- CI's database job runs only when the repo variable `DATABASE_TESTS=enabled`.
+- Integration tests refuse to run without `APP_ENV=test` and
+  `INTEGR8_TEST_DATABASE=i-know-this-database-is-disposable`.
+- TypeScript stays on 6.0.3: TypeScript 7 would silently switch off type-aware linting.
+- This Windows checkout has `core.autocrlf=true`, so files are CRLF on disk while
+  `.prettierrc` says `endOfLine: lf`. `prettier --write` on a directory rewrites hundreds
+  of files to LF (no content change, but `git status` fills up). Format only the files you
+  changed, with `--end-of-line auto`.
+- `APP_ENV=production` refuses to start on any stand-in service.
+- `PUBLIC_SIGNUP=off` by default: companies are created only by Integr8 staff.
+- ETA e-invoicing is not production-validated (live PreProd submission and hardware-token
+  signing untested). The ledger and payroll are management tools, not statutory.
+
+## Idea backlog
+
+`new-idea.md` (2026-10-26) lists candidate features for desktop/mobile, numbered so they
+can be picked by number. None is approved; #2 (visual scheduling board) is marked done.

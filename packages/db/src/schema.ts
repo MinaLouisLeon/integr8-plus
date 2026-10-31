@@ -276,6 +276,20 @@ export const SESSION_REVOCATION_REASONS = [
   'password_changed',
 ] as const;
 export const sessionRevocationReasonSchema = z.enum(SESSION_REVOCATION_REASONS);
+
+/**
+ * How somebody proved who they are for a session (0054). Read by Change
+ * password: an `email_code` session is proof on its own for fifteen minutes.
+ */
+export const SIGN_IN_METHODS = [
+  'password',
+  'email_code',
+  'invitation',
+  'signup',
+  'impersonation',
+] as const;
+export const signInMethodSchema = z.enum(SIGN_IN_METHODS);
+export type SignInMethod = z.infer<typeof signInMethodSchema>;
 export type SessionRevocationReason = z.infer<typeof sessionRevocationReasonSchema>;
 
 export const OFFLINE_GRANT_REVOCATION_REASONS = [
@@ -321,6 +335,23 @@ export interface SessionsTable {
   revoked_at: Date | null;
   revoked_reason: SessionRevocationReason | null;
   impersonation_grant_id: string | null;
+  /** 0054. Defaults to `password` for sessions made by an older release. */
+  signed_in_with: Generated<SignInMethod>;
+  /** 0054. When the person last proved who they are; copied on a company switch. */
+  authenticated_at: Generated<Date>;
+}
+
+/**
+ * A sign-in account to delete from Auth after a company purge (0054). Kept
+ * until the delete succeeds, so a failure is retried on the next purge run.
+ */
+export interface IdentityDeletionsTable {
+  user_id: string;
+  queued_at: Generated<Date>;
+  attempts: Generated<number>;
+  last_attempt_at: Date | null;
+  last_error: string | null;
+  completed_at: Date | null;
 }
 
 export interface RefreshTokensTable {
@@ -381,25 +412,6 @@ export interface LoginAttemptsTable {
   user_agent: string | null;
   outcome: LoginOutcome;
   occurred_at: Generated<Date>;
-}
-
-/** Credentials for people who sign in to companies, with IDENTITY_PROVIDER=local (0054). */
-export interface IdentitiesTable {
-  id: Generated<string>;
-  email: string;
-  password_hash: string | null;
-  email_verified_at: Date | null;
-  created_at: CreatedAt;
-  updated_at: ColumnType<Date, never, Date>;
-}
-
-/** One-time sign-in links, as hashes (0054). */
-export interface IdentityMagicLinksTable {
-  token_hash: string;
-  identity_id: string;
-  expires_at: Date;
-  used_at: Date | null;
-  created_at: CreatedAt;
 }
 
 export interface AccountLocksTable {
@@ -3492,6 +3504,7 @@ export interface Database {
   announcements: AnnouncementsTable;
   tenant_exports: TenantExportsTable;
   tenant_deletions: TenantDeletionsTable;
+  identity_deletions: IdentityDeletionsTable;
   tenant_users: TenantUsersTable;
   audit_log: AuditLogTable;
   sessions: SessionsTable;
@@ -3501,8 +3514,6 @@ export interface Database {
   impersonation_grants: ImpersonationGrantsTable;
   login_attempts: LoginAttemptsTable;
   account_locks: AccountLocksTable;
-  identities: IdentitiesTable;
-  identity_magic_links: IdentityMagicLinksTable;
   idempotency_keys: IdempotencyKeysTable;
   jobs: JobsTable;
   forms: FormsTable;
@@ -3694,10 +3705,6 @@ export const PLATFORM_TABLES = [
   // the pre-authentication role that does holds nothing else; see 0003.
   'login_attempts',
   'account_locks',
-  // Sign-in credentials when the server keeps them itself (0054): the same
-  // reason as the two above. Only the pre-authentication role reaches them.
-  'identities',
-  'identity_magic_links',
   // Rate limiting runs before the handler and, for an unauthenticated request,
   // before there is any tenant to scope by. Keyed on an opaque bucket string
   // and reached only by the pre-authentication role; see 0004.
@@ -3717,6 +3724,9 @@ export const PLATFORM_TABLES = [
   'announcements',
   'tenant_exports',
   'tenant_deletions',
+  // Sign-in accounts still to delete from Auth after a purge (0054). Named by
+  // user id only, after the company that held them is gone.
+  'identity_deletions',
   // The flags that exist belong to no company; every company reads them and its
   // own answers beside them.
   'feature_flags',

@@ -103,6 +103,11 @@ function Settings() {
           <Detail label={t('mobile.settings.role')}>
             {t(`workspace.role.${person.role as 'engineer'}`, { defaultValue: person.role })}
           </Detail>
+          <Button
+            label={t('auth.changePassword.menu')}
+            variant="secondary"
+            onPress={() => router.push('/change-password')}
+          />
         </Section>
       )}
 

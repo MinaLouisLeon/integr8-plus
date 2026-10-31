@@ -47,12 +47,17 @@ Rules that hold across the workspace:
 
 ## Branches
 
-| Branch         | Purpose                                                     |
-| -------------- | ----------------------------------------------------------- |
-| `main`         | Always releasable. Protected                                |
-| `foundation`   | Long-lived branch for the v0.1 phases                       |
-| `p<nn>-<slug>` | One branch per phase, e.g. `p02-database-and-multi-tenancy` |
-| `fix/<slug>`   | Bug fixes outside a phase                                   |
+| Branch        | Purpose                                                              |
+| ------------- | -------------------------------------------------------------------- |
+| `main`        | What has shipped. Takes `staging` only; a merge is a version release |
+| `staging`     | What is being tested. Takes `dev` only; a merge is a nightly         |
+| `dev`         | Where work lands. Takes any branch; a merge is a test build          |
+| `feat/<slug>` | A feature, e.g. `feat/maintenance-contracts-deadlines`               |
+| `fix/<slug>`  | A bug fix                                                            |
+
+Nothing is pushed straight to `main`, `staging` or `dev`; the pre-push hook refuses it.
+The rules, and what enforces each, are in
+[`docs/contributing/branching.md`](./docs/contributing/branching.md).
 
 ## Commits
 
@@ -65,7 +70,10 @@ commit time and again in CI.
 
 Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`, `revert`.
 
-Scopes: `api`, `web`, `desktop`, `mobile`, `core`, `db`, `auth`, `client`, `tokens`, `i18n`, `config`, `ci`, `deps`, `plan`, `repo`.
+Scopes (the `scope-enum` in `commitlint.config.js`, which is authoritative): `api`, `web`,
+`desktop`, `mobile`, `core`, `form-engine`, `form-renderer`, `form-input`, `operations`,
+`crm`, `erp`, `offline`, `db`, `auth`, `config`, `ci`, `deps`, `plan`, `repo`. The scope
+may be left out, as in `docs: …`.
 
 ```
 feat(core): add branded tenant and user identifiers
@@ -98,9 +106,10 @@ everything regardless.
 1. **verify** — install, `format:check`, `lint`, `typecheck`, `test`, `build`
 2. **commit-messages** — commitlint over the PR's commit range
 3. **database** — rolls the schema down and back up, then runs the tenant-isolation
-   and authentication suites against a disposable Postgres. Skipped until the
-   repository variable `DATABASE_TESTS` is set to `enabled`; step 8 of
-   [the setup runbook](./docs/database/runbook-supabase-setup.md) turns it on
+   and authentication suites against a disposable Postgres, and the identity
+   provider against a real Supabase Auth container. Skipped until the repository
+   variable `DATABASE_TESTS` is set to `enabled` (Settings → Secrets and variables
+   → Actions → Variables)
 4. **secret-scan** — gitleaks over full history
 
 All must pass before merge.

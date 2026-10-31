@@ -1,17 +1,19 @@
-# A complete Integr8 Plus stack on one machine: Postgres, the API, the worker,
-# and the web app, from the two images in apps/*/Dockerfile.
+# A complete Integr8 Plus stack on one machine: Postgres, Supabase Auth, the
+# API, the worker and the web app. Everything runs here; nothing needs a cloud
+# database or a Supabase project (P36).
 #
 #   cp deploy/.env.example deploy/.env      # then fill it in
 #   docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 #
-# This is the first production-for-testing shape, not the final one. The
-# database is a container with a volume; a real deployment points DATABASE_URL*
-# at Supabase (docs/database/runbook-supabase-setup.md) and drops the postgres,
-# bootstrap and migrate services' dependency on it. Everything else is the same.
+# Start order, enforced by health checks: postgres -> bootstrap (roles, and
+# Auth's schema) -> migrate and auth (Auth migrates its own schema) -> api and
+# worker (wait for auth to be healthy) -> web.
 #
-# Startup order is enforced by health checks: migrations wait for Postgres to
-# answer, the API and worker wait for the migrations to finish, the web app
-# waits for the API to be ready.
+# Sharing a machine (the VPS also runs MyRooms): no port is published on every
+# address. API and web are bound to 127.0.0.1 — Docker-published ports go
+# round Ubuntu's firewall — and Caddy or the tunnel reaches them on localhost.
+# Postgres and Auth publish nothing at all. Each container has a memory cap,
+# a starting value to tune from `docker stats`.
 
 name: integr8
 
@@ -37,12 +39,17 @@ x-api-env: &api-env
   environment:
     HOST: 0.0.0.0
     PORT: 3000
+    # The Auth container, over the compose network. The env file can override
+    # it; the old SUPABASE_URL stops the API with a message naming this one.
+    SUPABASE_AUTH_URL: ${SUPABASE_AUTH_URL:-http://auth:9999}
 
 services:
   postgres:
     <<: *logging
     image: postgres:16
     restart: unless-stopped
+    # Shared buffers plus connections.
+    mem_limit: 1g
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
@@ -55,8 +62,9 @@ services:
       timeout: 5s
       retries: 20
 
-  # Creates the two login roles the API connects as. Idempotent: run again and
-  # it resets their passwords to what the env file says.
+  # Creates the two login roles the API connects as, and Supabase Auth's role
+  # and schema. Idempotent: run again and it resets their passwords to what the
+  # env file says.
   bootstrap:
     <<: [*api-image, *api-env, *logging]
     command: ['node', 'node_modules/@integr8/db/dist/migrator/cli.js', 'bootstrap']
@@ -64,6 +72,7 @@ services:
       postgres:
         condition: service_healthy
     restart: 'no'
+    mem_limit: 512m
 
   # Applies every pending migration, then exits. The API refuses traffic until
   # the schema matches its build, so this has to finish first.
@@ -74,15 +83,63 @@ services:
       bootstrap:
         condition: service_completed_successfully
     restart: 'no'
+    mem_limit: 512m
+
+  # Supabase Auth (GoTrue): passwords and one-time sign-in codes, and nothing
+  # else (P36). Only the API talks to it, as http://auth:9999, so it publishes
+  # no port. It sends no email — the API asks it for a code and emails it
+  # itself, in the person's language — so it has no mail settings. Its tables
+  # live in the `auth` schema of the integr8 database, which it migrates itself
+  # at start-up. Pinned: upgrade by changing the tag, never `latest`.
+  auth:
+    <<: *logging
+    image: supabase/auth:v2.197.0
+    restart: unless-stopped
+    # A Go service; uses ~30-50 MB.
+    mem_limit: 256m
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: '9999'
+      PORT: '9999'
+      # Required by Auth, and shown to nobody: no link it makes is ever sent.
+      API_EXTERNAL_URL: http://auth:9999
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${SUPABASE_AUTH_DB_PASSWORD:?set SUPABASE_AUTH_DB_PASSWORD in deploy/.env}@postgres:5432/integr8
+      DB_NAMESPACE: auth
+      GOTRUE_SITE_URL: ${WEB_APP_URL:?set WEB_APP_URL in deploy/.env}
+      GOTRUE_JWT_SECRET: ${SUPABASE_AUTH_JWT_SECRET:?set SUPABASE_AUTH_JWT_SECRET in deploy/.env (pnpm --filter @integr8/auth keygen)}
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      # The API creates every user through the admin API.
+      GOTRUE_DISABLE_SIGNUP: 'true'
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
+      GOTRUE_EXTERNAL_PHONE_ENABLED: 'false'
+      # A sign-in code lasts 15 minutes and has 6 digits. The email says 15
+      # (SIGN_IN_CODE_MINUTES in apps/api/src/routes/v1/auth.ts): keep both.
+      GOTRUE_MAILER_OTP_EXP: '900'
+      GOTRUE_MAILER_OTP_LENGTH: '6'
+      # GOTRUE_RATE_LIMIT_HEADER stays unset: every request comes from the API's
+      # one address, and the API limits per person and per network itself.
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:9999/health']
+      interval: 5s
+      timeout: 5s
+      start_period: 10s
+      retries: 20
 
   api:
     <<: [*api-image, *api-env, *logging]
     restart: unless-stopped
+    mem_limit: 768m
     ports:
-      - '${API_PORT:-3000}:3000'
+      - '127.0.0.1:${API_PORT:-3000}:3000'
     depends_on:
       migrate:
         condition: service_completed_successfully
+      auth:
+        condition: service_healthy
     volumes:
       # Only used with MEDIA_STORAGE=local (staging). Production uses R2 and
       # refuses local storage at startup.
@@ -107,9 +164,14 @@ services:
     <<: [*api-image, *api-env, *logging]
     command: ['node', 'dist/jobs/worker-main.js']
     restart: unless-stopped
+    # Chromium printing PDFs.
+    mem_limit: 1536m
     depends_on:
       migrate:
         condition: service_completed_successfully
+      # The purge deletes sign-in accounts from Auth.
+      auth:
+        condition: service_healthy
     volumes:
       - media-local:/app/.data/media
 
@@ -128,8 +190,9 @@ services:
         NEXT_PUBLIC_SIGNUP: ${PUBLIC_SIGNUP:-off}
         NEXT_PUBLIC_CONTACT_EMAIL: ${CONTACT_EMAIL:-}
     restart: unless-stopped
+    mem_limit: 768m
     ports:
-      - '${WEB_PORT:-3001}:3001'
+      - '127.0.0.1:${WEB_PORT:-3001}:3001'
     environment:
       # Server-side only: route handlers reach the API over the compose network.
       API_BASE_URL: http://api:3000

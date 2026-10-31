@@ -303,6 +303,20 @@ function Sidebar({
           </label>
         ) : null}
 
+        {/* Hidden while a super admin is acting as somebody: it is not their password. */}
+        {me?.impersonatedBy === undefined ? (
+          <Link
+            to="/settings/password"
+            title={expanded ? undefined : t('auth.changePassword.menu')}
+            className={`flex items-center gap-3 rounded-md px-2 py-2 text-sm text-shell-text-muted hover:bg-shell-hover hover:text-shell-text ${
+              expanded ? '' : 'md:justify-center'
+            }`}
+          >
+            <ChromeIconGlyph name="key" className="shrink-0" />
+            <span className={expanded ? '' : 'md:sr-only'}>{t('auth.changePassword.menu')}</span>
+          </Link>
+        ) : null}
+
         <div className={`flex items-center gap-1 ${expanded ? '' : 'md:flex-col'}`}>
           <button
             type="button"

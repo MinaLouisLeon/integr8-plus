@@ -169,6 +169,7 @@ export async function seedDemoCompany(input: DemoSeedInput): Promise<DemoSeedRes
         role: person.role,
         clientApp: 'web',
         deviceLabel: 'Demo company seed',
+        signedInWith: 'password',
       }),
     );
     tokens[person.key] = issued.accessToken;

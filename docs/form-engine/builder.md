@@ -147,8 +147,8 @@ Add it to the type's schema in `@integr8/form-engine`, then:
 ## Running it locally
 
 The builder needs the API, a migrated database with templates loaded, and a user who is an
-owner or admin. See [the database runbook](../database/runbook-supabase-setup.md) for the
-first two.
+owner or admin. See [the database README](../database/README.md) and the root README's
+"Everyday commands" for the first two.
 
 The desktop app and the API run on different origins (`localhost:3002` and `:3000`). The
 API allows the local origins in development and `API_CORS_ORIGINS` elsewhere (added in P08).

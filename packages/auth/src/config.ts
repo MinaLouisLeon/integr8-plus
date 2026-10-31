@@ -126,6 +126,24 @@ export const authConfigSchema = z.object({
   AUTH_MIN_PASSWORD_LENGTH: positiveInt(12),
 
   /**
+   * One emailed sign-in code per address per this many seconds (P36). Stops a
+   * double click sending two codes, the first of which then fails.
+   */
+  AUTH_SIGN_IN_CODE_INTERVAL_SECONDS: positiveInt(60),
+
+  /** Emailed sign-in codes per address per hour. Stops somebody filling a stranger's inbox. */
+  AUTH_SIGN_IN_CODE_HOURLY_LIMIT: positiveInt(5),
+
+  /**
+   * How long after a sign-in with an emailed code the person may change their
+   * password without typing the current one (P36). Fifteen minutes, the life
+   * of the code itself: the code proved they hold the mailbox, and this is the
+   * window in which that proof is fresh enough to stand in for the password
+   * they have forgotten.
+   */
+  AUTH_FRESH_SIGN_IN_SECONDS: positiveInt(15 * 60),
+
+  /**
    * The key that encrypts platform TOTP secrets at rest (P15).
    *
    * Base64url, 32 bytes, from `pnpm --filter @integr8/auth keygen`. A second

@@ -1,6 +1,6 @@
 {
   "project": "Integr8 Plus",
-  "version": "1.1.2",
+  "version": "1.2.1",
   "summary": "Multi-tenant field operations and business platform with web, desktop, mobile and API apps.",
   "apps": {
     "api": "Fastify versioned API, OpenAPI routes, jobs and platform tooling",
@@ -20,6 +20,7 @@
   ],
   "feature_areas": [
     "Field operations, scheduling/execution, timesheets and work forms",
+    "Visits and scheduling board, skills and certificates, service contracts, maintenance plans and response deadlines",
     "Offline engineer workflows, media capture and conflict resolution",
     "CRM, customer 360, opportunities, quotes, sales orders and deliveries",
     "Assets, inventory, purchasing, stock tracking and van/site materials",

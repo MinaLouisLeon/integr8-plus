@@ -1,8 +1,8 @@
 # Deploying Integr8 Plus
 
 How to run a production-shaped stack: for testing first, then for a customer.
-What ships is two container images and a database; everything else is
-configuration.
+What ships is two container images, a database and a sign-in server, all on
+one machine; everything else is configuration.
 
 **Following along?** [The setup checklist](./setup-checklist.md) walks every
 step in order, from creating the accounts and keys to a running stack, going
@@ -25,20 +25,21 @@ with tick boxes that remember your progress: download
                              │ API_BASE_URL │                  │
                              └──────────────┴────────┬─────────┘
                                                      ▼
-                                      Postgres (compose, then Supabase)
-                                      Supabase Auth · R2 · Stripe · Resend · Mapbox · Expo · Sentry
+                                      Postgres  ·  Supabase Auth (http://auth:9999)
+                                      ── both in the compose stack, no published port ──
+                                      R2 · Stripe · Resend · Mapbox · Expo · Sentry
 ```
 
-| Piece                  | Where                                       | Notes                                                                  |
-| ---------------------- | ------------------------------------------- | ---------------------------------------------------------------------- |
-| API image              | `apps/api/Dockerfile`                       | Also the worker (`node dist/jobs/worker-main.js`) and the migrator     |
-| Web image              | `apps/web/Dockerfile`                       | Next.js standalone server; `NEXT_PUBLIC_*` baked in at build time      |
-| Compose stack          | `deploy/compose.yml`, `deploy/.env.example` | Postgres + bootstrap + migrate + api + worker + web, on one machine    |
-| Railway services       | `deploy/railway/*.json`                     | The same three processes as managed services, no machine; see below    |
-| Machine preparation    | `deploy/vps/setup.sh`, `Caddyfile.example`  | Firewall, Docker and Caddy on a fresh Ubuntu or Oracle Linux machine   |
-| Images in the registry | `.github/workflows/publish-images.yml`      | `ghcr.io/<owner>/integr8-api` and `integr8-web`, tagged per branch/sha |
-| Database runbooks      | `docs/database/`                            | Supabase setup, migrations, backup and restore                         |
-| Company apps           | `docs/deployment/company-apps.md`           | Installers and phone apps built per company, and the staff desktop     |
+| Piece                  | Where                                       | Notes                                                                   |
+| ---------------------- | ------------------------------------------- | ----------------------------------------------------------------------- |
+| API image              | `apps/api/Dockerfile`                       | Also the worker (`node dist/jobs/worker-main.js`) and the migrator      |
+| Web image              | `apps/web/Dockerfile`                       | Next.js standalone server; `NEXT_PUBLIC_*` baked in at build time       |
+| Compose stack          | `deploy/compose.yml`, `deploy/.env.example` | Postgres + bootstrap + migrate + auth + api + worker + web, one machine |
+| Machine preparation    | `deploy/vps/setup.sh`, `Caddyfile.example`  | Firewall, Docker and Caddy on a fresh Ubuntu or Oracle Linux machine    |
+| Images in the registry | `.github/workflows/publish-images.yml`      | `ghcr.io/<owner>/integr8-api` and `integr8-web`, tagged per branch/sha  |
+| Database runbooks      | `docs/database/`                            | Migrations, nightly backups and restore                                 |
+| Sign-in server         | `docs/auth/self-hosted-auth.md`             | The Supabase Auth container: settings, secrets, rotation                |
+| Company apps           | `docs/deployment/company-apps.md`           | Installers and phone apps built per company, and the staff desktop      |
 
 ## Two modes
 
@@ -47,8 +48,8 @@ with tick boxes that remember your progress: download
 
 - **`staging`** — a production-shaped stack where the fakes are allowed: local
   media storage, the recording billing and email providers, the fake geocoder.
-  Nothing leaves the machine. Sign-in still needs a real Supabase Auth project,
-  because there is no fake identity provider outside the tests. **Start here.**
+  Nothing leaves the machine, sign-in included: the Auth container is part of
+  the stack. **Start here.**
 - **`production`** — the API refuses to start unless Sentry, R2, Mapbox, Expo
   push, Stripe, Resend, `WEB_APP_URL`, `API_CORS_ORIGINS` and `API_RELEASE` are
   all configured. The refusal lists exactly what is missing.
@@ -63,26 +64,28 @@ with tick boxes that remember your progress: download
    `deploy/vps/setup.sh` opens the firewall, installs Docker and Caddy, and
    `deploy/vps/Caddyfile.example` is the proxy configuration; see **Oracle
    Cloud** below for the free machine this was written against.
-2. **A Supabase project for identity.** Only Auth is used at this stage. Copy
-   `SUPABASE_URL` and the service role key. Later the same project (or another)
-   provides the database; see the runbook.
-3. **Configuration.** `cp deploy/.env.example deploy/.env`, then:
+2. **Configuration.** `cp deploy/.env.example deploy/.env`, then:
    - set the three addresses and `API_CORS_ORIGINS`;
    - set three database passwords (the compose Postgres is created from them);
-   - run `pnpm --filter @integr8/auth keygen` once and paste the four lines;
-   - set the Supabase values;
+   - run `pnpm --filter @integr8/auth keygen` once and paste what it prints:
+     the four signing-key lines, and the three for the Auth container
+     (`SUPABASE_AUTH_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`,
+     `SUPABASE_AUTH_DB_PASSWORD`). There is no Supabase project to create;
    - leave the fakes (`MEDIA_STORAGE=local`, `BILLING_PROVIDER=recording`,
      `EMAIL_SENDER=recording`, `GEOCODER=fake`, `PUSH_SENDER=recording`) for the
      first run.
-4. **Start it.**
+3. **Start it.**
    ```bash
    docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
    docker compose -f deploy/compose.yml --env-file deploy/.env logs -f migrate api
    ```
    On an ARM machine the same command builds ARM images; nothing changes.
-   `bootstrap` creates the roles, `migrate` applies the schema, then the API
-   answers `GET /health/ready` with `status: ready` and the web app starts.
-5. **Create the first super admin.** The dashboard has no self-service signup,
+   `bootstrap` creates the roles and Auth's schema, `migrate` applies ours and
+   `auth` migrates its own, then the API answers `GET /health/ready` with
+   `status: ready` and the web app starts. `docker compose ps` shows `auth`
+   healthy. The API and web ports are bound to `127.0.0.1`: only the proxy on
+   the same machine reaches them.
+4. **Create the first super admin.** The dashboard has no self-service signup,
    so the API image carries a small command for it:
    ```bash
    docker compose -f deploy/compose.yml --env-file deploy/.env \
@@ -94,12 +97,12 @@ with tick boxes that remember your progress: download
    a staff manager: it can add and remove colleagues on the dashboard's
    **Staff** page, and the people it adds cannot. `docs/platform/README.md`
    covers what a super admin can do.
-6. **Walk the path a customer walks.** `/sign-up` → verification link (with the
+5. **Walk the path a customer walks.** `/sign-up` → verification link (with the
    recording email sender it is in the API log, not an inbox) → first-run
    checklist → build a form on the desktop app → dispatch a job → complete it
    on a phone → see it in the office. The platform dashboard's **Health** page
    shows sync trouble, billing deliveries and failed background work.
-7. **Then turn the services real, one at a time**, restarting the API and
+6. **Then turn the services real, one at a time**, restarting the API and
    worker after each: R2 (`MEDIA_STORAGE=r2`), Resend, Mapbox, Expo push,
    Stripe (`BILLING_PROVIDER=stripe`, point the Stripe webhook at
    `https://api.../v1/billing/webhook`), Sentry. Finally `APP_ENV=production`,
@@ -130,83 +133,35 @@ The step-by-step version, from account creation to the first sign-up, is the
 setup checklist shared alongside this repository; this README is the reference
 it points back to.
 
-## Running it on Railway instead of a machine
+## Sharing the machine with another product
 
-The compose stack needs a server, Docker and a reverse proxy. Railway runs the
-same two images as managed services and takes care of the machine, TLS and
-restarts. This is the shape for someone who would rather not operate a server:
+The VPS also runs MyRooms, with its own full Supabase stack. The two stay
+apart:
 
-```
-  browsers/phones ──TLS──▶ web.up.railway.app      api.up.railway.app
-                                  │ API_BASE_URL          │
-                           ┌──────▼──────┐     ┌──────────▼───────┐    ┌───────────────┐
-                           │  web        │     │  api             │    │  worker       │
-                           │  web.json   │     │  api.json        │    │  worker.json  │
-                           └─────────────┘     └──┬───────────────┘    └──┬────────────┘
-                                                  │   pre-deploy: migrator deploy
-                                                  ▼
-                                      Railway Postgres (then Supabase)
-```
-
-1. **A project with a Postgres database.** Railway → New Project → Deploy
-   PostgreSQL. It exposes `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE` and
-   the rest as variables other services can reference.
-2. **Three services from this repository.** For each: New → GitHub Repo →
-   this repository, then Settings → **Config-as-code** → the matching file:
-   `deploy/railway/api.json`, `deploy/railway/worker.json`,
-   `deploy/railway/web.json`. The file sets the Dockerfile, the start command,
-   the health check and, for the API, the pre-deploy command that runs
-   `migrator deploy` (roles, then migrations) before a new build takes traffic.
-   The API and the web service each need a public domain (Settings →
-   Networking → Generate Domain; the API listens on 3000, the web app on 3001).
-3. **Variables.** The API and the worker take the same set, `deploy/.env.example`
-   minus the compose-only lines (`POSTGRES_PASSWORD`, `API_PORT`, `WEB_PORT`,
-   `PUBLIC_API_URL`, `API_IMAGE`, `WEB_IMAGE`). The database strings reference
-   the Postgres service:
-
-   ```
-   DATABASE_URL_ADMIN=${{Postgres.DATABASE_URL}}
-   DATABASE_URL=postgresql://integr8_app:APP_PASSWORD@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
-   DATABASE_URL_AUTH=postgresql://integr8_auth:AUTH_PASSWORD@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
-   ```
-
-   The web service takes `NEXT_PUBLIC_API_BASE_URL` (the API's public URL; a
-   build argument, so set it before the first build), `API_BASE_URL` (the same
-   URL), `APP_ENV`, `NEXT_PUBLIC_APP_ENV` and `PORT=3001`. Changing a variable
-   redeploys the service.
-
-4. **One-off commands** (the super admin, storage provisioning) run inside the
-   API service with the Railway CLI: `railway ssh --service api`, then
-   `node dist/platform/admin-cli.js create you@example.com "Your Name"`.
-5. **Releases** are pushes to the branch each service is connected to. Pick
-   `main` for all three; Railway builds and deploys on every merge, the API's
-   pre-deploy command migrates first, and a rollback is "Redeploy" on the
-   previous deployment in the dashboard.
-
-Moving the database to Supabase later is the same as below: change the three
-`DATABASE_URL*` variables on the API and the worker, let the API redeploy
-(its pre-deploy command bootstraps and migrates the new database), then delete
-the Postgres service.
-
-## Moving the database to Supabase
-
-Follow `docs/database/runbook-supabase-setup.md`, then set `DATABASE_URL`
-(pooler, `integr8_app`), `DATABASE_URL_ADMIN` (direct, owner) and
-`DATABASE_URL_AUTH` (pooler, `integr8_auth`) in `deploy/.env` and remove the
-`postgres` service and the `depends_on` that point at it. `migrate` keeps
-running on every deploy; it is idempotent.
+- **Separate Auth containers.** MyRooms' Supabase includes an Auth of the same
+  version; Integr8 Plus still runs its own, because one shared Auth would mix
+  two products' users.
+- **No public ports.** The API and web are published on `127.0.0.1` only, as
+  MyRooms' are. Ports Docker publishes go round Ubuntu's firewall, so binding
+  to every address would expose them however the firewall is set. Caddy
+  proxies to `localhost`; Postgres and Auth publish nothing at all.
+- **Memory caps.** Each container has a `mem_limit` in `deploy/compose.yml`
+  (Postgres 1 GB, API 768 MB, worker 1.5 GB for Chromium, web 768 MB, Auth
+  256 MB, the one-off bootstrap and migrate 512 MB): starting values, to tune
+  from `docker stats`, so one product cannot starve the other.
 
 ## Backups, before any real data
 
-The compose Postgres is one volume on one disk. `deploy/vps/backup-postgres.sh`
-dumps it daily from root's cron (its header has the line and the restore
-command) and keeps the last fourteen files under `/var/backups/integr8`. That
-covers a bad migration or a deleted company. Losing the machine needs a copy
-elsewhere: a boot-volume backup policy in the cloud console (Oracle's Always
-Free tier includes five), or `rclone` from the backup directory to an R2
-bucket. Moving the database to Supabase (below) replaces all of this with
-managed backups and point-in-time recovery, and is the right answer before a
-paying customer's data exists.
+The compose Postgres is one volume on one disk, and it holds everything:
+company data and, in its `auth` schema, every sign-in account.
+`deploy/vps/backup-postgres.sh` dumps the whole database nightly from root's
+cron and keeps the last fourteen files under `/var/backups/integr8`;
+[the backup and restore runbook](../database/runbook-backup-and-restore.md)
+has the schedule, the checks and the restore. That covers a bad migration or a
+deleted company. Losing the machine needs a copy elsewhere, and this is the
+next step before a paying customer's data exists: a boot-volume backup policy
+in the cloud console (Oracle's Always Free tier includes five), or `rclone`
+from the backup directory to an R2 bucket.
 
 Container logs are capped at 50 MB per container by the `x-logging` block in
 `deploy/compose.yml`, so a chatty week cannot fill the disk.
@@ -233,8 +188,8 @@ Container logs are capped at 50 MB per container by the `x-logging` block in
 
 ## What is not here yet
 
-Backups and a rehearsed restore (`docs/database/runbook-backup-and-restore.md`
-covers Supabase; the compose Postgres needs `pg_dump` on a timer until then),
-uptime monitoring and alerting, signed desktop and mobile builds (P20), and the
+Copies of the nightly dumps off the machine, a rehearsed restore
+(`docs/database/runbook-backup-and-restore.md`), uptime monitoring and
+alerting, signed desktop and mobile builds (P20), and the
 rest of P19. The compose stack is a first production for testing, not the
 final shape.

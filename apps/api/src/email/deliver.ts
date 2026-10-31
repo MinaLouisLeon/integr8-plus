@@ -2,7 +2,12 @@ import { getPlatformDataSource } from '@integr8/db';
 import type { ApiConfig } from '../config.js';
 import type { Logger } from '../http/logger.js';
 import { acceptInvitationUrl } from './links.js';
-import { invitationEmail } from './messages.js';
+import {
+  type EmailLocale,
+  invitationEmail,
+  passwordChangedEmail,
+  signInCodeEmail,
+} from './messages.js';
 import type { EmailSender } from './sender.js';
 
 /**
@@ -51,6 +56,9 @@ async function post(
       messageId: result.id,
       ...(sender.provider === 'recording' && message.actionUrl !== undefined
         ? { actionUrl: message.actionUrl }
+        : {}),
+      ...(sender.provider === 'recording' && message.code !== undefined
+        ? { code: message.code }
         : {}),
     });
     return { sent: true, problem: null };
@@ -106,6 +114,50 @@ export async function deliverInvitation(input: {
       expiresAt: input.expiresAt,
     }),
     { kind: 'invitation', tenantId: input.tenantId },
+  );
+}
+
+/**
+ * Sends somebody the sign-in code they asked for (P36).
+ *
+ * Like the invitation token, the code reaches exactly one place: this message.
+ * It is logged only for the recording sender, where there is no mailbox.
+ */
+export function deliverSignInCode(input: {
+  sender: EmailSender;
+  logger: Logger;
+  email: string;
+  code: string;
+  minutes: number;
+  locale: EmailLocale;
+}): Promise<Delivery> {
+  return post(
+    input.sender,
+    input.logger,
+    signInCodeEmail({
+      to: input.email,
+      code: input.code,
+      minutes: input.minutes,
+      locale: input.locale,
+    }),
+    { kind: 'sign_in_code' },
+  );
+}
+
+/** Tells somebody their password was changed (P36). */
+export function deliverPasswordChanged(input: {
+  sender: EmailSender;
+  logger: Logger;
+  email: string;
+  changedAt: Date;
+  locale: EmailLocale;
+  tenantId: string;
+}): Promise<Delivery> {
+  return post(
+    input.sender,
+    input.logger,
+    passwordChangedEmail({ to: input.email, changedAt: input.changedAt, locale: input.locale }),
+    { kind: 'password_changed', tenantId: input.tenantId },
   );
 }
 

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { acceptInvitationUrl, billingUrl, verifySignupUrl } from './links.js';
-import { dunningEmail, invitationEmail, signupVerificationEmail } from './messages.js';
+import {
+  dunningEmail,
+  invitationEmail,
+  passwordChangedEmail,
+  signInCodeEmail,
+  signupVerificationEmail,
+} from './messages.js';
 import { RecordingEmailSender, ResendEmailSender } from './sender.js';
 
 /**
@@ -175,6 +181,48 @@ describe('the messages', () => {
     // that will happily render markup.
     expect(message.html).not.toContain('<script>');
     expect(message.html).toContain('&lt;script&gt;');
+  });
+});
+
+describe('the sign-in messages (P36)', () => {
+  it('carries the code in both parts, with no link, and says how long it lasts', () => {
+    const message = signInCodeEmail({
+      to: 'dana@example.com',
+      code: '482913',
+      minutes: 15,
+      locale: 'en',
+    });
+    expect(message.subject).toContain('482913');
+    expect(message.text.startsWith('482913')).toBe(true);
+    expect(message.text).toContain('15 minutes');
+    expect(message.text).toContain('If you did not ask for this');
+    expect(message.html).toContain('482913');
+    expect(message.html).not.toContain('href=');
+    expect(message.code).toBe('482913');
+    expect(message.actionUrl).toBeUndefined();
+  });
+
+  it('writes Arabic right to left, with the code kept left to right', () => {
+    const message = signInCodeEmail({
+      to: 'dana@example.com',
+      code: '482913',
+      minutes: 15,
+      locale: 'ar',
+    });
+    expect(message.html).toContain('lang="ar" dir="rtl"');
+    expect(message.html).toContain('dir="ltr">482913');
+    expect(message.text).toContain('15');
+  });
+
+  it('says when a password changed and who to ask, in either language', () => {
+    const changedAt = new Date('2026-10-31T09:30:00Z');
+    const english = passwordChangedEmail({ to: 'd@e.com', changedAt, locale: 'en' });
+    expect(english.text).toContain('2026-10-31 09:30 UTC');
+    expect(english.text).toContain('ask whoever administers your company');
+
+    const arabic = passwordChangedEmail({ to: 'd@e.com', changedAt, locale: 'ar' });
+    expect(arabic.html).toContain('dir="rtl"');
+    expect(arabic.text).toContain('2026-10-31 09:30');
   });
 });
 

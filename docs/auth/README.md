@@ -1,13 +1,14 @@
 # Authentication
 
-Company people's credentials are held either by Supabase Auth or by this
-service itself (`IDENTITY_PROVIDER=local`; see below). Everything after a
-credential is accepted belongs to this service, whichever holds it.
+A self-hosted Supabase Auth container holds passwords and makes one-time
+sign-in codes. Everything after a credential is accepted belongs to this
+service.
 
-| Document                                  | When you need it                               |
-| ----------------------------------------- | ---------------------------------------------- |
-| [offline-access.md](./offline-access.md)  | The seven-day window and what it costs         |
-| [`docs/database/`](../database/README.md) | How tenant isolation works underneath all this |
+| Document                                     | When you need it                                                |
+| -------------------------------------------- | --------------------------------------------------------------- |
+| [self-hosted-auth.md](./self-hosted-auth.md) | The Auth container, its secrets, sign-in codes, Change password |
+| [offline-access.md](./offline-access.md)     | The seven-day window and what it costs                          |
+| [`docs/database/`](../database/README.md)    | How tenant isolation works underneath all this                  |
 
 ---
 
@@ -22,8 +23,9 @@ for five things Supabase's own sessions cannot provide:
 - a multi-day offline grant a phone can verify with no network,
 - lockout with an admin unlock.
 
-So the division is: **Supabase authenticates, we authorise.** A client signs in
-with Supabase, hands us the result, and we issue our own tokens carrying
+So the division is: **Supabase Auth authenticates, we authorise.** A client
+never talks to Auth: it sends its password or emailed code to the API, the API
+checks it with the Auth container, and we issue our own tokens carrying
 `tenant_id` and `role`. Sessions, rotation, revocation and impersonation are
 rows in our schema, where they can be queried, audited and revoked.
 
@@ -112,36 +114,12 @@ The `TokenStore` interface and the refresh-timing helpers are in
 `packages/core/src/token-store.ts`. P05 implements them per client against a
 contract that already has tests.
 
-## Credentials kept here: `IDENTITY_PROVIDER=local`
-
-`IdentityProvider` (`packages/auth/src/identity-provider.ts`) is the only place
-sign-in touches a credential store, so it is the one thing that changes.
-`LocalIdentityProvider` implements it over two tables from migration 0054:
-
-- `identities`: one row per person, the address lower-cased and unique, the
-  password as an scrypt hash in the same format super admins use
-  (`passwords.ts`). Its id is the user id every company row carries, exactly
-  as a Supabase user id was.
-- `identity_magic_links`: one-time links, stored as SHA-256 hashes, spent by a
-  single update so two racing requests cannot both win.
-
-Both are reached only by `integr8_auth`, like the lockout tables: the tenant
-runtime role holds nothing on them. An unknown address costs the same scrypt
-work as a wrong password, and both give the same error. Lockout, rate limits,
-memberships and sessions are unchanged, because they sit after the provider.
-
-`admin-cli user-password <email>` sets a person's password from the server.
-For somebody who was already a member while Supabase held credentials, it
-reuses the user id their memberships name, which is how a server moves from
-`supabase` to `local` without anybody losing their companies.
-
 ## Sign-in has no tenant
 
 At the moment a sign-in arrives there is no company, and for an unknown address
 there cannot be one. Lockout, rate limiting and "which companies does this
 person belong to" therefore run over a third database role, `integr8_auth`,
-which reaches the lockout and rate-limit tables, the membership view and, for
-`IDENTITY_PROVIDER=local`, the two credential tables, and nothing else.
+which reaches two tables and one view and nothing else.
 
 That role exists so the tenant runtime role never needs a cross-tenant
 privilege. The schema-invariant suite fails the build if it gains one.
@@ -150,13 +128,15 @@ privilege. The schema-invariant suite fails the build if it gains one.
 
 ```bash
 cp packages/auth/.env.example packages/auth/.env
-pnpm --filter @integr8/auth keygen        # prints the three key variables
+pnpm --filter @integr8/auth keygen        # the key variables, and the Auth container's secrets
+pnpm --filter @integr8/db db bootstrap    # creates integr8_app and integr8_auth
 ```
 
-Then follow [the database runbook](../database/runbook-supabase-setup.md),
-which creates both `integr8_app` and `integr8_auth`.
+[The database README](../database/README.md) explains the roles;
+[self-hosted-auth.md](./self-hosted-auth.md) the Auth container.
 
 ```bash
 pnpm test                  # unit: keys, tokens, secrets, password policy, matrix
 pnpm test:integration      # needs a disposable Postgres
+pnpm test:auth-server      # the provider against a real Auth container (CI starts one)
 ```

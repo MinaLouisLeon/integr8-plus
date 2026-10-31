@@ -6,9 +6,16 @@ what to do when the database needs restoring.
 
 | Document                                                         | When you need it                                  |
 | ---------------------------------------------------------------- | ------------------------------------------------- |
-| [runbook-supabase-setup.md](./runbook-supabase-setup.md)         | Creating an environment from nothing              |
 | [migrations.md](./migrations.md)                                 | Changing the schema — read before every migration |
-| [runbook-backup-and-restore.md](./runbook-backup-and-restore.md) | Rehearsing or performing a restore                |
+| [runbook-backup-and-restore.md](./runbook-backup-and-restore.md) | Nightly dumps, and rehearsing or doing a restore  |
+
+The database is a plain Postgres 16: the `postgres` container in
+`deploy/compose.yml` on a server, or one on your machine for development.
+Creating an environment from nothing is the
+[setup checklist](../deployment/setup-checklist.md). The self-hosted Supabase
+Auth keeps its sign-in accounts in the same database, in its own `auth` schema
+([`docs/auth/self-hosted-auth.md`](../auth/self-hosted-auth.md)); everything
+below is about `public`.
 
 ---
 
@@ -70,9 +77,9 @@ every future query a security review.
 The tenant is set by `set_config('app.tenant_id', $1, true)` as the first
 statement of every tenant transaction — the `true` makes it transaction-local.
 
-This is not a style preference. The API connects through Supavisor in
-transaction mode, which hands the same physical connection to different tenants
-between transactions. A session-level setting would survive into the next
+This is not a style preference. A pooled connection is handed to different
+tenants between transactions — by the API's own pool today, and by a
+transaction-mode pooler such as PgBouncer if one is ever put in front. A session-level setting would survive into the next
 tenant's work and leak — intermittently, in proportion to load, and invisibly.
 `tenant-data-source.integration.test.ts` forces the pool to a single connection
 and interleaves two companies to prove it does not.
@@ -82,10 +89,18 @@ context therefore means no rows: the failure mode is a blank screen, not a leak.
 
 ## Two roles
 
-| Role                           | Used by                                                        | RLS applies |
-| ------------------------------ | -------------------------------------------------------------- | ----------- |
-| `integr8_app`                  | Every tenant request (`DATABASE_URL`)                          | Yes         |
-| owner — `postgres` on Supabase | Migrations, seeds, company provisioning (`DATABASE_URL_ADMIN`) | No          |
+| Role               | Used by                                                        | RLS applies |
+| ------------------ | -------------------------------------------------------------- | ----------- |
+| `integr8_app`      | Every tenant request (`DATABASE_URL`)                          | Yes         |
+| owner — `postgres` | Migrations, seeds, company provisioning (`DATABASE_URL_ADMIN`) | No          |
+
+Two more login roles exist beside them: `integr8_auth`, the narrow
+pre-authentication role sign-in uses (`DATABASE_URL_AUTH`; see
+[`docs/auth/`](../auth/README.md)), and `supabase_auth_admin`, which owns the
+`auth` schema and is used only by the Auth container. `pnpm --filter
+@integr8/db db bootstrap` creates all of them (the last only when
+`SUPABASE_AUTH_DB_PASSWORD` is set); the compose stack runs it on every start.
+Neither runtime role holds anything on `auth`.
 
 Tables are `enable row level security` but **not** `force`, so the owner
 bypasses policies. That is deliberate: it is what makes the repository suite

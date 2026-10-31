@@ -5,16 +5,22 @@ import {
   loadAuthConfig,
   loadSigningKey,
   loadVerificationKeys,
-  LocalIdentityProvider,
   type PasswordPolicy,
+  PasswordService,
   PlatformSessionService,
   SessionService,
   SignInService,
   SupabaseIdentityProvider,
   TokenService,
 } from '@integr8/auth';
-import { configureDatabase, loadDatabaseConfig } from '@integr8/db';
-import { type ApiConfig, corsOrigins, publicUrl, r2Settings } from './config.js';
+import { configureDatabase, getPlatformDataSource, loadDatabaseConfig } from '@integr8/db';
+import {
+  type ApiConfig,
+  corsOrigins,
+  publicUrl,
+  r2Settings,
+  supabaseAuthSettings,
+} from './config.js';
 import { LocalDiskStorage } from './media/local-disk.js';
 import { FakeGeocoder, type Geocoder, MapboxGeocoder } from './geo/geocoder.js';
 import {
@@ -25,7 +31,6 @@ import {
 import { assertSeatAvailable } from './billing/entitlements.js';
 import { planFor } from './http/suspension.js';
 import { ExpoPushSender, type PushSender, RecordingPushSender } from './push/sender.js';
-import { magicLinkEmail } from './email/messages.js';
 import { type EmailSender, RecordingEmailSender, ResendEmailSender } from './email/sender.js';
 import { R2Storage } from './media/r2.js';
 import type { MediaStorage } from './media/storage.js';
@@ -36,6 +41,11 @@ import { buildAiProvider } from './ai/providers/index.js';
 import { INSIGHT_TOOLS } from './ai/tools/insights.js';
 import { buildPdfPrinter, type PdfPrinter } from './documents/printer.js';
 import { buildEtaServices, type EtaServices } from './eta/services.js';
+import {
+  type AppBuildTrigger,
+  GitHubAppBuildTrigger,
+  RecordingAppBuildTrigger,
+} from './platform/app-builds.js';
 
 /**
  * The composition root.
@@ -54,6 +64,8 @@ export interface Services {
   tokens: TokenService;
   sessions: SessionService;
   signIn: SignInService;
+  /** Change password (P36): proof, the policy, and signing out every other device. */
+  passwords: PasswordService;
   invitations: InvitationService;
   impersonation: ImpersonationService;
   /** Super admins signed in to the dashboard (P15). No company; see the platform routes. */
@@ -99,6 +111,11 @@ export interface Services {
    * opened per request; there are no deployment-wide taxpayer credentials.
    */
   eta: EtaServices;
+  /**
+   * Starts one company's app build on GitHub when the dashboard asks for one.
+   * A recording stand-in unless APP_BUILDS is `github`.
+   */
+  appBuilds: AppBuildTrigger;
 }
 
 export interface BuildServicesOptions {
@@ -107,7 +124,7 @@ export interface BuildServicesOptions {
   /**
    * Replaces the identity provider.
    *
-   * Used by the integration suite, which has no Supabase project and does not
+   * Used by the integration suite, which runs no Auth container and does not
    * need one: everything worth testing in this service happens after a
    * credential has been accepted.
    */
@@ -126,8 +143,7 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     verificationKeys: await loadVerificationKeys(authConfig),
   });
 
-  const email = buildEmailSender(options.config);
-  const identity = options.identity ?? buildIdentityProvider(options.config, env, email);
+  const identity = options.identity ?? buildIdentityProvider(options.config, env);
   const sessions = new SessionService({ tokens, config: authConfig });
 
   return {
@@ -135,6 +151,14 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     sessions,
     identity,
     signIn: new SignInService({ identity, sessions, config: authConfig }),
+    passwords: new PasswordService({
+      identity,
+      sessions,
+      config: authConfig,
+      // Across companies, which only the platform connection can see.
+      companiesWithSessions: (userId) =>
+        getPlatformDataSource().tenants.withLiveSessionsFor(userId),
+    }),
     invitations: new InvitationService({
       identity,
       sessions,
@@ -151,7 +175,7 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     geocoder: buildGeocoder(options.config),
     push: buildPushSender(options.config),
     billing: buildBillingProvider(options.config),
-    email,
+    email: buildEmailSender(options.config),
     ai: {
       provider: buildAiProvider(options.config),
       prices: new PriceTable(options.config),
@@ -160,7 +184,23 @@ export async function buildServices(options: BuildServicesOptions): Promise<Serv
     },
     pdf: buildPdfPrinter(options.config),
     eta: buildEtaServices(options.config),
+    appBuilds: buildAppBuildTrigger(options.config),
   };
+}
+
+/** Like email: `github` with a missing token or repository refuses to start (see `appBuildProblems`). */
+export function buildAppBuildTrigger(config: ApiConfig): AppBuildTrigger {
+  if (config.APP_BUILDS !== 'github') {
+    return new RecordingAppBuildTrigger();
+  }
+  const token = config.GITHUB_BUILD_TOKEN;
+  const repository = config.GITHUB_BUILD_REPOSITORY;
+  if (token === undefined || repository === undefined) {
+    throw new Error(
+      'APP_BUILDS is github but GITHUB_BUILD_TOKEN or GITHUB_BUILD_REPOSITORY is not set.',
+    );
+  }
+  return new GitHubAppBuildTrigger({ token, repository, ref: config.GITHUB_BUILD_REF });
 }
 
 /**
@@ -237,42 +277,26 @@ export function buildMediaStorage(config: ApiConfig): MediaStorage {
 }
 
 /**
- * Builds the identity provider: Supabase, or this server's own (0054).
+ * Builds the identity provider for the self-hosted Supabase Auth container, or
+ * refuses to.
  *
  * There is no silent fallback to a fake. A service that quietly accepts any
  * password when a variable is missing is a service that will do so in
- * production on the day somebody mistypes a secret name. `local` is not a
- * fake: it keeps scrypt hashes in this database and checks them as strictly.
+ * production on the day somebody mistypes a secret name.
  */
-function buildIdentityProvider(
-  config: ApiConfig,
-  env: NodeJS.ProcessEnv,
-  email: EmailSender,
-): IdentityProvider {
-  if (config.IDENTITY_PROVIDER === 'local') {
-    return new LocalIdentityProvider({
-      deliverMagicLink: async (delivery) => {
-        await email.send(
-          magicLinkEmail({ to: delivery.email, url: delivery.url, expiresAt: delivery.expiresAt }),
-        );
-      },
-    });
-  }
-
-  const url = env.SUPABASE_URL;
-  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (url === undefined || url === '' || serviceRoleKey === undefined || serviceRoleKey === '') {
+function buildIdentityProvider(config: ApiConfig, env: NodeJS.ProcessEnv): IdentityProvider {
+  const auth = supabaseAuthSettings(env);
+  if ('problems' in auth) {
     throw new Error(
       [
-        'SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required to serve sign-in.',
-        'To keep passwords on this server instead, set IDENTITY_PROVIDER=local.',
+        'Sign-in cannot be served:',
+        ...auth.problems.map((problem) => `  ${problem}`),
         '',
         `APP_ENV is "${config.APP_ENV}".`,
-        'See docs/auth/README.md and docs/database/runbook-supabase-setup.md.',
+        'See docs/auth/self-hosted-auth.md.',
       ].join('\n'),
     );
   }
 
-  return new SupabaseIdentityProvider({ url, serviceRoleKey });
+  return new SupabaseIdentityProvider(auth.settings);
 }

@@ -275,7 +275,7 @@ describe('the pre-authentication role', () => {
     return result.rows.map((row) => ({ table: row.table_name, privilege: row.privilege_type }));
   }
 
-  it('reaches exactly six objects and no more', async () => {
+  it('reaches exactly four objects and no more', async () => {
     const reachable = [...new Set((await authPrivileges()).map((entry) => entry.table))].sort(
       (a, b) => a.localeCompare(b),
     );
@@ -286,20 +286,9 @@ describe('the pre-authentication role', () => {
     expect(reachable).toEqual([
       'account_locks',
       'auth_memberships',
-      'identities',
-      'identity_magic_links',
       'login_attempts',
       'rate_limit_buckets',
     ]);
-  });
-
-  it('cannot delete an identity, only its spent links', async () => {
-    const privileges = await authPrivileges();
-    const on = (table: string) =>
-      privileges.filter((entry) => entry.table === table).map((entry) => entry.privilege);
-
-    expect(on('identities')).toEqual(['INSERT', 'SELECT', 'UPDATE']);
-    expect(on('identity_magic_links')).toEqual(['DELETE', 'INSERT', 'SELECT', 'UPDATE']);
   });
 
   it('holds no privilege on any tenant-scoped table', async () => {

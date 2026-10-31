@@ -52,6 +52,8 @@ export const API_ERROR_CODES = [
   'attachment_id_taken',
   'attachment_removed',
   'auth.account_locked',
+  'auth.current_password_required',
+  'auth.current_password_wrong',
   'auth.identity_provider_unavailable',
   'auth.impersonation_denied',
   'auth.invalid_credentials',

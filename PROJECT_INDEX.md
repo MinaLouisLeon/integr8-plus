@@ -14,7 +14,7 @@ The API is the application boundary for clients. Postgres tenant isolation is en
 
 ## Feature areas visible in the implementation
 
-- **Field work:** customers, sites and access notes; job types; work orders, dispatch and job execution; crew, comments, attachments, checklists, photos and customer sign-off; timesheets; CSV import and reporting.
+- **Field work:** customers, sites and access notes; job types; work orders, dispatch and job execution; visits and the scheduling board; engineer skills and certificates; service contracts, maintenance plans and response deadlines; crew, comments, attachments, checklists, photos and customer sign-off; timesheets; CSV import and reporting.
 - **Forms:** visual authoring, reusable templates, 18 input types, pages/sections, repeat groups, calculations, validation, conditional visibility/requiredness and dependent choices. Publishing versions is immutable; submissions are autosaved, validated, reportable, exportable and corrected with an audited reason/history.
 - **Offline field app:** assigned jobs, navigation, forms, photos/signatures, parts, expenses, asset scans, receiving/van stock, payslips and assistant screens. Local-first work syncs in order; conflicts have a resolution flow. App also includes push, biometric lock and update support.
 - **CRM and sales:** leads and conversion, customer 360/timeline, configurable pipelines and stages, opportunities, activities/follow-ups, quotes and acceptance links, orders, stock reservations, deliveries, CRM reports and CSV exports.
@@ -32,4 +32,4 @@ The API is the application boundary for clients. Postgres tenant isolation is en
 - ETA integration notes: `docs/e-invoicing/`
 - Core source: `apps/api/src/routes/v1/`, `apps/web/src/app/`, `apps/mobile/app/`, `packages/operations-dom/src/`, `packages/db/migrations/`
 
-**Read carefully:** root README/roadmap summaries lag some code. Root package version is 1.1.2 and migrations currently reach 0049. Feature visibility is gated by tenant modules, plan entitlements and permissions. ETA credentials and live end-to-end validation are environment-dependent; code presence does not imply legal certification.
+**Read carefully:** root README/roadmap summaries lag some code. Root package version is 1.2.1 and migrations currently reach 0054. Feature visibility is gated by tenant modules, plan entitlements and permissions. ETA credentials and live end-to-end validation are environment-dependent; code presence does not imply legal certification.

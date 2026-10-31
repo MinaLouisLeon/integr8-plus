@@ -3,13 +3,14 @@
 import { visibleNavigation } from '@integr8/core';
 import { useTranslation } from '@integr8/i18n';
 import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { BrandAccent, BrandTheme, CompanyMark } from '~/components/company-brand';
 import { DashboardShell, type ShellNavGroup } from '~/components/dashboard-shell';
 import { ImpersonationBanner } from '~/components/impersonation-banner';
 import { LocaleSelect } from '~/components/locale-select';
-import { SignOutIcon } from '~/components/nav-icon';
+import { KeyIcon, SignOutIcon } from '~/components/nav-icon';
 import { NAV_ALIASES, NAV_PATHS } from '~/lib/navigation';
 import { apiClient, signOut } from '~/lib/session';
 
@@ -108,6 +109,24 @@ export function WorkspaceShell({
         footer={(collapsed) => (
           <>
             <LocaleSelect compact={collapsed} />
+            {/* Not while impersonating: the API refuses, and it is not staff's password. */}
+            {me.data?.impersonatedBy !== undefined ? null : (
+              <Link
+                href="/account/password"
+                title={collapsed ? t('auth.changePassword.menu') : undefined}
+                className={[
+                  'flex items-center gap-3 rounded-md py-2 text-sm text-shell-text-muted hover:bg-shell-hover hover:text-shell-text',
+                  collapsed ? 'justify-center px-0' : 'px-3',
+                ].join(' ')}
+              >
+                <KeyIcon className="size-5 shrink-0" />
+                {collapsed ? (
+                  <span className="sr-only">{t('auth.changePassword.menu')}</span>
+                ) : (
+                  t('auth.changePassword.menu')
+                )}
+              </Link>
+            )}
             <button
               type="button"
               title={collapsed ? t('common.signOut') : undefined}

@@ -1,9 +1,15 @@
 import { randomBytes } from 'node:crypto';
 import { generateSigningKeyPair } from './keys.js';
+import {
+  generateAuthDbPassword,
+  generateAuthJwtSecret,
+  mintServiceRoleKey,
+} from './supabase-auth-keys.js';
 
 /**
  * Generates a signing key pair and prints the three environment variables that
- * carry it.
+ * carry it, the platform secret key, and the three secrets the self-hosted
+ * Supabase Auth container needs.
  *
  * Run once per environment, and again for a rotation — for which the published
  * verification list holds both keys until every token signed by the old one has
@@ -33,6 +39,19 @@ async function main(): Promise<void> {
   console.log('# (P15). Rotating it makes every enrolled second factor unreadable, so every');
   console.log('# super admin has to enrol again — plan it, do not do it casually.');
   console.log(`PLATFORM_SECRET_KEY=${randomBytes(32).toString('base64')}`);
+  console.log('');
+
+  const jwtSecret = generateAuthJwtSecret();
+  console.log('# The self-hosted Supabase Auth container (P36). Generated together: the');
+  console.log('# service role key is signed with the JWT secret, so a new secret needs a new');
+  console.log('# key, and changing the secret signs nobody out — Auth holds no sessions here.');
+  console.log('#');
+  console.log('# SUPABASE_AUTH_JWT_SECRET goes to the auth container only.');
+  console.log('# SUPABASE_SERVICE_ROLE_KEY goes to the API and worker only.');
+  console.log('# SUPABASE_AUTH_DB_PASSWORD is the supabase_auth_admin database password.');
+  console.log(`SUPABASE_AUTH_JWT_SECRET=${jwtSecret}`);
+  console.log(`SUPABASE_SERVICE_ROLE_KEY=${await mintServiceRoleKey(jwtSecret)}`);
+  console.log(`SUPABASE_AUTH_DB_PASSWORD=${generateAuthDbPassword()}`);
 }
 
 main().catch((error: unknown) => {

@@ -402,7 +402,11 @@ describe('exporting and deleting a company', () => {
     expect(again.statusCode).toBe(201);
     await bringPurgeForward(tenantId);
 
-    await purgeOne(tenantId, { media: api.services.media, logger: silent });
+    await purgeOne(tenantId, {
+      media: api.services.media,
+      identity: api.services.identity,
+      logger: silent,
+    });
 
     expect(await getPlatformDataSource().tenants.findById(tenantId)).toBeUndefined();
     expect(await getPlatformDataSource().storage.find(tenantId)).toBeUndefined();

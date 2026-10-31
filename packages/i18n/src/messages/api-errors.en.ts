@@ -78,6 +78,9 @@ export const apiErrorsEn = {
     'This file clashed with another one. Discard the change and add the file again.',
   attachment_removed: 'This attachment was already removed.',
   auth: {
+    current_password_required:
+      'Enter your current password. If you have forgotten it, sign in with an emailed code first.',
+    current_password_wrong: 'That is not your current password. Check it and try again.',
     identity_provider_unavailable:
       'Signing in is not available just now. Try again in a few minutes.',
     impersonation_denied: 'You cannot open this company as that person.',

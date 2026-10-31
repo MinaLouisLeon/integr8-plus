@@ -206,16 +206,6 @@ export const apiConfigSchema = z.object({
    * loudly.
    */
   EMAIL_SENDER: z.enum(['recording', 'resend']).default('recording'),
-  /**
-   * Who checks company people's passwords.
-   *
-   * `supabase` (the default) asks Supabase Auth, with SUPABASE_URL and
-   * SUPABASE_SERVICE_ROLE_KEY. `local` keeps scrypt hashes in this database
-   * (0054) and needs no outside service; sign-in links then go out through
-   * EMAIL_SENDER. Integr8 staff sign in the same way under either: their
-   * passwords were always kept here.
-   */
-  IDENTITY_PROVIDER: z.enum(['supabase', 'local']).default('supabase'),
   /** Resend's API key. A secret: it can send mail as this domain. */
   RESEND_API_KEY: z.string().optional(),
   /** `Name <address@domain>`. The domain has to be verified at the provider. */
@@ -248,6 +238,29 @@ export const apiConfigSchema = z.object({
    * repository secret.
    */
   BUILD_TOKEN: blankIsUnset(z.string().min(32).optional()),
+  /**
+   * Who starts a company's app build when the dashboard asks for one.
+   *
+   * `off`, the default: ticking "Build apps" only puts the company in the
+   * release list, and a build is started by hand from GitHub Actions. `github`
+   * starts the `build-company-apps.yml` workflow for that company straight
+   * away, through GitHub's API, with the token and repository below.
+   */
+  APP_BUILDS: blankIsUnset(z.enum(['off', 'github']).default('off')),
+  /**
+   * A fine-grained GitHub token for that repository only, with "Actions: read
+   * and write". A secret: it can start any workflow there.
+   */
+  GITHUB_BUILD_TOKEN: blankIsUnset(z.string().optional()),
+  /** `owner/name` of the repository that holds the workflow. */
+  GITHUB_BUILD_REPOSITORY: blankIsUnset(
+    z
+      .string()
+      .regex(/^[\w.-]+\/[\w.-]+$/u)
+      .optional(),
+  ),
+  /** The branch whose copy of the workflow runs. */
+  GITHUB_BUILD_REF: blankIsUnset(z.string().min(1).default('main')),
 
   // -------------------------------------------------------------------------
   // The AI assistant (docs/ai; ADR-0001)
@@ -576,7 +589,11 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     );
   }
   if (result.success) {
-    const billing = [...billingProblems(result.data), ...emailProblems(result.data)];
+    const billing = [
+      ...billingProblems(result.data),
+      ...emailProblems(result.data),
+      ...appBuildProblems(result.data),
+    ];
     if (billing.length > 0) {
       throw new Error(
         [
@@ -636,6 +653,62 @@ export function emailProblems(config: ApiConfig): string[] {
   return missing.length === 0
     ? []
     : [`EMAIL_SENDER is resend but ${missing.join(' and ')} not set.`];
+}
+
+/**
+ * Where the self-hosted Supabase Auth container is, and the key for it (P36),
+ * or what is wrong.
+ *
+ * Read from the environment directly rather than through the schema, because
+ * the integration suites replace the identity provider and need neither.
+ *
+ * `SUPABASE_URL` was the Supabase cloud project's address, to which the
+ * provider added `/auth/v1`. The container serves at its root, so the variable
+ * was renamed rather than reused: an old env file that still sets it would
+ * otherwise point the API at a cloud project, or at a path that does not
+ * exist, and every sign-in would fail with nothing in the log saying why.
+ */
+export function supabaseAuthSettings(
+  env: NodeJS.ProcessEnv,
+): { settings: { url: string; serviceRoleKey: string } } | { problems: string[] } {
+  const problems: string[] = [];
+  if ((env.SUPABASE_URL ?? '').trim() !== '') {
+    problems.push(
+      'SUPABASE_URL is no longer read. Set SUPABASE_AUTH_URL to the self-hosted Auth container (http://auth:9999 in deploy/compose.yml) and remove SUPABASE_URL.',
+    );
+  }
+  const url = (env.SUPABASE_AUTH_URL ?? '').trim();
+  const serviceRoleKey = (env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
+  if (url === '') {
+    problems.push('SUPABASE_AUTH_URL is not set.');
+  } else if (!URL.canParse(url)) {
+    problems.push(`SUPABASE_AUTH_URL is not an address: "${url}".`);
+  }
+  if (serviceRoleKey === '') {
+    problems.push(
+      'SUPABASE_SERVICE_ROLE_KEY is not set. "pnpm --filter @integr8/auth keygen" prints one.',
+    );
+  }
+  return problems.length > 0 ? { problems } : { settings: { url, serviceRoleKey } };
+}
+
+/**
+ * What is missing for starting company app builds from the dashboard, if
+ * anything. Checked at load, like email: a switch that quietly starts nothing
+ * is the problem this setting exists to fix.
+ */
+export function appBuildProblems(config: ApiConfig): string[] {
+  if (config.APP_BUILDS !== 'github') {
+    return [];
+  }
+  const missing: string[] = [];
+  if (config.GITHUB_BUILD_TOKEN === undefined) {
+    missing.push('GITHUB_BUILD_TOKEN');
+  }
+  if (config.GITHUB_BUILD_REPOSITORY === undefined) {
+    missing.push('GITHUB_BUILD_REPOSITORY');
+  }
+  return missing.length === 0 ? [] : [`APP_BUILDS is github but ${missing.join(' and ')} not set.`];
 }
 
 /**
