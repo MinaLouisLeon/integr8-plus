@@ -99,7 +99,8 @@ them on a phone once P14 lands.
 
 - [ ] On **A**, open the job with signal: the badge beside Back says **Safe to leave**.
 - [ ] Turn on aeroplane mode. Move the job on (on site, in progress), tick every checklist item,
-      add a note, correct the gate code.
+      add a note (**Add a note** at the end of the job's notes), correct the gate code
+      (**Correct access notes** on the access panel). Both show on the job at once.
 - [ ] The badge says **Not sent yet**; the card under the access notes counts the changes; the
       banner says _No connection. … items are waiting on this phone._
 - [ ] Force-quit the app and open it again, still offline: everything above is still shown.
@@ -127,6 +128,9 @@ them on a phone once P14 lands.
       are shown, the parking notes are not asked about (nobody else changed them).
 - [ ] Choose **Mine** for the gate code and **Send my choices**. The banner returns to
       _Everything is sent._; the web shows _2222_ and the parking notes.
+- [ ] Offline on **A**, correct the gate code; on the web, cancel A's only job at that site. Bring
+      **A** online: the change is refused (_Needs your attention_) and the web keeps the old code.
+      The job, now closed, no longer offers **Correct access notes**.
 - [ ] On a dispatched job, offline on **A**, mark it _Travelling_; on the web, move it back to
       scheduled. Bring **A** online: the conflict names who moved it. **Keep theirs**: the phone
       shows _Scheduled_.

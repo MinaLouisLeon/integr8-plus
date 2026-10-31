@@ -5955,6 +5955,7 @@ export const en = {
       serial_required: 'Choose the serial number of each part fitted.',
       work_order_not_on_phone: 'This job is not on this phone. Sync, then try again.',
       name_required: 'Give the asset a name.',
+      note_required: 'Write the note first.',
       asset_not_on_phone: 'This asset is not on this phone. Sync, then try again.',
       amount_invalid: 'Enter an amount above zero, such as 250.50.',
       date_invalid: 'Give the date the money was spent.',
@@ -6112,6 +6113,20 @@ export const en = {
     push: {
       channelJobs: 'Job changes',
       channelUrgent: 'Urgent callouts',
+    },
+    notes: {
+      none: 'No notes yet.',
+      add: 'Add a note',
+      label: 'Note',
+      placeholder: 'What happened, or what the next person needs to know',
+      internal: 'For the office',
+      customer: 'The customer may see it',
+      save: 'Save note',
+      failed: 'The note was not saved',
+    },
+    access: {
+      hint: 'Saved on this phone at once and sent when there is signal. The office sees who changed what.',
+      failed: 'The access notes were not saved',
     },
     jobs: {
       title: 'Your jobs',

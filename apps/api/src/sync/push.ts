@@ -22,7 +22,7 @@ import {
 } from '../routes/v1/work-order-purchases.js';
 import { deliverOnCompletion } from '../routes/v1/sales-fulfilment.js';
 import type { RequestContext } from '../http/routes.js';
-import { updateAccessNotes } from '../routes/v1/customers.js';
+import { assertMayChangeAccess, updateAccessNotes } from '../routes/v1/customers.js';
 import {
   mayWork,
   peopleOf,
@@ -1332,6 +1332,10 @@ async function access(
   if (site === undefined) {
     return rejected('site_unavailable', 'This site no longer exists.');
   }
+  // The same rule as the office's screen, asked before anything else: an
+  // engineer whose job at the site closed while they were offline is told so,
+  // not shown a conflict they would resolve only to be refused.
+  await assertMayChangeAccess(tx, context.principal, site.id);
   const changed = ACCESS_FIELDS.filter((field) => mutation.payload.changes[field] !== undefined);
   const value = (text: string | null | undefined) => {
     const trimmed = text?.trim() ?? '';

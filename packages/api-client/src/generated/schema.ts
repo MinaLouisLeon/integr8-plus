@@ -2496,7 +2496,7 @@ export interface paths {
         get?: never;
         /**
          * Correct a site’s access notes
-         * @description For the engineer who finds the gate code has changed: anyone working a job at the site may correct its access notes, as well as the office. Every change records who made it and when.
+         * @description For the engineer who finds the gate code has changed: anyone on the crew of an open job at the site (not complete, reviewed or cancelled) may correct its access notes, as well as the office. Every change records who made it and when.
          */
         put: operations["updateSiteAccess"];
         post?: never;
@@ -24952,7 +24952,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description This person is not working a job at the site. */
+            /** @description This person is not working an open job at the site. */
             403: {
                 headers: {
                     [name: string]: unknown;

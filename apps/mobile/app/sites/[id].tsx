@@ -1,5 +1,5 @@
 import { useTranslation } from '@integr8/i18n';
-import { addressText, site } from '@integr8/offline';
+import { addressText, mayCorrectAccess, site } from '@integr8/offline';
 import { spacing } from '@integr8/tokens';
 import { router, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
@@ -18,7 +18,10 @@ import {
 } from '~/components/ui';
 import { useLocalQuery } from '~/local/react';
 
-/** A site, from the phone. Access notes first, as on a job. */
+/**
+ * A site, from the phone. Access notes first, as on a job, with the way to
+ * correct them for someone working an open job here (P12).
+ */
 export default function SiteScreen() {
   return (
     <LocalGate>
@@ -32,6 +35,9 @@ function Site() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const state = useLocalQuery(`site:${id}`, ['sites', 'customers', 'work_orders'], (sql) =>
     site(sql, id),
+  );
+  const correctable = useLocalQuery(`access-correctable:${id}`, ['work_orders', 'meta'], (sql) =>
+    mayCorrectAccess(sql, id),
   );
 
   if (state.status !== 'ready') {
@@ -54,7 +60,14 @@ function Site() {
         <Button label={t('mobile.back')} variant="secondary" onPress={() => router.back()} />
       </View>
 
-      <AccessNotes access={body.access} />
+      <AccessNotes
+        access={body.access}
+        onCorrect={
+          correctable.status === 'ready' && correctable.data
+            ? () => router.push({ pathname: '/sites/access/[id]', params: { id: body.id } })
+            : undefined
+        }
+      />
 
       <View style={{ gap: spacing[1] }}>
         <Heading>{body.name}</Heading>

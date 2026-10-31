@@ -1,5 +1,6 @@
 import type { WorkOrderState } from '@integr8/core';
 import {
+  type AccessValues,
   type ChangeContext,
   type ConditionValue,
   downloadedFiles,
@@ -9,7 +10,9 @@ import {
   recordPhoto,
   recordAssetCondition,
   recordAssetLink,
+  recordAccessChange,
   recordAssetRegistered,
+  recordComment,
   recordMaterial,
   recordPhotoRemoved,
   recordPurchase,
@@ -213,6 +216,30 @@ export async function markVisitDone(workOrderId: string, visitId: string): Promi
 
 export async function moveJob(workOrderId: string, to: WorkOrderState): Promise<void> {
   await recordTransition(context(), { workOrderId, to });
+  sent();
+}
+
+/** A note on the job (P12): on the job at once, sent when there is signal. */
+export async function addNote(input: {
+  workOrderId: string;
+  body: string;
+  visibility: 'internal' | 'customer';
+}): Promise<void> {
+  await recordComment(context(), input);
+  sent();
+}
+
+/**
+ * A corrected gate code, parking or hazard (P12): on the site and its jobs at
+ * once. Only the fields that changed are sent, so a colleague's correction to
+ * another field offline is not overwritten, and a field nobody touched is
+ * never part of a conflict.
+ */
+export async function correctAccess(siteId: string, changes: AccessValues): Promise<void> {
+  if (Object.keys(changes).length === 0) {
+    return;
+  }
+  await recordAccessChange(context(), { siteId, changes });
   sent();
 }
 

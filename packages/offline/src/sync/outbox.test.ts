@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { PushResult } from '../api-types.js';
+import { job, site } from '../queries.js';
 import { applySnapshot } from '../snapshot.js';
 import { customerDetail, me, uuid, workOrderDetail } from '../testing/fixtures.js';
 import { openTestDatabase } from '../testing/node-driver.js';
@@ -473,5 +474,44 @@ describe('access notes', () => {
     // One that has not left still folds.
     const third = await recordAccessChange(context, { siteId, changes: { hazards: 'Dog' } });
     expect(third).toBe(second);
+  });
+
+  it('shows a correction on the site and on every job there at once, a cleared field as none', async () => {
+    const { db, context, customer, jobs } = await phone();
+    const siteId = customer.sites[0]!.id;
+    await recordAccessChange(context, { siteId, changes: { gateCode: '9090#', parking: null } });
+
+    const local = await db.read((sql) => site(sql, siteId));
+    expect(local?.site.access).toMatchObject({ gateCode: '9090#', parking: null });
+    for (const one of jobs) {
+      const shown = await db.read((sql) => job(sql, one.workOrder.id));
+      expect(shown?.detail.site.access).toMatchObject({ gateCode: '9090#', parking: null });
+    }
+  });
+});
+
+describe('notes', () => {
+  it('shows a note on the job at once, by the engineer, and refuses an empty one', async () => {
+    const { db, context, jobs, batch } = await phone();
+    const id = jobs[0].workOrder.id;
+    const { commentId } = await recordComment(context, {
+      workOrderId: id,
+      body: '  Gate code changed, now 9090#  ',
+      visibility: 'customer',
+    });
+    const shown = await db.read((sql) => job(sql, id));
+    expect(shown?.detail.comments).toEqual([
+      expect.objectContaining({
+        id: commentId,
+        body: 'Gate code changed, now 9090#',
+        visibility: 'customer',
+        author: expect.objectContaining({ name: 'Ed Engineer' }) as unknown,
+      }),
+    ]);
+
+    await expect(
+      recordComment(context, { workOrderId: id, body: '   ', visibility: 'internal' }),
+    ).rejects.toMatchObject({ code: 'note_required' });
+    expect((await batch()).mutations).toHaveLength(1);
   });
 });

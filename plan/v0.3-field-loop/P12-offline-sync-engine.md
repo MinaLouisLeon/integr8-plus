@@ -97,6 +97,14 @@ run; the steps that need a form or the camera on the phone wait for P13 and P14.
   lifecycle rule abort after eight.
 - **Background sync is `expo-background-task`** at the OS's minimum of 15 minutes. It is a
   backstop: launch, foreground, reconnect and Sync now do the real work.
+- **Notes and access notes on the phone (2026-10-31).** The engine had `recordComment` and
+  `recordAccessChange` from the start, but no screen called them, so checklist 1's "add a note,
+  correct the gate code" could not be run. The job screen now has **Add a note** and the access
+  panel of a job or site **Correct access notes**. The pre-production audit also found that any
+  engineer ever assigned to a job at a site could change its gate code, closed jobs included;
+  only the crew of an open job may now, on the office's route and through sync, which refuses
+  before looking for a conflict. Tested in `packages/offline` (`access.test.ts`, `outbox.test.ts`),
+  `apps/mobile` (`access-edit.test.ts`) and the sync suite ("correcting a gate code").
 - **Unsent work from P11 moves, it is not dropped.** Local migration 4 turns drafts into forms
   the engine queues, and pending files into uploads; tested with work written at versions 1–3.
 

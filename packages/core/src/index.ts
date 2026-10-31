@@ -113,6 +113,7 @@ export {
   workOrderPrioritySchema,
   WORK_ORDER_TRANSITIONS,
   CLOSED_WORK_ORDER_STATES,
+  OPEN_WORK_ORDER_STATES,
   ACTIVE_WORK_ORDER_STATES,
   findTransition,
   nextStates,

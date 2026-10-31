@@ -1,4 +1,6 @@
-import type { Me } from './api-types.js';
+import { CLOSED_WORK_ORDER_STATES } from '@integr8/core';
+import type { Me, WorkOrderDetail } from './api-types.js';
+import { identity } from './queries.js';
 import type { SqlConnection } from './sql.js';
 
 /**
@@ -52,5 +54,32 @@ export function allows(granted: LocalAccess, permission: Permission, feature?: s
   return (
     granted.permissions.has(permission) &&
     (feature === undefined || granted.features[feature] === true)
+  );
+}
+
+/**
+ * Whether the phone should offer to correct a site's access notes: the office,
+ * or someone on the crew of an open job at the site, as the phone last heard.
+ *
+ * The same rule the server applies when the change arrives (`updateAccessNotes`).
+ * Asking it here only keeps the button from an engineer who would be refused;
+ * a job that closes while the phone is offline is still refused on arrival.
+ */
+export async function mayCorrectAccess(sql: SqlConnection, siteId: string): Promise<boolean> {
+  const granted = await access(sql);
+  if (granted.permissions.has('customer.manage')) {
+    return true;
+  }
+  const me = await identity(sql);
+  if (!granted.permissions.has('work_order.progress') || me === undefined) {
+    return false;
+  }
+  const closed = CLOSED_WORK_ORDER_STATES.map(() => '?').join(', ');
+  const jobs = await sql.all<{ data: string }>(
+    `select data from work_orders where site_id = ? and state not in (${closed})`,
+    [siteId, ...CLOSED_WORK_ORDER_STATES],
+  );
+  return jobs.some((row) =>
+    (JSON.parse(row.data) as WorkOrderDetail).crew.some((member) => member.id === me.userId),
   );
 }

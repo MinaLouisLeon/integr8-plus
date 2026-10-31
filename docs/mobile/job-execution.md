@@ -10,7 +10,10 @@ apps/mobile
   app/home.tsx                 Today: the clock, the next job and its one step forward, then the day's jobs
   app/jobs/[id].tsx            one job, in the order it is worked
   app/jobs/complete/[id].tsx   what completing still needs, the sign-off, Complete
+  app/sites/access/[id].tsx    correcting a site's access notes (P12)
   app/qualifications.tsx       My qualifications: the engineer's skills and certificates, read only
+  src/components/job-notes.tsx the job's notes, and adding one (P12)
+  src/lib/access-edit.ts       which access fields the engineer changed                ← unit tested
   src/lib/today.ts             which job is next; which steps are the engineer's       ← unit tested
   src/lib/navigation.ts        directions links for each maps app                      ← unit tested
   src/lib/qualifications.ts    whether the engineer holds what a job needs              ← unit tested
@@ -69,6 +72,15 @@ How to get in comes first, then what to do:
 12. time on this job;
 13. then the customer, site, contact, due window, description, sign-off, crew, notes and earlier
     jobs.
+
+**Notes and access notes from the phone** (P12). **Add a note** at the end of the notes saves it
+on the phone and shows it at once, signed with the engineer's name. It is for the office unless
+they choose _The customer may see it_. **Correct access notes** on the access panel opens the gate
+code, hazards, who to ask for, parking and other notes for editing; the site and every job there
+show the correction at once. It is offered only to someone on the crew of an open job at the site
+(or the office), the same rule the server holds the change to, so a gate code cannot be changed
+from a job that is complete, reviewed or cancelled. Both go through the outbox like every other
+change ([offline sync](../sync/README.md#recording-a-change)).
 
 **Only the engineer's own transitions are offered.** `jobSteps` filters the core state machine
 to `work_order.progress`, so dispatching, rescheduling and reviewing never appear on a phone.

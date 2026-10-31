@@ -5990,6 +5990,7 @@ export const ar: Catalogue<Messages> = {
       serial_required: 'اختر الرقم التسلسلي لكل قطعة تم تركيبها.',
       work_order_not_on_phone: 'هذه المهمة ليست على هذا الهاتف. زامن ثم حاول مرة أخرى.',
       name_required: 'اكتب اسمًا للأصل.',
+      note_required: 'اكتب الملاحظة أولًا.',
       asset_not_on_phone: 'هذا الأصل ليس على هذا الهاتف. زامن ثم حاول مرة أخرى.',
       amount_invalid: 'أدخل مبلغًا أكبر من صفر، مثل 250.50.',
       date_invalid: 'اذكر تاريخ صرف المبلغ.',
@@ -6169,6 +6170,20 @@ export const ar: Catalogue<Messages> = {
     push: {
       channelJobs: 'تغييرات المهام',
       channelUrgent: 'نداءات عاجلة',
+    },
+    notes: {
+      none: 'لا توجد ملاحظات بعد.',
+      add: 'أضف ملاحظة',
+      label: 'الملاحظة',
+      placeholder: 'ما الذي حدث، أو ما يحتاج من يأتي بعدك إلى معرفته',
+      internal: 'للمكتب فقط',
+      customer: 'يمكن للعميل رؤيتها',
+      save: 'احفظ الملاحظة',
+      failed: 'لم تُحفظ الملاحظة',
+    },
+    access: {
+      hint: 'تُحفظ على هذا الهاتف فورًا وتُرسل عند توفر الإشارة. يرى المكتب من غيّر ماذا.',
+      failed: 'لم تُحفظ ملاحظات الدخول',
     },
     jobs: {
       title: 'مهامك',

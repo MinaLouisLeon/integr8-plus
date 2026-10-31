@@ -69,6 +69,7 @@ export const LOCAL_CHANGE_ERROR_CODES = [
   'lot_not_in_van',
   'lots_mismatch',
   'name_required',
+  'note_required',
   'not_an_access_conflict',
   'not_an_answers_conflict',
   'part_description_required',
@@ -1187,12 +1188,18 @@ export async function recordComment(
   input: { workOrderId: string; body: string; visibility: 'internal' | 'customer' },
 ): Promise<{ mutationId: string; commentId: string }> {
   const { db, clock, random } = context;
+  const body = input.body.trim();
+  // The server refuses an empty note; refusing it here keeps it out of the
+  // outbox, where it would only wait to fail.
+  if (body === '') {
+    throw new LocalChangeError('note_required', 'Write the note first.');
+  }
   return db.write(OUTBOX_TABLES, async (sql) => {
     const now = clock.now();
     const at = now.toISOString();
     const commentId = uuidv7(now.getTime(), random);
     const mutationId = uuidv7(now.getTime(), random);
-    const payload = { commentId, body: input.body.trim(), visibility: input.visibility };
+    const payload = { commentId, body, visibility: input.visibility };
     await applyLocally(sql, input.workOrderId, { kind: 'work_order.comment', payload }, at);
     await insertChange(sql, {
       id: mutationId,
