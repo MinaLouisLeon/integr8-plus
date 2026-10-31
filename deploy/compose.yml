@@ -245,11 +245,18 @@ services:
     restart: 'no'
     mem_limit: 512m
 
-  # Applies every pending migration, then exits. The API refuses traffic until
-  # the schema matches its build, so this has to finish first.
+  # Applies every pending migration, then loads the form template library this
+  # build ships, then exits. The API refuses traffic until the schema matches
+  # its build, so this has to finish first. The library sync only upserts the
+  # global templates by key: a company's own forms, copied from a template, are
+  # never touched, and running it on every start changes nothing the second
+  # time. A shell runs the two because a compose command is one process.
   migrate:
     <<: [*api-image, *logging]
-    command: ['node', 'node_modules/@integr8/db/dist/migrator/cli.js', 'up']
+    command:
+      - sh
+      - -c
+      - node node_modules/@integr8/db/dist/migrator/cli.js up && node node_modules/@integr8/db/dist/seed/templates-cli.js
     environment:
       <<: *migrator-env
     depends_on:

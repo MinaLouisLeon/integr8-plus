@@ -571,6 +571,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
         <ul class="check" data-stage="s5">
           <li><input type="checkbox" id="s5-1"><label for="s5-1"><b>Save what it prints</b>: a password and an authenticator secret, shown once. Add the secret to Google Authenticator, 1Password or Authy (scan the <code>otpauth://</code> URI as a QR code, or type the secret). This same account signs you in to the desktop app as staff. Because the terminal made it, it is a <b>staff manager</b>: the only kind of account that can add and remove colleagues (below).</label></li>
           <li><input type="checkbox" id="s5-2"><label for="s5-2"><b>Sign in</b> at <code>https://app.integr8-media.com/platform/sign-in</code> with the email, the password and a six-digit code. Open <b>Health</b>; it should be empty.</label></li>
+          <li><input type="checkbox" id="s5-tpl"><label for="s5-tpl"><b>The form template library is there</b>: dashboard → <b>Templates</b> lists the forms the product ships (Boiler service, Site risk assessment, Job completion and the rest), which companies' forms start from. The <code>migrate</code> step loads them on every start of the stack, after the migrations, and changes only the library: a company's own forms are never touched. Its log ends with <code>form templates synchronised:</code> and a number. An empty page means <code>migrate</code> did not finish: <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate</code> says why.</label></li>
           <li><input type="checkbox" id="s5-3"><label for="s5-3"><b>Attach the Stripe prices to the plans</b>, only with Stripe (Part G): dashboard → <b>Plans</b> → for Starter, Standard and Enterprise paste the monthly (and yearly) price IDs from the key sheet. A plan with no price cannot be bought by a company that pays in the app, and the pricing page says so. Companies you invoice never see this.</label></li>
           <li><input type="checkbox" id="s5-4"><label for="s5-4"><b>Look at Companies</b>: empty. Stage 7 fills it. First, Stage 6 gets you the apps.</label></li>
         </ul>
@@ -1162,6 +1163,12 @@ docker compose -f deploy/compose.yml --env-file deploy/.env exec worker printenv
         <ul class="check" data-stage="s12x">
           <li><input type="checkbox" id="s12-x1"><label for="s12-x1"><b>Make the token</b> (Stage 0, part D, "Create an analytics token") and add <code>CLOUDFLARE_API_TOKEN=</code> with it to <code>deploy/.env</code> during part C, under the R2 lines.</label></li>
           <li><input type="checkbox" id="s12-x2"><label for="s12-x2"><b>No warning after part D</b>: <code>docker compose -f deploy/compose.yml --env-file deploy/.env logs api worker | grep CLOUDFLARE_API_TOKEN</code> prints nothing. The morning after, Stage 9, part C's "storage check matched" passes.</label></li>
+        </ul>
+
+        <h3 id="templates-update">Y. The form template library, loaded on every deploy (included in v1.2.2)</h3>
+        <p>The template library lives in the code and used to reach the database only when somebody ran a command by hand, which nothing on the server did, so a fresh machine had an empty <b>Templates</b> page. The <code>migrate</code> step now loads it after the migrations, on every start.</p>
+        <ul class="check" data-stage="s12y">
+          <li><input type="checkbox" id="s12-y1"><label for="s12-y1"><b>After part D</b>, the <code>migrate</code> log ends with <code>form templates synchronised:</code> and a number, and dashboard → <b>Templates</b> lists the library (Stage 5's check). Companies' own forms are unchanged.</label></li>
         </ul>
 
         <div class="note"><p><b>The test box (Stage 10)</b> updates the same way, from <code>staging</code> instead of <code>main</code>: <code>git pull</code> on its <code>staging</code> checkout, then <b>Pull</b> and <b>Redeploy</b> the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.</p></div>

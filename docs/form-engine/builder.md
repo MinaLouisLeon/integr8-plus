@@ -70,7 +70,15 @@ pnpm --filter @integr8/db db:templates
 
 It is an upsert — removing a template from the code does not remove it from the database,
 because companies may already have started from it. Run it after migrations in every
-environment; it is product content, not seed data.
+environment; it is product content, not seed data. In a deployment nobody has to: the compose
+`migrate` service runs it (`node node_modules/@integr8/db/dist/seed/templates-cli.js`, as the
+owner) straight after `db up`, on every start of the stack.
+
+It only ever writes `form_templates`, by key. A company's form made from a template is its own
+copy from the start (`forms.source_template_key` records where it came from, and its versions
+hold their own definition), so loading a changed library again never changes a company's form,
+draft or published; `form-builder.integration.test.ts` checks exactly that, and that loading
+twice changes nothing.
 
 ## In the desktop app
 

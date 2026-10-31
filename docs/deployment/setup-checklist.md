@@ -685,6 +685,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
 
 - [ ] **Save what it prints**: a password and an authenticator secret, shown once. Add the secret to Google Authenticator, 1Password or Authy (scan the `otpauth://` URI as a QR code, or type the secret). This same account signs you in to the desktop app as staff. Because the terminal made it, it is a **staff manager**: the only kind of account that can add and remove colleagues (below).
 - [ ] **Sign in** at `https://app.integr8-media.com/platform/sign-in` with the email, the password and a six-digit code. Open **Health**; it should be empty.
+- [ ] **The form template library is there**: dashboard → **Templates** lists the forms the product ships (Boiler service, Site risk assessment, Job completion and the rest), which companies' forms start from. The `migrate` step loads them on every start of the stack, after the migrations, and changes only the library: a company's own forms are never touched. Its log ends with `form templates synchronised:` and a number. An empty page means `migrate` did not finish: `docker compose -f deploy/compose.yml --env-file deploy/.env logs migrate` says why.
 - [ ] **Attach the Stripe prices to the plans**, only with Stripe (Part G): dashboard → **Plans** → for Starter, Standard and Enterprise paste the monthly (and yearly) price IDs from the key sheet. A plan with no price cannot be bought by a company that pays in the app, and the pricing page says so. Companies you invoice never see this.
 - [ ] **Look at Companies**: empty. Stage 7 fills it. First, Stage 6 gets you the apps.
 
@@ -1391,6 +1392,12 @@ The nightly metering has always needed `CLOUDFLARE_API_TOKEN` to compare each co
 
 - [ ] **Make the token** (Stage 0, part D, "Create an analytics token") and add `CLOUDFLARE_API_TOKEN=` with it to `deploy/.env` during part C, under the R2 lines.
 - [ ] **No warning after part D**: `docker compose -f deploy/compose.yml --env-file deploy/.env logs api worker | grep CLOUDFLARE_API_TOKEN` prints nothing. The morning after, Stage 9, part C's "storage check matched" passes.
+
+### Y. The form template library, loaded on every deploy (included in v1.2.2)
+
+The template library lives in the code and used to reach the database only when somebody ran a command by hand, which nothing on the server did, so a fresh machine had an empty **Templates** page. The `migrate` step now loads it after the migrations, on every start.
+
+- [ ] **After part D**, the `migrate` log ends with `form templates synchronised:` and a number, and dashboard → **Templates** lists the library (Stage 5's check). Companies' own forms are unchanged.
 
 > [!NOTE]
 > **The test box (Stage 10)** updates the same way, from `staging` instead of `main`: `git pull` on its `staging` checkout, then **Pull** and **Redeploy** the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.

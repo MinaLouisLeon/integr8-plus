@@ -307,6 +307,50 @@ describe('the global template library', () => {
     expect(count.rows[0]).toEqual({ n: FORM_TEMPLATES.length });
   });
 
+  it('leaves a company’s form copied from a template alone when the library is loaded again', async () => {
+    // The migrate service loads the library on every deploy. A company's copy
+    // is its own from the moment it is made: a changed template must never
+    // reach into it, published or draft.
+    await syncFormTemplates();
+    const source = FORM_TEMPLATES[0];
+    if (source === undefined) {
+      throw new Error('the engine ships no templates');
+    }
+    const copied = await withTenant(northwind.id, async (tx) => {
+      const form = await tx.forms.createForm({
+        title: 'Our boiler visit',
+        createdBy: ADMIN,
+        sourceTemplateKey: source.key,
+      });
+      await tx.forms.createDraft({
+        formId: form.id,
+        definition: { ...source.definition, title: { en: 'Edited by the company' } },
+        createdBy: ADMIN,
+      });
+      return form;
+    });
+    const snapshot = async (): Promise<Record<string, unknown>[]> =>
+      (
+        await owner.query<Record<string, unknown>>(
+          `select f.title, f.source_template_key, f.updated_at, v.definition, v.updated_at as version_updated
+             from forms f join form_versions v on v.form_id = f.id
+            where f.id = $1 order by v.version_number`,
+          [copied.id],
+        )
+      ).rows;
+    const before = await snapshot();
+
+    // A template edited upstream, then loaded twice, as two deploys would.
+    await getPlatformDataSource().formTemplates.upsert([
+      { ...source, title: { en: 'Renamed upstream' } },
+    ]);
+    await syncFormTemplates();
+    await syncFormTemplates();
+
+    expect(await snapshot()).toEqual(before);
+    expect(before[0]).toMatchObject({ source_template_key: source.key });
+  });
+
   it('is readable from any company’s transaction', async () => {
     const templates = await withTenant(northwind.id, (tx) => tx.formTemplates.list());
     expect(templates.map((template) => template.key).sort()).toEqual(
