@@ -276,6 +276,20 @@ export const SESSION_REVOCATION_REASONS = [
   'password_changed',
 ] as const;
 export const sessionRevocationReasonSchema = z.enum(SESSION_REVOCATION_REASONS);
+
+/**
+ * How somebody proved who they are for a session (0054). Read by Change
+ * password: an `email_code` session is proof on its own for fifteen minutes.
+ */
+export const SIGN_IN_METHODS = [
+  'password',
+  'email_code',
+  'invitation',
+  'signup',
+  'impersonation',
+] as const;
+export const signInMethodSchema = z.enum(SIGN_IN_METHODS);
+export type SignInMethod = z.infer<typeof signInMethodSchema>;
 export type SessionRevocationReason = z.infer<typeof sessionRevocationReasonSchema>;
 
 export const OFFLINE_GRANT_REVOCATION_REASONS = [
@@ -321,6 +335,23 @@ export interface SessionsTable {
   revoked_at: Date | null;
   revoked_reason: SessionRevocationReason | null;
   impersonation_grant_id: string | null;
+  /** 0054. Defaults to `password` for sessions made by an older release. */
+  signed_in_with: Generated<SignInMethod>;
+  /** 0054. When the person last proved who they are; copied on a company switch. */
+  authenticated_at: Generated<Date>;
+}
+
+/**
+ * A sign-in account to delete from Auth after a company purge (0054). Kept
+ * until the delete succeeds, so a failure is retried on the next purge run.
+ */
+export interface IdentityDeletionsTable {
+  user_id: string;
+  queued_at: Generated<Date>;
+  attempts: Generated<number>;
+  last_attempt_at: Date | null;
+  last_error: string | null;
+  completed_at: Date | null;
 }
 
 export interface RefreshTokensTable {
@@ -3473,6 +3504,7 @@ export interface Database {
   announcements: AnnouncementsTable;
   tenant_exports: TenantExportsTable;
   tenant_deletions: TenantDeletionsTable;
+  identity_deletions: IdentityDeletionsTable;
   tenant_users: TenantUsersTable;
   audit_log: AuditLogTable;
   sessions: SessionsTable;
@@ -3692,6 +3724,9 @@ export const PLATFORM_TABLES = [
   'announcements',
   'tenant_exports',
   'tenant_deletions',
+  // Sign-in accounts still to delete from Auth after a purge (0054). Named by
+  // user id only, after the company that held them is gone.
+  'identity_deletions',
   // The flags that exist belong to no company; every company reads them and its
   // own answers beside them.
   'feature_flags',

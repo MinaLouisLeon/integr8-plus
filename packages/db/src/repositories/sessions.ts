@@ -7,6 +7,8 @@ import {
   type SessionRevocationReason,
   sessionRevocationReasonSchema,
   type SessionsTable,
+  type SignInMethod,
+  signInMethodSchema,
 } from '../schema.js';
 import { TenantScopedRepository, type TenantScope } from './tenant-scope.js';
 
@@ -24,6 +26,10 @@ export interface Session {
   revokedAt: Date | null;
   revokedReason: SessionRevocationReason | null;
   impersonationGrantId: string | null;
+  /** How the person proved who they are (0054). */
+  signedInWith: SignInMethod;
+  /** When they last did. Copied on a company switch. */
+  authenticatedAt: Date;
 }
 
 export interface RefreshTokenRecord {
@@ -45,6 +51,10 @@ export interface CreateSessionInput {
   userAgent?: string | null;
   ipAddress?: string | null;
   impersonationGrantId?: string | null;
+  /** Defaults to `password`. */
+  signedInWith?: SignInMethod;
+  /** Defaults to now. A company switch passes the old session's. */
+  authenticatedAt?: Date;
 }
 
 export interface ListSessionsOptions {
@@ -97,6 +107,8 @@ export class SessionsRepository extends TenantScopedRepository {
         ip_address: input.ipAddress ?? null,
         expires_at: input.expiresAt,
         impersonation_grant_id: input.impersonationGrantId ?? null,
+        signed_in_with: signInMethodSchema.parse(input.signedInWith ?? 'password'),
+        ...(input.authenticatedAt === undefined ? {} : { authenticated_at: input.authenticatedAt }),
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -282,6 +294,8 @@ function toSession(row: Selectable<SessionsTable>): Session {
     revokedReason:
       row.revoked_reason === null ? null : sessionRevocationReasonSchema.parse(row.revoked_reason),
     impersonationGrantId: row.impersonation_grant_id,
+    signedInWith: signInMethodSchema.parse(row.signed_in_with),
+    authenticatedAt: row.authenticated_at,
   };
 }
 

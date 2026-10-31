@@ -82,6 +82,26 @@ export interface CreateTenantInput {
 export class TenantsRepository {
   constructor(private readonly db: Kysely<Database>) {}
 
+  /**
+   * Every company in which this person has a live session (P36).
+   *
+   * For Change password, which signs out every other device in every company.
+   * Read from the sessions themselves rather than from memberships, so a
+   * company that is suspended today, and whose sessions would work again when
+   * it is reactivated, is not missed.
+   */
+  async withLiveSessionsFor(userId: string, now: Date = new Date()): Promise<TenantId[]> {
+    const rows = await this.db
+      .selectFrom('sessions')
+      .select('tenant_id')
+      .distinct()
+      .where('user_id', '=', userId)
+      .where('revoked_at', 'is', null)
+      .where('expires_at', '>', now)
+      .execute();
+    return rows.map((row) => toTenantId(row.tenant_id));
+  }
+
   async create(input: CreateTenantInput): Promise<Tenant> {
     const row = await this.db
       .insertInto('tenants')
