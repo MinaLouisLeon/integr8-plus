@@ -535,6 +535,8 @@ export const apiErrorsEn = {
   work_order_changed:
     'This job was changed elsewhere since you loaded it. Reload it and try again.',
   work_order_closed: 'This job is closed. Reopen it before changing it.',
+  work_order_invoiced:
+    'This job is already invoiced, so a part recorded now would never be billed. Unused parts can still be returned.',
   work_order_not_customers: 'Choose one of the customer’s jobs.',
   work_order_required: 'Choose the job you are on.',
   work_order_unavailable: 'This job is no longer yours to change: it was reassigned or removed.',

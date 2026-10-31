@@ -355,6 +355,58 @@ describe('replay', () => {
   }, 120_000);
 });
 
+describe('parts on jobs (0062)', () => {
+  it('refuses a part on a cancelled job, and keeps whether one was recorded after the close', async () => {
+    const service = await item(northwind, 'SVC-0062', 'service');
+    const job = await repos(northwind, async (tx) => {
+      await tx.tenantUsers.create({
+        userId: USER,
+        email: 'parts@northwind.example',
+        displayName: 'Parts',
+        role: 'dispatcher',
+      });
+      const customer = await tx.customers.create({ name: 'Riverside' }, USER);
+      const site = await tx.sites.create(
+        customer.id,
+        { name: 'Block A', address: { line1: '1 River Road' } },
+        USER,
+      );
+      const type = await tx.jobTypes.create({ name: 'Service', code: 'svc-0062' }, USER);
+      return tx.workOrders.create(
+        { customerId: customer.id, siteId: site.id, jobTypeId: type.id },
+        USER,
+      );
+    });
+    const part = (recordedAfterClose: boolean) =>
+      repos(northwind, (tx) =>
+        tx.inventoryMaterials.create({
+          workOrderId: job.id,
+          itemId: service.id,
+          locationId: null,
+          quantity: '1',
+          unitCost: null,
+          status: 'posted',
+          recordedBy: USER,
+          recordedAfterClose,
+        }),
+      );
+    const marked = await part(true);
+    expect(marked.recordedAfterClose).toBe(true);
+    await expect(
+      owner.query(
+        `update erp_work_order_materials set recorded_after_close = false where id = $1`,
+        [marked.id],
+      ),
+    ).rejects.toThrow(/keeps whether it was recorded after its job closed/u);
+
+    const cancelled = await repos(northwind, (tx) =>
+      tx.workOrders.transition(job.id, job.revision, 'cancelled', USER, 'Not needed'),
+    );
+    expect(cancelled.outcome).toBe('written');
+    await expect(part(false)).rejects.toThrow(/is cancelled; no parts can be recorded on it/u);
+  });
+});
+
 describe('deleting a company', () => {
   it('takes its ledger with it, and only when the deletion is due', async () => {
     const tenant = await createTenant('inv-purge');

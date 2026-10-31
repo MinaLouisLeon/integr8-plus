@@ -5,7 +5,7 @@ import {
   parseFinanceReference,
   toUserId,
 } from '@integr8/core';
-import { type Selectable, sql } from 'kysely';
+import { type RawBuilder, type Selectable, sql } from 'kysely';
 import type { ErpCreditNotesTable, ErpFinanceSettingsTable, ErpInvoicesTable } from '../schema.js';
 import { toDayString, trimDecimal } from './crm-leads.js';
 import type { Address } from './customers.js';
@@ -142,6 +142,8 @@ export interface InvoiceQuery {
   workOrderId?: string;
   /** Issued, still owing, and past its due date as of `today`. */
   overdue?: { today: string };
+  /** Made from a job that has parts no invoice bills yet (0062): a follow-up is due. */
+  partsNotBilled?: boolean;
   after?: { createdAt: Date; id: string };
   limit?: number;
 }
@@ -221,6 +223,21 @@ const DERIVED_STATUS = sql<string>`case
   when a.balance <= 0 then case when a.allocated > 0 then 'paid' else 'credited' end
   when a.allocated > 0 then 'partially_paid'
   else 'issued' end`;
+
+/**
+ * Parts on the job an invoice was made from that no invoice bills: posted, not
+ * all returned, and on no invoice line that is not void. A job is invoiced
+ * once, so these are parts a phone recorded before the job closed and synced
+ * after it was invoiced (0062).
+ */
+const UNBILLED_PARTS = (jobId: RawBuilder<unknown>) => sql<boolean>`exists (
+  select 1 from erp_work_order_materials m
+   where m.tenant_id = i.tenant_id and m.work_order_id = ${jobId}
+     and m.status = 'posted' and m.quantity > m.returned_quantity
+     and not exists (select 1 from erp_invoice_lines bl
+                       join erp_invoices bi on bi.tenant_id = bl.tenant_id and bi.id = bl.invoice_id
+                      where bl.tenant_id = m.tenant_id and bl.work_order_material_id = m.id
+                        and bi.status <> 'void'))`;
 
 /** Each invoice's amounts, as a lateral subquery over `i`. */
 const AMOUNTS = sql`lateral (
@@ -399,6 +416,11 @@ export class FinanceInvoicesRepository extends TenantScopedRepository {
     if (query.overdue !== undefined) {
       filters.push(
         sql`i.status = 'issued' and a.balance > 0 and i.due_date < ${query.overdue.today}::date`,
+      );
+    }
+    if (query.partsNotBilled === true) {
+      filters.push(
+        sql`i.status <> 'void' and i.work_order_id is not null and ${UNBILLED_PARTS(sql`i.work_order_id`)}`,
       );
     }
     if (query.after !== undefined) {
@@ -764,6 +786,26 @@ export class FinanceInvoicesRepository extends TenantScopedRepository {
          ${excludingInvoiceId === undefined ? sql`` : sql`and i.id <> ${excludingInvoiceId}::uuid`}
     `.execute(this.db);
     return new Set(rows.map((row) => row.material_id));
+  }
+
+  /**
+   * The jobs among these that are invoiced and still have parts no invoice
+   * bills (0062): the office owes the customer a follow-up invoice for them.
+   */
+  async jobsWithUnbilledParts(workOrderIds: readonly string[]): Promise<Set<string>> {
+    if (workOrderIds.length === 0) {
+      return new Set();
+    }
+    const ids = [...new Set(workOrderIds)];
+    const { rows } = await sql<{ work_order_id: string }>`
+      select distinct i.work_order_id
+        from erp_invoices i
+       where i.tenant_id = ${this.tenantId}
+         and i.status <> 'void'
+         and i.work_order_id in (${sql.join(ids.map((id) => sql`${id}::uuid`))})
+         and ${UNBILLED_PARTS(sql`i.work_order_id`)}
+    `.execute(this.db);
+    return new Set(rows.map((row) => row.work_order_id));
   }
 
   /** The invoices, not void, made from this job: a job is invoiced once. */

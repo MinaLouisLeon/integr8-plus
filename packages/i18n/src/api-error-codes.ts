@@ -439,6 +439,7 @@ export const API_ERROR_CODES = [
   'website_key_limit',
   'work_order_changed',
   'work_order_closed',
+  'work_order_invoiced',
   'work_order_not_customers',
   'work_order_required',
   'work_order_unavailable',

@@ -1421,6 +1421,8 @@ export interface ErpWorkOrderMaterialsTable {
   asset_id: Generated<string | null>;
   /** The serial numbers or batches the part came from, as asked for (0042). */
   lots: Jsonb<MaterialLot[] | null>;
+  /** Recorded on a phone before the job closed, synced after (0062). Set at insert. */
+  recorded_after_close: Generated<boolean>;
 }
 
 /** A serial number or batch a part came from: the lot and how much of it. */

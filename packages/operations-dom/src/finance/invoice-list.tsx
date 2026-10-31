@@ -21,7 +21,7 @@ import {
   Loading,
   useRowMenu,
 } from '../ui.js';
-import { InvoiceStatusBadge, useFinanceAccess } from './finance-parts.js';
+import { InvoiceStatusBadge, PartsNotYetBilledBadge, useFinanceAccess } from './finance-parts.js';
 
 /**
  * A company's invoices (CRM/ERP plan, phase B1): what customers owe, by
@@ -207,12 +207,15 @@ export function InvoiceListScreen() {
   const [searched, setSearched] = useState('');
   const [status, setStatus] = useState<InvoiceStatus | ''>('');
   const [overdue, setOverdue] = useState(false);
+  // Jobs with parts recorded after they were invoiced, waiting for a follow-up (0062).
+  const [partsNotBilled, setPartsNotBilled] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const query = {
     ...(searched === '' ? {} : { q: searched }),
     ...(status === '' ? {} : { status: [status] }),
     ...(overdue ? { overdue: 'true' as const } : {}),
+    ...(partsNotBilled ? { partsNotBilled: 'true' as const } : {}),
     limit: 50,
   };
   const invoices = useInfiniteQuery({
@@ -296,6 +299,14 @@ export function InvoiceListScreen() {
           />
           {t('finance.invoices.overdueOnly')}
         </label>
+        <label className="flex items-center gap-2 pb-2 text-sm text-content">
+          <input
+            type="checkbox"
+            checked={partsNotBilled}
+            onChange={(event) => setPartsNotBilled(event.target.checked)}
+          />
+          {t('finance.invoices.partsNotBilledOnly')}
+        </label>
         <button type="submit" className={buttonClass.secondary}>
           {t('inventory.items.apply')}
         </button>
@@ -307,7 +318,7 @@ export function InvoiceListScreen() {
         <Failure error={invoices.error} onRetry={() => void invoices.refetch()} />
       ) : rows.length === 0 ? (
         <p className="py-8 text-center text-sm text-content-muted">
-          {searched === '' && status === '' && !overdue
+          {searched === '' && status === '' && !overdue && !partsNotBilled
             ? t('finance.invoices.emptyAll')
             : t('finance.invoices.empty')}
         </p>
@@ -342,6 +353,7 @@ export function InvoiceListScreen() {
                         {label}
                       </a>
                       <InvoiceStatusBadge status={invoice.status} overdue={invoice.overdue} />
+                      {invoice.partsNotYetBilled ? <PartsNotYetBilledBadge /> : null}
                     </span>
                     <span className="truncate text-sm text-content-muted">
                       {invoice.customer.name}

@@ -61,6 +61,24 @@ invoices and payments in B1, and the asset register in E3.
 | A job's parts cost is the sum of posted uses net of returns at the cost when posted, summed in SQL                                                                        | `costForJob`; shown only to seats with `inventory.move` or `purchasing.manage`                                                                |
 | The phone's van stock is a forecast — the server's count less the phone's own unsent uses — and says so                                                                   | `van_stock` table on the phone, `vanStock()` in `@integr8/offline`; `vanStock` on the first pull page                                         |
 
+Parts and the job's state (migration 0062, pre-production audit 2026-10-31):
+
+- The office's screens record no part on a completed, reviewed or cancelled job
+  (409 `work_order_closed`) or on a job already on an invoice that is not void
+  (409 `work_order_invoiced`): a job invoices once, so a part added then would never be billed.
+  Returning an unused part stays allowed in every state. `assertTakesParts` in `materials.ts`;
+  `can.recordParts` says the same.
+- The phone's part recorded on site before the job closed (by its recorded time) is accepted
+  when it syncs, posted to stock and the job's cost as any other, and marked
+  `recorded_after_close`; one recorded after the job closed is refused `work_order_closed`.
+  `material()` in `sync/push.ts`.
+- A cancelled job takes no part from any client: `guard_work_order_material_job` refuses the
+  insert.
+- A job on an invoice with posted parts no invoice line bills shows `partsNotYetBilled`; so does
+  each of its invoices, and `GET /v1/finance/invoices?partsNotBilled=true` lists them.
+  `POST /v1/finance/invoices/from-job` on such a job drafts a follow-up with just those parts
+  and no labour; with nothing left unbilled it is still 409 `job_already_invoiced`.
+
 ## Quotes and sales orders (ADR-0006)
 
 | Rule                                                                                                                                                            | Where                                                                                                                                                          |

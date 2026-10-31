@@ -684,6 +684,20 @@ const unavailable = () =>
     'This job is no longer yours to change: it was reassigned, or removed.',
   );
 
+/**
+ * When a closed job closed: completed (a reviewed job keeps that moment) or
+ * cancelled. Undefined while it is open.
+ */
+function closedAt(job: WorkOrder): Date | undefined {
+  if (job.state === 'cancelled') {
+    return job.cancelledAt ?? job.updatedAt;
+  }
+  if (job.state === 'complete' || job.state === 'reviewed') {
+    return job.completedAt ?? job.updatedAt;
+  }
+  return undefined;
+}
+
 async function stateChanged(
   tx: TenantTransaction,
   principal: Principal,
@@ -1067,14 +1081,36 @@ async function material(
     return unavailable();
   }
   await requireWork(tx, principal, job);
+  // The same id arriving again finds the first record, whatever the job is now.
+  const earlier = await tx.inventoryMaterials.findByClientActionId(mutation.payload.materialId);
+  if (earlier !== undefined) {
+    return applied(null, true);
+  }
+  // A part the engineer recorded on site before the job closed, arriving later
+  // for want of signal, was used on the job: it is accepted, posted to stock and
+  // the job's cost like any other, and marked (0062). If the job was already
+  // invoiced, the job then shows parts not yet billed. One recorded after the
+  // job closed is refused, and a cancelled job takes no parts at all.
+  const occurredAt = push.recordedAt(mutation);
+  const closed = closedAt(job);
+  if (job.state === 'cancelled') {
+    return rejected('work_order_closed', 'This job was cancelled; no parts can be recorded on it.');
+  }
+  if (closed !== undefined && occurredAt > closed) {
+    return rejected(
+      'work_order_closed',
+      'This job was closed before the part was recorded; it was not added.',
+    );
+  }
   const result = await recordUse(tx, context, job, {
     itemId: mutation.payload.itemId,
     quantity: mutation.payload.quantity,
     note: mutation.payload.note ?? null,
     clientActionId: mutation.payload.materialId,
-    occurredAt: push.recordedAt(mutation),
+    occurredAt,
     lots: mutation.payload.lots,
     allowExpired: mutation.payload.allowExpired,
+    ...(closed === undefined ? {} : { recordedAfterClose: true }),
   });
   return applied(null, result.outcome === 'already_recorded');
 }
@@ -1396,20 +1432,6 @@ async function access(
 // ---------------------------------------------------------------------------
 // Submissions
 // ---------------------------------------------------------------------------
-
-/**
- * When a closed job closed: completed (a reviewed job keeps that moment) or
- * cancelled. Undefined while it is open.
- */
-function closedAt(job: WorkOrder): Date | undefined {
-  if (job.state === 'cancelled') {
-    return job.cancelledAt ?? job.updatedAt;
-  }
-  if (job.state === 'complete' || job.state === 'reviewed') {
-    return job.completedAt ?? job.updatedAt;
-  }
-  return undefined;
-}
 
 async function startSubmission(
   tx: TenantTransaction,

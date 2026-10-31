@@ -141,6 +141,14 @@ or a decision before the pilot (phase L).
       for the owner and taking last year's figures in January. It now uses the latest set in
       force or nothing: 422 `rules_not_confirmed` while it waits, `rules_from_another_year`
       when it starts in an earlier year (ADR-0010, 2026-10-31 addendum).
+- [x] Parts could be recorded on any job, closed, cancelled or invoiced; a job invoices once,
+      so a part added after its invoice was never billed. The office's screens now refuse
+      completed, reviewed, cancelled and invoiced jobs (409 `work_order_closed`,
+      `work_order_invoiced`; returns stay allowed). The phone's part recorded before the job
+      closed is accepted, posted and marked `recordedAfterClose` (migration 0062); on an
+      invoiced job the job shows "Parts not yet billed", the invoice list filters for them
+      (`partsNotBilled=true`) and drafting from the job again bills just those parts. A
+      cancelled job takes no part from anyone, refused by the database.
 
 ## Decisions taken with the product owner (2026-10-11)
 

@@ -3744,6 +3744,7 @@ export const en = {
       },
       conflictLine: 'Asked for {{asked}}; {{location}} held {{available}}.',
       recordedBy: '{{name}}, {{when}}',
+      recordedAfterClose: 'Recorded on the phone before the job closed; synced after',
       returned: '{{quantity}} returned',
       return: 'Return',
       returnTitle: 'Return a part',
@@ -4491,6 +4492,7 @@ export const en = {
       },
       search: 'Find by reference or customer',
       overdueOnly: 'Overdue only',
+      partsNotBilledOnly: 'Jobs with parts not yet billed',
       empty: 'No invoices match.',
       emptyAll: 'No invoices yet. Draft one from a sales order, a completed job, or from scratch.',
       draftLabel: 'Draft invoice',
@@ -4600,6 +4602,10 @@ export const en = {
     job: {
       heading: 'Invoicing and cost',
       invoice: 'Invoice this job',
+      invoiceFollowUp: 'Invoice the parts not yet billed',
+      partsNotYetBilled: 'Parts not yet billed',
+      partsNotYetBilledHint:
+        'Parts recorded on a phone before this job closed arrived after it was invoiced. No invoice bills them yet: raise a follow-up invoice for them.',
       notInvoiced: 'Not invoiced yet.',
       notComplete: 'The job can be invoiced once it is complete.',
       costsHeading: 'What the job cost',

@@ -125,6 +125,12 @@ export const invoiceSummarySchema = z.object({
   dueDate: z.iso.date().nullable(),
   amounts: amountsSchema,
   source: sourceSchema,
+  /**
+   * Made from a job that has parts no invoice bills yet: recorded on a phone
+   * before the job closed and synced after it was invoiced (0062). Drafting
+   * from the job again bills just those.
+   */
+  partsNotYetBilled: z.boolean(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -279,6 +285,11 @@ export async function invoiceSummaries(
   const customer = new Map(customers.map((row) => [row.id, row]));
   const order = new Map(orders.map((row) => [row.id, row]));
   const job = new Map(jobs.map((row) => [row.id, row]));
+  const unbilled = await tx.financeInvoices.jobsWithUnbilledParts(
+    invoices.flatMap((invoice) =>
+      invoice.workOrderId === null || invoice.status === 'void' ? [] : [invoice.workOrderId],
+    ),
+  );
   return invoices.map((invoice) => {
     const figures = amounts.get(invoice.id) ?? ZERO;
     const fromOrder = invoice.salesOrderId === null ? undefined : order.get(invoice.salesOrderId);
@@ -310,6 +321,10 @@ export async function invoiceSummaries(
                 reference: formatWorkOrderReference(fromJob.reference),
               }
             : null,
+      partsNotYetBilled:
+        invoice.status !== 'void' &&
+        invoice.workOrderId !== null &&
+        unbilled.has(invoice.workOrderId),
       createdAt: iso(invoice.createdAt),
       updatedAt: iso(invoice.updatedAt),
     };
@@ -762,7 +777,7 @@ export const listInvoicesRoute = defineRoute({
   operationId: 'listCustomerInvoices',
   summary: 'Find invoices',
   description:
-    'Newest first, a page at a time. `q` matches a reference (`INV-000123`, `123`) or words of the customer’s name; `status` is the derived status; `overdue=true` keeps those past due and still owing.',
+    'Newest first, a page at a time. `q` matches a reference (`INV-000123`, `123`) or words of the customer’s name; `status` is the derived status; `overdue=true` keeps those past due and still owing; `partsNotBilled=true` keeps those made from a job with parts no invoice bills yet, for a follow-up invoice.',
   tags: FINANCE_TAGS,
   security: 'authenticated',
   permission: 'finance.read',
@@ -775,6 +790,8 @@ export const listInvoicesRoute = defineRoute({
     salesOrderId: z.uuid().optional(),
     workOrderId: z.uuid().optional(),
     overdue: z.enum(['true', 'false']).optional(),
+    /** Made from a job with parts recorded after it was invoiced (0062). */
+    partsNotBilled: z.enum(['true', 'false']).optional(),
     cursor: z.string().max(500).optional(),
     limit: z.coerce.number().int().min(1).max(100).default(50),
   }),
@@ -796,6 +813,7 @@ export const listInvoicesRoute = defineRoute({
         ...(query.salesOrderId === undefined ? {} : { salesOrderId: query.salesOrderId }),
         ...(query.workOrderId === undefined ? {} : { workOrderId: query.workOrderId }),
         ...(query.overdue === 'true' ? { overdue: { today } } : {}),
+        ...(query.partsNotBilled === 'true' ? { partsNotBilled: true } : {}),
         ...(after === undefined ? {} : { after }),
         limit: query.limit,
       });
@@ -963,7 +981,7 @@ export const invoiceFromJobRoute = defineRoute({
   operationId: 'createCustomerInvoiceFromJob',
   summary: 'Draft an invoice from a completed job',
   description:
-    'One line per part used on the job (net of returns, at the item’s sale price) and one labour line for the time on site, at the company’s labour rate when set. The job must be complete (409 `job_not_complete`) and not already invoiced (409 `job_already_invoiced`). Honours `Idempotency-Key`.',
+    'One line per part used on the job (net of returns, at the item’s sale price) and one labour line for the time on site, at the company’s labour rate when set. The job must be complete (409 `job_not_complete`) and not already invoiced (409 `job_already_invoiced`) — except that a job already invoiced with parts no invoice bills yet (recorded on a phone before the job closed and synced after, `partsNotYetBilled`) gets a follow-up draft with just those parts and no labour. Honours `Idempotency-Key`.',
   tags: FINANCE_TAGS,
   security: 'authenticated',
   permission: 'finance.manage',
@@ -993,7 +1011,26 @@ export const invoiceFromJobRoute = defineRoute({
       }
       await tx.financeInvoices.lockSource('work_order', job.id);
       const earlier = await tx.financeInvoices.invoicesForWorkOrder(job.id);
-      if (earlier.length > 0) {
+      const [allMaterials, events, settings, company] = await Promise.all([
+        tx.inventoryMaterials.listForJob(job.id),
+        tx.workOrders.listEvents(job.id),
+        tx.financeInvoices.settings(),
+        tx.settings.get(),
+      ]);
+      // A job is invoiced once. What can follow is a part a phone recorded before
+      // the job closed and synced after it was invoiced (0062): the follow-up
+      // bills those parts alone, never the labour again.
+      const followUp = earlier.length > 0;
+      const billed = followUp
+        ? await tx.financeInvoices.invoicedMaterials(allMaterials.map((material) => material.id))
+        : new Set<string>();
+      const materials = allMaterials.filter((material) => !billed.has(material.id));
+      const unbilledParts = materials.some(
+        (material) =>
+          material.status === 'posted' &&
+          isPositiveDecimal(addDecimals(material.quantity, `-${material.returnedQuantity}`)),
+      );
+      if (followUp && !unbilledParts) {
         throw new ApiError(409, 'job_already_invoiced', 'This job is already on an invoice.', [
           {
             field: 'body.workOrderId',
@@ -1003,12 +1040,6 @@ export const invoiceFromJobRoute = defineRoute({
           },
         ]);
       }
-      const [materials, events, settings, company] = await Promise.all([
-        tx.inventoryMaterials.listForJob(job.id),
-        tx.workOrders.listEvents(job.id),
-        tx.financeInvoices.settings(),
-        tx.settings.get(),
-      ]);
       const items = new Map(
         (await tx.inventoryCatalogue.findItems(materials.map((material) => material.itemId))).map(
           (item) => [item.id, item],
@@ -1043,7 +1074,7 @@ export const invoiceFromJobRoute = defineRoute({
               ],
         ),
       );
-      const hours = hoursOfMs(times.onSiteMs + times.workMs);
+      const hours = followUp ? '0' : hoursOfMs(times.onSiteMs + times.workMs);
       if (compareDecimals(hours, '0') > 0) {
         lines.push({
           description: `${company.locale === 'ar' ? LABOUR.ar : LABOUR.en} — ${formatWorkOrderReference(job.reference)}`,
@@ -1069,6 +1100,7 @@ export const invoiceFromJobRoute = defineRoute({
         workOrderId: job.id,
         lines: lines.length,
         hours,
+        ...(followUp ? { followUpOf: earlier.map((invoice) => invoice.id) } : {}),
       });
       return invoiceDetail(tx, principal, invoice);
     });

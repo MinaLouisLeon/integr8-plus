@@ -4565,7 +4565,7 @@ export interface paths {
         };
         /**
          * Find invoices
-         * @description Newest first, a page at a time. `q` matches a reference (`INV-000123`, `123`) or words of the customer’s name; `status` is the derived status; `overdue=true` keeps those past due and still owing.
+         * @description Newest first, a page at a time. `q` matches a reference (`INV-000123`, `123`) or words of the customer’s name; `status` is the derived status; `overdue=true` keeps those past due and still owing; `partsNotBilled=true` keeps those made from a job with parts no invoice bills yet, for a follow-up invoice.
          */
         get: operations["listCustomerInvoices"];
         put?: never;
@@ -4611,7 +4611,7 @@ export interface paths {
         put?: never;
         /**
          * Draft an invoice from a completed job
-         * @description One line per part used on the job (net of returns, at the item’s sale price) and one labour line for the time on site, at the company’s labour rate when set. The job must be complete (409 `job_not_complete`) and not already invoiced (409 `job_already_invoiced`). Honours `Idempotency-Key`.
+         * @description One line per part used on the job (net of returns, at the item’s sale price) and one labour line for the time on site, at the company’s labour rate when set. The job must be complete (409 `job_not_complete`) and not already invoiced (409 `job_already_invoiced`) — except that a job already invoiced with parts no invoice bills yet (recorded on a phone before the job closed and synced after, `partsNotYetBilled`) gets a follow-up draft with just those parts and no labour. Honours `Idempotency-Key`.
          */
         post: operations["createCustomerInvoiceFromJob"];
         delete?: never;
@@ -39102,6 +39102,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -39115,6 +39116,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -39175,14 +39177,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The idempotency key is in use by a request still running, or was reused with a different body. */
+            /** @description The job is completed, reviewed or cancelled (`work_order_closed`), or already invoiced (`work_order_invoiced`): a part recorded now would never be billed. Returning unused parts stays allowed. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
+                content?: never;
             };
             /** @description No van assigned (`no_van`), no location given by a dispatcher (`location_required`), the item is archived, or its serial numbers or batches do not fit (`serial_single_unit`, `lots_quantity_mismatch`, `lot_repeated`, `batch_expired`, `item_not_tracked`). */
             422: {
@@ -39696,6 +39696,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -39709,6 +39710,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -40276,6 +40278,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -40289,6 +40292,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -40454,6 +40458,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -45466,6 +45471,7 @@ export interface operations {
                 salesOrderId?: string;
                 workOrderId?: string;
                 overdue?: "true" | "false";
+                partsNotBilled?: "true" | "false";
                 cursor?: string;
                 limit?: number;
             };
@@ -45512,6 +45518,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -45654,6 +45661,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -45925,6 +45933,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -46189,6 +46198,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -46445,6 +46455,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -46727,6 +46738,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -47085,6 +47097,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -47348,6 +47361,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -47696,6 +47710,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -47999,6 +48014,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -48208,6 +48224,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -48504,6 +48521,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -48818,6 +48836,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -49015,6 +49034,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -49206,6 +49226,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -49395,6 +49416,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -49531,6 +49553,7 @@ export interface operations {
                                 id: string;
                                 reference: string;
                             } | null;
+                            partsNotYetBilled: boolean;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -64866,6 +64889,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -64879,6 +64903,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -65543,6 +65568,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -65556,6 +65582,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -66116,6 +66143,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -66129,6 +66157,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -66687,6 +66716,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -66700,6 +66730,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -67256,6 +67287,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -67269,6 +67301,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -67827,6 +67860,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -67840,6 +67874,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -68395,6 +68430,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -68408,6 +68444,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -68957,6 +68994,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -68970,6 +69008,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -69518,6 +69557,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -69531,6 +69571,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -70072,6 +70113,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -70085,6 +70127,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -70645,6 +70688,7 @@ export interface operations {
                                 name: string;
                             } | null;
                             clientActionId: string | null;
+                            recordedAfterClose: boolean;
                             version: number;
                             lots: {
                                 /** Format: uuid */
@@ -70658,6 +70702,7 @@ export interface operations {
                             }[] | null;
                         }[];
                         materialsCost: string | null;
+                        partsNotYetBilled: boolean;
                         van: {
                             /** Format: uuid */
                             id: string;
@@ -76563,6 +76608,7 @@ export interface operations {
                                     name: string;
                                 } | null;
                                 clientActionId: string | null;
+                                recordedAfterClose: boolean;
                                 version: number;
                                 lots: {
                                     /** Format: uuid */
@@ -76576,6 +76622,7 @@ export interface operations {
                                 }[] | null;
                             }[];
                             materialsCost: string | null;
+                            partsNotYetBilled: boolean;
                             van: {
                                 /** Format: uuid */
                                 id: string;

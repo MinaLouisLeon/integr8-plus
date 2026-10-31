@@ -3756,6 +3756,7 @@ export const ar: Catalogue<Messages> = {
       },
       conflictLine: 'طُلب {{asked}}؛ كان في {{location}} {{available}}.',
       recordedBy: '{{name}}، {{when}}',
+      recordedAfterClose: 'سُجّلت على الهاتف قبل إغلاق المهمة، وتمت مزامنتها بعده',
       returned: 'أُرجع {{quantity}}',
       return: 'إرجاع',
       returnTitle: 'إرجاع قطعة',
@@ -4520,6 +4521,7 @@ export const ar: Catalogue<Messages> = {
       },
       search: 'البحث بالرقم أو العميل',
       overdueOnly: 'المتأخرة فقط',
+      partsNotBilledOnly: 'أعمال بها قطع لم تُفوتر بعد',
       empty: 'لا توجد فواتير مطابقة.',
       emptyAll: 'لا توجد فواتير بعد. أنشئ واحدة من أمر بيع أو عمل مكتمل أو من البداية.',
       draftLabel: 'مسودة فاتورة',
@@ -4624,6 +4626,10 @@ export const ar: Catalogue<Messages> = {
     job: {
       heading: 'الفوترة والتكلفة',
       invoice: 'فوترة هذا العمل',
+      invoiceFollowUp: 'فوترة القطع غير المفوترة',
+      partsNotYetBilled: 'قطع لم تُفوتر بعد',
+      partsNotYetBilledHint:
+        'وصلت قطع سُجّلت على هاتف قبل إغلاق هذا العمل بعد إصدار فاتورته. لا تشملها أي فاتورة بعد: أصدر فاتورة لاحقة لها.',
       notInvoiced: 'لم يُفوتر بعد.',
       notComplete: 'يمكن فوترة العمل بعد اكتماله.',
       costsHeading: 'تكلفة العمل',

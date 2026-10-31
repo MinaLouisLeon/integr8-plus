@@ -58,6 +58,7 @@ const row = (overrides: Partial<InvoiceRow> = {}): InvoiceRow => ({
   dueDate: '2026-10-31',
   amounts: { total: '228', allocated: '0', credited: '0', balance: '228' },
   source: null,
+  partsNotYetBilled: false,
   createdAt: '2026-10-01T09:00:00.000Z',
   updatedAt: '2026-10-01T09:00:00.000Z',
   ...overrides,

@@ -475,6 +475,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   website_key_limit: 'لدى هذه الشركة مفتاحا موقع فعّالان. ألغِ أحدهما قبل إنشاء مفتاح جديد.',
   work_order_changed: 'تغيّرت هذه المهمة في مكان آخر منذ حمّلتها. أعد تحميلها وحاول مرة أخرى.',
   work_order_closed: 'هذه المهمة مغلقة. أعد فتحها قبل تغييرها.',
+  work_order_invoiced:
+    'هذه المهمة مفوترة بالفعل، فلن تُفوتر أي قطعة تُسجّل الآن. ما زال بالإمكان إرجاع القطع غير المستخدمة.',
   work_order_not_customers: 'اختر إحدى مهام العميل.',
   work_order_required: 'اختر المهمة التي تعمل عليها.',
   work_order_unavailable: 'لم يعد لك أن تغيّر هذه المهمة: أُسندت إلى غيرك أو أُزيلت.',
