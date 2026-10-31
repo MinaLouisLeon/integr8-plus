@@ -113,7 +113,8 @@ export const authConfigSchema = z.object({
   AUTH_LOCKOUT_WINDOW_SECONDS: positiveInt(60 * 60),
 
   /**
-   * Attempts from one IP address within the window before it is refused.
+   * Failed attempts from one IP address within the window before it is
+   * refused. Successful sign-ins do not count.
    *
    * Per-address lockout does nothing against one common password tried across
    * ten thousand addresses, which is the attack that actually succeeds. This is

@@ -1,6 +1,12 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { apiBaseUrl, REFRESH_COOKIE, refreshCookieOptions, secondsUntil } from '~/lib/api';
+import {
+  apiBaseUrl,
+  forwardedClientHeaders,
+  REFRESH_COOKIE,
+  refreshCookieOptions,
+  secondsUntil,
+} from '~/lib/api';
 
 /**
  * Exchanges the refresh cookie for a new access token.
@@ -10,7 +16,7 @@ import { apiBaseUrl, REFRESH_COOKIE, refreshCookieOptions, secondsUntil } from '
  * a spent token next time, which the API treats as theft and which would sign
  * the person out of every device.
  */
-export async function POST(): Promise<NextResponse> {
+export async function POST(request: Request): Promise<NextResponse> {
   const store = await cookies();
   const refreshToken = store.get(REFRESH_COOKIE)?.value;
 
@@ -22,6 +28,7 @@ export async function POST(): Promise<NextResponse> {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      ...forwardedClientHeaders(request),
       'x-client-app': 'web',
       'x-client-version': process.env.NEXT_PUBLIC_APP_VERSION ?? '1.1.0',
     },

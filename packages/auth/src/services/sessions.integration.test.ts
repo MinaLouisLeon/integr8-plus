@@ -7,6 +7,7 @@ import {
   InvalidCredentialsError,
   InvalidTokenError,
   NotAMemberError,
+  RateLimitedError,
   RefreshTokenReuseError,
   SessionRevokedError,
 } from '../errors.js';
@@ -21,6 +22,8 @@ import {
   type TestServices,
   uniqueEmail,
 } from '../testing/harness.js';
+import { loadAuthConfig } from '../config.js';
+import { SignInService } from './sign-in-service.js';
 
 /**
  * Sign-in, rotation, revocation and the offline grant, against a real database.
@@ -185,6 +188,78 @@ describe('lockout', () => {
     ).resolves.toBeDefined();
 
     services.setNow(new Date());
+  });
+});
+
+describe('the per-address limit', () => {
+  // Every web sign-in once counted against one address (the web server's), and
+  // successes counted too, so a busy morning locked every company out of the
+  // web app. Only failures may count.
+  it('counts failed attempts only, so successful sign-ins never trip it', async () => {
+    const office = await createMember(services.identity, northwind.id, 'dispatcher', 'office');
+    const start = new Date();
+    let now = start;
+    const signIn = new SignInService({
+      identity: services.identity,
+      sessions: services.sessions,
+      config: { ...loadAuthConfig(), AUTH_IP_ATTEMPT_LIMIT: 3 },
+      now: () => now,
+    });
+    const ipAddress = `198.51.100.${String(Math.floor(Math.random() * 200) + 20)}`;
+
+    // More successes than the limit, from one address: all let in.
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await expect(
+        signIn.signInWithPassword({
+          email: office.email,
+          password: office.password,
+          clientApp: 'web',
+          ipAddress,
+        }),
+      ).resolves.toBeDefined();
+    }
+
+    // Three failures reach the limit; the next attempt is refused, right
+    // password or not.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await expect(
+        signIn.signInWithPassword({
+          email: uniqueEmail('guess'),
+          password: 'Password123!',
+          clientApp: 'web',
+          ipAddress,
+        }),
+      ).rejects.toThrow(InvalidCredentialsError);
+    }
+    await expect(
+      signIn.signInWithPassword({
+        email: office.email,
+        password: office.password,
+        clientApp: 'web',
+        ipAddress,
+      }),
+    ).rejects.toThrow(RateLimitedError);
+
+    // Retrying while refused does not extend the block: once the failures age
+    // out of the window, the address is let in again.
+    now = new Date(start.getTime() + 10 * 60_000);
+    await expect(
+      signIn.signInWithPassword({
+        email: office.email,
+        password: office.password,
+        clientApp: 'web',
+        ipAddress,
+      }),
+    ).rejects.toThrow(RateLimitedError);
+    now = new Date(Date.now() + 16 * 60_000);
+    await expect(
+      signIn.signInWithPassword({
+        email: office.email,
+        password: office.password,
+        clientApp: 'web',
+        ipAddress,
+      }),
+    ).resolves.toBeDefined();
   });
 });
 
