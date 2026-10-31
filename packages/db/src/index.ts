@@ -44,7 +44,7 @@ export {
 
 export { MissingTenantScopeError } from './tenant-guard.js';
 
-export { assertSchemaUpToDate, SchemaOutOfDateError } from './migrator/status.js';
+export { assertSchemaUpToDate, SchemaOutOfDateError, type SchemaCheck } from './migrator/status.js';
 
 export {
   CLIENT_APPS,

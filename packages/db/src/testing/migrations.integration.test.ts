@@ -2,6 +2,7 @@ import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadMigrations } from '../migrator/files.js';
 import { MigrationChecksumError, Migrator } from '../migrator/runner.js';
+import { assertSchemaUpToDate, SchemaOutOfDateError } from '../migrator/status.js';
 import { connectAsOwner } from './harness.js';
 
 /**
@@ -81,7 +82,74 @@ describe('an applied migration is immutable', () => {
     await expect(migrator.verify()).resolves.toBeUndefined();
   });
 
-  it('refuses to run when an applied migration has no file', async () => {
+  it('refuses to run when an applied migration older than the newest file has no file', async () => {
+    // A gap, not a newer release: the file was deleted or renamed.
+    await owner.query(
+      `insert into schema_migrations (version, name, checksum, execution_ms)
+       values ('0000', 'deleted_since', $1, 1)`,
+      ['0'.repeat(64)],
+    );
+
+    try {
+      await expect(migrator.verify()).rejects.toThrow(/0000_deleted_since .*its file is gone/u);
+      await expect(migrator.up()).rejects.toThrow(/its file is gone/u);
+      await expect(assertSchemaUpToDate()).rejects.toThrow(SchemaOutOfDateError);
+    } finally {
+      await owner.query(`delete from schema_migrations where version = '0000'`);
+    }
+  });
+
+  it('refuses a build whose files have a gap where the database has a migration', async () => {
+    const all = loadMigrations();
+    const middle = all[Math.floor(all.length / 2)];
+    const withGap = new Migrator(
+      owner,
+      all.filter((migration) => migration !== middle),
+    );
+
+    await expect(withGap.verify()).rejects.toThrow(/its file is gone/u);
+    await expect(withGap.up()).rejects.toThrow(MigrationChecksumError);
+    await expect(withGap.down()).rejects.toThrow(MigrationChecksumError);
+  });
+});
+
+describe('an earlier build on a newer schema (rolling back a release)', () => {
+  // The previous release's image: the same files, less the newest two, which a
+  // newer release has applied.
+  const earlier = () => new Migrator(owner, loadMigrations().slice(0, -2));
+
+  it('reports the newer migrations as ahead of the build, and passes verify', async () => {
+    const statuses = await earlier().status();
+    const newest = statuses.slice(-2);
+
+    expect(newest.map((entry) => entry.state)).toEqual(['ahead-of-build', 'ahead-of-build']);
+    expect(statuses.slice(0, -2).every((entry) => entry.state === 'applied')).toBe(true);
+    await expect(earlier().verify()).resolves.toBeUndefined();
+    expect((await earlier().aheadOfBuild()).map((entry) => entry.version)).toEqual(
+      newest.map((entry) => entry.version),
+    );
+  });
+
+  it('applies nothing on up, so migrate exits cleanly and the API and worker start', async () => {
+    const before = await migrator.applied();
+
+    await expect(earlier().up()).resolves.toEqual([]);
+    expect(await migrator.applied()).toEqual(before);
+  });
+
+  it('refuses to roll back a migration it has no file for, and rolls back nothing', async () => {
+    const before = await migrator.applied();
+
+    await expect(earlier().down()).rejects.toThrow(
+      /a newer release applied it, and this build has no down file for it/u,
+    );
+    await expect(earlier().down({ to: '0001' })).rejects.toThrow(/a newer release applied it/u);
+    expect(await migrator.applied()).toEqual(before);
+  });
+
+  it('is ready for traffic, naming what is ahead', async () => {
+    // assertSchemaUpToDate reads the real files, so here the newer release is
+    // a row this build has no file for.
     await owner.query(
       `insert into schema_migrations (version, name, checksum, execution_ms)
        values ('9999', 'from_the_future', $1, 1)`,
@@ -89,9 +157,33 @@ describe('an applied migration is immutable', () => {
     );
 
     try {
-      await expect(migrator.verify()).rejects.toThrow(/its file is gone/u);
+      await expect(assertSchemaUpToDate()).resolves.toEqual({
+        aheadOfBuild: ['9999_from_the_future'],
+      });
+      await expect(migrator.verify()).resolves.toBeUndefined();
+      await expect(migrator.up()).resolves.toEqual([]);
     } finally {
       await owner.query(`delete from schema_migrations where version = '9999'`);
+    }
+  });
+
+  it('refuses when this build also has a migration the newer release never applied', async () => {
+    const [latest] = await migrator.down();
+    await owner.query(
+      `insert into schema_migrations (version, name, checksum, execution_ms)
+       values ('9999', 'from_the_future', $1, 1)`,
+      ['0'.repeat(64)],
+    );
+
+    try {
+      await expect(migrator.verify()).rejects.toThrow(
+        new RegExp(`${latest?.version ?? ''}_\\w+ has not been applied, yet the database`, 'u'),
+      );
+      await expect(migrator.up()).rejects.toThrow(MigrationChecksumError);
+      await expect(assertSchemaUpToDate()).rejects.toThrow(/\(pending\)/u);
+    } finally {
+      await owner.query(`delete from schema_migrations where version = '9999'`);
+      await migrator.up();
     }
   });
 });
