@@ -5,19 +5,23 @@ still open. Facts that are not obvious from the code and go stale. Update this f
 the end of any piece of work that changes one of them, and date each section.
 `CLAUDE.md` and `AGENTS.md` are the how-to; this is the state.
 
-## Snapshot (2026-10-31)
+## Snapshot (2026-10-31, after the pre-production audit)
 
-- **Version:** root `package.json` is **1.2.1** (the only source of the version; a
-  release bumps it).
-- **Migrations:** `packages/db/migrations` reaches **0056** (`0054_self_hosted_sign_in`,
-  `0055_purge_any_company`, `0056_no_default_retention`). The next one is 0057. Main
+- **Version:** root `package.json` is **1.2.2** on branch `ccr-4f86fb34-8uvkk9` (not
+  merged yet); `main` still says 1.2.1, the latest release (v1.2.1, 27 Oct, migrations up
+  to 0053). The root `package.json` is the only source: the phone (`app.config.ts`) and the
+  web build (`next.config.ts`) read it, and `apps/api/src/app-info.ts` has a copy a test
+  keeps equal.
+- **Migrations:** `packages/db/migrations` reaches **0057** (`0054_self_hosted_sign_in`,
+  `0055_purge_any_company`, `0056_no_default_retention`, `0057_egyptian_working_week`).
+  The next one is 0058. Main
   briefly carried a different 0054, `0054_local_identities`, for a built-in sign-in; it
   was never applied anywhere and was removed when PR #130 merged main (see Decisions).
 - **Pre-production audit (2026-10-31):** plans, docs and code compared area by area; the
   report is the claude.ai artifact https://claude.ai/artifact/FB7vANrUc691VfMXkR5h2U. Its
-  six blockers are fixed on branch `ccr-4f86fb34-8uvkk9` (phone build settings, web
-  sign-in limit, company purge, default retention, worker production check, R2 proof in CI
-  once secrets exist). Its High items are still open.
+  6 blockers and 14 High items are fixed on branch `ccr-4f86fb34-8uvkk9`, which the owner
+  is not merging yet. Its Medium and Low items are open, and so are the owner's own steps
+  under "Open items".
 - **Modules shipped:** field work (customers, sites, work orders, visits and the
   schedule, timesheets), forms and submissions, PDF documents, CRM, sales, finance,
   general ledger, inventory, purchasing, assets, HR, expenses, Egyptian payroll,
@@ -25,27 +29,26 @@ the end of any piece of work that changes one of them, and date each section.
   maintenance plans + deadlines (0053), the AI assistant (help library or a model), ETA
   e-invoicing (test-only, not certified), company website data API, the demo company
   seeder.
-- **Plan:** v1.2 "scheduling" phases are `IN PROGRESS` — P25 calendar & dispatch board,
-  P26 skills & certificates, P27 maintenance plans, contracts & response deadlines.
-  v1.3 (P28–P31) and v2.0 (P32–P35) are `NOT STARTED`. Many v1.0 phases (P16–P19) are
-  still `[~]` in `plan/README.md` even though their features exist in code.
-- **P36 self-hosted sign-in** (`plan/v1.0-launch/P36-self-hosted-sign-in.md`, approved
-  2026-10-31): PR #130 on `feat/self-hosted-auth`, against `main`. Auth container in
+- **Plan:** P01, P04, P08 and P22 are complete. P25–P27 (scheduling), P23, P24 and P32
+  (Arabic, mostly built) are `IN PROGRESS`; v1.3 (P28–P31) and P33–P35 are `NOT STARTED`,
+  though parts exist (see the notes in `plan/README.md`). Modules planned outside the phase
+  list are indexed in `plan/README.md` ("Module plans outside the phase list").
+- **P36 self-hosted sign-in** (`plan/v1.0-launch/P36-self-hosted-sign-in.md`): merged into
+  `main` in PRs #130 and #135; CI's database job, real Auth included, is green. Auth container in
   `deploy/compose.yml` (`supabase/auth:v2.197.0`, private ports, memory caps), bootstrap's
   `supabase_auth_admin` role, migration 0054, emailed 6-digit sign-in codes and Change
   password (API + web/desktop/phone), purge deleting orphaned accounts,
   `admin-cli user-password` through Auth, CI real-Auth suite, docs (setup guide
   renumbered; Railway and the Supabase runbook deleted). `SUPABASE_URL` is replaced by `SUPABASE_AUTH_URL`;
-  the API refuses to start with the old name. Still to do: CI's database job and the
-  test-box run. The plan file's "Implementation notes" lists where the build differs.
-- **In flight on the same branch:** starting a company's app build from the platform
-  dashboard (`apps/api/src/platform/app-builds.ts`, `APP_BUILDS=off|github`,
-  `GITHUB_BUILD_TOKEN`, `GITHUB_BUILD_REPOSITORY`, `GITHUB_BUILD_REF`), committed as work
-  in progress. Still to check: OpenAPI/client regeneration, `.env.example`, setup
-  checklist, docs.
+  the API refuses to start with the old name. Still to do: the test-box run. The plan file's
+  "Implementation notes" lists where the build differs.
+- **Half-built on `main`:** starting a company's app build from the platform dashboard
+  (`apps/api/src/platform/app-builds.ts`, `APP_BUILDS=off|github`, `GITHUB_BUILD_*`). No
+  route calls it, and it is in no `.env.example`, doc or the guide; harmless while
+  `APP_BUILDS` defaults to `off`. Wire it up or remove it.
 - **Recently merged to `main`:** engineer qualifications (PR #125), maintenance
   contracts/deadlines (PR #126), version bump to 1.2.1 (PR #127), the demo company seeder
-  and a built-in sign-in (PR #128; the sign-in part is replaced by P36).
+  and a built-in sign-in (PR #128; replaced by P36), self-hosted sign-in (PRs #130, #135).
 
 ## The deployment
 
@@ -60,8 +63,9 @@ the end of any piece of work that changes one of them, and date each section.
 - The home test box is Ubuntu 24.04 with Docker, Arcane, Webmin and Samba (no longer
   ZimaOS).
 - The owner keeps a published copy of the setup guide as a claude.ai artifact:
-  https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29 (an older edition with its own part
-  letters). Keep it in step with the repo guide when the procedure changes.
+  https://claude.ai/artifact/HCVbJdp3u9YJT28cCaRw29. On 31 Oct it matched `main`'s HTML
+  guide; the audit branch changes the guide (parts Q–S, versions, backups, Firebase), so
+  republish it from `setup-checklist.html` once the branch is merged.
 
 ## Decisions
 
@@ -83,6 +87,14 @@ the end of any piece of work that changes one of them, and date each section.
 - **The per-address sign-in limit counts failures only** (2026-10-31), and the web
   server passes on the visitor's address (Caddy's `X-Forwarded-For`), so a busy office or
   the web app's single server address no longer locks everyone out.
+- **Pre-production fixes (2026-10-31, audit branch).** The phone opens offline only on a
+  signed 7-day grant, checked with Ed25519 (`@noble/curves`, since Hermes has no WebCrypto)
+  against `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS`. A company's currency locks once it has any
+  money record, and purchase orders must use it. A pay run refuses a rule set waiting for
+  the owner or from an earlier year. The data export names every company table, exported
+  or not with a reason, and a test fails on a new one. The migrator lets a previous release
+  start on a newer schema (`ahead-of-build`). New companies start on `Africa/Cairo`,
+  Sunday–Thursday. Legal pages exist but wait for a lawyer (`LEGAL_REVIEWED = false`).
 - **The demo seeder goes through the API**, in-process with Fastify's `inject`, as the
   company's own people (plus a staff impersonation for staff-only setup). Direct inserts
   were rejected: they skip numbering, stock, ledger postings and audit, and produce data
@@ -99,9 +111,20 @@ Update them together at each release or new migration:
   merge", Stage 3 `APP_VERSION`/`API_RELEASE`, Stage 6 latest release, Stage 7 company
   release name, Stage 11 example bump and feature parts, Stage 13, footer. References
   like "included in v1.1.2" are history and stay as they are.
+- `deploy/.env.example` (`APP_VERSION`, `API_RELEASE`) and `apps/api/src/app-info.ts`
+  (`VERSION`; `app-info.test.ts` fails when it differs from the root `package.json`).
 - Released versions: `gh release list`. v1.2.1 (2026-10-27) carries migrations 0051–0053.
 
 ## Open items
+
+- **Owner steps from the audit (2026-10-31):** add the `R2_TEST_*` repository secrets (a
+  separate Cloudflare account) so CI proves R2; set up the off-machine backup (R2 bucket,
+  rclone remotes, `BACKUP_REMOTE`) and run `restore-drill.sh`; Firebase and the EAS
+  variables `GOOGLE_SERVICES_JSON`, `EXPO_PUBLIC_SENTRY_DSN` and
+  `EXPO_PUBLIC_AUTH_VERIFICATION_KEYS` per environment; a lawyer reviews `/legal/*` and fills
+  `LEGAL_OPERATOR`; an accountant signs off the payroll figures and the year rule; decide
+  whether the repository stays public, then apply the rulesets
+  (`docs/contributing/branching.md`); check existing companies' timezone and working days.
 
 - **The demo seeder against the real Auth container** has not been run (only the test
   fake). **Removing a demo company** is the normal close flow (suspend, export, close,
@@ -111,13 +134,18 @@ Update them together at each release or new migration:
 
 ## Gotchas
 
-- GitHub branch protection is **not** in force (private repo on the Free plan). The only
-  guard against pushing to `main`/`staging`/`dev` is the local pre-push hook
+- GitHub branch protection is **not** in force. The repository is **public** (rulesets
+  would be free) but they have never been applied, and there is no `staging` branch. The
+  only guard against pushing to `main`/`staging`/`dev` is the local pre-push hook
   (`scripts/git-hooks/pre-push-branch-guard.sh`); `INTEGR8_ALLOW_PROTECTED_PUSH=1`
   bypasses it.
 - In practice feature PRs have been merged straight into `main`, despite the documented
   `dev → staging → main` flow.
-- CI's database job runs only when the repo variable `DATABASE_TESTS=enabled`.
+- CI's database job always runs (there is no `DATABASE_TESTS` switch any more). The R2
+  media suite inside it skips itself unless the `R2_TEST_*` secrets exist.
+- Load `keygen`'s output into a shell line by line (`while IFS= read -r l; do export
+"$l"; done`), not with `source`: the shell strips the quotes from `AUTH_SIGNING_KEY`'s
+  JSON and the auth suites then fail with "not valid JSON".
 - Integration tests refuse to run without `APP_ENV=test` and
   `INTEGR8_TEST_DATABASE=i-know-this-database-is-disposable`.
 - TypeScript stays on 6.0.3: TypeScript 7 would silently switch off type-aware linting.

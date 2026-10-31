@@ -66,7 +66,7 @@ The design is in [the working day on the phone](../../docs/mobile/job-execution.
   `GOOGLE_SERVICES_JSON` when it has an app for the package (a company missing from it is built
   without push, not refused), each `eas.json` profile names its EAS environment, a failed
   registration goes to Sentry and the device log with the step, and the setup guide has the
-  Firebase, Sentry and EAS steps (Stage 0 parts I and J, Stage 8 part A, Stage 11 part R).
+  Firebase, Sentry and EAS steps (Stage 0 parts I and J, Stage 8 part A, Stage 11 part S).
   Checklists 4 and 5 now need a build made that way.
 - **Announcements on Today (2026-10-31).** `/v1/me` has returned the company's announcements
   since P15, and dunning posts its payment reminders as announcements (P17), but no phone screen

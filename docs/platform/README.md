@@ -263,7 +263,10 @@ a log that is being written to cannot repeat or skip an entry.
 one component, `AnnouncementBanners` in `@integr8/operations-dom`, from the `/v1/me` answer each
 shell already holds: in the web shell under the impersonation banner on every signed-in page, and
 in the desktop frame under the top bar, outside the scrolling screen. Dunning's payment reminders
-arrive the same way, since they are announcements too. The phone shows them separately.
+arrive the same way, since they are announcements too. The phone keeps the last ones it heard
+from `/v1/me` in its local database (refreshed on launch and on returning to the app, at most every
+15 minutes) and shows them at the top of Today, offline too; ended ones drop by the phone's clock.
+Payment reminders therefore reach engineers' phones as well.
 
 - **Severity** is a word as well as a colour (Notice, Warning, Important). A `critical` banner is
   an `alert`, so a screen reader interrupts with it; the others are polite `status` messages. The

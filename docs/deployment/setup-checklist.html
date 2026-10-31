@@ -1047,7 +1047,7 @@ docker compose -f deploy/compose.yml --env-file deploy/.env \
           <li><input type="checkbox" id="s12-r2"><label for="s12-r2"><b>Run the restore drill</b> (Stage 9, part B, "Rehearse a restore") and add its row to the rehearsal log in <code>docs/database/runbook-backup-and-restore.md</code>.</label></li>
         </ul>
 
-        <h3 id="phone-update">R. The phone app: offline access, notifications and crash reports (the release after v1.2.1)</h3>
+        <h3 id="phone-update">S. The phone app: offline access, notifications and crash reports (included in v1.2.2)</h3>
         <p>Phones now open with no signal only on a signed offline grant that ends seven days after they last reached the API, checked on the phone, instead of on their thirty-day sign-in. Engineers can add notes and correct access notes from a job, Today shows the company's announcements, and Android notifications and the phone's crash reports get the settings they were missing. The server needs nothing new: the API sends the grant by itself.</p>
         <ul class="check" data-stage="s12r">
           <li><input type="checkbox" id="s12-r1"><label for="s12-r1"><b>Expo's build settings and Firebase</b>, as in Stage 8, part A, with Stage 0's parts I and J first if the React Native Sentry project and the Firebase project do not exist yet: the three environment variables, every switched-on company added to Firebase with the new <code>google-services.json</code> uploaded, and the FCM key chosen for each company's application identifier.</label></li>
