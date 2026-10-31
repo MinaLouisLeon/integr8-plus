@@ -623,3 +623,16 @@ export {
   type ComplianceSummary,
   complianceSummary,
 } from './deadlines.js';
+
+export {
+  LEGAL_DOCUMENTS,
+  type LegalDocument,
+  LEGAL_LAST_UPDATED,
+  LEGAL_REVIEWED,
+  LEGAL_SITE_ORIGIN,
+  legalPath,
+  legalUrl,
+  type LegalOperator,
+  LEGAL_OPERATOR,
+  missingOperatorDetails,
+} from './legal.js';

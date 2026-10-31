@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useResolvedTheme } from '~/components/company-brand';
+import { LegalLinks } from '~/components/legal-links';
 import { Button, EmptyState, ErrorState, Field, LoadingState, Shell } from '~/components/ui';
 import {
   applyBrandVariables,
@@ -79,6 +80,8 @@ export function SignInRoute() {
             )}
           </>
         )}
+
+        <LegalLinks />
       </div>
     </Shell>
   );

@@ -18,6 +18,7 @@
  */
 
 import { apiErrorsEn } from './api-errors.en.js';
+import { legalEn } from './legal.en.js';
 
 export const en = {
   common: {
@@ -872,6 +873,10 @@ export const en = {
   // One message per error code the API can return (ADR-0012), in their own
   // file because there are so many. `API_ERROR_CODES` is the contract.
   apiErrors: apiErrorsEn,
+
+  // The terms of service, privacy policy and data processing terms, in their
+  // own file because they are long. Pages under /legal on the website.
+  legal: legalEn,
 
   states: {
     emptyTitle: 'Nothing here yet',

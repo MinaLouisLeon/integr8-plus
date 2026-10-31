@@ -28,9 +28,9 @@ Everything invisible to customers that determines whether the product survives i
 - [ ] Immutable per-tenant audit log covering every meaningful action
 - [ ] Dependency and secret scanning enforced in CI
 - [~] Incident runbook: who is called, how to roll back, how to communicate
-- [ ] Terms of service, privacy policy and a DPA published
+- [ ] Terms of service, privacy policy and a DPA published — drafted, legal review pending (see below)
 
-Five marks need explaining:
+Five marks need explaining, and one open box:
 
 - **The isolation suite is `[~]`: it runs on every pull request now, but has not been
   expanded.** The `database` job in `ci.yml` and `verify.yml` runs the db, auth and API
@@ -43,6 +43,13 @@ Five marks need explaining:
   `docs/deployment/README.md` describing the first production-for-testing stack. A
   super admin can be created from the image (`admin-cli`), which nothing outside the
   development seed could do before. Nobody has run it on a machine yet.
+- **The terms, privacy policy and DPA are drafted, not yet publishable** (pre-production audit,
+  31 October 2026, High 10). `/legal/terms`, `/legal/privacy` and `/legal/dpa` exist in English
+  and Arabic, written from what the product does, and are linked from the public footer, the web
+  sign-in and sign-up pages and the desktop sign-in screen; the privacy page is the address for
+  the store listings. The box stays open until an Egyptian lawyer has reviewed them and the
+  operator's registered details are filled in: [docs/legal](../../docs/legal/README.md) has the
+  list.
 - **Monitoring is `[~]`: the dashboard has a Health page**, showing phones whose sync runs
   are in trouble, billing deliveries recorded but not applied, and background work that gave
   up — the three things the October review found failing quietly. It is a screen somebody

@@ -21,6 +21,7 @@
 
 import type { Messages } from './en.js';
 import { apiErrorsAr } from './api-errors.ar.js';
+import { legalAr } from './legal.ar.js';
 
 /**
  * A translation of `Messages`.
@@ -831,6 +832,8 @@ export const ar: Catalogue<Messages> = {
   },
 
   apiErrors: apiErrorsAr,
+
+  legal: legalAr,
 
   states: {
     emptyTitle: 'لا شيء هنا بعد',
