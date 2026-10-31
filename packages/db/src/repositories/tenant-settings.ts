@@ -1,4 +1,4 @@
-import type { Kysely, Selectable } from 'kysely';
+import { type Kysely, type Selectable, sql } from 'kysely';
 import type { CompanyTheme, Database, TenantSettingsTable } from '../schema.js';
 
 /**
@@ -168,7 +168,86 @@ export class TenantSettingsRepository {
 
     return toSettings(row);
   }
+
+  /**
+   * Which kinds of money record the company already holds, in
+   * {@link MONEY_RECORD_KINDS} order; empty when it holds none.
+   *
+   * The company currency is the unit of its books, and the ledger reads it
+   * live rather than storing it on every posting. Changing it once these exist
+   * would relabel amounts without converting them: stock costs and journals,
+   * which carry no currency of their own, would turn from pounds into dollars
+   * overnight, and documents that do carry one would stop posting as "another
+   * currency". The API refuses the change while this is not empty.
+   */
+  async moneyRecordKinds(): Promise<MoneyRecordKind[]> {
+    const row = await this.db
+      .selectNoFrom((eb) => {
+        const held = (table: MoneyRecordTable) =>
+          eb.exists(
+            eb
+              .selectFrom(table)
+              .select(sql`1`.as('one'))
+              .where(`${table}.tenant_id`, '=', this.tenantId),
+          );
+        return [
+          held('crm_quotes').as('quote'),
+          held('erp_sales_orders').as('sales_order'),
+          held('erp_invoices').as('invoice'),
+          held('erp_credit_notes').as('credit_note'),
+          held('erp_payment_receipts').as('payment'),
+          held('erp_purchase_orders').as('purchase_order'),
+          held('erp_journals').as('journal'),
+          eb
+            .exists(
+              eb
+                .selectFrom('erp_stock_movements')
+                .select(sql`1`.as('one'))
+                .where('erp_stock_movements.tenant_id', '=', this.tenantId)
+                .where('erp_stock_movements.unit_cost', 'is not', null),
+            )
+            .as('stock_cost'),
+          held('hr_expense_claims').as('expense_claim'),
+          held('hr_payroll_runs').as('pay_run'),
+        ];
+      })
+      .executeTakeFirstOrThrow();
+    return MONEY_RECORD_KINDS.filter((kind) => row[kind]);
+  }
 }
+
+/**
+ * The records that tie a company to its currency (see
+ * {@link TenantSettingsRepository.moneyRecordKinds}): every document with an
+ * amount in it, the ledger's own journals, stock that has a cost, and HR's
+ * claims and pay runs. Price lists, leads and opportunities are left out: each
+ * carries its own currency, and none of them is in the books.
+ */
+export const MONEY_RECORD_KINDS = [
+  'quote',
+  'sales_order',
+  'invoice',
+  'credit_note',
+  'payment',
+  'purchase_order',
+  'journal',
+  'stock_cost',
+  'expense_claim',
+  'pay_run',
+] as const;
+
+export type MoneyRecordKind = (typeof MONEY_RECORD_KINDS)[number];
+
+type MoneyRecordTable =
+  | 'crm_quotes'
+  | 'erp_sales_orders'
+  | 'erp_invoices'
+  | 'erp_credit_notes'
+  | 'erp_payment_receipts'
+  | 'erp_purchase_orders'
+  | 'erp_journals'
+  | 'hr_expense_claims'
+  | 'hr_payroll_runs';
 
 /** Creates the row for a company that has just been made. Platform connection. */
 export class TenantSettingsWriter {

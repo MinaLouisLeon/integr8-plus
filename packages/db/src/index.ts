@@ -204,6 +204,8 @@ export {
 export { type DemoCounts, DemoDataRepository } from './repositories/demo-data.js';
 export {
   DEFAULT_SETTINGS,
+  MONEY_RECORD_KINDS,
+  type MoneyRecordKind,
   type TenantSettings,
   TenantSettingsRepository,
   TenantSettingsWriter,

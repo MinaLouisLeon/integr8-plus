@@ -135,6 +135,8 @@ export const apiErrorsEn = {
   credit_over_balance: 'This credit note takes off more than the invoice still owes.',
   crew_member_unknown:
     'Someone on the crew is not an active member of the company. Choose active members.',
+  currency_in_use:
+    'The company already has quotes, invoices, stock costs or other records in its currency, so the currency cannot change now.',
   cursor_invalid: 'The phone’s place in the sync was not recognised. It will download again.',
   customer_closed: 'This customer is closed and takes no new work. Reopen it first.',
   customer_fixed: 'An invoice made from an order or a job keeps its customer.',
@@ -381,6 +383,8 @@ export const apiErrorsEn = {
   price_required: 'This supplier has no price for this item. Enter the price.',
   prices_hidden: 'Prices are for those who manage purchasing or move stock.',
   purchase_cancelled: 'This purchase was already taken off the job.',
+  purchase_currency_not_company:
+    'Purchase orders are in the company currency. Convert the prices before you enter them.',
   purchase_id_taken: 'This purchase belongs to another job.',
   purchase_not_ready:
     'The purchase this receipt belongs to has not arrived yet. It will be sent again.',

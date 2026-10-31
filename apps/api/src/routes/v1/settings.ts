@@ -1,7 +1,13 @@
 import { assertHolds, PermissionDeniedError } from '@integr8/core';
-import { companyThemeSchema, getPlatformDataSource, TENANT_PLANS, withTenant } from '@integr8/db';
+import {
+  companyThemeSchema,
+  getPlatformDataSource,
+  TENANT_PLANS,
+  type TenantTransaction,
+  withTenant,
+} from '@integr8/db';
 import { z } from 'zod';
-import { forbidden, unprocessable } from '../../http/errors.js';
+import { ApiError, forbidden, unprocessable } from '../../http/errors.js';
 import { defineRoute, noSchema } from '../../http/routes.js';
 
 /**
@@ -74,7 +80,7 @@ export const updateSettingsRoute = defineRoute({
   operationId: 'updateSettings',
   summary: 'Change how this company works',
   description:
-    'Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s.',
+    'Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s. The currency changes only while the company has no money records yet (409 `currency_in_use`): sending the current one is always fine.',
   tags: TAGS,
   security: 'authenticated',
   permission: 'tenant.update',
@@ -97,6 +103,10 @@ export const updateSettingsRoute = defineRoute({
     appsEnabled: z.boolean().optional(),
     /** An IANA name. Validated against the runtime's own tz database. */
     timezone: z.string().min(1).max(64).optional(),
+    /**
+     * Fixed once the company has a quote, order, invoice, credit note,
+     * payment, purchase order, journal, costed stock, expense claim or pay run.
+     */
     currency: z
       .string()
       .regex(/^[A-Za-z]{3}$/u)
@@ -112,6 +122,10 @@ export const updateSettingsRoute = defineRoute({
   responses: {
     200: { description: 'The settings, as they now are.', schema: settingsSchema },
     403: { description: 'A branding field was sent by somebody other than Integr8 staff.' },
+    409: {
+      description:
+        'A different `currency` while the company already holds money records (`currency_in_use`).',
+    },
     422: {
       description:
         'An unknown timezone (`unknown_timezone`), or a logo or app icon that is not a stored image of this company’s (`logo_not_found`, `app_icon_not_found`).',
@@ -153,6 +167,9 @@ export const updateSettingsRoute = defineRoute({
           'app icon',
         );
       }
+      if (body.currency !== undefined) {
+        await assertCurrencyMayChange(tx, body.currency.toUpperCase());
+      }
       const updated = await tx.settings.update(body);
       await tx.auditLog.append({
         actorKind: 'tenant_user',
@@ -169,6 +186,29 @@ export const updateSettingsRoute = defineRoute({
     return { status: 200, body: toBody(settings) };
   },
 });
+
+/**
+ * The company currency is the unit of its books: stock costs and journals
+ * carry no currency of their own, and the ledger reads this one live. Changing
+ * it once any of them exist would relabel pounds as dollars without converting
+ * a thing, and leave every earlier document unpostable as "another currency".
+ * So it is chosen before the first money record and then stays; a company that
+ * really must move currency needs a deliberate conversion, not a settings edit.
+ */
+async function assertCurrencyMayChange(tx: TenantTransaction, currency: string): Promise<void> {
+  const current = await tx.settings.get();
+  if (currency === current.currency) {
+    return;
+  }
+  const held = await tx.settings.moneyRecordKinds();
+  if (held.length === 0) {
+    return;
+  }
+  const message = `The company already keeps its books in ${current.currency}, so its currency cannot change now.`;
+  throw new ApiError(409, 'currency_in_use', message, [
+    { field: 'body.currency', code: 'currency_in_use', message: `Held: ${held.join(', ')}.` },
+  ]);
+}
 
 const websiteAccessSchema = z.object({
   websiteFilesEnabled: z.boolean(),

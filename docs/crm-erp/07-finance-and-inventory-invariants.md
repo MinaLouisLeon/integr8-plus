@@ -6,11 +6,12 @@ invoices and payments in B1, and the asset register in E3.
 
 ## Quantities and money
 
-| Rule                                                                                                       | Where                                              |
-| ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Quantities are `numeric(20,4)` and travel as decimal strings (`"2.5"`); never JavaScript numbers           | schema, zod `decimalQuantitySchema`, UI formatting |
-| Money is `numeric(20,4)` decimal strings in the company currency; tax rates are basis points (1400 = 14 %) | schema, zod, SQL arithmetic                        |
-| Totals, tax and averages are computed in SQL `numeric` and rounded half-up to 4 places once, at the end    | repositories                                       |
+| Rule                                                                                                                                                                                                                                                                                                                                                | Where                                              |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Quantities are `numeric(20,4)` and travel as decimal strings (`"2.5"`); never JavaScript numbers                                                                                                                                                                                                                                                    | schema, zod `decimalQuantitySchema`, UI formatting |
+| Money is `numeric(20,4)` decimal strings in the company currency; tax rates are basis points (1400 = 14 %)                                                                                                                                                                                                                                          | schema, zod, SQL arithmetic                        |
+| The company currency is fixed once the company holds a quote, sales order, invoice, credit note, payment, purchase order, journal, stock movement with a cost, expense claim or pay run: stock costs and journals carry no currency of their own and the ledger reads the company's live, so a change would relabel amounts without converting them | 409 `currency_in_use` (`PATCH /v1/settings`)       |
+| Totals, tax and averages are computed in SQL `numeric` and rounded half-up to 4 places once, at the end                                                                                                                                                                                                                                             | repositories                                       |
 
 ## Stock
 
@@ -27,13 +28,13 @@ invoices and payments in B1, and the asset register in E3.
 
 ## Cost
 
-| Rule                                                                                                                                              | Where                                                      |
-| ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Each stock item has one **weighted average unit cost** for the company (all locations)                                                            | `erp_items.average_unit_cost`                              |
-| Only a goods receipt changes it: `new = (on_hand × old + received × unit_cost) ÷ (on_hand + received)`, computed in SQL under the item's row lock | receipt service                                            |
-| A part used on a job records the average at that moment as its unit cost; later receipts never change it                                          | `erp_work_order_materials.unit_cost`, movement `unit_cost` |
-| Costs are shown to seats that move stock or purchase (owner, admin, dispatcher), not to engineers or viewers                                      | API bodies                                                 |
-| Purchasing is in the company currency only in E2; multi-currency purchasing waits for a conversion rule (PLAN §5 ERP-01)                          | API validation                                             |
+| Rule                                                                                                                                                                                             | Where                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| Each stock item has one **weighted average unit cost** for the company (all locations)                                                                                                           | `erp_items.average_unit_cost`                              |
+| Only a goods receipt changes it: `new = (on_hand × old + received × unit_cost) ÷ (on_hand + received)`, computed in SQL under the item's row lock                                                | receipt service                                            |
+| A part used on a job records the average at that moment as its unit cost; later receipts never change it                                                                                         | `erp_work_order_materials.unit_cost`, movement `unit_cost` |
+| Costs are shown to seats that move stock or purchase (owner, admin, dispatcher), not to engineers or viewers                                                                                     | API bodies                                                 |
+| Purchasing is in the company currency only: an order naming another is refused, and so is a receipt against an older one (multi-currency purchasing waits for a conversion rule, PLAN §5 ERP-01) | 422 `purchase_currency_not_company`                        |
 
 ## Purchasing
 

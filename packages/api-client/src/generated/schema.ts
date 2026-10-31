@@ -663,7 +663,7 @@ export interface paths {
         head?: never;
         /**
          * Change how this company works
-         * @description Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s.
+         * @description Only what is sent is changed, so a screen that edits branding cannot blank working hours it never showed. The branding fields — logo, app icon, colours, default theme, website and whether the company’s own apps are built — are Integr8’s to set (`branding.manage`), and a company owner sending one of them is refused with 403; timezone, currency, locale and working hours stay the owner’s. The currency changes only while the company has no money records yet (409 `currency_in_use`): sending the current one is always fine.
          */
         patch: operations["updateSettings"];
         trace?: never;
@@ -3986,7 +3986,7 @@ export interface paths {
         put?: never;
         /**
          * Draft a purchase order
-         * @description A draft in the company currency, numbered `PO-000001` onwards. Lines name catalogue items; a line without a `description` takes the item name. Honours `Idempotency-Key`.
+         * @description A draft in the company currency, numbered `PO-000001` onwards. `currencyCode`, when sent, must be the company currency. Lines name catalogue items; a line without a `description` takes the item name. Honours `Idempotency-Key`.
          */
         post: operations["createPurchaseOrder"];
         delete?: never;
@@ -12092,6 +12092,13 @@ export interface operations {
             };
             /** @description A branding field was sent by somebody other than Integr8 staff. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A different `currency` while the company already holds money records (`currency_in_use`). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -37324,7 +37331,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Invalid, or the supplier is inactive (`supplier_inactive`). */
+            /** @description Invalid, the supplier is inactive (`supplier_inactive`), or `currencyCode` is not the company currency (`purchase_currency_not_company`). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -38319,7 +38326,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description More than is left to receive (`over_received`), no location (`location_required`), or a line named twice (`line_repeated`). */
+            /** @description More than is left to receive (`over_received`), no location (`location_required`), a line named twice (`line_repeated`), or an order in another currency than the company’s (`purchase_currency_not_company`). */
             422: {
                 headers: {
                     [name: string]: unknown;
