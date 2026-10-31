@@ -247,6 +247,14 @@ with the build (`release`), the over-the-air update it was running (`update_id`)
   code. Adding a native module needs a new build, and EAS works that out.
 - **Channels** are `development`, `staging` (the preview profile) and `production`, set per build
   profile in `eas.json`. Publish with `eas update --channel staging --message "…"`.
+- **Build settings travel with the bundle.** `EXPO_PUBLIC_API_BASE_URL`, `EXPO_PUBLIC_APP_ENV` and
+  `EXPO_PUBLIC_SENTRY_DSN` are written into the JavaScript when it is bundled, by a build or by
+  `eas update`. A build takes them from its profile in `eas.json`; `eas update` takes them from the
+  shell that runs it, so set the same values as the channel's build profile first. A release
+  bundle without `EXPO_PUBLIC_API_BASE_URL` refuses to start rather than talk to `localhost`
+  (`src/lib/env.ts`); expo-updates' error recovery then normally goes back to the previous bundle. Only a
+  literal `process.env.EXPO_PUBLIC_…` is filled in; the mobile ESLint config rejects any other
+  way of reading them.
 - **When it applies.** The phone checks on launch and each time it comes back to the
   foreground. It downloads in the background and runs the new update from the next cold start,
   never under an engineer's fingers mid-form. The launch never waits for the check

@@ -5,20 +5,73 @@
  * environment to read on somebody's phone, so these are constants in the
  * shipped binary — which also means none of them may be a secret.
  *
- * Each is read through a helper rather than directly, because Expo types
- * `process.env` loosely enough that reading it produces `any`, and `any`
- * spreading out of a config module is how a `string | undefined` ends up
- * concatenated into a URL.
+ * Each variable is read as a literal `process.env.EXPO_PUBLIC_…` on purpose.
+ * Expo's Babel step replaces only that exact form. A computed read, with the
+ * name in square brackets, stays in the bundle as written, and only a development
+ * build fills `process.env` while the app runs, so a release build would read
+ * nothing and quietly fall back to `localhost`. The mobile ESLint config rejects
+ * a computed or destructured read anywhere in the app.
  */
 
-function publicEnv(name: string): string | undefined {
-  const value: unknown = process.env[name];
+export interface PublicEnv {
+  apiBaseUrl: string;
+  appEnv: string;
+  sentryDsn: string | undefined;
+}
+
+/** The build was made without a setting it cannot work without. */
+export class MissingBuildSettingError extends Error {
+  constructor(readonly variable: string) {
+    super(
+      `${variable} was not set when this build was made. Set it in the build profile ` +
+        '(eas.json) or in the shell running `eas update`.',
+    );
+    this.name = 'MissingBuildSettingError';
+  }
+}
+
+function present(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined;
 }
 
-export const API_BASE_URL: string =
-  publicEnv('EXPO_PUBLIC_API_BASE_URL') ?? 'http://localhost:3000';
+/**
+ * Turns what the bundler inlined into the app's settings.
+ *
+ * Only a development build may fall back to a local server. A release build
+ * with no server address refuses to start rather than talk to `localhost`, and
+ * one with no environment name counts as production, so the checks that relax
+ * in development (the unencrypted-database refusal in `local/device.ts`) stay on.
+ */
+export function resolvePublicEnv(
+  raw: { apiBaseUrl: unknown; appEnv: unknown; sentryDsn: unknown },
+  development: boolean,
+): PublicEnv {
+  const apiBaseUrl = present(raw.apiBaseUrl);
+  if (apiBaseUrl === undefined && !development) {
+    throw new MissingBuildSettingError('EXPO_PUBLIC_API_BASE_URL');
+  }
+  return {
+    apiBaseUrl: apiBaseUrl ?? 'http://localhost:3000',
+    appEnv: present(raw.appEnv) ?? (development ? 'development' : 'production'),
+    sentryDsn: present(raw.sentryDsn),
+  };
+}
 
-export const APP_ENV: string = publicEnv('EXPO_PUBLIC_APP_ENV') ?? 'development';
+// React Native defines `__DEV__`; the unit tests run in plain Node, where it is
+// absent and the development defaults are the right ones.
+const development = typeof __DEV__ === 'undefined' ? true : __DEV__;
 
-export const SENTRY_DSN: string | undefined = publicEnv('EXPO_PUBLIC_SENTRY_DSN');
+const env = resolvePublicEnv(
+  {
+    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,
+    appEnv: process.env.EXPO_PUBLIC_APP_ENV,
+    sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  },
+  development,
+);
+
+export const API_BASE_URL: string = env.apiBaseUrl;
+
+export const APP_ENV: string = env.appEnv;
+
+export const SENTRY_DSN: string | undefined = env.sentryDsn;
