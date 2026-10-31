@@ -2712,6 +2712,8 @@ export interface PushDevicesTable {
   last_registered_at: Generated<Date>;
   disabled_at: Date | null;
   disabled_reason: PushDisabledReason | null;
+  /** The language the phone reads notifications in (0066); null when it has not said. */
+  locale: 'en' | 'ar' | null;
 }
 
 export interface SavedViewsTable {

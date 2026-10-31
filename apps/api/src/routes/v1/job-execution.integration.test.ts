@@ -397,6 +397,64 @@ describe('time', () => {
 });
 
 describe('push notifications', () => {
+  it('writes each phone’s notification in the language it registered with', async () => {
+    const sender = api.services.push as RecordingPushSender;
+    const arabic = 'ExponentPushToken[engineerarabic01]';
+    const older = 'ExponentPushToken[colleagueolder01]';
+    await call(
+      tokens.engineer,
+      'PUT',
+      '/v1/me/push-device',
+      { token: arabic, platform: 'android', locale: 'ar-EG' },
+      204,
+    );
+    // A phone from before languages were sent: English, as before.
+    await call(
+      tokens.colleague,
+      'PUT',
+      '/v1/me/push-device',
+      { token: older, platform: 'ios' },
+      204,
+    );
+
+    await runJobs('push.work_order_event');
+    sender.sent.length = 0;
+    await newJob([people.engineer, people.colleague], { priority: 'urgent' });
+    await runJobs('push.work_order_event');
+    const titleFor = (to: string) => sender.sent.find((message) => message.to === to)?.title;
+    expect(titleFor(arabic)).toMatch(/^استدعاء عاجل: /u);
+    expect(titleFor(older)).toMatch(/^Urgent callout: /u);
+
+    // Registering again without a language keeps the one it said; with one, changes it.
+    await call(
+      tokens.engineer,
+      'PUT',
+      '/v1/me/push-device',
+      { token: arabic, platform: 'android' },
+      204,
+    );
+    sender.sent.length = 0;
+    await newJob([people.engineer]);
+    await runJobs('push.work_order_event');
+    expect(titleFor(arabic)).toMatch(/^مهمة جديدة: /u);
+
+    await call(
+      tokens.engineer,
+      'PUT',
+      '/v1/me/push-device',
+      { token: arabic, platform: 'android', locale: 'en' },
+      204,
+    );
+    sender.sent.length = 0;
+    await newJob([people.engineer]);
+    await runJobs('push.work_order_event');
+    expect(titleFor(arabic)).toMatch(/^New job: /u);
+
+    // Out of the way of the next test, which counts what is sent.
+    await call(tokens.engineer, 'POST', '/v1/me/push-device/unregister', { token: arabic }, 204);
+    await call(tokens.colleague, 'POST', '/v1/me/push-device/unregister', { token: older }, 204);
+  });
+
   it('tells the person assigned, not the dispatcher who assigned them, and stops at sign-out', async () => {
     const sender = api.services.push as RecordingPushSender;
     const token = 'ExponentPushToken[engineerphone0001]';

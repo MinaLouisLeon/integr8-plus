@@ -1,3 +1,10 @@
+import {
+  calendarDayWords,
+  dayWords,
+  fill,
+  type MessageLocale,
+  wordsFor,
+} from '../notifications/words.js';
 import type { EmailMessage } from './sender.js';
 
 /**
@@ -17,8 +24,12 @@ import type { EmailMessage } from './sender.js';
  *   disclose.
  */
 
-/** The two languages a message can be written in. Most are English only, for now. */
-export type EmailLocale = 'en' | 'ar';
+/**
+ * The two languages a message can be written in. Reminders go in the company's
+ * language (`tenant_settings.locale`); a few, such as the invitation, are
+ * English only for now.
+ */
+export type EmailLocale = MessageLocale;
 
 /** Wraps the body in the least markup that renders sensibly everywhere. */
 function layout(
@@ -38,7 +49,7 @@ function layout(
         <a href="${escapeHtml(action.url)}" style="${BUTTON}">${escapeHtml(action.label)}</a>
       </p>
       <p style="${SMALL}">
-        Or paste this into your browser:<br />
+        ${escapeHtml(wordsFor(locale).email.pasteLink)}<br />
         <span style="word-break: break-all">${escapeHtml(action.url)}</span>
       </p>`;
 
@@ -91,12 +102,7 @@ function escapeHtml(value: string): string {
 
 /** `2 March 2026`, in UTC. A deadline in the reader's timezone is a guess. */
 function day(at: Date): string {
-  return at.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
+  return dayWords(at, 'en');
 }
 
 function compose(input: {
@@ -271,35 +277,29 @@ export function dunningEmail(input: {
   billingUrl: string;
   deadline: Date | null;
   readOnly: boolean;
+  locale?: EmailLocale;
 }): EmailMessage {
+  const locale = input.locale ?? 'en';
+  const words = wordsFor(locale).email.dunning;
+  const company = { company: input.companyName };
   const paragraphs = input.readOnly
-    ? [
-        `${input.companyName} is now read-only because a payment is outstanding.`,
-        'Nothing has been deleted and nothing will be. Everything can still be read and exported; what has stopped is saving new work.',
-        'Updating your card restores it straight away.',
-      ]
+    ? [fill(words.readOnly, company), words.readOnlyKept, words.readOnlyFix]
     : [
-        `A payment for ${input.companyName} has not gone through.`,
+        fill(words.failed, company),
         input.deadline === null
-          ? 'Please update your card to keep everything working.'
-          : `If it is still outstanding on ${day(input.deadline)}, the account becomes read-only — your data stays, but new work cannot be saved.`,
-        'Updating your card takes a minute and fixes it immediately.',
+          ? words.failedNoDeadline
+          : fill(words.failedDeadline, { date: dayWords(input.deadline, locale) }),
+        words.failedFix,
       ];
 
   return compose({
     to: input.to,
-    subject: input.readOnly
-      ? `${input.companyName} is read-only — payment outstanding`
-      : `Payment failed for ${input.companyName}`,
-    title: input.readOnly ? 'Your account is read-only' : 'A payment did not go through',
+    locale,
+    subject: fill(input.readOnly ? words.subjectReadOnly : words.subjectFailed, company),
+    title: input.readOnly ? words.titleReadOnly : words.titleFailed,
     paragraphs,
-    action: { label: 'Update your card', url: input.billingUrl },
+    action: { label: words.action, url: input.billingUrl },
   });
-}
-
-/** `14 January 2028` for a calendar day, which has no time zone to get wrong. */
-function calendarDayWords(value: string): string {
-  return day(new Date(`${value}T00:00:00Z`));
 }
 
 /** One certificate an expiry alert is about (P26). */
@@ -326,42 +326,46 @@ export function qualificationExpiryEmail(input: {
   items: readonly ExpiryItem[];
   own: boolean;
   url: string | null;
+  locale?: EmailLocale;
 }): EmailMessage {
+  const locale = input.locale ?? 'en';
+  const words = wordsFor(locale).email.certificates;
+  const company = { company: input.companyName };
   const lapsed = input.items.filter((item) => item.stage === 'lapsed');
   const line = (item: ExpiryItem) => {
-    const whose = item.person === undefined ? '' : `${item.person}: `;
-    const when =
-      item.stage === 'lapsed'
-        ? `expired on ${calendarDayWords(item.expiresOn)}`
-        : `expires on ${calendarDayWords(item.expiresOn)}`;
+    const values = {
+      qualification: item.qualification,
+      date: calendarDayWords(item.expiresOn, locale),
+      person: item.person ?? '',
+    };
+    const template =
+      item.person === undefined
+        ? item.stage === 'lapsed'
+          ? words.expired
+          : words.expiring
+        : item.stage === 'lapsed'
+          ? words.personExpired
+          : words.personExpiring;
     const visits =
       item.affectedVisits.length === 0
         ? ''
-        : ` Planned visits that now need someone else, or a reason: ${item.affectedVisits.join('; ')}.`;
-    return `${whose}${item.qualification} ${when}.${visits}`;
+        : ` ${fill(words.affectedVisits, { visits: item.affectedVisits.join('; ') })}`;
+    return `${fill(template, values)}${visits}`;
   };
   const paragraphs = [
     input.own
-      ? lapsed.length > 0
-        ? `A certificate of yours on ${input.companyName} has expired or is about to.`
-        : `A certificate of yours on ${input.companyName} is about to expire.`
-      : `Certificates held by people at ${input.companyName} have expired or are about to.`,
+      ? fill(lapsed.length > 0 ? words.ownExpired : words.ownExpiring, company)
+      : fill(words.team, company),
     ...input.items.map(line),
-    input.own
-      ? 'Once it is renewed, send the new certificate to the office so they can record it.'
-      : 'Record each renewal as a new certificate, so the old one stays in the history.',
+    input.own ? words.ownNext : words.teamNext,
   ];
   return compose({
     to: input.to,
-    subject:
-      lapsed.length > 0
-        ? `Certificates expired — ${input.companyName}`
-        : `Certificates expiring soon — ${input.companyName}`,
-    title: lapsed.length > 0 ? 'Certificates have expired' : 'Certificates expiring soon',
+    locale,
+    subject: fill(lapsed.length > 0 ? words.subjectExpired : words.subjectExpiring, company),
+    title: lapsed.length > 0 ? words.titleExpired : words.titleExpiring,
     paragraphs,
-    ...(input.url === null || input.own
-      ? {}
-      : { action: { label: 'Open qualifications', url: input.url } }),
+    ...(input.url === null || input.own ? {} : { action: { label: words.action, url: input.url } }),
   });
 }
 
@@ -383,27 +387,26 @@ export function contractRenewalEmail(input: {
   companyName: string;
   items: readonly RenewalItem[];
   url: string | null;
+  locale?: EmailLocale;
 }): EmailMessage {
+  const locale = input.locale ?? 'en';
+  const words = wordsFor(locale).email.contracts;
+  const company = { company: input.companyName };
   const ended = input.items.filter((item) => item.stage === 'ended');
   const line = (item: RenewalItem) =>
-    `${item.reference} ${item.title} for ${item.customer} ${
-      item.stage === 'ended'
-        ? `ended on ${calendarDayWords(item.endsOn)} without being renewed`
-        : `ends on ${calendarDayWords(item.endsOn)}`
-    }.`;
+    fill(item.stage === 'ended' ? words.ended : words.ending, {
+      reference: item.reference,
+      title: item.title,
+      customer: item.customer,
+      date: calendarDayWords(item.endsOn, locale),
+    });
   return compose({
     to: input.to,
-    subject:
-      ended.length > 0
-        ? `Contracts ended without renewal — ${input.companyName}`
-        : `Contracts ending soon — ${input.companyName}`,
-    title: ended.length > 0 ? 'Contracts have ended' : 'Contracts ending soon',
-    paragraphs: [
-      `Service contracts at ${input.companyName} are ending or have ended.`,
-      ...input.items.map(line),
-      'Renew a contract to keep its maintenance plans making jobs and its customer’s jobs covered.',
-    ],
-    ...(input.url === null ? {} : { action: { label: 'Open contracts', url: input.url } }),
+    locale,
+    subject: fill(ended.length > 0 ? words.subjectEnded : words.subjectEnding, company),
+    title: ended.length > 0 ? words.titleEnded : words.titleEnding,
+    paragraphs: [fill(words.intro, company), ...input.items.map(line), words.next],
+    ...(input.url === null ? {} : { action: { label: words.action, url: input.url } }),
   });
 }
 
@@ -427,34 +430,34 @@ export function deadlineAlertEmail(input: {
   companyName: string;
   items: readonly DeadlineItem[];
   url: string | null;
+  locale?: EmailLocale;
 }): EmailMessage {
+  const locale = input.locale ?? 'en';
+  const words = wordsFor(locale).email.deadlines;
+  const company = { company: input.companyName };
   const missed = input.items.filter((item) => item.stage === 'missed');
   const line = (item: DeadlineItem) => {
-    const what = item.kind === 'response' ? 'response' : 'completion';
-    const when =
-      item.stage === 'missed'
-        ? `was due at ${item.dueAt} and was missed`
-        : `is due at ${item.dueAt}`;
-    return `${item.job} (${item.customer}): the ${what} deadline ${when}.${
-      item.url === null ? '' : ` ${item.url}`
-    }`;
+    const template =
+      item.kind === 'response'
+        ? item.stage === 'missed'
+          ? words.responseMissed
+          : words.responseDue
+        : item.stage === 'missed'
+          ? words.completionMissed
+          : words.completionDue;
+    const text = fill(template, { job: item.job, customer: item.customer, when: item.dueAt });
+    return item.url === null ? text : `${text} ${item.url}`;
   };
   return compose({
     to: input.to,
-    subject:
-      missed.length > 0
-        ? `Deadlines missed — ${input.companyName}`
-        : `Deadlines due soon — ${input.companyName}`,
-    title: missed.length > 0 ? 'Deadlines missed' : 'Deadlines due soon',
+    locale,
+    subject: fill(missed.length > 0 ? words.subjectMissed : words.subjectDue, company),
+    title: missed.length > 0 ? words.titleMissed : words.titleDue,
     paragraphs: [
-      missed.length > 0
-        ? `Jobs at ${input.companyName} have missed their deadlines, or are about to.`
-        : `Jobs at ${input.companyName} are about to reach their deadlines.`,
+      fill(missed.length > 0 ? words.introMissed : words.introDue, company),
       ...input.items.map(line),
-      'A response deadline is met when the job is dispatched; a completion deadline when it is completed.',
+      words.explained,
     ],
-    ...(input.url === null
-      ? {}
-      : { action: { label: 'Open the deadlines report', url: input.url } }),
+    ...(input.url === null ? {} : { action: { label: words.action, url: input.url } }),
   });
 }

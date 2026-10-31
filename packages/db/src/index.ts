@@ -817,7 +817,11 @@ export {
   type Shift,
   ShiftsRepository,
 } from './repositories/shifts.js';
-export { type PushDevice, PushDevicesRepository } from './repositories/push-devices.js';
+export {
+  type PushDevice,
+  PushDevicesRepository,
+  type PushLocale,
+} from './repositories/push-devices.js';
 
 export {
   ATTACHMENT_KINDS,

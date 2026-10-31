@@ -18,7 +18,11 @@ export interface PushDevice {
   userId: UserId;
   token: string;
   platform: PushPlatform;
+  /** The language the phone reads notifications in; null when it has not said. */
+  locale: PushLocale | null;
 }
+
+export type PushLocale = 'en' | 'ar';
 
 export class PushDevicesRepository extends TenantScopedRepository {
   constructor(scope: TenantScope) {
@@ -31,6 +35,8 @@ export class PushDevicesRepository extends TenantScopedRepository {
     token: string;
     platform: PushPlatform;
     deviceLabel: string | null;
+    /** Left out by a phone older than 0066: whatever was stored stays. */
+    locale?: PushLocale | undefined;
   }): Promise<PushDevice> {
     const row = await this.db
       .insertInto('push_devices')
@@ -41,6 +47,7 @@ export class PushDevicesRepository extends TenantScopedRepository {
         token: input.token,
         platform: input.platform,
         device_label: input.deviceLabel,
+        locale: input.locale ?? null,
       })
       .onConflict((conflict) =>
         conflict.columns(['tenant_id', 'token']).doUpdateSet({
@@ -48,14 +55,21 @@ export class PushDevicesRepository extends TenantScopedRepository {
           session_id: input.sessionId,
           platform: input.platform,
           device_label: input.deviceLabel,
+          ...(input.locale === undefined ? {} : { locale: input.locale }),
           last_registered_at: sql<Date>`now()`,
           disabled_at: null,
           disabled_reason: null,
         }),
       )
-      .returning(['id', 'user_id', 'token', 'platform'])
+      .returning(['id', 'user_id', 'token', 'platform', 'locale'])
       .executeTakeFirstOrThrow();
-    return { id: row.id, userId: toUserId(row.user_id), token: row.token, platform: row.platform };
+    return {
+      id: row.id,
+      userId: toUserId(row.user_id),
+      token: row.token,
+      platform: row.platform,
+      locale: row.locale,
+    };
   }
 
   /** Stops sending to a phone. Only its own person may say so from the phone. */
@@ -109,6 +123,7 @@ export class PushDevicesRepository extends TenantScopedRepository {
         'push_devices.user_id',
         'push_devices.token',
         'push_devices.platform',
+        'push_devices.locale',
       ])
       .where('push_devices.tenant_id', '=', this.tenantId)
       .where(
@@ -125,6 +140,7 @@ export class PushDevicesRepository extends TenantScopedRepository {
       userId: toUserId(row.user_id),
       token: row.token,
       platform: row.platform,
+      locale: row.locale,
     }));
   }
 }

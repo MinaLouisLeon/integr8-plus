@@ -201,6 +201,10 @@ out, or the session being revoked, stops notifications to it. So does
 | Priority changed to urgent | the crew                  | `urgent`                      |
 
 - The person who made the change is never told about it.
+- Each phone reads it in its own language: the app sends the language it is showing when it
+  registers, on every launch (`locale`, kept in `push_devices.locale`), and Arabic or English
+  is written accordingly. A phone that has not said gets English. Emails about the same events
+  are in the company's language setting.
 - Notification text carries the job's reference and site, never a time: the job screen shows
   times in the phone's own time zone, which may not be the company's.
 - Visits (P25): the person put on a visit or taken off one hears it, and the people on a visit

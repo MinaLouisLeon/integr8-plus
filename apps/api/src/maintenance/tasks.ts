@@ -34,6 +34,13 @@ import type { EmailSender } from '../email/sender.js';
 import { isFeatureEnabled } from '../http/features.js';
 import type { Logger } from '../http/logger.js';
 import type { PushMessage, PushSender } from '../push/sender.js';
+import {
+  fill,
+  messageLocale,
+  momentFormatter,
+  type NotificationWords,
+  wordsFor,
+} from '../notifications/words.js';
 import { nextDueFor } from '../routes/v1/maintenance.js';
 
 /**
@@ -345,7 +352,7 @@ async function renewalReminders(
   options: TaskOptions,
 ): Promise<number> {
   const prepared = await withTenant(tenant.id, async (tx) => {
-    const { timezone } = await tx.settings.get();
+    const { timezone, locale } = await tx.settings.get();
     const alerts = await tx.contracts.dueRenewalAlerts(calendarDay(now, timezone));
     if (alerts.length === 0) {
       return undefined;
@@ -362,7 +369,7 @@ async function renewalReminders(
       endsOn: alert.contract.endsOn,
       stage: alert.stage,
     }));
-    return { alerts, managers, items };
+    return { alerts, managers, items, locale: messageLocale(locale) };
   });
   if (prepared === undefined) {
     return 0;
@@ -378,6 +385,7 @@ async function renewalReminders(
           companyName: tenant.name,
           items: prepared.items,
           url,
+          locale: prepared.locale,
         }),
         { kind: 'contract_renewal', tenantId: tenant.id },
       );
@@ -455,11 +463,9 @@ async function deadlineAlertsFor(
   const jobById = new Map(jobs.map((job) => [job.id, job]));
   const customerName = new Map(customers.map((customer) => [customer.id, customer.name]));
   const memberById = new Map(members.map((member) => [member.userId as string, member]));
-  const when = new Intl.DateTimeFormat('en-GB', {
-    timeZone: settings.timezone,
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
+  // Emails go in the company's language; each phone's push in its own.
+  const locale = messageLocale(settings.locale);
+  const when = momentFormatter(locale, settings.timezone);
   const itemOf = (notice: Notice): DeadlineItem | undefined => {
     const job = jobById.get(notice.workOrderId);
     if (job === undefined) {
@@ -499,31 +505,38 @@ async function deadlineAlertsFor(
       await deliver(
         options.email,
         options.logger,
-        deadlineAlertEmail({ to: member.email, companyName: tenant.name, items, url }),
+        deadlineAlertEmail({ to: member.email, companyName: tenant.name, items, url, locale }),
         { kind: 'deadline_alert', tenantId: tenant.id },
       );
     }
   }
 
   if (options.push !== undefined) {
-    const tokens = new Map<string, string[]>();
+    const phones = new Map<string, (typeof devices)[number][]>();
     for (const device of devices) {
-      tokens.set(device.userId, [...(tokens.get(device.userId) ?? []), device.token]);
+      phones.set(device.userId, [...(phones.get(device.userId) ?? []), device]);
     }
     const messages: PushMessage[] = notices.flatMap((notice) => {
       const job = jobById.get(notice.workOrderId);
       if (job === undefined) {
         return [];
       }
-      const label = formatWorkOrderReference(job.reference);
-      const what = notice.kind === 'response' ? 'response' : 'completion';
+      const label = { job: formatWorkOrderReference(job.reference) };
+      const title = (words: NotificationWords['push']) =>
+        fill(
+          notice.kind === 'response'
+            ? notice.stage === 'missed'
+              ? words.responseDeadlineMissed
+              : words.responseDeadlineSoon
+            : notice.stage === 'missed'
+              ? words.completionDeadlineMissed
+              : words.completionDeadlineSoon,
+          label,
+        );
       return (crews.get(notice.workOrderId) ?? []).flatMap((member) =>
-        (tokens.get(member.userId) ?? []).map((token) => ({
-          to: token,
-          title:
-            notice.stage === 'missed'
-              ? `${label}: ${what} deadline missed`
-              : `${label}: ${what} deadline soon`,
+        (phones.get(member.userId) ?? []).map((device) => ({
+          to: device.token,
+          title: title(wordsFor(messageLocale(device.locale)).push),
           // No time: the phone shows it in its own time zone, which may not be the company's.
           body: job.title,
           data: { kind: 'deadline_alert', workOrderId: job.id },

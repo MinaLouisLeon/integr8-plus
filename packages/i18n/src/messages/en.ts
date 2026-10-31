@@ -7656,6 +7656,112 @@ export const en = {
     },
   },
 
+  // What the server writes to people on its own: push notifications, in the
+  // phone's language, and reminder emails and banners, in the company's.
+  // Read by the API through `@integr8/i18n/core`; `{{…}}` is filled there.
+  notifications: {
+    push: {
+      newJob: 'New job: {{job}}',
+      urgentCallout: 'Urgent callout: {{job}}',
+      rescheduled: 'Rescheduled: {{job}}',
+      dispatched: 'Dispatched: {{job}}',
+      cancelled: 'Cancelled: {{job}}',
+      nowUrgent: 'Now urgent: {{job}}',
+      newVisit: 'New visit: {{job}}',
+      urgentVisit: 'Urgent visit: {{job}}',
+      visitMoved: 'Visit moved: {{job}}',
+      visitCancelled: 'Visit cancelled: {{job}}',
+      takenOffVisit: 'Taken off a visit: {{job}}',
+      openForTime: 'Open the job for its time.',
+      openForTimeAt: '{{site}} · open the job for its time.',
+      openForNewTime: 'Open the job for its new time.',
+      openForNewTimeAt: '{{site}} · open the job for its new time.',
+      responseDeadlineMissed: '{{job}}: response deadline missed',
+      responseDeadlineSoon: '{{job}}: response deadline soon',
+      completionDeadlineMissed: '{{job}}: completion deadline missed',
+      completionDeadlineSoon: '{{job}}: completion deadline soon',
+      certificateExpired: '{{qualification}} has expired',
+      certificateExpiring: '{{qualification}} expires soon',
+      certificateExpiredBody: 'Send the renewed certificate to the office.',
+      certificateExpiringBody: 'Valid until {{date}}. Renew it in time.',
+    },
+    email: {
+      pasteLink: 'Or paste this into your browser:',
+      dunning: {
+        subjectFailed: 'Payment failed for {{company}}',
+        subjectReadOnly: '{{company}} is read-only — payment outstanding',
+        titleFailed: 'A payment did not go through',
+        titleReadOnly: 'Your account is read-only',
+        failed: 'A payment for {{company}} has not gone through.',
+        failedNoDeadline: 'Please update your card to keep everything working.',
+        failedDeadline:
+          'If it is still outstanding on {{date}}, the account becomes read-only — your data stays, but new work cannot be saved.',
+        failedFix: 'Updating your card takes a minute and fixes it immediately.',
+        readOnly: '{{company}} is now read-only because a payment is outstanding.',
+        readOnlyKept:
+          'Nothing has been deleted and nothing will be. Everything can still be read and exported; what has stopped is saving new work.',
+        readOnlyFix: 'Updating your card restores it straight away.',
+        action: 'Update your card',
+      },
+      certificates: {
+        subjectExpired: 'Certificates expired — {{company}}',
+        subjectExpiring: 'Certificates expiring soon — {{company}}',
+        titleExpired: 'Certificates have expired',
+        titleExpiring: 'Certificates expiring soon',
+        ownExpired: 'A certificate of yours on {{company}} has expired or is about to.',
+        ownExpiring: 'A certificate of yours on {{company}} is about to expire.',
+        team: 'Certificates held by people at {{company}} have expired or are about to.',
+        expired: '{{qualification}} expired on {{date}}.',
+        expiring: '{{qualification}} expires on {{date}}.',
+        personExpired: '{{person}}: {{qualification}} expired on {{date}}.',
+        personExpiring: '{{person}}: {{qualification}} expires on {{date}}.',
+        affectedVisits: 'Planned visits that now need someone else, or a reason: {{visits}}.',
+        visit: '{{job}}, {{when}}',
+        aJob: 'a job',
+        ownNext:
+          'Once it is renewed, send the new certificate to the office so they can record it.',
+        teamNext: 'Record each renewal as a new certificate, so the old one stays in the history.',
+        action: 'Open qualifications',
+      },
+      contracts: {
+        subjectEnded: 'Contracts ended without renewal — {{company}}',
+        subjectEnding: 'Contracts ending soon — {{company}}',
+        titleEnded: 'Contracts have ended',
+        titleEnding: 'Contracts ending soon',
+        intro: 'Service contracts at {{company}} are ending or have ended.',
+        ended: '{{reference}} {{title}} for {{customer}} ended on {{date}} without being renewed.',
+        ending: '{{reference}} {{title}} for {{customer}} ends on {{date}}.',
+        next: 'Renew a contract to keep its maintenance plans making jobs and its customer’s jobs covered.',
+        action: 'Open contracts',
+      },
+      deadlines: {
+        subjectMissed: 'Deadlines missed — {{company}}',
+        subjectDue: 'Deadlines due soon — {{company}}',
+        titleMissed: 'Deadlines missed',
+        titleDue: 'Deadlines due soon',
+        introMissed: 'Jobs at {{company}} have missed their deadlines, or are about to.',
+        introDue: 'Jobs at {{company}} are about to reach their deadlines.',
+        responseMissed:
+          '{{job}} ({{customer}}): the response deadline was due at {{when}} and was missed.',
+        responseDue: '{{job}} ({{customer}}): the response deadline is due at {{when}}.',
+        completionMissed:
+          '{{job}} ({{customer}}): the completion deadline was due at {{when}} and was missed.',
+        completionDue: '{{job}} ({{customer}}): the completion deadline is due at {{when}}.',
+        explained:
+          'A response deadline is met when the job is dispatched; a completion deadline when it is completed.',
+        action: 'Open the deadlines report',
+      },
+    },
+    announcements: {
+      paymentFailed:
+        'A payment for this account has not gone through. Please update the card in Billing. If it is still outstanding on {{date}}, the account becomes read-only — your data stays, but new work cannot be saved.',
+      paymentFailedNoDate:
+        'A payment for this account has not gone through. Please update the card in Billing. If it is still outstanding shortly, the account becomes read-only — your data stays, but new work cannot be saved.',
+      readOnly:
+        'This account is read-only because a payment is outstanding. Nothing has been deleted and nothing will be: everything can still be read and exported. Update the card in Billing and writing is restored straight away.',
+    },
+  },
+
   nav: {
     menu: 'Menu',
     openMenu: 'Open the menu',

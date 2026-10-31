@@ -7413,7 +7413,7 @@ export interface paths {
         get?: never;
         /**
          * Receive push notifications on this phone
-         * @description Registers the phone’s Expo push token for the signed-in person, tied to this session: signing out, or the session being revoked, stops notifications to it. Registering a token already registered moves it to this person and session.
+         * @description Registers the phone’s Expo push token for the signed-in person, tied to this session: signing out, or the session being revoked, stops notifications to it. Registering a token already registered moves it to this person and session. `locale` is the language the app is showing; notifications are written in it (Arabic for any `ar` tag, English otherwise). A phone that leaves it out keeps whatever it last said, English if nothing.
          */
         put: operations["registerPushDevice"];
         post?: never;
@@ -78254,6 +78254,8 @@ export interface operations {
                     /** @enum {string} */
                     platform: "ios" | "android";
                     deviceLabel?: string | null;
+                    /** @description The app’s language, as a BCP 47 tag such as `ar` or `en`. */
+                    locale?: string;
                 };
             };
         };

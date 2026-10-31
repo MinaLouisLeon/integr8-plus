@@ -5,6 +5,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
+import { deviceLocale } from '~/lib/preferences';
 import { session } from '~/lib/session';
 import { localData } from './local-data';
 import { isOffline, isOnline } from './online';
@@ -139,6 +140,11 @@ async function sendToken(token: string): Promise<void> {
       token,
       platform: Platform.OS === 'ios' ? 'ios' : 'android',
       deviceLabel: Device.deviceName ?? Device.modelName ?? null,
+      // The language the app is showing, the same one it chose at start-up, so
+      // notifications arrive in it. Sent every time the phone registers, which
+      // is every launch: a phone switched to another language says so on the
+      // next one.
+      locale: deviceLocale(),
     },
   });
   registered = token;

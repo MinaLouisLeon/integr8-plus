@@ -214,6 +214,11 @@ a worker that was down for three days sends the reminder due today instead of th
 >
 > The email is allowed to fail. A reminder that bounced must not stop the account moving through
 > dunning, and must not make the worker retry the run for every other company.
+>
+> **Language.** The email is written in the company's language setting
+> (`tenant_settings.locale`, English or Arabic). The banner is posted in both, and each person's
+> app shows the one it is using. The words are in the i18n catalogues
+> (`notifications.email.dunning`, `notifications.announcements`).
 
 Nothing in the dunning run deletes anything. The worst it does is refuse writes.
 

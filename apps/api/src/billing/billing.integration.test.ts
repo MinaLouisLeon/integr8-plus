@@ -1,4 +1,4 @@
-import { getPlatformDataSource, type PlanAllowance } from '@integr8/db';
+import { getPlatformDataSource, type PlanAllowance, withTenant } from '@integr8/db';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createLogger } from '../http/logger.js';
@@ -645,6 +645,40 @@ describe('a payment that fails', () => {
       payload: { name: 'After paying', code: `OKAY${String(Date.now()).slice(-6)}` },
     });
     expect(allowed.statusCode).toBe(201);
+  });
+
+  it('writes the reminder in the company’s language, and the banner in both', async () => {
+    const platform = getPlatformDataSource();
+    await withTenant(api.tenantId, (tx) => tx.settings.update({ locale: 'ar' }));
+    try {
+      await deliver({
+        id: `evt_failed_ar_${String(Date.now())}`,
+        type: 'invoice.payment_failed',
+        event: { kind: 'payment_failed', customerId: CUSTOMER, subscriptionId: SUBSCRIPTION },
+      });
+      const reminded = await runDunning({
+        config: api.config,
+        logger: silent,
+        workerId: 'test',
+        force: true,
+        email: api.services.email,
+        now: new Date(Date.now() + 4 * DAY_MS),
+      });
+      expect(reminded.remindersPosted).toBeGreaterThanOrEqual(1);
+
+      const posted = (api.services.email as RecordingEmailSender).lastTo(owner.email);
+      expect(posted?.subject).toContain('تعذّر الدفع');
+      expect(posted?.html).toContain('dir="rtl"');
+      expect(posted?.text).toContain('حدّث بطاقتك');
+
+      // Everybody sees the banner in the language their own app is showing.
+      const banners = await platform.settings.announcementsFor(api.tenantId);
+      const latest = banners.find((banner) => banner.message.ar !== undefined);
+      expect(latest?.message.ar).toContain('الفوترة');
+      expect(latest?.message.en).toContain('Billing');
+    } finally {
+      await withTenant(api.tenantId, (tx) => tx.settings.update({ locale: 'en' }));
+    }
   });
 
   it('ends a trial into the same grace period rather than straight into read-only', async () => {
