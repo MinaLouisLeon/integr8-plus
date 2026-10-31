@@ -568,6 +568,7 @@ export {
   type PaymentAllocation,
   type PaymentReceipt,
   type PaymentReceiptInput,
+  type PaymentReversal,
   type ReceiptAmounts,
 } from './repositories/finance-payments.js';
 export {

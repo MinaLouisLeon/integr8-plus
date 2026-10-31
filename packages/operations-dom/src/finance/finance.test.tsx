@@ -170,6 +170,7 @@ const payment = (overrides: Partial<PaymentRow> = {}): PaymentRow => ({
   paymentReference: 'TRF-88',
   allocated: '0',
   unallocated: '300',
+  reversed: false,
   recordedAt: '2026-10-06T10:00:00.000Z',
   ...overrides,
 });
@@ -237,9 +238,10 @@ describe('invoices', { timeout: 20_000 }, () => {
         status: 201,
         body: {
           receipt: { ...payment(), notes: null, recordedBy: { id: USER, name: 'Omar' } },
+          reversal: null,
           allocations: [],
           openInvoices: [],
-          can: { allocate: false, removeAllocation: true },
+          can: { allocate: false, removeAllocation: true, reverse: true },
         } satisfies PaymentDetail,
       }),
     });
@@ -333,9 +335,10 @@ describe('invoices', { timeout: 20_000 }, () => {
 describe('payments', { timeout: 20_000 }, () => {
   const paymentDetail = (overrides: Partial<PaymentDetail> = {}): PaymentDetail => ({
     receipt: { ...payment(), notes: null, recordedBy: { id: USER, name: 'Omar' } },
+    reversal: null,
     allocations: [],
     openInvoices: [row()],
-    can: { allocate: true, removeAllocation: true },
+    can: { allocate: true, removeAllocation: true, reverse: true },
     ...overrides,
   });
 
@@ -604,5 +607,53 @@ describe('finance settings, the customer account and the job', { timeout: 20_000
     expect(screen.queryByText('Profit')).not.toBeInTheDocument();
     expect(screen.queryByText('Parts')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Invoice this job' })).not.toBeInTheDocument();
+  });
+});
+
+describe('reversing a payment (0064)', { timeout: 20_000 }, () => {
+  it('asks why before taking a payment back, then shows it reversed', async () => {
+    const user = userEvent.setup();
+    const base: PaymentDetail = {
+      receipt: { ...payment(), notes: null, recordedBy: { id: USER, name: 'Omar' } },
+      reversal: null,
+      allocations: [],
+      openInvoices: [],
+      can: { allocate: false, removeAllocation: true, reverse: true },
+    };
+    let current = base;
+    const { client, calls } = fakeApi({
+      'GET /v1/me': me(ISSUE),
+      'GET /v1/finance/payments/:id': () => ({ body: current }),
+      'POST /v1/finance/payments/:id/reverse': () => {
+        current = {
+          ...base,
+          receipt: { ...base.receipt, reversed: true, unallocated: '0' },
+          reversal: {
+            reason: 'Cheque bounced',
+            reversedOn: '2026-10-08',
+            reversedBy: { id: USER, name: 'Omar' },
+            reversedAt: '2026-10-08T09:00:00.000Z',
+          },
+          can: { allocate: false, removeAllocation: false, reverse: false },
+        };
+        return { body: current };
+      },
+    });
+    renderScreen(<PaymentScreen paymentId={RECEIPT} />, client);
+
+    await user.click(await screen.findByRole('button', { name: 'Reverse payment' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Reverse RC-000003?' });
+    const confirm = within(dialog).getByRole('button', { name: 'Reverse payment' });
+    expect(confirm).toBeDisabled();
+    await user.type(within(dialog).getByLabelText(/^Why/u), 'Cheque bounced');
+    await user.click(confirm);
+
+    expect(
+      await screen.findByText(/^Reversed by Omar on .+: Cheque bounced$/u),
+    ).toBeInTheDocument();
+    expect(calls.find((call) => call.path.endsWith('/reverse'))!.body).toEqual({
+      reason: 'Cheque bounced',
+    });
+    expect(screen.queryByRole('button', { name: 'Reverse payment' })).not.toBeInTheDocument();
   });
 });

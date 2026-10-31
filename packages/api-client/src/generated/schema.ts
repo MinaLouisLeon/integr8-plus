@@ -4874,6 +4874,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/finance/payments/{receiptId}/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take a payment back
+         * @description Owners and admins, with a reason: a bounced cheque, a transfer that never arrived, a payment recorded against the wrong customer. The payment is not deleted: a reversal is recorded beside it, dated today in the company’s calendar, its allocations are removed so the invoices owe again, it is never allocated again, and the ledger posts the opposite of its entry. Both stay in the history. Once only: 409 `payment_already_reversed`. Honours `Idempotency-Key`.
+         */
+        post: operations["reverseCustomerPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/finance/customers/{customerId}/account": {
         parameters: {
             query?: never;
@@ -37336,6 +37356,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -37523,6 +37565,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -37724,6 +37788,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -37917,6 +38003,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -38109,6 +38217,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -38324,6 +38454,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -38541,6 +38693,28 @@ export interface operations {
                                 returnedQuantity: string;
                             }[];
                         }[];
+                        parties: {
+                            buyer: {
+                                name: string;
+                                address: string | null;
+                                taxReference: string | null;
+                            };
+                            supplier: {
+                                name: string;
+                                address: {
+                                    line1: string | null;
+                                    line2: string | null;
+                                    city: string | null;
+                                    region: string | null;
+                                    postcode: string | null;
+                                    countryCode: string | null;
+                                } | null;
+                                contactName: string | null;
+                                email: string | null;
+                                phone: string | null;
+                                taxReference: string | null;
+                            };
+                        };
                         can: {
                             edit: boolean;
                             approve: boolean;
@@ -48643,6 +48817,7 @@ export interface operations {
                             paymentReference: string | null;
                             allocated: string;
                             unallocated: string;
+                            reversed: boolean;
                             /** Format: date-time */
                             recordedAt: string;
                         }[];
@@ -48764,6 +48939,7 @@ export interface operations {
                             paymentReference: string | null;
                             allocated: string;
                             unallocated: string;
+                            reversed: boolean;
                             /** Format: date-time */
                             recordedAt: string;
                             notes: string | null;
@@ -48773,6 +48949,18 @@ export interface operations {
                                 name: string;
                             };
                         };
+                        reversal: {
+                            reason: string;
+                            /** Format: date */
+                            reversedOn: string;
+                            reversedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            reversedAt: string;
+                        } | null;
                         allocations: {
                             /** Format: uuid */
                             id: string;
@@ -48845,6 +49033,7 @@ export interface operations {
                         can: {
                             allocate: boolean;
                             removeAllocation: boolean;
+                            reverse: boolean;
                         };
                     };
                 };
@@ -48962,6 +49151,7 @@ export interface operations {
                             paymentReference: string | null;
                             allocated: string;
                             unallocated: string;
+                            reversed: boolean;
                             /** Format: date-time */
                             recordedAt: string;
                             notes: string | null;
@@ -48971,6 +49161,18 @@ export interface operations {
                                 name: string;
                             };
                         };
+                        reversal: {
+                            reason: string;
+                            /** Format: date */
+                            reversedOn: string;
+                            reversedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            reversedAt: string;
+                        } | null;
                         allocations: {
                             /** Format: uuid */
                             id: string;
@@ -49043,6 +49245,7 @@ export interface operations {
                         can: {
                             allocate: boolean;
                             removeAllocation: boolean;
+                            reverse: boolean;
                         };
                     };
                 };
@@ -49154,6 +49357,7 @@ export interface operations {
                             paymentReference: string | null;
                             allocated: string;
                             unallocated: string;
+                            reversed: boolean;
                             /** Format: date-time */
                             recordedAt: string;
                             notes: string | null;
@@ -49163,6 +49367,18 @@ export interface operations {
                                 name: string;
                             };
                         };
+                        reversal: {
+                            reason: string;
+                            /** Format: date */
+                            reversedOn: string;
+                            reversedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            reversedAt: string;
+                        } | null;
                         allocations: {
                             /** Format: uuid */
                             id: string;
@@ -49235,6 +49451,7 @@ export interface operations {
                         can: {
                             allocate: boolean;
                             removeAllocation: boolean;
+                            reverse: boolean;
                         };
                     };
                 };
@@ -49344,6 +49561,7 @@ export interface operations {
                             paymentReference: string | null;
                             allocated: string;
                             unallocated: string;
+                            reversed: boolean;
                             /** Format: date-time */
                             recordedAt: string;
                             notes: string | null;
@@ -49353,6 +49571,18 @@ export interface operations {
                                 name: string;
                             };
                         };
+                        reversal: {
+                            reason: string;
+                            /** Format: date */
+                            reversedOn: string;
+                            reversedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            reversedAt: string;
+                        } | null;
                         allocations: {
                             /** Format: uuid */
                             id: string;
@@ -49425,6 +49655,7 @@ export interface operations {
                         can: {
                             allocate: boolean;
                             removeAllocation: boolean;
+                            reverse: boolean;
                         };
                     };
                 };
@@ -49455,6 +49686,220 @@ export interface operations {
                 content?: never;
             };
             /** @description Already removed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed validation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Something went wrong on our side. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description This client build is older than the minimum supported. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reverseCustomerPayment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A client-generated key. Replaying a request with the same key returns the original response and repeats no effect. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                receiptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The payment, reversed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        receipt: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date */
+                            receivedOn: string;
+                            amount: string;
+                            currencyCode: string;
+                            /** @enum {string} */
+                            method: "cash" | "bank_transfer" | "other";
+                            paymentReference: string | null;
+                            allocated: string;
+                            unallocated: string;
+                            reversed: boolean;
+                            /** Format: date-time */
+                            recordedAt: string;
+                            notes: string | null;
+                            recordedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                        reversal: {
+                            reason: string;
+                            /** Format: date */
+                            reversedOn: string;
+                            reversedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            reversedAt: string;
+                        } | null;
+                        allocations: {
+                            /** Format: uuid */
+                            id: string;
+                            invoice: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string | null;
+                            };
+                            receipt: {
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                                /** Format: date */
+                                receivedOn: string;
+                                /** @enum {string} */
+                                method: "cash" | "bank_transfer" | "other";
+                            };
+                            amount: string;
+                            allocatedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** Format: date-time */
+                            allocatedAt: string;
+                            removedBy: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** Format: date-time */
+                            removedAt: string | null;
+                        }[];
+                        openInvoices: {
+                            /** Format: uuid */
+                            id: string;
+                            reference: string | null;
+                            customer: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            /** @enum {string} */
+                            status: "draft" | "issued" | "partially_paid" | "paid" | "credited" | "void";
+                            overdue: boolean;
+                            currencyCode: string;
+                            /** Format: date */
+                            issueDate: string | null;
+                            /** Format: date */
+                            dueDate: string | null;
+                            amounts: {
+                                total: string;
+                                allocated: string;
+                                credited: string;
+                                balance: string;
+                            };
+                            source: {
+                                /** @enum {string} */
+                                kind: "sales_order" | "work_order";
+                                /** Format: uuid */
+                                id: string;
+                                reference: string;
+                            } | null;
+                            partsNotYetBilled: boolean;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        can: {
+                            allocate: boolean;
+                            removeAllocation: boolean;
+                            reverse: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller lacks the required permission, or the company does not have the `finance` module switched on (`feature_disabled`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such payment. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already reversed (`payment_already_reversed`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -49577,6 +50022,7 @@ export interface operations {
                             paymentReference: string | null;
                             allocated: string;
                             unallocated: string;
+                            reversed: boolean;
                             /** Format: date-time */
                             recordedAt: string;
                         }[];
@@ -53363,7 +53809,7 @@ export interface operations {
                             total: string;
                             source: {
                                 /** @enum {string} */
-                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                                 /** Format: uuid */
                                 id: string;
                             } | null;
@@ -53499,7 +53945,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -53655,7 +54101,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -53830,7 +54276,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -54090,7 +54536,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -54264,7 +54710,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -54487,7 +54933,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "pending" | "posted" | "skipped";
-                kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly") | ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly")[];
+                kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal") | ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal")[];
                 reason?: ("queued" | "auto_off" | "before_set_up" | "foreign_currency" | "cost_unknown" | "period_locked" | "waits_for_invoice" | "failed") | ("queued" | "auto_off" | "before_set_up" | "foreign_currency" | "cost_unknown" | "period_locked" | "waits_for_invoice" | "failed")[];
                 cursor?: string;
                 limit?: number;
@@ -54510,7 +54956,7 @@ export interface operations {
                             id: string;
                             source: {
                                 /** @enum {string} */
-                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                                kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                                 /** Format: uuid */
                                 id: string;
                             };
@@ -54617,7 +55063,7 @@ export interface operations {
             content: {
                 "application/json": {
                     ids?: string[];
-                    kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly")[];
+                    kind?: ("invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal")[];
                 };
             };
         };
@@ -54721,7 +55167,7 @@ export interface operations {
                         id: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         };
@@ -54902,7 +55348,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -55062,7 +55508,7 @@ export interface operations {
                         id: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         };
@@ -55944,7 +56390,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;
@@ -56118,7 +56564,7 @@ export interface operations {
                         total: string;
                         source: {
                             /** @enum {string} */
-                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly";
+                            kind: "invoice" | "credit_note" | "invoice_void" | "payment" | "stock" | "expense_claim" | "expense_payment" | "payroll_run" | "assembly" | "payment_reversal";
                             /** Format: uuid */
                             id: string;
                         } | null;

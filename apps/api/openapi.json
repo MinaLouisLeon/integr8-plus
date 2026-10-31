@@ -63864,6 +63864,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -63893,6 +63997,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -64376,6 +64481,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -64405,6 +64614,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -64963,6 +65173,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -64992,6 +65306,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -65496,6 +65811,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -65525,6 +65944,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -66027,6 +66447,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -66056,6 +66580,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -66642,6 +67167,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -66671,6 +67300,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -67240,6 +67870,110 @@
                         "additionalProperties": false
                       }
                     },
+                    "parties": {
+                      "type": "object",
+                      "properties": {
+                        "buyer": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "address": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "line1": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "line2": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "postcode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "countryCode": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "line1",
+                                "line2",
+                                "city",
+                                "region",
+                                "postcode",
+                                "countryCode"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "contactName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "taxReference": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "address",
+                            "contactName",
+                            "email",
+                            "phone",
+                            "taxReference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "buyer",
+                        "supplier"
+                      ],
+                      "additionalProperties": false
+                    },
                     "can": {
                       "type": "object",
                       "properties": {
@@ -67269,6 +68003,7 @@
                     "order",
                     "lines",
                     "receipts",
+                    "parties",
                     "can"
                   ],
                   "additionalProperties": false
@@ -99312,6 +100047,9 @@
                           "unallocated": {
                             "type": "string"
                           },
+                          "reversed": {
+                            "type": "boolean"
+                          },
                           "recordedAt": {
                             "type": "string",
                             "format": "date-time",
@@ -99329,6 +100067,7 @@
                           "paymentReference",
                           "allocated",
                           "unallocated",
+                          "reversed",
                           "recordedAt"
                         ],
                         "additionalProperties": false
@@ -99577,6 +100316,9 @@
                         "unallocated": {
                           "type": "string"
                         },
+                        "reversed": {
+                          "type": "boolean"
+                        },
                         "recordedAt": {
                           "type": "string",
                           "format": "date-time",
@@ -99616,9 +100358,54 @@
                         "paymentReference",
                         "allocated",
                         "unallocated",
+                        "reversed",
                         "recordedAt",
                         "notes",
                         "recordedBy"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "reversal": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "reversedOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "reversedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "reversedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "reason",
+                        "reversedOn",
+                        "reversedBy",
+                        "reversedAt"
                       ],
                       "additionalProperties": false
                     },
@@ -99901,17 +100688,22 @@
                         },
                         "removeAllocation": {
                           "type": "boolean"
+                        },
+                        "reverse": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "allocate",
-                        "removeAllocation"
+                        "removeAllocation",
+                        "reverse"
                       ],
                       "additionalProperties": false
                     }
                   },
                   "required": [
                     "receipt",
+                    "reversal",
                     "allocations",
                     "openInvoices",
                     "can"
@@ -100083,6 +100875,9 @@
                         "unallocated": {
                           "type": "string"
                         },
+                        "reversed": {
+                          "type": "boolean"
+                        },
                         "recordedAt": {
                           "type": "string",
                           "format": "date-time",
@@ -100122,9 +100917,54 @@
                         "paymentReference",
                         "allocated",
                         "unallocated",
+                        "reversed",
                         "recordedAt",
                         "notes",
                         "recordedBy"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "reversal": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "reversedOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "reversedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "reversedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "reason",
+                        "reversedOn",
+                        "reversedBy",
+                        "reversedAt"
                       ],
                       "additionalProperties": false
                     },
@@ -100407,17 +101247,22 @@
                         },
                         "removeAllocation": {
                           "type": "boolean"
+                        },
+                        "reverse": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "allocate",
-                        "removeAllocation"
+                        "removeAllocation",
+                        "reverse"
                       ],
                       "additionalProperties": false
                     }
                   },
                   "required": [
                     "receipt",
+                    "reversal",
                     "allocations",
                     "openInvoices",
                     "can"
@@ -100609,6 +101454,9 @@
                         "unallocated": {
                           "type": "string"
                         },
+                        "reversed": {
+                          "type": "boolean"
+                        },
                         "recordedAt": {
                           "type": "string",
                           "format": "date-time",
@@ -100648,9 +101496,54 @@
                         "paymentReference",
                         "allocated",
                         "unallocated",
+                        "reversed",
                         "recordedAt",
                         "notes",
                         "recordedBy"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "reversal": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "reversedOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "reversedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "reversedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "reason",
+                        "reversedOn",
+                        "reversedBy",
+                        "reversedAt"
                       ],
                       "additionalProperties": false
                     },
@@ -100933,17 +101826,22 @@
                         },
                         "removeAllocation": {
                           "type": "boolean"
+                        },
+                        "reverse": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "allocate",
-                        "removeAllocation"
+                        "removeAllocation",
+                        "reverse"
                       ],
                       "additionalProperties": false
                     }
                   },
                   "required": [
                     "receipt",
+                    "reversal",
                     "allocations",
                     "openInvoices",
                     "can"
@@ -101116,6 +102014,9 @@
                         "unallocated": {
                           "type": "string"
                         },
+                        "reversed": {
+                          "type": "boolean"
+                        },
                         "recordedAt": {
                           "type": "string",
                           "format": "date-time",
@@ -101155,9 +102056,54 @@
                         "paymentReference",
                         "allocated",
                         "unallocated",
+                        "reversed",
                         "recordedAt",
                         "notes",
                         "recordedBy"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "reversal": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "reversedOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "reversedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "reversedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "reason",
+                        "reversedOn",
+                        "reversedBy",
+                        "reversedAt"
                       ],
                       "additionalProperties": false
                     },
@@ -101440,17 +102386,22 @@
                         },
                         "removeAllocation": {
                           "type": "boolean"
+                        },
+                        "reverse": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "allocate",
-                        "removeAllocation"
+                        "removeAllocation",
+                        "reverse"
                       ],
                       "additionalProperties": false
                     }
                   },
                   "required": [
                     "receipt",
+                    "reversal",
                     "allocations",
                     "openInvoices",
                     "can"
@@ -101485,6 +102436,593 @@
           },
           "409": {
             "description": "Already removed."
+          },
+          "422": {
+            "description": "The request failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Something went wrong on our side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This client build is older than the minimum supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/finance/payments/{receiptId}/reverse": {
+      "post": {
+        "operationId": "reverseCustomerPayment",
+        "summary": "Take a payment back",
+        "description": "Owners and admins, with a reason: a bounced cheque, a transfer that never arrived, a payment recorded against the wrong customer. The payment is not deleted: a reversal is recorded beside it, dated today in the company’s calendar, its allocations are removed so the invoices owe again, it is never allocated again, and the ledger posts the opposite of its entry. Both stay in the history. Once only: 409 `payment_already_reversed`. Honours `Idempotency-Key`.",
+        "tags": [
+          "finance"
+        ],
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "description": "A client-generated key. Replaying a request with the same key returns the original response and repeats no effect."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The payment, reversed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "receipt": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "reference": {
+                          "type": "string"
+                        },
+                        "customer": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "receivedOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "amount": {
+                          "type": "string"
+                        },
+                        "currencyCode": {
+                          "type": "string"
+                        },
+                        "method": {
+                          "type": "string",
+                          "enum": [
+                            "cash",
+                            "bank_transfer",
+                            "other"
+                          ]
+                        },
+                        "paymentReference": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "allocated": {
+                          "type": "string"
+                        },
+                        "unallocated": {
+                          "type": "string"
+                        },
+                        "reversed": {
+                          "type": "boolean"
+                        },
+                        "recordedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "notes": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "recordedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "reference",
+                        "customer",
+                        "receivedOn",
+                        "amount",
+                        "currencyCode",
+                        "method",
+                        "paymentReference",
+                        "allocated",
+                        "unallocated",
+                        "reversed",
+                        "recordedAt",
+                        "notes",
+                        "recordedBy"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "reversal": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "reversedOn": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "reversedBy": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "reversedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "reason",
+                        "reversedOn",
+                        "reversedBy",
+                        "reversedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "allocations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "invoice": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "reference": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "reference"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "receipt": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "reference": {
+                                "type": "string"
+                              },
+                              "receivedOn": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "method": {
+                                "type": "string",
+                                "enum": [
+                                  "cash",
+                                  "bank_transfer",
+                                  "other"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "reference",
+                              "receivedOn",
+                              "method"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "amount": {
+                            "type": "string"
+                          },
+                          "allocatedBy": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "allocatedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "removedBy": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "removedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "invoice",
+                          "receipt",
+                          "amount",
+                          "allocatedBy",
+                          "allocatedAt",
+                          "removedBy",
+                          "removedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "openInvoices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "reference": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "customer": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "issued",
+                              "partially_paid",
+                              "paid",
+                              "credited",
+                              "void"
+                            ]
+                          },
+                          "overdue": {
+                            "type": "boolean"
+                          },
+                          "currencyCode": {
+                            "type": "string"
+                          },
+                          "issueDate": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "dueDate": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "amounts": {
+                            "type": "object",
+                            "properties": {
+                              "total": {
+                                "type": "string"
+                              },
+                              "allocated": {
+                                "type": "string"
+                              },
+                              "credited": {
+                                "type": "string"
+                              },
+                              "balance": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "total",
+                              "allocated",
+                              "credited",
+                              "balance"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "source": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "sales_order",
+                                  "work_order"
+                                ]
+                              },
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "reference": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "id",
+                              "reference"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "partsNotYetBilled": {
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "reference",
+                          "customer",
+                          "status",
+                          "overdue",
+                          "currencyCode",
+                          "issueDate",
+                          "dueDate",
+                          "amounts",
+                          "source",
+                          "partsNotYetBilled",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "can": {
+                      "type": "object",
+                      "properties": {
+                        "allocate": {
+                          "type": "boolean"
+                        },
+                        "removeAllocation": {
+                          "type": "boolean"
+                        },
+                        "reverse": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "allocate",
+                        "removeAllocation",
+                        "reverse"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "receipt",
+                    "reversal",
+                    "allocations",
+                    "openInvoices",
+                    "can"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller lacks the required permission, or the company does not have the `finance` module switched on (`feature_disabled`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such payment."
+          },
+          "409": {
+            "description": "Already reversed (`payment_already_reversed`)."
           },
           "422": {
             "description": "The request failed validation.",
@@ -101793,6 +103331,9 @@
                           "unallocated": {
                             "type": "string"
                           },
+                          "reversed": {
+                            "type": "boolean"
+                          },
                           "recordedAt": {
                             "type": "string",
                             "format": "date-time",
@@ -101810,6 +103351,7 @@
                           "paymentReference",
                           "allocated",
                           "unallocated",
+                          "reversed",
                           "recordedAt"
                         ],
                         "additionalProperties": false
@@ -111535,7 +113077,8 @@
                                   "expense_claim",
                                   "expense_payment",
                                   "payroll_run",
-                                  "assembly"
+                                  "assembly",
+                                  "payment_reversal"
                                 ]
                               },
                               "id": {
@@ -111860,7 +113403,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -112270,7 +113814,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -112749,7 +114294,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -113282,7 +114828,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -113728,7 +115275,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -114240,7 +115788,8 @@
                     "expense_claim",
                     "expense_payment",
                     "payroll_run",
-                    "assembly"
+                    "assembly",
+                    "payment_reversal"
                   ]
                 },
                 {
@@ -114257,7 +115806,8 @@
                       "expense_claim",
                       "expense_payment",
                       "payroll_run",
-                      "assembly"
+                      "assembly",
+                      "payment_reversal"
                     ]
                   }
                 }
@@ -114356,7 +115906,8 @@
                                   "expense_claim",
                                   "expense_payment",
                                   "payroll_run",
-                                  "assembly"
+                                  "assembly",
+                                  "payment_reversal"
                                 ]
                               },
                               "id": {
@@ -114630,7 +116181,8 @@
                         "expense_claim",
                         "expense_payment",
                         "payroll_run",
-                        "assembly"
+                        "assembly",
+                        "payment_reversal"
                       ]
                     }
                   }
@@ -114814,7 +116366,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -115317,7 +116870,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -115717,7 +117271,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -117848,7 +119403,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {
@@ -118299,7 +119855,8 @@
                             "expense_claim",
                             "expense_payment",
                             "payroll_run",
-                            "assembly"
+                            "assembly",
+                            "payment_reversal"
                           ]
                         },
                         "id": {

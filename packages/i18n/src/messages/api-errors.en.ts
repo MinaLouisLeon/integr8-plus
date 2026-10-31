@@ -370,6 +370,8 @@ export const apiErrorsEn = {
   part_missing: 'Part of this file has not arrived.',
   part_out_of_range: 'This file does not have that many parts. Upload it again.',
   party_required: 'Choose a customer or a lead.',
+  payment_already_reversed: 'This payment was already reversed.',
+  payment_reversed: 'This payment was reversed, so it cannot be put against an invoice.',
   payroll_off: 'Payroll is not switched on. Pay this claim back directly.',
   period_locked: 'That month is locked. Date it in an open month.',
   period_too_long: 'Choose a period of at most two years.',

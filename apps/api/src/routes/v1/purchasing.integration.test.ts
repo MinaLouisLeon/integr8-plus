@@ -266,6 +266,12 @@ describe('purchase orders', () => {
     expect(first.order.reference).toMatch(/^PO-\d{6}$/u);
     expect(first.lines.map((line) => line.subtotal)).toEqual(['0.3', '3']);
     expect(first.can).toEqual({ edit: true, approve: false, cancel: true, receive: false });
+    // What the printed order names: the company, and the supplier as it is now.
+    const printed = json<{
+      parties: { buyer: { name: string }; supplier: { name: string; email: string | null } };
+    }>(await call(dispatcher, 'GET', `/v1/purchasing/orders/${first.order.id}`));
+    expect(printed.parties.buyer.name).not.toBe('');
+    expect(printed.parties.supplier.name).toMatch(/^Supplier /u);
 
     const second = await newOrder();
     expect(Number(second.order.reference.slice(3))).toBe(

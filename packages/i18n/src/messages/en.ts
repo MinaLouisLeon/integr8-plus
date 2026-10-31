@@ -4016,6 +4016,14 @@ export const en = {
   },
   purchasing: {
     notEnabled: 'Purchasing is not switched on for your company. Ask Integr8 to turn it on.',
+    document: {
+      title: 'Purchase order {{reference}}',
+      orderedOn: 'Ordered on {{date}}',
+      expectedOn: 'Expected on {{date}}',
+      supplier: 'Supplier',
+      deliverTo: 'Deliver to',
+      print: 'Print',
+    },
     status: {
       draft: 'Draft',
       approved: 'Approved',
@@ -4580,6 +4588,14 @@ export const en = {
       onAccount: '{{amount}} on account',
       back: 'Payments',
       recordedBy: 'Recorded by {{name}} on {{date}}',
+      reverse: 'Reverse payment',
+      reverseTitle: 'Reverse {{reference}}?',
+      reverseIntro:
+        'The payment of {{amount}} stays on record, marked reversed. Every invoice it paid owes that amount again, it can no longer be put against an invoice, and the ledger takes the money back today. This cannot be undone.',
+      reverseReason: 'Why (a bounced cheque, the wrong customer…)',
+      reverseConfirm: 'Reverse payment',
+      reversedLine: 'Reversed by {{name}} on {{date}}: {{reason}}',
+      reversed: 'Reversed',
       details: 'Payment details',
       allocated: 'Put against invoices',
       unallocated: 'On account',
@@ -4841,6 +4857,7 @@ export const en = {
       credit_note: 'Credit note',
       invoice_void: 'Voided invoice',
       payment: 'Payment',
+      payment_reversal: 'Reversed payment',
       stock: 'Stock movement',
       expense_claim: 'Expense claim',
       expense_payment: 'Expense claim paid back',

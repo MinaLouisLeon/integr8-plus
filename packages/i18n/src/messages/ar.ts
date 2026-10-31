@@ -4047,6 +4047,14 @@ export const ar: Catalogue<Messages> = {
   },
   purchasing: {
     notEnabled: 'المشتريات غير مفعّلة لشركتك. اطلب من Integr8 تفعيلها.',
+    document: {
+      title: 'أمر شراء {{reference}}',
+      orderedOn: 'تاريخ الطلب {{date}}',
+      expectedOn: 'التسليم المتوقع {{date}}',
+      supplier: 'المورّد',
+      deliverTo: 'التسليم إلى',
+      print: 'طباعة',
+    },
     status: {
       draft: 'مسودة',
       approved: 'معتمد',
@@ -4614,6 +4622,14 @@ export const ar: Catalogue<Messages> = {
       onAccount: '{{amount}} في الحساب',
       back: 'المدفوعات',
       recordedBy: 'سجّلها {{name}} في {{date}}',
+      reverse: 'عكس الدفعة',
+      reverseTitle: 'عكس {{reference}}؟',
+      reverseIntro:
+        'تبقى الدفعة البالغة {{amount}} في السجل مع علامة أنها معكوسة. تعود كل فاتورة سددتها مستحقة لذلك المبلغ، ولا يمكن تخصيصها لأي فاتورة بعد ذلك، ويسترد دفتر الأستاذ المبلغ اليوم. لا يمكن التراجع عن ذلك.',
+      reverseReason: 'السبب (شيك مرتجع، عميل خاطئ…)',
+      reverseConfirm: 'عكس الدفعة',
+      reversedLine: 'عكسها {{name}} في {{date}}: {{reason}}',
+      reversed: 'معكوسة',
       details: 'تفاصيل الدفعة',
       allocated: 'مخصص للفواتير',
       unallocated: 'في الحساب',
@@ -4882,6 +4898,7 @@ export const ar: Catalogue<Messages> = {
       credit_note: 'إشعار دائن',
       invoice_void: 'فاتورة ملغاة',
       payment: 'دفعة',
+      payment_reversal: 'دفعة معكوسة',
       stock: 'حركة مخزون',
       expense_claim: 'مطالبة مصروفات',
       expense_payment: 'سداد مطالبة مصروفات',

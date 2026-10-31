@@ -61,3 +61,32 @@ Every figure the company shows a customer is a frozen document, and every
 balance is derived from documents and receipts that never change. Nothing
 here is a tax or e-invoicing claim: the issuer block is whatever the company
 types, and the printed document says it is a commercial record.
+
+## Addendum — 2026-10-31 (pre-production audit; migration 0064)
+
+**Rounding to the currency's minor unit.** Lines used to round each figure to four places, so an
+invoice could total `106.3730` and only a payment of exactly that would mark it paid. Each line's
+gross, discount, net and tax are now rounded half up to the currency's minor unit (two places for
+EGP; ISO 4217 for others: `currencyMinorUnits` in `@integr8/core`, `erp_currency_minor_unit` in
+SQL), and a document's total is the sum of its rounded lines. The scale is stored per line
+(`money_scale`), taken from the document's currency when its first line is written, so a
+document never mixes two scales and **nothing already issued is recomputed**: lines written
+before 0064 keep four places, and a credit note follows its invoice's scale. For those older
+documents a remaining balance below one minor unit (`< 0.01` EGP) counts as paid (`invoiceStatus`,
+the list filters, overdue and the receivables aging). Quotes and sales orders follow the same
+rule; purchase orders still round to four places.
+
+**An accountant must confirm this before production**: rounding each line's tax (rather than the
+document's tax once), half up, and treating a sub-piastre remainder on older invoices as paid,
+are bookkeeping choices the Egyptian Tax Authority's own rules and the company's auditor have
+the last word on. E-invoicing (ADR-0014) sends its own figures and is not changed by this.
+
+**Reversing a payment.** The "refund receipt in a later phase" above is replaced by a reversal:
+an owner or admin (`finance.issue`) reverses a receipt with a reason
+(`POST /v1/finance/payments/:id/reverse`). It is a record of its own (`erp_payment_reversals`,
+insert-only, one per receipt), dated the company's day. The database removes the receipt's
+allocations in the same statement, so the invoices owe again; the receipt can never be allocated
+again (409 `payment_reversed`) and leaves the customer's account; and the ledger posts the
+opposite of the receipt's entry (`payment_reversal`: debit receivables for the customer, credit
+the cash, bank or other account). The receipt and its reversal both stay in the history and in
+the export. Money actually paid back to a customer is still not modelled.

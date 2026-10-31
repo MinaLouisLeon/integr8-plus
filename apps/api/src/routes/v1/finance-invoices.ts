@@ -1,5 +1,6 @@
 import {
   addDays,
+  balanceSettled,
   compareDecimals,
   creditNoteStatusSchema,
   CREDIT_NOTE_STATUSES,
@@ -255,7 +256,7 @@ export const financeSettingsSchema = z.object({
 const ZERO: InvoiceAmounts = { total: '0', allocated: '0', credited: '0', balance: '0' };
 
 function derivedStatus(invoice: Invoice, amounts: InvoiceAmounts): InvoiceStatus {
-  return invoiceStatus(invoice.status, amounts);
+  return invoiceStatus(invoice.status, amounts, invoice.currencyCode);
 }
 
 function isOverdue(invoice: Invoice, amounts: InvoiceAmounts, today: string): boolean {
@@ -263,7 +264,7 @@ function isOverdue(invoice: Invoice, amounts: InvoiceAmounts, today: string): bo
     invoice.status === 'issued' &&
     invoice.dueDate !== null &&
     invoice.dueDate < today &&
-    compareDecimals(amounts.balance, '0') > 0
+    !balanceSettled(amounts.balance, invoice.currencyCode)
   );
 }
 
@@ -409,7 +410,7 @@ export async function invoiceDetail(
   const manage = holds(principal, 'finance.manage');
   const issueRight = holds(principal, 'finance.issue');
   const amounts = summary[0]!.amounts;
-  const owing = compareDecimals(amounts.balance, '0') > 0;
+  const owing = !balanceSettled(amounts.balance, invoice.currencyCode);
   const untouched = amounts.allocated === '0' && amounts.credited === '0';
   return {
     invoice: {

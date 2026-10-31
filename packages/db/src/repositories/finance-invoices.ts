@@ -217,10 +217,17 @@ interface CreditNoteLineRow extends LineRow {
   invoice_line_id: string | null;
 }
 
+/**
+ * Less than this is nothing left to pay: one of the currency's minor units
+ * (0.01 EGP). Lines written before 0064 kept four places, so an invoice
+ * issued then can be left owing a fraction no payment can carry.
+ */
+const SETTLED_BELOW = sql`power(10::numeric, -erp_currency_minor_unit(i.currency_code))`;
+
 /** The SQL that derives an invoice's status from its stored status and amounts. */
 const DERIVED_STATUS = sql<string>`case
   when i.status <> 'issued' then i.status
-  when a.balance <= 0 then case when a.allocated > 0 then 'paid' else 'credited' end
+  when a.balance < ${SETTLED_BELOW} then case when a.allocated > 0 then 'paid' else 'credited' end
   when a.allocated > 0 then 'partially_paid'
   else 'issued' end`;
 
@@ -415,7 +422,7 @@ export class FinanceInvoicesRepository extends TenantScopedRepository {
     }
     if (query.overdue !== undefined) {
       filters.push(
-        sql`i.status = 'issued' and a.balance > 0 and i.due_date < ${query.overdue.today}::date`,
+        sql`i.status = 'issued' and a.balance >= ${SETTLED_BELOW} and i.due_date < ${query.overdue.today}::date`,
       );
     }
     if (query.partsNotBilled === true) {

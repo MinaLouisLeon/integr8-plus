@@ -295,7 +295,8 @@ export function useSourceLink(): (
     if (source === null) {
       return undefined;
     }
-    if (source.kind === 'payment') {
+    // A reversed payment's source is the payment itself (0064).
+    if (source.kind === 'payment' || source.kind === 'payment_reversal') {
       return paths.payment(source.id);
     }
     // An invoice, its void, or the invoice a credit note credits; stock has no page.

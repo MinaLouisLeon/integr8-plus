@@ -922,6 +922,12 @@ export class LedgerRepository extends TenantScopedRepository {
           from erp_payment_receipts r
          where r.tenant_id = ${this.tenantId} and r.currency_code = ${currency}
            and r.received_on < ${date}::date
+        union all
+        select r.customer_id, r.amount
+          from erp_payment_reversals v
+          join erp_payment_receipts r on r.tenant_id = v.tenant_id and r.id = v.receipt_id
+         where v.tenant_id = ${this.tenantId} and r.currency_code = ${currency}
+           and v.reversed_on < ${date}::date
       ) owed
       group by customer_id
       having sum(amount) <> 0

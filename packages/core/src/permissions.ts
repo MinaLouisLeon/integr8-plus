@@ -202,8 +202,9 @@ export const PERMISSIONS = [
   /** Draft invoices (blank, from an order or from a job) and credit notes. */
   'finance.manage',
   /**
-   * Issue and void invoices, issue credit notes, record payments and allocate
-   * them, and set the invoice issuer details and labour rates. Owners and
+   * Issue and void invoices, issue credit notes, record payments, allocate
+   * them and reverse them (0064), and set the invoice issuer details and
+   * labour rates. Owners and
    * admins only (product decision, 2026-10-11): money the company claims or
    * received is answered for by the people who own it.
    */

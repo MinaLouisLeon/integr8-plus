@@ -330,6 +330,8 @@ export const apiErrorsAr: Catalogue<typeof apiErrorsEn> = {
   part_missing: 'لم يصل جزء من هذا الملف.',
   part_out_of_range: 'ليس لهذا الملف هذا العدد من الأجزاء. ارفعه من جديد.',
   party_required: 'اختر عميلًا أو عميلًا محتملًا.',
+  payment_already_reversed: 'هذه الدفعة معكوسة بالفعل.',
+  payment_reversed: 'هذه الدفعة معكوسة، فلا يمكن تخصيصها لأي فاتورة.',
   payroll_off: 'وحدة الرواتب غير مفعّلة. سدّد هذه المطالبة مباشرةً.',
   period_locked: 'هذا الشهر مُقفل. اختر تاريخًا في شهر مفتوح.',
   period_too_long: 'اختر فترة لا تتجاوز سنتين.',

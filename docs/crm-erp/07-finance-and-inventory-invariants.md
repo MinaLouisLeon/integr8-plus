@@ -116,6 +116,24 @@ Parts and the job's state (migration 0062, pre-production audit 2026-10-31):
 | Job cost = parts at their cost when used (net of returns) + hours on site and working × the labour cost when set; profit = invoiced net − cost. Without a labour cost the figure is parts only and says so. An estimate, not an accounting entry | `GET /v1/finance/work-orders/{id}/costs`; `hoursOfMs`, `multiplyDecimals` in `@integr8/core`                                                                                             |
 | A company with issued documents can still be purged; the application role cannot fake the purge                                                                                                                                                  | `integr8_purging()`; every B1 guard and the S1 line guards allow deletes only during `purge_tenant`                                                                                      |
 
+Added in the pre-production audit (2026-10-31, migration 0064; ADR-0007 addendum, which an
+accountant must confirm before production):
+
+- Each quote, order, invoice and credit note line rounds gross, discount, net and tax half up to
+  its `money_scale`: the currency's minor unit (2 for EGP) for lines written since 0064, 4 for
+  older ones, never recomputed. A document keeps one scale; a credit note takes its invoice's.
+  Totals are the sum of the rounded lines. `erp_assign_line_scale()`, `LINE_MATH`,
+  `erp_line_total(…, scale)`, the ledger proposal.
+- A balance under one minor unit counts as settled: `invoiceStatus(…, currency)` /
+  `balanceSettled()` in `@integr8/core`; `SETTLED_BELOW` in `finance-invoices.ts`; the
+  receivables aging.
+- A receipt is reversed once, by an owner or admin, with a reason: `erp_payment_reversals`
+  (insert-only, unique per receipt). `erp_payment_reversals_apply()` (security definer) removes
+  its allocations and queues the `payment_reversal` posting (receivables debited, cash/bank
+  credited). A reversed receipt is never allocated again
+  (`erp_payment_allocations_receipt_reversed`, 409 `payment_reversed`), has nothing on account,
+  and counts back in `receivablesAt`.
+
 ## Assets and their history (E3)
 
 | Rule                                                                                                                                                                                                                             | Where                                                                                                                                                                                                 |

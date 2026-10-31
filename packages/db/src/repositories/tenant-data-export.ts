@@ -123,6 +123,7 @@ export const EXPORTED_TABLES = [
   'erp_credit_note_lines',
   'erp_payment_receipts',
   'erp_payment_allocations',
+  'erp_payment_reversals',
   // E-invoicing (0049): what the company sent the Tax Authority, every call
   // about it and the answers. The submission history is a tax record, so it
   // goes wherever the invoices go. The sealed login and the signing nonces are

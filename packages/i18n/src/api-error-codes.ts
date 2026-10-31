@@ -303,6 +303,8 @@ export const API_ERROR_CODES = [
   'part_missing',
   'part_out_of_range',
   'party_required',
+  'payment_already_reversed',
+  'payment_reversed',
   'payroll_off',
   'period_locked',
   'period_too_long',
