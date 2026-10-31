@@ -1993,7 +1993,11 @@ export const en = {
         maintenance_planned: 'Created by maintenance plan {{title}}, due {{day}}',
         coverage_changed: '{{actor}} marked it {{coverage}}',
         deadline_missed: '{{deadline}} deadline of {{due}} missed',
+        form_submitted_after_close: '{{actor}} submitted {{title}} after the job was closed',
       },
+      submittedAfterClose: 'Submitted after the job closed',
+      submittedAfterCloseHint:
+        'Filled on the phone before the job closed and synced afterwards. Check it before invoicing or reporting.',
       nobodySignedEvent: '{{actor}} recorded that nobody could sign: {{reason}}',
       recordedLater: 'Recorded on the phone at {{occurred}}, synced at {{recorded}}',
       notFound: 'This work order does not exist, or you are not on it.',

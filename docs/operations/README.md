@@ -140,6 +140,14 @@ unassigns them rather than deleting the row. Engineers see only the jobs they ar
 
 - Forms are filled for a job with `POST /v1/submissions { formId, workOrderId }`: the form must
   be one of the job's, the job open, and the person on its crew. The link never changes.
+- **A closed job and its forms** (migration 0061). Once a job is completed, reviewed or
+  cancelled, the submit route refuses a draft on it with 409 `submission_job_closed`;
+  correcting a reopened submission is still allowed. A phone is told apart: a form the
+  engineer started on the phone before the job closed (judged by when the phone recorded it)
+  is accepted when it finally syncs, marked `submittedAfterClose`, written to the job's
+  history (`form_submitted_after_close`) and shown on the job screen as a "Submitted after
+  the job closed" badge; one started after the job closed is refused as a `state_changed`
+  conflict, as before.
   `GET /v1/submissions?workOrderId=|siteId=|customerId=` finds them again, and so does the
   submission list screen.
 - Checklist items record who ticked them and when.

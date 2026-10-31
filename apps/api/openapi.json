@@ -14925,7 +14925,7 @@
             "description": "No such submission this person may change."
           },
           "409": {
-            "description": "Changed elsewhere, not in a state that can be submitted, or the plan’s submissions for the month are used up (`submission_limit_reached`)."
+            "description": "Changed elsewhere, not in a state that can be submitted, a draft on a job that is completed, reviewed or cancelled (`submission_job_closed`), or the plan’s submissions for the month are used up (`submission_limit_reached`)."
           },
           "422": {
             "description": "The answers were refused. Details name each question."
@@ -68489,12 +68489,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -68635,7 +68639,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -70820,12 +70825,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -70966,7 +70975,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -73120,12 +73130,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -73266,7 +73280,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -139875,12 +139890,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -140021,7 +140040,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -142384,12 +142404,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -142530,7 +142554,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -144678,12 +144703,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -144824,7 +144853,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -146951,12 +146981,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -147097,7 +147131,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -149219,12 +149254,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -149365,7 +149404,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -151482,12 +151522,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -151628,7 +151672,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -153735,12 +153780,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -153881,7 +153930,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -155994,12 +156044,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -156140,7 +156194,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -158241,12 +158296,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -158387,7 +158446,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -160475,12 +160535,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -160621,7 +160685,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -162747,12 +162812,16 @@
                               "submittedAt": {
                                 "nullable": true,
                                 "type": "string"
+                              },
+                              "submittedAfterClose": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
                               "id",
                               "status",
-                              "submittedAt"
+                              "submittedAt",
+                              "submittedAfterClose"
                             ],
                             "additionalProperties": false
                           }
@@ -162893,7 +162962,8 @@
                               "qualification_override",
                               "maintenance_planned",
                               "coverage_changed",
-                              "deadline_missed"
+                              "deadline_missed",
+                              "form_submitted_after_close"
                             ]
                           },
                           "fromState": {
@@ -177660,12 +177730,16 @@
                                     "submittedAt": {
                                       "nullable": true,
                                       "type": "string"
+                                    },
+                                    "submittedAfterClose": {
+                                      "type": "boolean"
                                     }
                                   },
                                   "required": [
                                     "id",
                                     "status",
-                                    "submittedAt"
+                                    "submittedAt",
+                                    "submittedAfterClose"
                                   ],
                                   "additionalProperties": false
                                 }
@@ -177806,7 +177880,8 @@
                                     "qualification_override",
                                     "maintenance_planned",
                                     "coverage_changed",
-                                    "deadline_missed"
+                                    "deadline_missed",
+                                    "form_submitted_after_close"
                                   ]
                                 },
                                 "fromState": {

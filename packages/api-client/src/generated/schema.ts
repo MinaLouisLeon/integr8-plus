@@ -16300,7 +16300,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Changed elsewhere, not in a state that can be submitted, or the plan’s submissions for the month are used up (`submission_limit_reached`). */
+            /** @description Changed elsewhere, not in a state that can be submitted, a draft on a job that is completed, reviewed or cancelled (`submission_job_closed`), or the plan’s submissions for the month are used up (`submission_limit_reached`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -38901,6 +38901,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -38930,7 +38931,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -39494,6 +39495,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -39523,7 +39525,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -40073,6 +40075,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -40102,7 +40105,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -64662,6 +64665,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -64691,7 +64695,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -65338,6 +65342,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -65367,7 +65372,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -65910,6 +65915,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -65939,7 +65945,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -66480,6 +66486,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -66509,7 +66516,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -67048,6 +67055,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -67077,7 +67085,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -67618,6 +67626,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -67647,7 +67656,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -68185,6 +68194,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -68214,7 +68224,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -68746,6 +68756,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -68775,7 +68786,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -69306,6 +69317,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -69335,7 +69347,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -69859,6 +69871,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -69888,7 +69901,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -70431,6 +70444,7 @@ export interface operations {
                                 /** @enum {string} */
                                 status: "draft" | "submitted" | "reopened";
                                 submittedAt: string | null;
+                                submittedAfterClose: boolean;
                             } | null;
                         }[];
                         checklist: {
@@ -70460,7 +70474,7 @@ export interface operations {
                         }[];
                         events: {
                             /** @enum {string} */
-                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                            kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                             /** @enum {string|null} */
                             fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                             /** @enum {string|null} */
@@ -76348,6 +76362,7 @@ export interface operations {
                                     /** @enum {string} */
                                     status: "draft" | "submitted" | "reopened";
                                     submittedAt: string | null;
+                                    submittedAfterClose: boolean;
                                 } | null;
                             }[];
                             checklist: {
@@ -76377,7 +76392,7 @@ export interface operations {
                             }[];
                             events: {
                                 /** @enum {string} */
-                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed";
+                                kind: "created" | "transitioned" | "rescheduled" | "updated" | "assigned" | "unassigned" | "lead_changed" | "signed_off" | "visit_scheduled" | "visit_rescheduled" | "visit_done" | "visit_cancelled" | "visit_assigned" | "visit_unassigned" | "qualification_override" | "maintenance_planned" | "coverage_changed" | "deadline_missed" | "form_submitted_after_close";
                                 /** @enum {string|null} */
                                 fromState: "scheduled" | "dispatched" | "travelling" | "on_site" | "in_progress" | "awaiting_parts" | "complete" | "reviewed" | "cancelled" | null;
                                 /** @enum {string|null} */

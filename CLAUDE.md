@@ -109,8 +109,11 @@ pointed at a separate database: they truncate tables.
 - Writes that must not repeat need an `Idempotency-Key` header.
 - Every request needs `x-client-version` and `x-client-app` headers.
 - Some routes answer `204` with no body.
-- Work-order transitions need `expectedRevision`; closed jobs refuse new forms
-  and submissions; INSPECT and INSTALL job types require certificates.
+- Work-order transitions need `expectedRevision`. A completed, reviewed or
+  cancelled job refuses starting a form, and the submit route refuses a draft on
+  it (`submission_job_closed`); phone sync accepts a draft the phone started
+  before the job closed, marked `submittedAfterClose` with a history entry, and
+  refuses one started after. INSPECT and INSTALL job types require certificates.
 - Company `workingDays` are ISO numbers 1–7 (Monday = 1).
 - Passwords must not contain the email's local part (`AUTH_MIN_PASSWORD_LENGTH`
   and policy in `packages/auth/src/password-policy.ts`).

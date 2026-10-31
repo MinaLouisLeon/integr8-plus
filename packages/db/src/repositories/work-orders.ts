@@ -99,7 +99,13 @@ export interface WorkOrderForm {
   required: boolean;
   position: number;
   /** The most recent submission of this form for this job, if anyone has started one. */
-  submission: { id: string; status: SubmissionStatus; submittedAt: Date | null } | null;
+  submission: {
+    id: string;
+    status: SubmissionStatus;
+    submittedAt: Date | null;
+    /** Arrived from a phone after the job closed (0061). */
+    submittedAfterClose: boolean;
+  } | null;
 }
 
 export interface WorkOrderComment {
@@ -1023,7 +1029,12 @@ export class WorkOrdersRepository extends TenantScopedRepository {
         (eb) =>
           eb
             .selectFrom('submissions')
-            .select(['submissions.id', 'submissions.status', 'submissions.submitted_at'])
+            .select([
+              'submissions.id',
+              'submissions.status',
+              'submissions.submitted_at',
+              'submissions.submitted_after_close',
+            ])
             .where('submissions.tenant_id', '=', this.tenantId)
             .whereRef('submissions.work_order_id', '=', 'work_order_forms.work_order_id')
             .whereRef('submissions.form_id', '=', 'work_order_forms.form_id')
@@ -1044,6 +1055,7 @@ export class WorkOrdersRepository extends TenantScopedRepository {
         'latest.id as submission_id',
         'latest.status as submission_status',
         'latest.submitted_at as submission_submitted_at',
+        'latest.submitted_after_close as submission_after_close',
       ])
       .where('work_order_forms.tenant_id', '=', this.tenantId)
       .where('work_order_forms.work_order_id', '=', workOrderId)
@@ -1062,6 +1074,7 @@ export class WorkOrdersRepository extends TenantScopedRepository {
               id: row.submission_id,
               status: row.submission_status,
               submittedAt: row.submission_submitted_at,
+              submittedAfterClose: row.submission_after_close === true,
             },
     }));
   }

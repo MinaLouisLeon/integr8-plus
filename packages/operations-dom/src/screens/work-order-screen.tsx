@@ -114,6 +114,15 @@ export function WorkOrderScreen({ workOrderId }: { workOrderId: string }) {
           <span className="font-mono text-sm text-content-muted">{workOrder.referenceLabel}</span>
           <StateBadge state={workOrder.state} />
           <PriorityBadge priority={workOrder.priority} />
+          {job.forms.some((form) => form.submission?.submittedAfterClose === true) ? (
+            // A phone's form that arrived after the job closed: the office should know.
+            <span
+              className="inline-flex items-center rounded-full border border-warning bg-warning-subtle px-2 py-0.5 text-xs font-medium text-content"
+              title={t('operations.workOrder.submittedAfterCloseHint')}
+            >
+              {t('operations.workOrder.submittedAfterClose')}
+            </span>
+          ) : null}
         </div>
         <h1 dir="auto" className="text-2xl font-semibold text-content">
           {workOrder.title}
@@ -818,6 +827,14 @@ function Forms({
                     ? t('operations.workOrder.notStarted')
                     : t(`submissions.status.${form.submission.status}`)}
                 </span>
+                {form.submission?.submittedAfterClose === true ? (
+                  <span
+                    className="inline-flex items-center rounded-full border border-warning bg-warning-subtle px-2 py-0.5 font-medium text-content"
+                    title={t('operations.workOrder.submittedAfterCloseHint')}
+                  >
+                    {t('operations.workOrder.submittedAfterClose')}
+                  </span>
+                ) : null}
               </span>
             </div>
             <div className="flex gap-2">

@@ -1961,7 +1961,11 @@ export const ar: Catalogue<Messages> = {
         maintenance_planned: 'أنشأتها خطة الصيانة {{title}}، وتستحق في {{day}}',
         coverage_changed: 'جعلها {{actor}} {{coverage}}',
         deadline_missed: 'فاتت مهلة {{deadline}} المستحقة {{due}}',
+        form_submitted_after_close: 'أرسل {{actor}} النموذج {{title}} بعد إغلاق المهمة',
       },
+      submittedAfterClose: 'أُرسل بعد إغلاق المهمة',
+      submittedAfterCloseHint:
+        'عُبّئ على الهاتف قبل إغلاق المهمة وتمت مزامنته بعدها. راجعه قبل الفوترة أو إعداد التقارير.',
       nobodySignedEvent: 'سجّل {{actor}} أن أحدًا لم يستطع التوقيع: {{reason}}',
       recordedLater: 'سُجّل على الهاتف في {{occurred}}، وتمت مزامنته في {{recorded}}',
       notFound: 'أمر العمل هذا غير موجود، أو أنك لست ضمن طاقمه.',

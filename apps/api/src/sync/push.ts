@@ -1397,10 +1397,24 @@ async function access(
 // Submissions
 // ---------------------------------------------------------------------------
 
+/**
+ * When a closed job closed: completed (a reviewed job keeps that moment) or
+ * cancelled. Undefined while it is open.
+ */
+function closedAt(job: WorkOrder): Date | undefined {
+  if (job.state === 'cancelled') {
+    return job.cancelledAt ?? job.updatedAt;
+  }
+  if (job.state === 'complete' || job.state === 'reviewed') {
+    return job.completedAt ?? job.updatedAt;
+  }
+  return undefined;
+}
+
 async function startSubmission(
   tx: TenantTransaction,
   mutation: Extract<Mutation, { kind: 'submission.start' }>,
-  { context }: PushContext,
+  { context, recordedAt }: PushContext,
 ): Promise<Outcome> {
   const { principal } = context;
   const { formId, formVersionId, workOrderId } = mutation.payload;
@@ -1427,7 +1441,11 @@ async function startSubmission(
       return unavailable();
     }
     await requireWork(tx, principal, job);
-    if (['complete', 'reviewed', 'cancelled'].includes(job.state)) {
+    // A form the phone started on site before the job closed, arriving later for
+    // want of signal, was started in time: it is kept, and its submit is marked
+    // (0061). One started after the job closed is refused, as a screen is.
+    const closed = closedAt(job);
+    if (closed !== undefined && recordedAt(mutation) > closed) {
       return stateChanged(tx, principal, job, 'in_progress');
     }
     if (!(await tx.workOrders.listForms(job.id)).some((entry) => entry.formId === form.id)) {
@@ -1620,6 +1638,16 @@ async function submit(
     throw error;
   }
 
+  // A draft only exists on a closed job if it was started before the job closed
+  // (see startSubmission), so it is accepted — the engineer did the work in time —
+  // and marked, which writes the job's history and shows the office a badge.
+  // Correcting a reopened submission is not new work and is not marked.
+  let afterClose = false;
+  if (submission.status === 'draft' && submission.workOrderId !== null) {
+    const job = await tx.workOrders.find(submission.workOrderId);
+    afterClose = job !== undefined && closedAt(job) !== undefined;
+  }
+
   const { location } = mutation.payload;
   const result = await tx.submissions.submit(
     submission.id,
@@ -1632,6 +1660,7 @@ async function submit(
       : location.status === 'captured'
         ? { ...location, capturedAt: phoneTime(location.capturedAt).toISOString() }
         : location,
+    { afterClose },
   );
   if (result.outcome === 'written') {
     return applied(result.submission.revision, false, result.submission.answers);

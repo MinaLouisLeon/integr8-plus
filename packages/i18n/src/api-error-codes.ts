@@ -400,6 +400,7 @@ export const API_ERROR_CODES = [
   'submission_changed',
   'submission_draft',
   'submission_id_taken',
+  'submission_job_closed',
   'submission_limit_reached',
   'submission_state',
   'submission_unavailable',

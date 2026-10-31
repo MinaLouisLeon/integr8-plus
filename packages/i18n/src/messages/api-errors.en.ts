@@ -484,6 +484,8 @@ export const apiErrorsEn = {
   submission_draft: 'A draft cannot be made into a document. Submit it first.',
   submission_id_taken:
     'This form clashed with another submission. Discard it and fill it in again.',
+  submission_job_closed:
+    'This job is closed, so this form can no longer be submitted. Reopen the job first, or discard the draft.',
   submission_limit_reached:
     'This plan’s submissions for the month are used up. They reset at the start of next month, or a larger plan lifts the limit.',
   submission_state: 'This submission cannot be changed as it is now. Reopen it first.',

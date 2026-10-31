@@ -100,6 +100,7 @@ const eventSchema = z.object({
     'maintenance_planned',
     'coverage_changed',
     'deadline_missed',
+    'form_submitted_after_close',
   ]),
   fromState: workOrderStateSchema.nullable(),
   toState: workOrderStateSchema.nullable(),
@@ -188,6 +189,8 @@ export const detailSchema = z.object({
           id: z.uuid(),
           status: z.enum(['draft', 'submitted', 'reopened']),
           submittedAt: z.string().nullable(),
+          /** Arrived from a phone after the job closed, from a draft started before (0061). */
+          submittedAfterClose: z.boolean(),
         })
         .nullable(),
     }),

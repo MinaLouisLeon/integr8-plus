@@ -625,6 +625,8 @@ export interface SubmissionsTable {
     SubmitLocation | null | undefined,
     SubmitLocation | null
   >;
+  /** Submitted from a phone after its job closed (0061). Written only by that submit. */
+  submitted_after_close: Generated<boolean>;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
@@ -988,6 +990,8 @@ export const WORK_ORDER_EVENT_KINDS = [
   'maintenance_planned',
   'coverage_changed',
   'deadline_missed',
+  // A form submitted from a phone after the job closed (0061).
+  'form_submitted_after_close',
 ] as const;
 export type WorkOrderEventKind = (typeof WORK_ORDER_EVENT_KINDS)[number];
 
@@ -3806,6 +3810,8 @@ export const SECURITY_DEFINER_FUNCTIONS = [
   'record_maintenance_occurrence',
   'record_coverage_change',
   'record_deadline_miss',
+  // Writes a job's history when a phone's form arrives after the job closed; see 0061.
+  'record_submitted_after_close',
   // Write and prune the sync change log, which the runtime role can only read; see 0011.
   'touch_sync',
   'prune_sync_touches',
