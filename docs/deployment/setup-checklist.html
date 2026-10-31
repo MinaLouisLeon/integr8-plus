@@ -843,7 +843,7 @@ comm -13 &lt;(grep -oE '^[A-Z_0-9]+=' deploy/.env | sort -u) \
          &lt;(grep -oE '^[A-Z_0-9]+=' deploy/.env.example | sort -u)
 
 # Tell the server its new version number (use the real one)
-sed -i 's/^APP_VERSION=.*/APP_VERSION=1.1.3/; s/^API_RELEASE=.*/API_RELEASE=1.1.3/' deploy/.env
+sed -i 's/^APP_VERSION=.*/APP_VERSION=1.2.2/; s/^API_RELEASE=.*/API_RELEASE=1.2.2/' deploy/.env
 grep -E '^(APP_VERSION|API_RELEASE)=' deploy/.env</code></pre>
         <ul class="check" data-stage="s12c">
           <li><input type="checkbox" id="s12-6"><label for="s12-6"><b><code>git pull</code> finished cleanly.</b> If <code>git status</code> listed files, something on the machine was edited by hand: <code>git diff</code> shows what, and <code>git stash</code> sets it aside so the pull can go ahead (re-apply it afterwards only if you still need it).</label></li>
@@ -852,7 +852,7 @@ grep -E '^(APP_VERSION|API_RELEASE)=' deploy/.env</code></pre>
         </ul>
 
         <h3>D. Restart on the new version</h3>
-        <p>One command does it all, in order: the new images are built (or pulled), <code>migrate</code> applies any new migrations and exits, then the API, worker and web app are recreated. If a migration fails, the API is never started on the new code and the old database is untouched.</p>
+        <p>One command does it all, in order: the new images are built (or pulled), <code>migrate</code> applies any new migrations and exits, then the sign-in server, the API, the worker and the web app are recreated. If a migration fails, the API is never started on the new code and the old database is untouched.</p>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session) — if the machine builds its own images (this guide's default)
 cd /opt/integr8
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
@@ -923,8 +923,8 @@ ls -lh /var/backups/integr8      # the backup script keeps the newest ones and d
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session) — back to the previous release (use its real tag)
 cd /opt/integr8
 git fetch --tags
-git checkout v1.1.1
-sed -i 's/^APP_VERSION=.*/APP_VERSION=1.1.1/; s/^API_RELEASE=.*/API_RELEASE=1.1.1/' deploy/.env
+git checkout v1.2.1
+sed -i 's/^APP_VERSION=.*/APP_VERSION=1.2.1/; s/^API_RELEASE=.*/API_RELEASE=1.2.1/' deploy/.env
 docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
 
 # Later, to go forward again
@@ -1001,10 +1001,14 @@ git checkout main &amp;&amp; git pull</code></pre>
           <li><input type="checkbox" id="s12-q1"><label for="s12-q1"><b>The three sign-in secrets.</b> On the laptop, run Stage 0, Part B's key generator again and keep only its last three lines (<code>SUPABASE_AUTH_JWT_SECRET</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code>, <code>SUPABASE_AUTH_DB_PASSWORD</code>) in the key sheet and the password manager. Its first four lines are new signing keys you do <b>not</b> want: the machine keeps its own.</label></li>
           <li><input type="checkbox" id="s12-q2"><label for="s12-q2"><b>The env file</b>, during part C with <code>nano deploy/.env</code>: delete the <code>SUPABASE_URL=</code> line (the API refuses to start while it is there), put the new <code>SUPABASE_SERVICE_ROLE_KEY=</code> line in place of the old one, and add the other two lines beside it. Part C's <code>comm</code> check then prints none of the three.</label></li>
           <li><input type="checkbox" id="s12-q3"><label for="s12-q3"><b>Migration 0054 applied</b> during part D. It records how each session was signed in, which Change password needs, and adds the list of sign-in accounts still to delete after a company is purged. Do not run its down migration on a production database.</label></li>
-          <li><input type="checkbox" id="s12-q4"><label for="s12-q4">**The <code>auth</code> container comes up** in part D: <code>bootstrap</code> creates its database role and schema, <code>auth</code> sets up its own tables and turns healthy, and only then do the API and worker start. In part E, <code>auth</code> is <i>Up (healthy)</i>, and <code>sudo ss -tlnp | grep -E ':(3000|3001)\b'</code> shows the API and web ports on <code>127.0.0.1</code> only; Caddy still reaches them.</label></li>
+          <li><input type="checkbox" id="s12-q4"><label for="s12-q4"><b>The <code>auth</code> container comes up</b> in part D: <code>bootstrap</code> creates its database role and schema, <code>auth</code> sets up its own tables and turns healthy, and only then do the API and worker start. In part E, <code>auth</code> is <i>Up (healthy)</i>, and <code>sudo ss -tlnp | grep -E ':(3000|3001)\b'</code> shows the API and web ports on <code>127.0.0.1</code> only; Caddy still reaches them.</label></li>
           <li><input type="checkbox" id="s12-q5"><label for="s12-q5"><b>Try it.</b> In the web app, sign out, type an invited address and choose <b>Email me a sign-in code</b>; the code arrives by email within a minute. Sign in with it, open <b>Change password</b> from the menu (it asks for no current password for fifteen minutes after a code), and set a new one. Another browser or phone signed in as the same person is signed out, and the address gets "Your password was changed".</label></li>
+          <li><input type="checkbox" id="s12-q7"><label for="s12-q7"><b>A password reset from the server</b>, for somebody who cannot receive the emailed code: <code>admin-cli user-password</code> gives their address a new password in the sign-in server, prints it once, and signs out their devices. Send it privately; they sign in with it and choose <b>Change password</b>. Staff accounts are unchanged: <code>admin-cli create</code> as in Stage 5.</label></li>
           <li><input type="checkbox" id="s12-q6"><label for="s12-q6"><b>Update the apps</b> (part G): the two new screens are in the new staff app and in each company's new desktop installer and phone build. An older app keeps signing in with a password; it just has neither screen.</label></li>
         </ul>
+        <pre><button class="copy" type="button">Copy</button><code># machine (SSH session), from /opt/integr8
+docker compose -f deploy/compose.yml --env-file deploy/.env \
+  run --rm api node dist/platform/admin-cli.js user-password someone@example.com</code></pre>
         <div class="note warn"><p><b>Rolling back with self-hosted sign-in.</b> A version before this one signs in through a Supabase cloud project, which does not have the accounts made since. Fix forward instead. If you must roll back (part I), put <code>SUPABASE_URL</code> and the cloud project's service role key back in <code>deploy/.env</code> first, and leave migration 0054 applied: the older version ignores its columns and table.</p></div>
 
         <div class="note"><p><b>The test box (Stage 10)</b> updates the same way, from <code>staging</code> instead of <code>main</code>: <code>git pull</code> on its <code>staging</code> checkout, then <b>Pull</b> and <b>Redeploy</b> the stack in Arcane. Updating it first, the day before, is the cheapest rehearsal there is.</p></div>
@@ -1134,7 +1138,7 @@ Get-Content $env:USERPROFILE\Documents\integr8.env | Select-String 'HR_DATA_KEY|
         </ul>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session) — only if you keep the data
 cd /opt/integr8
-docker compose -f deploy/compose.yml --env-file deploy/.env stop api worker web   # nothing changes after the dump
+docker compose -f deploy/compose.yml --env-file deploy/.env stop auth api worker web   # nothing changes after the dump
 sudo /opt/integr8/deploy/vps/backup-postgres.sh
 ls -lt /var/backups/integr8 | head -3     # the newest file is the one just made</code></pre>
         <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell): every dump into your Downloads folder
@@ -1179,17 +1183,17 @@ grep -E '^(APP_VERSION|API_RELEASE|HR_DATA_KEY)=' deploy/.env</code></pre>
         <ul class="check" data-stage="s14d2">
           <li><input type="checkbox" id="s14-13"><label for="s14-13"><b>Every name the <code>comm</code> command printed is added</b> with <code>nano deploy/.env</code>, its value from the key sheet (the template's comment beside each line says what it is). <code>HR_DATA_KEY</code> is the one most likely to be missing. The last command shows the version as <code>1.2.1</code> and the HR key filled in.</label></li>
           <li><input type="checkbox" id="s14-14"><label for="s14-14"><b>Starting empty?</b> Run Stage 4 exactly as written and go on to part E. <b>Keeping the data?</b> Do the next step instead of Stage 4's first command.</label></li>
-          <li><input type="checkbox" id="s14-15"><label for="s14-15"><b>Restore the dump into the new database</b>, before the migrations run: start only Postgres and the step that creates the two database roles, load the dump, then start everything. The migrations then apply any schema additions the restored database does not yet have.</label></li>
+          <li><input type="checkbox" id="s14-15"><label for="s14-15"><b>Restore the dump into the new database</b>, before the migrations run: start only Postgres and the step that creates the database roles, load the dump, then start everything. The migrations then apply any schema additions the restored database does not yet have.</label></li>
         </ul>
         <pre><button class="copy" type="button">Copy</button><code># laptop (PowerShell): the dump goes to the machine (use the real file name)
 scp $env:USERPROFILE\Downloads\integr8-20261013-0300.sql.gz LOGIN-USER@SERVER-IP:~/</code></pre>
         <pre><button class="copy" type="button">Copy</button><code># machine (SSH session)
 cd /opt/integr8
-docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build bootstrap   # Postgres and the two roles only
+docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build bootstrap   # Postgres and the roles only
 docker compose -f deploy/compose.yml --env-file deploy/.env ps                         # bootstrap: Exited (0)
 gunzip -c ~/integr8-20261013-0300.sql.gz \
   | docker compose -f deploy/compose.yml --env-file deploy/.env exec -T postgres psql -U postgres -d integr8 -v ON_ERROR_STOP=1
-docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build              # migrate, api, worker, web
+docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build              # migrate, auth, api, worker, web
 docker compose -f deploy/compose.yml --env-file deploy/.env logs -f migrate api
 rm ~/integr8-20261013-0300.sql.gz</code></pre>
         <ul class="check" data-stage="s14d3">
