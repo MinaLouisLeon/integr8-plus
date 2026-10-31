@@ -56,13 +56,6 @@ export const en = {
     // The top bar's button that fetches what is on screen again, and its label while it does.
     refresh: 'Refresh',
     refreshing: 'Refreshing…',
-    // Also development-only: the desktop app shows whether it is a Tauri window
-    // or a browser tab, so P05's "identical in both" criterion can be checked
-    // by eye. Translated anyway, because a string on screen is a string on
-    // screen.
-    runtime: 'Runtime',
-    runtimeTauri: 'Tauri window',
-    runtimeBrowser: 'Browser tab',
   },
 
   auth: {
@@ -6338,8 +6331,8 @@ export const en = {
       lastUpdated: 'Last updated',
       never: 'Not yet',
       encryption: 'Encryption',
-      encrypted: 'Encrypted (SQLCipher {{version}})',
-      notEncrypted: 'Not encrypted — a development build without SQLCipher',
+      encrypted: 'Encrypted',
+      notEncrypted: 'Not encrypted — a development build',
       signOut: 'Sign out',
       signOutExplained: 'Signing out deletes every job, customer and file from this phone.',
       unsentTitle: 'Sign out and delete unsent work?',

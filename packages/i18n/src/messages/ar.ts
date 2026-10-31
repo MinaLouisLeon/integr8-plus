@@ -74,9 +74,6 @@ export const ar: Catalogue<Messages> = {
     copyId: 'نسخ المعرّف',
     refresh: 'تحديث',
     refreshing: 'جارٍ التحديث…',
-    runtime: 'بيئة التشغيل',
-    runtimeTauri: 'نافذة Tauri',
-    runtimeBrowser: 'علامة تبويب في المتصفح',
   },
 
   auth: {
@@ -6399,8 +6396,8 @@ export const ar: Catalogue<Messages> = {
       lastUpdated: 'آخر تحديث',
       never: 'لم يحدث بعد',
       encryption: 'التشفير',
-      encrypted: 'مشفَّر (SQLCipher {{version}})',
-      notEncrypted: 'غير مشفَّر — إصدار تطويري دون SQLCipher',
+      encrypted: 'مشفَّر',
+      notEncrypted: 'غير مشفَّر — إصدار تطويري',
       signOut: 'تسجيل الخروج',
       signOutExplained: 'يحذف تسجيلُ الخروج كل مهمة وعميل وملف من هذا الهاتف.',
       unsentTitle: 'هل تريد تسجيل الخروج وحذف العمل غير المرسَل؟',

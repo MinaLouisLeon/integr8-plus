@@ -142,7 +142,7 @@ function Settings() {
           <Detail label={t('mobile.settings.encryption')}>
             {cipherVersion === ''
               ? t('mobile.settings.notEncrypted')
-              : t('mobile.settings.encrypted', { version: cipherVersion })}
+              : t('mobile.settings.encrypted')}
           </Detail>
           <Body muted>{t('mobile.settings.retention')}</Body>
         </Section>
